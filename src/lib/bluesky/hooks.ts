@@ -120,12 +120,12 @@ export function useBlueskyProfileByHandle(handle: string | null) {
       return;
     }
 
-    async function fetchProfile() {
+    async function fetchProfile(handleToFetch: string) {
       setIsLoading(true);
       setError(null);
 
       try {
-        const response = await fetch(`/api/bluesky/profile/${encodeURIComponent(handle)}`);
+        const response = await fetch(`/api/bluesky/profile/${encodeURIComponent(handleToFetch)}`);
         const data = await response.json();
 
         if (data.success && data.profile) {
@@ -143,7 +143,7 @@ export function useBlueskyProfileByHandle(handle: string | null) {
       }
     }
 
-    fetchProfile();
+    fetchProfile(handle);
   }, [handle]);
 
   return {
