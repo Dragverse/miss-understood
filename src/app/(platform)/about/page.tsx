@@ -26,7 +26,7 @@ export default function AboutPage() {
           take the majority of earnings.
         </p>
         <p className="text-lg text-gray-300 leading-relaxed">
-          By leveraging emerging technologies like cryptocurrency and AI, we're building tools that
+          By leveraging emerging technologies like cryptocurrency and AI, we&apos;re building tools that
           promote open-source collaboration, decentralized ownership, and transparent, ethical
           practices.
         </p>
@@ -48,7 +48,7 @@ export default function AboutPage() {
                 <p className="text-gray-300 mb-4 leading-relaxed">
                   We use cryptocurrency (specifically on Base Network, an Ethereum Layer 2) to enable
                   <strong className="text-white"> direct creator payments</strong> without middlemen.
-                  When fans tip creators, 100% of the funds go straight to the artist's wallet—no
+                  When fans tip creators, 100% of the funds go straight to the artist&apos;s wallet—no
                   platform fees, no delays, no gatekeepers.
                 </p>
                 <div className="bg-black/30 rounded-lg p-4 mb-4">
@@ -89,11 +89,11 @@ export default function AboutPage() {
                     <li>• <strong className="text-white">Video transcoding:</strong> Automatically optimize videos for all devices (720p, 480p, 360p)</li>
                     <li>• <strong className="text-white">Thumbnail generation:</strong> Suggest cover images from key moments</li>
                     <li>• <strong className="text-white">Content moderation:</strong> Flag harmful content while respecting artistic expression</li>
-                    <li>• <strong className="text-white">Search & discovery:</strong> Help fans find creators they'll love</li>
+                    <li>• <strong className="text-white">Search & discovery:</strong> Help fans find creators they&apos;ll love</li>
                   </ul>
                 </div>
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                  <h4 className="font-semibold text-red-300 mb-2">What we DON'T do with AI:</h4>
+                  <h4 className="font-semibold text-red-300 mb-2">What we DON&apos;T do with AI:</h4>
                   <ul className="space-y-1 text-gray-300 text-sm">
                     <li>✗ Generate fake content or deepfakes</li>
                     <li>✗ Train AI models on creator content without permission</li>
@@ -120,7 +120,7 @@ export default function AboutPage() {
                   means:
                 </p>
                 <ul className="space-y-2 text-gray-300 mb-4">
-                  <li>• Your content isn't controlled by a single company</li>
+                  <li>• Your content isn&apos;t controlled by a single company</li>
                   <li>• Videos remain accessible even if Dragverse goes offline</li>
                   <li>• You can migrate your content to other platforms if you choose</li>
                   <li>• No single entity can censor or delete your work arbitrarily</li>
@@ -171,7 +171,7 @@ export default function AboutPage() {
             </li>
             <li className="flex items-start gap-3">
               <span className="text-[#EB83EA] text-xl">✓</span>
-              <span><strong className="text-white">Data privacy:</strong> We don't sell your data or train AI on your content without consent</span>
+              <span><strong className="text-white">Data privacy:</strong> We don&apos;t sell your data or train AI on your content without consent</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-[#EB83EA] text-xl">✓</span>
@@ -189,8 +189,8 @@ export default function AboutPage() {
       <section className="mb-16">
         <h2 className="text-3xl font-bold mb-6 text-white">Questions?</h2>
         <p className="text-gray-300 mb-6">
-          We're committed to being transparent about how we build and operate Dragverse. If you have
-          questions about our technology choices, data handling, or anything else, we'd love to hear
+          We&apos;re committed to being transparent about how we build and operate Dragverse. If you have
+          questions about our technology choices, data handling, or anything else, we&apos;d love to hear
           from you.
         </p>
         <div className="flex flex-wrap gap-4">

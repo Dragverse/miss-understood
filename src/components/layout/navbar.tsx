@@ -28,7 +28,7 @@ export function Navbar() {
   const { setSession, clearAuth } = useAuth();
   const { canStream } = useCanLivestream();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(3); // Mock count, will connect to real data later
+  const [notificationCount] = useState(3); // Mock count, will connect to real data later
 
   const handleLogin = () => {
     login();

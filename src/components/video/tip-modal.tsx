@@ -22,7 +22,6 @@ export function TipModal({
   onClose,
   creatorName,
   creatorDID,
-  creatorWallet,
   videoId,
 }: TipModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("crypto");

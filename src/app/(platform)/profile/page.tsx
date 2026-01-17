@@ -8,7 +8,7 @@ import { useState } from "react";
 import { VideoCard } from "@/components/video/video-card";
 
 export default function ProfilePage() {
-  const { isAuthenticated, isReady, signIn, userHandle, user } = useAuthUser();
+  const { isAuthenticated, isReady, signIn, userHandle } = useAuthUser();
   const [activeTab, setActiveTab] = useState<"videos" | "about">("videos");
 
   // Show loading state while auth is initializing

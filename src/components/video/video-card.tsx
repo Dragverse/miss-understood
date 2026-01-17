@@ -2,7 +2,7 @@ import type { Video } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FiThumbsUp, FiMessageCircle, FiShare2 } from "react-icons/fi";
+import { FiThumbsUp } from "react-icons/fi";
 
 interface VideoCardProps {
   video: Video;

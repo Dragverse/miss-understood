@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    const { toDID, amount, currency, txHash, videoId, message } =
+    const { toDID, amount, currency, txHash, videoId } =
       validation.data;
 
     // TODO: Once Ceramic is configured, save to Transaction model

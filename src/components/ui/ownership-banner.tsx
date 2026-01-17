@@ -6,18 +6,22 @@ import Link from "next/link";
 
 export function OwnershipBanner() {
   const [isVisible, setIsVisible] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(() => {
+    // Check on initial render (client-side only)
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("ownership-banner-dismissed") === "true";
+    }
+    return false;
+  });
 
   useEffect(() => {
-    // Check if user has dismissed the banner before
-    const dismissed = localStorage.getItem("ownership-banner-dismissed");
-    if (!dismissed) {
+    // Only show banner if not dismissed
+    if (!isDismissed) {
       // Show banner after a short delay for better UX
-      setTimeout(() => setIsVisible(true), 2000);
-    } else {
-      setIsDismissed(true);
+      const timer = setTimeout(() => setIsVisible(true), 2000);
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [isDismissed]);
 
   const handleDismiss = () => {
     setIsVisible(false);

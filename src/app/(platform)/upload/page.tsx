@@ -52,7 +52,7 @@ export default function UploadPage() {
     }
   }, []);
 
-  const validateVideoFile = (file: File): Promise<boolean> => {
+  const validateVideoFile = useCallback((file: File, contentType: "short" | "long"): Promise<boolean> => {
     return new Promise((resolve) => {
       // Check file type
       const validTypes = ["video/mp4", "video/webm", "video/x-matroska", "video/quicktime"];
@@ -78,14 +78,14 @@ export default function UploadPage() {
         window.URL.revokeObjectURL(video.src);
         const duration = video.duration; // in seconds
 
-        if (formData.contentType === "short") {
+        if (contentType === "short") {
           // Vertical/Short content: max 20 minutes
           if (duration > 1200) {
             toast.error("Short videos must be 20 minutes or less.");
             resolve(false);
             return;
           }
-        } else if (formData.contentType === "long") {
+        } else if (contentType === "long") {
           // Horizontal/Long content: 1 to 60 minutes
           if (duration < 60) {
             toast.error("Long-form videos must be at least 1 minute.");
@@ -109,7 +109,7 @@ export default function UploadPage() {
 
       video.src = URL.createObjectURL(file);
     });
-  };
+  }, []);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -118,12 +118,12 @@ export default function UploadPage() {
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const isValid = await validateVideoFile(file);
+      const isValid = await validateVideoFile(file, formData.contentType);
       if (isValid) {
         setFormData((prev) => ({ ...prev, video: file }));
       }
     }
-  }, [formData.contentType]);
+  }, [formData.contentType, validateVideoFile]);
 
   const handleThumbnailChange = (file: File | null) => {
     if (file) {
@@ -372,7 +372,7 @@ export default function UploadPage() {
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (file) {
-                  const isValid = await validateVideoFile(file);
+                  const isValid = await validateVideoFile(file, formData.contentType);
                   if (isValid) {
                     setFormData({
                       ...formData,

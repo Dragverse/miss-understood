@@ -16,7 +16,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { mockCreators } from "@/lib/utils/mock-data";
 
 export function RightSidebar() {
-  const { authenticated, user } = usePrivy();
+  const { authenticated } = usePrivy();
 
   // Get some creators to suggest
   const suggestedCreators = mockCreators.slice(0, 3);

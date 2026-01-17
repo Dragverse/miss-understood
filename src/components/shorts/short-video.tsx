@@ -16,15 +16,34 @@ export function ShortVideo({ video, isActive }: ShortVideoProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const playerRef = useRef<HTMLVideoElement>(null);
 
+  // Listen for play/pause events from the video element
   useEffect(() => {
-    if (playerRef.current) {
-      if (isActive) {
-        playerRef.current.play();
-        setIsPlaying(true);
-      } else {
-        playerRef.current.pause();
-        setIsPlaying(false);
-      }
+    const player = playerRef.current;
+    if (!player) return;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
+    player.addEventListener("play", handlePlay);
+    player.addEventListener("pause", handlePause);
+
+    return () => {
+      player.removeEventListener("play", handlePlay);
+      player.removeEventListener("pause", handlePause);
+    };
+  }, []);
+
+  // Control play/pause based on isActive prop
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+
+    if (isActive) {
+      player.play().catch(() => {
+        // Autoplay may be blocked by browser
+      });
+    } else {
+      player.pause();
     }
   }, [isActive]);
 

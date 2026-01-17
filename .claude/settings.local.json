@@ -13,7 +13,11 @@
       "Bash(git remote:*)",
       "Bash(git branch:*)",
       "Bash(npm run build:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm install:*)",
+      "Bash(grep:*)"
     ]
   }
 }

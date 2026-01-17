@@ -33,7 +33,7 @@ export function getComposeClient(): ComposeClient | null {
     // Try to load the runtime composite if it exists
     // The definition will be generated after running `npm run ceramic:setup`
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const definitionModule = require("./__generated__/definition.json");
       const definition = definitionModule.definition || definitionModule;
 
@@ -47,7 +47,7 @@ export function getComposeClient(): ComposeClient | null {
         ceramic: CERAMIC_URL,
         definition,
       });
-    } catch (error) {
+    } catch {
       // Composite not generated yet - return null to indicate Ceramic is not ready
       // This prevents build errors when the definition file doesn't exist
       console.warn("Ceramic composite not found. Run 'npm run ceramic:setup' to initialize.");

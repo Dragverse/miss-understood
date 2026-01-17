@@ -12,7 +12,7 @@ import { FiChevronUp, FiChevronDown } from "react-icons/fi";
 export default function ShortsPage() {
   const shorts = mockVideos.filter((v) => v.contentType === "short");
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [loaded, setLoaded] = useState(false);
+  const [sliderReady, setSliderReady] = useState(false);
 
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
     initial: 0,
@@ -25,7 +25,7 @@ export default function ShortsPage() {
       setCurrentSlide(slider.track.details.rel);
     },
     created() {
-      setLoaded(true);
+      setSliderReady(true);
     },
   });
 
@@ -72,7 +72,7 @@ export default function ShortsPage() {
       </div>
 
       {/* Navigation Buttons - Desktop Only */}
-      {loaded && instanceRef.current && (
+      {sliderReady && (
         <div className="hidden md:flex flex-col gap-4 fixed right-8 top-1/2 -translate-y-1/2 z-20">
           <button
             onClick={() => instanceRef.current?.prev()}

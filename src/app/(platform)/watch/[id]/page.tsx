@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { mockVideos, mockCreators } from "@/lib/utils/mock-data";
+import { mockVideos } from "@/lib/utils/mock-data";
 import Image from "next/image";
 import Link from "next/link";
 import { FiThumbsUp, FiMessageCircle, FiShare2, FiUserPlus } from "react-icons/fi";

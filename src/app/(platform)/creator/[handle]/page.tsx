@@ -2,7 +2,6 @@
 
 import { mockCreators, mockVideos } from "@/lib/utils/mock-data";
 import Image from "next/image";
-import Link from "next/link";
 import { FiUser, FiUserPlus, FiMail, FiLink2 } from "react-icons/fi";
 import { useState } from "react";
 import { VideoCard } from "@/components/video/video-card";
