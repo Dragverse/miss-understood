@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 const LIVEPEER_API_URL = "https://livepeer.studio/api";
-const OFFICIAL_STREAM_ID = "fb7fdq50-qncz-bi4u-0000-000000000000"; // Extract from HLS URL
+// Use environment variable or fallback to extracting from HLS URL
+const OFFICIAL_STREAM_ID = process.env.OFFICIAL_STREAM_ID || "fb7fdq50-qncz-bi4u-0000-000000000000";
+const OFFICIAL_PLAYBACK_ID = process.env.OFFICIAL_PLAYBACK_ID || "fb7fdq50qnczbi4u";
 
 export async function GET() {
   try {
@@ -9,10 +11,8 @@ export async function GET() {
 
     if (!apiKey) {
       console.error("LIVEPEER_API_KEY not found in environment variables");
-      return NextResponse.json(
-        { isLive: false, error: "API key not configured" },
-        { status: 500 }
-      );
+      // Even without API key, try fallback HLS check
+      return fallbackHLSCheck();
     }
 
     // Call Livepeer API to check stream status
@@ -24,6 +24,7 @@ export async function GET() {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
+        cache: "no-store" // Prevent caching for real-time status
       }
     );
 
@@ -38,6 +39,7 @@ export async function GET() {
     return NextResponse.json({
       isLive: streamData.isActive || false,
       streamId: OFFICIAL_STREAM_ID,
+      playbackId: streamData.playbackId || OFFICIAL_PLAYBACK_ID,
       viewerCount: streamData.viewerCount || 0,
       startedAt: streamData.lastSeen || null,
     });
@@ -48,23 +50,59 @@ export async function GET() {
   }
 }
 
-// Fallback method: Check HLS manifest availability
+// Fallback method: Check HLS manifest availability and content
 async function fallbackHLSCheck() {
   try {
-    const HLS_URL = "https://livepeercdn.studio/hls/fb7fdq50qnczbi4u/index.m3u8";
-    const response = await fetch(HLS_URL, { method: "HEAD" });
-    const contentType = response.headers.get("content-type");
+    const HLS_URL = `https://livepeercdn.studio/hls/${OFFICIAL_PLAYBACK_ID}/index.m3u8`;
 
-    const isLive =
-      response.ok &&
-      contentType?.includes("application/vnd.apple.mpegurl");
+    // Fetch the actual manifest content (not just HEAD)
+    const response = await fetch(HLS_URL, {
+      method: "GET",
+      cache: "no-store" // Prevent caching to get real-time status
+    });
+
+    if (!response.ok) {
+      return NextResponse.json({
+        isLive: false,
+        fallback: true,
+        method: "HLS manifest check",
+        reason: "Manifest not found"
+      });
+    }
+
+    const contentType = response.headers.get("content-type");
+    const isM3U8 = contentType?.includes("application/vnd.apple.mpegurl") ||
+                   contentType?.includes("application/x-mpegURL");
+
+    if (!isM3U8) {
+      return NextResponse.json({
+        isLive: false,
+        fallback: true,
+        method: "HLS manifest check",
+        reason: "Invalid content type"
+      });
+    }
+
+    // Read the manifest content
+    const manifestText = await response.text();
+
+    // Check if manifest has actual media segments
+    // A live stream will have .ts segment files listed
+    // An offline stream will either have no segments or be empty/minimal
+    const hasMediaSegments = manifestText.includes('.ts') ||
+                            manifestText.includes('.m4s') ||
+                            manifestText.includes('#EXTINF');
+
+    const isLive = hasMediaSegments && manifestText.length > 100; // Reasonable size check
 
     return NextResponse.json({
       isLive,
       fallback: true,
-      method: "HLS manifest check",
+      method: "HLS manifest content check",
+      reason: isLive ? "Active segments found" : "No active segments"
     });
-  } catch {
+  } catch (error) {
+    console.error("Fallback HLS check error:", error);
     return NextResponse.json({
       isLive: false,
       fallback: true,
