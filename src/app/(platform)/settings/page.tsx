@@ -11,6 +11,7 @@ import { Creator } from "@/types";
 import { uploadBanner, uploadAvatar, getImageDataURL } from "@/lib/livepeer/upload-image";
 import { getCreatorByDID } from "@/lib/ceramic/creators";
 import { saveLocalProfile, getLocalProfile } from "@/lib/utils/local-storage";
+import { clearBlueskyCache } from "@/lib/bluesky/hooks";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -336,7 +337,9 @@ export default function SettingsPage() {
 
       setBlueskyHandle(data.handle);
 
-      // Fetch full profile data
+      // Clear cache and fetch fresh profile data
+      clearBlueskyCache();
+
       try {
         const profileResponse = await fetch("/api/bluesky/profile");
         const profileData = await profileResponse.json();
@@ -380,7 +383,11 @@ export default function SettingsPage() {
           // Ignore errors
         }
 
+        // Clear the cache so the hook refetches
+        clearBlueskyCache();
+
         setBlueskyHandle(null);
+        setBlueskyProfile(null);
         toast.success("Bluesky account disconnected");
       } else {
         throw new Error("Failed to disconnect");
