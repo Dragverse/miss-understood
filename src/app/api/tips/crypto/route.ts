@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
+import { validateBody, cryptoTipSchema } from "@/lib/validation/schemas";
 
 /**
  * POST /api/tips/crypto
@@ -9,48 +11,33 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    let userId: string | undefined;
+    if (isPrivyConfigured()) {
+      const auth = await verifyAuth(request);
+      if (!auth.authenticated) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      userId = auth.userId;
+    }
+
+    // Parse and validate request body
     const body = await request.json();
+    const validation = validateBody(cryptoTipSchema, body);
 
-    const {
-      fromDID, // Will come from authenticated user once Privy auth is integrated
-      toDID,
-      amount,
-      currency,
-      txHash,
-      videoId,
-      message,
-    } = body;
-
-    // Validate required fields
-    if (!toDID || !amount || !currency || !txHash) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    // Validate currency
-    if (!["ETH", "USDC"].includes(currency)) {
-      return NextResponse.json(
-        { error: "Invalid currency. Must be ETH or USDC" },
-        { status: 400 }
-      );
-    }
-
-    // Validate amount
-    if (amount <= 0) {
-      return NextResponse.json(
-        { error: "Amount must be greater than 0" },
-        { status: 400 }
-      );
-    }
+    const { toDID, amount, currency, txHash, videoId, message } =
+      validation.data;
 
     // TODO: Once Ceramic is configured, save to Transaction model
     // Example implementation:
     // import { createTransaction } from "@/lib/ceramic/transactions";
     //
     // const transaction = await createTransaction({
-    //   fromDID: fromDID || "anonymous",
+    //   fromDID: userId || "anonymous",
     //   toDID,
     //   amount,
     //   currency,
@@ -63,6 +50,7 @@ export async function POST(request: NextRequest) {
     // });
 
     console.log("Crypto tip recorded:", {
+      userId,
       toDID,
       amount,
       currency,
@@ -78,13 +66,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Crypto tip error:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to record tip",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to record tip" }, { status: 500 });
   }
 }
 
@@ -104,6 +86,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Validate DID format
+    if (!creatorDID.startsWith("did:")) {
+      return NextResponse.json({ error: "Invalid DID format" }, { status: 400 });
+    }
+
     // TODO: Once Ceramic is configured, query transactions
     // import { getTransactionsByCreator } from "@/lib/ceramic/transactions";
     // const transactions = await getTransactionsByCreator(creatorDID, "crypto");
@@ -118,9 +105,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Get crypto tips error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch tips" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch tips" }, { status: 500 });
   }
 }

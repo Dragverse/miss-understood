@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createVideo, CreateVideoInput } from "@/lib/ceramic/videos";
+import { createVideo } from "@/lib/ceramic/videos";
+import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
+import { validateBody, createVideoSchema } from "@/lib/validation/schemas";
 
 /**
  * POST /api/video/create
@@ -7,7 +9,21 @@ import { createVideo, CreateVideoInput } from "@/lib/ceramic/videos";
  */
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    if (isPrivyConfigured()) {
+      const auth = await verifyAuth(request);
+      if (!auth.authenticated) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
+    // Parse and validate request body
     const body = await request.json();
+    const validation = validateBody(createVideoSchema, body);
+
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
 
     const {
       title,
@@ -20,25 +36,9 @@ export async function POST(request: NextRequest) {
       contentType,
       category,
       tags,
-    } = body;
+    } = validation.data;
 
-    // Validate required fields
-    if (!title || !livepeerAssetId || !contentType || !category) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    // Validate content type
-    if (!["short", "long", "podcast", "music", "live"].includes(contentType)) {
-      return NextResponse.json(
-        { error: "Invalid content type" },
-        { status: 400 }
-      );
-    }
-
-    const videoInput: CreateVideoInput = {
+    const videoInput = {
       title: title.trim(),
       description: description?.trim(),
       thumbnail,
@@ -48,12 +48,10 @@ export async function POST(request: NextRequest) {
       duration,
       contentType,
       category,
-      tags: tags || [], // Convert comma-separated string to array if needed
+      tags: tags || [],
     };
 
     // Save to Ceramic
-    // Note: This will only work once Ceramic is fully configured in Phase 3
-    // Until then, it will gracefully handle the unconfigured state
     try {
       const videoDoc = await createVideo(videoInput);
 
@@ -77,10 +75,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Video creation error:", error);
     return NextResponse.json(
-      {
-        error: "Failed to save video metadata",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Failed to save video metadata" },
       { status: 500 }
     );
   }

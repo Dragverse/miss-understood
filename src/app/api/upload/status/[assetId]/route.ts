@@ -38,7 +38,7 @@ export async function GET(
       status: asset.status,
       playbackUrl: asset.playbackUrl,
       playbackId: asset.playbackId,
-      downloadUrl: asset.downloadUrl,
+      // downloadUrl intentionally excluded for security
     });
   } catch (error) {
     console.error("Asset status error:", error);
