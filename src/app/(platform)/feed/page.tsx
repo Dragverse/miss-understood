@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { FiZap, FiPlus } from "react-icons/fi";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -8,7 +8,7 @@ import { useAuthUser } from "@/lib/privy/hooks";
 import { PostCard } from "@/components/feed/post-card";
 import { FeedRightSidebar } from "@/components/feed/feed-right-sidebar";
 
-export default function FeedPage() {
+function FeedContent() {
   const { isAuthenticated } = useAuthUser();
   const searchParams = useSearchParams();
   const filter = searchParams?.get("filter");
@@ -190,5 +190,23 @@ export default function FeedPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function FeedPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
+          <div className="max-w-[1600px] mx-auto">
+            <div className="flex items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#EB83EA]"></div>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <FeedContent />
+    </Suspense>
   );
 }
