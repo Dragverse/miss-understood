@@ -7,13 +7,20 @@ import { PrivyProvider } from "@privy-io/react-auth";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "@privy-io/wagmi";
 import { config } from "@/lib/privy/config";
+import { base, mainnet, optimism } from "wagmi/chains";
 
 const queryClient = new QueryClient();
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+
+  if (!privyAppId) {
+    console.error("NEXT_PUBLIC_PRIVY_APP_ID is not set");
+  }
+
   return (
     <PrivyProvider
-      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
+      appId={privyAppId || ""}
       config={{
         appearance: {
           theme: "dark",
@@ -21,8 +28,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
           logo: undefined,
           landingHeader: "Welcome to Dragverse",
           loginMessage: "Sign in to upload, like, and comment on drag content",
+          walletList: ["metamask", "coinbase_wallet", "wallet_connect"],
         },
-        loginMethods: ["email", "google", "discord", "farcaster"],
+        // Primary login methods (shown upfront)
+        loginMethods: ["email", "google", "discord", "twitter", "wallet"],
+        // Embedded wallets configuration
+        embeddedWallets: {
+          createOnLogin: "users-without-wallets",
+        },
+        // Supported chains for wallet connections
+        supportedChains: [base, mainnet, optimism],
       }}
     >
       <QueryClientProvider client={queryClient}>
