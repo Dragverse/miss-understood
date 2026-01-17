@@ -7,6 +7,8 @@ type Creator @createModel(accountRelation: SINGLE, description: "A drag creator 
   description: String @string(maxLength: 1000)
   followerCount: Int @int(min: 0, max: 999999999)
   followingCount: Int @int(min: 0, max: 999999999)
+  dragverseFollowerCount: Int @int(min: 0, max: 999999999)
+  blueskyFollowerCount: Int @int(min: 0, max: 999999999)
   verified: Boolean
   createdAt: DateTime!
   updatedAt: DateTime
@@ -21,4 +23,7 @@ type Creator @createModel(accountRelation: SINGLE, description: "A drag creator 
   instagramHandle: String @string(maxLength: 50)
   tiktokHandle: String @string(maxLength: 50)
   website: String @string(maxLength: 200)
+  blueskyHandle: String @string(maxLength: 50)
+  blueskyDID: String @string(maxLength: 200)
+  farcasterHandle: String @string(maxLength: 50)
 }

@@ -7,6 +7,8 @@ type Creator @createModel(accountRelation: SINGLE, description: "A drag creator 
   description: String @string(maxLength: 1000)
   followerCount: Int @int(min: 0, max: 999999999)
   followingCount: Int @int(min: 0, max: 999999999)
+  dragverseFollowerCount: Int @int(min: 0, max: 999999999)
+  blueskyFollowerCount: Int @int(min: 0, max: 999999999)
   verified: Boolean
   createdAt: DateTime!
   updatedAt: DateTime
@@ -21,6 +23,9 @@ type Creator @createModel(accountRelation: SINGLE, description: "A drag creator 
   instagramHandle: String @string(maxLength: 50)
   tiktokHandle: String @string(maxLength: 50)
   website: String @string(maxLength: 200)
+  blueskyHandle: String @string(maxLength: 50)
+  blueskyDID: String @string(maxLength: 200)
+  farcasterHandle: String @string(maxLength: 50)
 }
 # Video Schema
 type Video @createModel(accountRelation: LIST, description: "A video uploaded by a creator") {
@@ -112,5 +117,24 @@ type Transaction @createModel(accountRelation: LIST, description: "Payment trans
   stripePaymentId: String @string(maxLength: 200)
   status: String! @string(maxLength: 20)
   message: String @string(maxLength: 500)
+  createdAt: DateTime!
+}
+# Notification Schema
+type Notification @createModel(accountRelation: LIST, description: "User notifications for likes, comments, follows, etc.") {
+  recipientDID: DID! @accountReference
+  senderDID: DID! @accountReference
+
+  type: String! @string(maxLength: 50) # "like", "comment", "follow", "tip"
+
+  # Reference to the source (post, video, comment, etc.)
+  sourceType: String @string(maxLength: 50) # "video", "post", "comment"
+  sourceId: String @string(maxLength: 200)
+
+  # Content preview for the notification
+  message: String @string(maxLength: 500)
+
+  # Read status
+  read: Boolean
+
   createdAt: DateTime!
 }

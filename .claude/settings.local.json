@@ -38,7 +38,13 @@
       "Bash(chmod:*)",
       "Bash(node scripts/get-stream-info.js:*)",
       "Bash(COMMUNITY\" section to show fake content on first load.\n\nChanges:\n- Initialize videos state with empty array instead of mockVideos\n- Add loading state management\n- Remove mockVideos fallback completely\n- Homepage now shows ONLY: Ceramic + Bluesky + Local uploads\n- Empty state handled by CommunitySection component\n\nThis ensures no mock data ever appears on production, even during initial load.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(wc:*)",
+      "Bash(npm run composite:compile:*)",
+      "Bash(npm run:*)",
+      "Bash(test:*)",
+      "Bash(source:*)",
+      "Bash(tee:*)"
     ]
   }
 }

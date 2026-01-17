@@ -4,14 +4,16 @@
 
 // User/Creator types
 export interface Creator {
-  did: string; // Bluesky DID
+  did: string; // Primary DID (Ceramic)
   handle: string;
   displayName: string;
   avatar: string;
   banner?: string; // Profile banner/cover image
   description: string;
-  followerCount: number;
+  followerCount: number; // Aggregate count
   followingCount: number;
+  dragverseFollowerCount?: number; // Followers on Dragverse (Ceramic)
+  blueskyFollowerCount?: number; // Followers on Bluesky
   createdAt: Date;
   updatedAt?: Date;
   verified: boolean;
@@ -20,7 +22,8 @@ export interface Creator {
   instagramHandle?: string;
   tiktokHandle?: string;
   farcasterHandle?: string;
-  blueskyHandle?: string; // User's Bluesky handle (for posting)
+  blueskyHandle?: string; // User's Bluesky handle (if connected)
+  blueskyDID?: string; // Bluesky DID (if connected)
   blueskyAppPassword?: string; // Encrypted Bluesky app password
   website?: string;
   // Monetization (for future use)

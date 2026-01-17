@@ -6,6 +6,7 @@ import Image from "next/image";
 import { FiArrowLeft } from "react-icons/fi";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
 import { SocialLinks } from "@/components/profile/social-links";
+import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
 import { getCreatorByHandle } from "@/lib/ceramic/creators";
 import { useBlueskyProfileByHandle } from "@/lib/bluesky/hooks";
 import { Creator } from "@/types";
@@ -23,6 +24,7 @@ export default function DynamicProfilePage() {
   const [profileType, setProfileType] = useState<"loading" | "dragverse" | "bluesky" | "not-found">("loading");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [activeTab, setActiveTab] = useState<"posts" | "photos" | "about">("posts");
+  const [currentUserDID, setCurrentUserDID] = useState<string | undefined>();
 
   // Try to fetch Bluesky profile if it looks like a Bluesky handle
   const isBlueskyHandle = handle.includes(".bsky.social") || handle.includes(".");
@@ -62,6 +64,9 @@ export default function DynamicProfilePage() {
               description: blueskyProfile.description || "",
               followerCount: blueskyProfile.followersCount,
               followingCount: blueskyProfile.followsCount,
+              blueskyFollowerCount: blueskyProfile.followersCount,
+              blueskyHandle: blueskyProfile.handle,
+              blueskyDID: blueskyProfile.did,
               createdAt: new Date(),
               verified: false,
             });
@@ -154,16 +159,7 @@ export default function DynamicProfilePage() {
         Back
       </button>
 
-      {/* External Bluesky Profile Banner */}
-      {profileType === "bluesky" && (
-        <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-          <p className="text-sm text-blue-400">
-            <strong>External Bluesky Profile</strong> - This creator is on Bluesky. Follow them there!
-          </p>
-        </div>
-      )}
-
-      {/* Banner */}
+      {/* Banner with Gradient Overlay */}
       <div className="relative w-full h-48 md:h-64 bg-gradient-to-r from-purple-900 to-pink-900 rounded-xl overflow-hidden mb-6">
         {creator.banner && (
           <Image
@@ -173,11 +169,26 @@ export default function DynamicProfilePage() {
             className="object-cover"
           />
         )}
+        {/* Dark gradient overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent" />
+
+        {/* Name and handle on banner */}
+        <div className="absolute top-6 left-6 z-10">
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg">
+              {creator.displayName}
+            </h1>
+            {creator.blueskyHandle && (
+              <BlueskyBadge handle={creator.blueskyHandle} />
+            )}
+          </div>
+          <p className="text-white/90 text-lg drop-shadow-lg">@{creator.handle}</p>
+        </div>
       </div>
 
       {/* Profile Info */}
-      <div className="flex flex-col md:flex-row gap-6 mb-8">
-        <div className="relative -mt-16 md:-mt-20">
+      <div className="flex flex-col md:flex-row gap-6 mb-8 -mt-20">
+        <div className="relative">
           <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#1a0b2e] overflow-hidden bg-[#2f2942]">
             <Image
               src={creator.avatar}
@@ -188,19 +199,13 @@ export default function DynamicProfilePage() {
           </div>
         </div>
 
-        <div className="flex-1 md:pt-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-[#FCF1FC] mb-1">
-              {creator.displayName}
-            </h1>
-            <p className="text-[#EB83EA] text-base mb-2">@{creator.handle}</p>
-
-            {profileType === "bluesky" && (
-              <div className="mt-2">
-                <BlueskyBadge handle={creator.handle} />
-              </div>
-            )}
-          </div>
+        <div className="flex-1 md:pt-16 flex justify-end items-start">
+          <ProfileActionButtons
+            creator={creator}
+            isOwnProfile={false}
+            isDragverseUser={profileType === "dragverse"}
+            currentUserDID={currentUserDID}
+          />
         </div>
       </div>
 
@@ -210,15 +215,26 @@ export default function DynamicProfilePage() {
           {creator.description}
         </p>
         <div className="flex gap-6 text-sm">
-          <div>
+          <div className="group relative cursor-help">
             <span className="font-bold text-lg text-[#FCF1FC]">
-              {(creator.followerCount / 1000).toFixed(1)}K
+              {creator.followerCount >= 1000
+                ? `${(creator.followerCount / 1000).toFixed(1)}K`
+                : creator.followerCount}
             </span>
             <span className="text-gray-400 ml-2">Followers</span>
+            {(creator.dragverseFollowerCount || creator.blueskyFollowerCount) && (
+              <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block bg-[#2f2942] text-xs text-white px-3 py-2 rounded-lg whitespace-nowrap border border-[#EB83EA]/30 z-10">
+                {creator.dragverseFollowerCount ? `${creator.dragverseFollowerCount} Dragverse` : ""}
+                {creator.dragverseFollowerCount && creator.blueskyFollowerCount ? " + " : ""}
+                {creator.blueskyFollowerCount ? `${creator.blueskyFollowerCount} Bluesky` : ""}
+              </div>
+            )}
           </div>
           <div>
             <span className="font-bold text-lg text-[#FCF1FC]">
-              {(creator.followingCount / 1000).toFixed(1)}K
+              {creator.followingCount >= 1000
+                ? `${(creator.followingCount / 1000).toFixed(1)}K`
+                : creator.followingCount}
             </span>
             <span className="text-gray-400 ml-2">Following</span>
           </div>

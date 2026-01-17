@@ -1,0 +1,19 @@
+# Notification Schema
+type Notification @createModel(accountRelation: LIST, description: "User notifications for likes, comments, follows, etc.") {
+  recipientDID: DID! @accountReference
+  senderDID: DID! @accountReference
+
+  type: String! @string(maxLength: 50) # "like", "comment", "follow", "tip"
+
+  # Reference to the source (post, video, comment, etc.)
+  sourceType: String @string(maxLength: 50) # "video", "post", "comment"
+  sourceId: String @string(maxLength: 200)
+
+  # Content preview for the notification
+  message: String @string(maxLength: 500)
+
+  # Read status
+  read: Boolean
+
+  createdAt: DateTime!
+}

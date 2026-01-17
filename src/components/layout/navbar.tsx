@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/store/auth";
 import { useCanLivestream } from "@/lib/livestream";
 import { VerificationBadge } from "@/components/ui/verification-badge";
 import { useAuthUser } from "@/lib/privy/hooks";
+import { SearchDropdown } from "./search-dropdown";
 
 export function Navbar() {
   const { login, logout, authenticated, user } = usePrivy();
@@ -30,7 +31,30 @@ export function Navbar() {
   const { canStream } = useCanLivestream();
   const { blueskyProfile } = useAuthUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notificationCount] = useState(0); // Will be populated from Ceramic when notification system is implemented
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  // Fetch notifications count
+  useEffect(() => {
+    async function fetchNotifications() {
+      if (!authenticated) return;
+
+      try {
+        const response = await fetch("/api/notifications");
+        const data = await response.json();
+
+        if (data.success) {
+          setNotificationCount(data.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+      }
+    }
+
+    fetchNotifications();
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [authenticated]);
 
   const handleLogin = () => {
     login();
@@ -74,14 +98,7 @@ export function Navbar() {
 
         {/* Search Bar - Desktop */}
         <div className="hidden md:block flex-1 max-w-xl">
-          <div className="relative">
-            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search for channel or hashtag"
-              className="w-full bg-white/5 border border-transparent focus:border-[#EB83EA]/30 rounded-full py-2.5 px-6 pl-12 text-sm transition-all outline-none placeholder:text-gray-500"
-            />
-          </div>
+          <SearchDropdown />
         </div>
 
         {/* Right Actions */}
