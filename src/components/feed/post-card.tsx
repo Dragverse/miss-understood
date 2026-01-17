@@ -18,11 +18,16 @@ interface PostCardProps {
     createdAt: Date | string;
     likes: number;
     externalUrl?: string;
+    uri?: string; // Bluesky post URI
+    cid?: string; // Bluesky post CID
   };
 }
 
 export function PostCard({ post }: PostCardProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(post.likes);
+  const [isLiking, setIsLiking] = useState(false);
 
   const formattedDate = new Date(post.createdAt).toLocaleDateString("en-US", {
     month: "short",
@@ -30,11 +35,74 @@ export function PostCard({ post }: PostCardProps) {
     year: "numeric",
   });
 
-  // Check bookmark status on mount
+  // Check bookmark and like status on mount
   useEffect(() => {
     const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
     setIsBookmarked(bookmarks.includes(post.id));
+
+    // Check if user has liked this post (stored locally)
+    const likes = JSON.parse(localStorage.getItem("dragverse_likes") || "[]");
+    setIsLiked(likes.includes(post.id));
   }, [post.id]);
+
+  const toggleLike = async (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    // If no Bluesky URI/CID, just update local state
+    if (!post.uri || !post.cid) {
+      const likes = JSON.parse(localStorage.getItem("dragverse_likes") || "[]");
+      if (isLiked) {
+        const updated = likes.filter((id: string) => id !== post.id);
+        localStorage.setItem("dragverse_likes", JSON.stringify(updated));
+        setIsLiked(false);
+        setLikeCount(likeCount - 1);
+      } else {
+        likes.push(post.id);
+        localStorage.setItem("dragverse_likes", JSON.stringify(likes));
+        setIsLiked(true);
+        setLikeCount(likeCount + 1);
+      }
+      return;
+    }
+
+    // Try to like/unlike on Bluesky
+    setIsLiking(true);
+    try {
+      const response = await fetch("/api/bluesky/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postUri: post.uri,
+          postCid: post.cid,
+          action: isLiked ? "unlike" : "like",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update local state
+        const likes = JSON.parse(localStorage.getItem("dragverse_likes") || "[]");
+        if (isLiked) {
+          const updated = likes.filter((id: string) => id !== post.id);
+          localStorage.setItem("dragverse_likes", JSON.stringify(updated));
+          setIsLiked(false);
+          setLikeCount(likeCount - 1);
+        } else {
+          likes.push(post.id);
+          localStorage.setItem("dragverse_likes", JSON.stringify(likes));
+          setIsLiked(true);
+          setLikeCount(likeCount + 1);
+        }
+      } else {
+        console.error("Failed to like/unlike post:", data.error);
+      }
+    } catch (error) {
+      console.error("Error liking/unliking post:", error);
+    } finally {
+      setIsLiking(false);
+    }
+  };
 
   const toggleBookmark = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -99,9 +167,15 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-6 text-gray-400 text-sm pt-3 border-t border-[#2f2942]">
-        <button className="flex items-center gap-2 hover:text-red-400 transition-colors">
-          <FiHeart className="w-5 h-5" />
-          <span>{post.likes.toLocaleString()}</span>
+        <button
+          onClick={toggleLike}
+          disabled={isLiking}
+          className={`flex items-center gap-2 transition-colors ${
+            isLiked ? "text-red-400" : "hover:text-red-400"
+          } ${isLiking ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          <FiHeart className={`w-5 h-5 ${isLiked ? "fill-current" : ""}`} />
+          <span>{likeCount.toLocaleString()}</span>
         </button>
         <button className="flex items-center gap-2 hover:text-blue-400 transition-colors">
           <FiMessageCircle className="w-5 h-5" />

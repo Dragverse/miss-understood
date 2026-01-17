@@ -237,7 +237,7 @@ export async function getDragAccountsPosts(
 
 /**
  * Convert Bluesky post to our Video format
- * Includes posts with video embeds, external video links, or images (treated as content)
+ * Includes posts with video embeds, external video links, images, or text-only posts
  */
 export function blueskyPostToVideo(post: BlueskyPost): any | null {
   // Check if post has video content or images
@@ -250,9 +250,10 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
         post.embed.external.uri.includes("tiktok")));
 
   const hasImages = post.embed?.images && post.embed.images.length > 0;
+  const hasText = post.text && post.text.trim().length > 0;
 
-  // Accept posts with video OR images (drag content often shared as images)
-  if (!hasVideo && !hasImages) {
+  // Accept posts with video, images, OR text-only posts
+  if (!hasVideo && !hasImages && !hasText) {
     return null;
   }
 
@@ -270,6 +271,10 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
     // For image posts, use first image as thumbnail and link to Bluesky post
     thumbnail = post.embed!.images![0].fullsize;
     playbackUrl = `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split("/").pop()}`;
+  } else {
+    // Text-only post - no thumbnail or playback URL
+    playbackUrl = "";
+    thumbnail = "";
   }
 
   // Generate a unique ID from the post URI
@@ -318,6 +323,8 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
     source: "bluesky", // Mark as external content
     externalUrl: `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split("/").pop()}`,
     internalUrl: `/profile/${post.author.handle}`, // Internal Dragverse profile route
+    uri: post.uri, // Bluesky post URI for likes
+    cid: post.cid, // Bluesky post CID for likes
   };
 }
 

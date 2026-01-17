@@ -12,6 +12,7 @@ function FeedContent() {
   const { isAuthenticated } = useAuthUser();
   const searchParams = useSearchParams();
   const filter = searchParams?.get("filter");
+  const hashtag = searchParams?.get("hashtag");
   const showBookmarks = filter === "bookmarks";
 
   const [posts, setPosts] = useState<any[]>([]);
@@ -40,11 +41,17 @@ function FeedContent() {
     async function loadFeed() {
       setLoading(true);
       try {
-        const response = await fetch(`/api/bluesky/feed?limit=30&sortBy=${sortBy}`);
+        // If searching by hashtag, use search endpoint
+        const url = hashtag
+          ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30`
+          : `/api/bluesky/feed?limit=30&sortBy=${sortBy}`;
+
+        const response = await fetch(url);
         const data = await response.json();
 
         // Filter for text/photo posts only (exclude videos)
         // Videos have playbackUrl with .m3u8 or are from external video platforms
+        // Include text-only posts (no media at all)
         const feedPosts = (data.posts || []).filter((post: any) => {
           const hasVideoPlayback = post.playbackUrl?.includes("m3u8");
           const hasExternalVideo =
@@ -53,6 +60,7 @@ function FeedContent() {
             post.playbackUrl?.includes("vimeo") ||
             post.playbackUrl?.includes("tiktok");
 
+          // Exclude videos, but include photos and text-only posts
           return !hasVideoPlayback && !hasExternalVideo;
         });
 
@@ -73,7 +81,7 @@ function FeedContent() {
       }
     }
     loadFeed();
-  }, [sortBy, showBookmarks]);
+  }, [sortBy, showBookmarks, hashtag]);
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
@@ -86,7 +94,11 @@ function FeedContent() {
               <div className="flex items-center gap-4">
                 <FiZap className="w-10 h-10 text-[#EB83EA]" />
                 <h1 className="font-bold text-3xl lg:text-4xl uppercase tracking-widest">
-                  {showBookmarks ? "Your Bookmarks" : "What's Happening Backstage"}
+                  {showBookmarks
+                    ? "Your Bookmarks"
+                    : hashtag
+                    ? hashtag
+                    : "What's Happening Backstage"}
                 </h1>
               </div>
               {hasBluesky && !showBookmarks && (
@@ -102,6 +114,8 @@ function FeedContent() {
             <p className="text-gray-400 text-sm ml-14">
               {showBookmarks
                 ? "Posts you've saved to read later"
+                : hashtag
+                ? `Posts tagged with ${hashtag}`
                 : "The latest tea, looks, and moments from your favorite queens"}
             </p>
           </div>
