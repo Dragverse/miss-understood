@@ -12,6 +12,45 @@ import { useBlueskyProfileByHandle } from "@/lib/bluesky/hooks";
 import { Creator } from "@/types";
 
 /**
+ * Linkify text by converting URLs to clickable links
+ */
+function linkifyText(text: string) {
+  const urlPattern = /(https?:\/\/[^\s]+)|(www\.[^\s]+)/g;
+  const parts = text.split(urlPattern).filter(Boolean);
+
+  return parts.map((part, index) => {
+    if (!part) return null;
+
+    if (part.match(/^https?:\/\//)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#EB83EA] hover:text-[#E748E6] underline transition"
+        >
+          {part}
+        </a>
+      );
+    } else if (part.match(/^www\./)) {
+      return (
+        <a
+          key={index}
+          href={`https://${part}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#EB83EA] hover:text-[#E748E6] underline transition"
+        >
+          {part}
+        </a>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
+
+/**
  * Dynamic Profile Page
  * Handles both Dragverse users and external Bluesky accounts
  * Route: /profile/[handle]
@@ -23,7 +62,7 @@ export default function DynamicProfilePage() {
 
   const [profileType, setProfileType] = useState<"loading" | "dragverse" | "bluesky" | "not-found">("loading");
   const [creator, setCreator] = useState<Creator | null>(null);
-  const [activeTab, setActiveTab] = useState<"posts" | "photos" | "about">("posts");
+  const [activeTab, setActiveTab] = useState<"feed" | "looks" | "profile">("feed");
   const [currentUserDID, setCurrentUserDID] = useState<string | undefined>();
 
   // Try to fetch Bluesky profile if it looks like a Bluesky handle
@@ -44,6 +83,11 @@ export default function DynamicProfilePage() {
         if (ceramicProfile) {
           setCreator(ceramicProfile as Creator);
           setProfileType("dragverse");
+
+          // If Dragverse user has Bluesky connected, fetch their Bluesky content too
+          if (ceramicProfile.blueskyHandle) {
+            fetchBlueskyContent();
+          }
           return;
         }
       } catch (error) {
@@ -170,10 +214,10 @@ export default function DynamicProfilePage() {
           />
         )}
         {/* Dark gradient overlay for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-transparent" />
 
         {/* Name and handle on banner */}
-        <div className="absolute top-6 left-6 z-10">
+        <div className="absolute top-6 left-6 z-10 backdrop-blur-sm bg-black/20 px-4 py-2 rounded-lg">
           <div className="flex items-center gap-2">
             <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg">
               {creator.displayName}
@@ -212,7 +256,7 @@ export default function DynamicProfilePage() {
       {/* Description and Stats */}
       <div className="mb-8">
         <p className="text-[#FCF1FC] mb-4 max-w-3xl">
-          {creator.description}
+          {linkifyText(creator.description)}
         </p>
         <div className="flex gap-6 text-sm">
           <div className="group relative cursor-help">
@@ -221,12 +265,12 @@ export default function DynamicProfilePage() {
                 ? `${(creator.followerCount / 1000).toFixed(1)}K`
                 : creator.followerCount}
             </span>
-            <span className="text-gray-400 ml-2">Followers</span>
+            <span className="text-gray-400 ml-2">Community</span>
             {(creator.dragverseFollowerCount || creator.blueskyFollowerCount) && (
               <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block bg-[#2f2942] text-xs text-white px-3 py-2 rounded-lg whitespace-nowrap border border-[#EB83EA]/30 z-10">
-                {creator.dragverseFollowerCount ? `${creator.dragverseFollowerCount} Dragverse` : ""}
+                {creator.dragverseFollowerCount ? `${creator.dragverseFollowerCount} on Dragverse` : ""}
                 {creator.dragverseFollowerCount && creator.blueskyFollowerCount ? " + " : ""}
-                {creator.blueskyFollowerCount ? `${creator.blueskyFollowerCount} Bluesky` : ""}
+                {creator.blueskyFollowerCount ? `${creator.blueskyFollowerCount} on Bluesky` : ""}
               </div>
             )}
           </div>
@@ -236,7 +280,7 @@ export default function DynamicProfilePage() {
                 ? `${(creator.followingCount / 1000).toFixed(1)}K`
                 : creator.followingCount}
             </span>
-            <span className="text-gray-400 ml-2">Following</span>
+            <span className="text-gray-400 ml-2">Connections</span>
           </div>
         </div>
       </div>
@@ -245,41 +289,41 @@ export default function DynamicProfilePage() {
       <div className="border-b border-gray-800 mb-6">
         <div className="flex gap-8">
           <button
-            onClick={() => setActiveTab("posts")}
+            onClick={() => setActiveTab("feed")}
             className={`pb-4 px-2 font-semibold transition ${
-              activeTab === "posts"
+              activeTab === "feed"
                 ? "text-[#EB83EA] border-b-2 border-[#EB83EA]"
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            Posts
+            Feed
           </button>
           <button
-            onClick={() => setActiveTab("photos")}
+            onClick={() => setActiveTab("looks")}
             className={`pb-4 px-2 font-semibold transition ${
-              activeTab === "photos"
+              activeTab === "looks"
                 ? "text-[#EB83EA] border-b-2 border-[#EB83EA]"
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            Photos
+            Looks
           </button>
           <button
-            onClick={() => setActiveTab("about")}
+            onClick={() => setActiveTab("profile")}
             className={`pb-4 px-2 font-semibold transition ${
-              activeTab === "about"
+              activeTab === "profile"
                 ? "text-[#EB83EA] border-b-2 border-[#EB83EA]"
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            About
+            Profile
           </button>
         </div>
       </div>
 
       {/* Tab Content */}
       <div className="pb-12">
-        {activeTab === "posts" && (
+        {activeTab === "feed" && (
           <div className="space-y-4">
             {blueskyPosts.length > 0 ? (
               blueskyPosts.map((post: any) => (
@@ -302,7 +346,7 @@ export default function DynamicProfilePage() {
           </div>
         )}
 
-        {activeTab === "photos" && (
+        {activeTab === "looks" && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {blueskyPhotos.length > 0 ? (
               blueskyPhotos.map((photo: any) => (
@@ -327,7 +371,7 @@ export default function DynamicProfilePage() {
           </div>
         )}
 
-        {activeTab === "about" && (
+        {activeTab === "profile" && (
           <div className="max-w-2xl">
             <div className="bg-[#18122D] rounded-xl p-6 border border-[#2f2942]">
               <h3 className="text-lg font-semibold text-[#FCF1FC] mb-4">About</h3>

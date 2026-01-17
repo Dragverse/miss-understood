@@ -44,6 +44,8 @@ export default function SettingsPage() {
     handle: "",
     description: "",
     website: "",
+    instagramHandle: "",
+    tiktokHandle: "",
   });
 
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -175,6 +177,8 @@ export default function SettingsPage() {
             handle: ceramicProfile.handle,
             description: ceramicProfile.description || "",
             website: ceramicProfile.website || "",
+            instagramHandle: ceramicProfile.instagramHandle || user?.instagram?.username || "",
+            tiktokHandle: ceramicProfile.tiktokHandle || user?.tiktok?.username || "",
           });
           setBannerPreview(ceramicProfile.banner || null);
           setAvatarPreview(ceramicProfile.avatar);
@@ -194,6 +198,8 @@ export default function SettingsPage() {
             handle: profileData.handle || "",
             description: profileData.description || "",
             website: profileData.website || "",
+            instagramHandle: profileData.instagramHandle || user?.instagram?.username || "",
+            tiktokHandle: profileData.tiktokHandle || user?.tiktok?.username || "",
           });
           setBannerPreview(profileData.banner || null);
           setAvatarPreview(profileData.avatar || user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`);
@@ -223,6 +229,8 @@ export default function SettingsPage() {
         handle: defaultCreator.handle,
         description: defaultCreator.description,
         website: "",
+        instagramHandle: user?.instagram?.username || "",
+        tiktokHandle: user?.tiktok?.username || "",
       });
       setAvatarPreview(defaultCreator.avatar);
       setIsLoadingProfile(false);
@@ -335,6 +343,8 @@ export default function SettingsPage() {
           avatar: avatarUrl,
           banner: bannerUrl,
           website: formData.website || undefined,
+          instagramHandle: formData.instagramHandle || undefined,
+          tiktokHandle: formData.tiktokHandle || undefined,
         }),
       });
 
@@ -742,6 +752,52 @@ export default function SettingsPage() {
                     disabled={isSaving}
                     className="w-full px-4 py-3 bg-[#0f071a] border border-[#2f2942] rounded-xl focus:outline-none focus:border-[#EB83EA] transition disabled:opacity-50"
                     placeholder="https://yourwebsite.com"
+                  />
+                </div>
+
+                {/* Instagram Handle */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold mb-2 text-gray-300">
+                    Instagram Handle
+                    {user?.instagram?.username && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        (from connected account)
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={50}
+                    value={formData.instagramHandle}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, instagramHandle: e.target.value }))
+                    }
+                    disabled={isSaving}
+                    className="w-full px-4 py-3 bg-[#0f071a] border border-[#2f2942] rounded-xl focus:outline-none focus:border-[#EB83EA] transition disabled:opacity-50"
+                    placeholder="username (without @)"
+                  />
+                </div>
+
+                {/* TikTok Handle */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold mb-2 text-gray-300">
+                    TikTok Handle
+                    {user?.tiktok?.username && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        (from connected account)
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={50}
+                    value={formData.tiktokHandle}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, tiktokHandle: e.target.value }))
+                    }
+                    disabled={isSaving}
+                    className="w-full px-4 py-3 bg-[#0f071a] border border-[#2f2942] rounded-xl focus:outline-none focus:border-[#EB83EA] transition disabled:opacity-50"
+                    placeholder="username (without @)"
                   />
                 </div>
 
