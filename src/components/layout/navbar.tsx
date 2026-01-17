@@ -11,7 +11,6 @@ import {
   FiX,
   FiSearch,
   FiVideo,
-  FiMail,
   FiAward,
   FiBarChart2,
   FiBell,
@@ -103,12 +102,6 @@ export function Navbar() {
               >
                 <FiVideo className="w-5 h-5 text-gray-300 group-hover:text-[#EB83EA]" />
               </Link>
-              <button
-                title="Messages"
-                className="p-2.5 hover:bg-white/5 rounded-full transition-colors group hidden md:flex items-center justify-center"
-              >
-                <FiMail className="w-5 h-5 text-gray-300 group-hover:text-[#EB83EA]" />
-              </button>
               <Link
                 href="/notifications"
                 title="Notifications"

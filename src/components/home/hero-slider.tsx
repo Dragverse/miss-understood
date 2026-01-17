@@ -83,17 +83,17 @@ export function HeroSlider() {
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
 
             {/* Content */}
-            <div className="absolute bottom-0 left-0 right-0 p-8 text-white z-20 max-w-lg">
-              <h2 className="text-3xl font-black uppercase mb-3 drop-shadow-lg tracking-normal">
+            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 text-white z-20 max-w-lg">
+              <h2 className="text-2xl md:text-3xl font-black uppercase mb-2 md:mb-3 drop-shadow-lg tracking-normal">
                 {slide.title}
               </h2>
-              <p className="text-lg text-gray-200 mb-6 max-w-lg drop-shadow-md">
+              <p className="text-sm md:text-lg text-gray-200 mb-4 md:mb-5 max-w-md drop-shadow-md leading-relaxed">
                 {slide.description}
               </p>
               <Link
                 href={slide.link}
                 {...(slide.link.startsWith('http') ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                className="inline-block px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] text-white font-semibold rounded-full transition-all shadow-lg hover:shadow-xl"
+                className="inline-block px-5 py-2.5 md:px-6 md:py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] text-white text-sm md:text-base font-semibold rounded-full transition-all shadow-lg hover:shadow-xl"
               >
                 {slide.cta}
               </Link>
