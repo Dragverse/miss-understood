@@ -82,11 +82,6 @@ export function ShortVideo({ video, isActive }: ShortVideoProps) {
                   externalUrl: video.externalUrl,
                 });
               }}
-              onPlaybackStatusUpdate={(status) => {
-                if (status) {
-                  console.log("Playback status:", status);
-                }
-              }}
             >
               <Player.Container className="h-full w-full">
                 <Player.Video
