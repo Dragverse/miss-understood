@@ -71,9 +71,11 @@ export default function HomePage() {
         const response = await fetch("/api/bluesky/feed?limit=30");
         const data = await response.json();
 
-        if (data.success && data.videos && data.videos.length > 0) {
-          allVideos.push(...data.videos);
-          console.log(`Loaded ${data.videos.length} videos from Bluesky`);
+        // API returns both 'posts' and 'videos' - use posts for consistency
+        const blueskyContent = data.posts || data.videos || [];
+        if (data.success && blueskyContent.length > 0) {
+          allVideos.push(...blueskyContent);
+          console.log(`Loaded ${blueskyContent.length} videos from Bluesky`);
         }
       } catch (error) {
         console.warn("Failed to load videos from Bluesky:", error);
