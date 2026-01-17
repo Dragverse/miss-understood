@@ -22,11 +22,13 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
 import { useCanLivestream } from "@/lib/livestream";
 import { VerificationBadge } from "@/components/ui/verification-badge";
+import { useAuthUser } from "@/lib/privy/hooks";
 
 export function Navbar() {
   const { login, logout, authenticated, user } = usePrivy();
   const { setSession, clearAuth } = useAuth();
   const { canStream } = useCanLivestream();
+  const { blueskyProfile } = useAuthUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationCount] = useState(0); // Will be populated from Ceramic when notification system is implemented
 
@@ -126,6 +128,7 @@ export function Navbar() {
                   height={40}
                   className="w-full h-full object-cover"
                   src={
+                    blueskyProfile?.avatar ||
                     user?.twitter?.profilePictureUrl ||
                     `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.id}&backgroundColor=EB83EA`
                   }

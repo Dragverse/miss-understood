@@ -1,6 +1,7 @@
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
 import { useCeramic } from "@/lib/ceramic/ceramic-provider";
+import { useBlueskyProfile } from "@/lib/bluesky/hooks";
 
 /**
  * Combined hook that provides both Privy auth and our store
@@ -15,6 +16,7 @@ export function useAuthUser() {
     isAuthenticating: isCeramicAuthenticating,
     authenticateCeramic
   } = useCeramic();
+  const { profile: blueskyProfile, isConnected: blueskyConnected } = useBlueskyProfile();
 
   return {
     // User info
@@ -45,5 +47,9 @@ export function useAuthUser() {
     instagramHandle: user?.instagram?.username,
     tiktokHandle: user?.tiktok?.username,
     farcasterHandle: user?.farcaster?.username,
+
+    // Bluesky profile
+    blueskyProfile,
+    blueskyConnected,
   };
 }

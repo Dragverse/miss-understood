@@ -32,7 +32,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           walletList: ["metamask", "coinbase_wallet", "wallet_connect"],
         },
         // Primary login methods (shown upfront)
-        loginMethods: ["email", "google", "tiktok", "instagram", "wallet"],
+        loginMethods: ["email", "google", "farcaster", "wallet"],
         // Supported chains for wallet connections
         supportedChains: [base, mainnet, optimism],
       }}

@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft } from "react-icons/fi";
-import { FaInstagram, FaTiktok } from "react-icons/fa";
 import { SiBluesky } from "react-icons/si";
 import Image from "next/image";
 import toast from "react-hot-toast";
@@ -39,6 +38,7 @@ export default function SettingsPage() {
   const [blueskyHandleInput, setBlueskyHandleInput] = useState("");
   const [appPasswordInput, setAppPasswordInput] = useState("");
   const [blueskyHandle, setBlueskyHandle] = useState<string | null>(null);
+  const [blueskyProfile, setBlueskyProfile] = useState<any | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
@@ -122,7 +122,7 @@ export default function SettingsPage() {
     }
   }, [isAuthenticated, user?.id]);
 
-  // Load Bluesky session status
+  // Load Bluesky session status and profile
   useEffect(() => {
     async function checkBlueskySession() {
       try {
@@ -131,6 +131,14 @@ export default function SettingsPage() {
 
         if (data.connected) {
           setBlueskyHandle(data.handle);
+
+          // Fetch full profile data
+          const profileResponse = await fetch("/api/bluesky/profile");
+          const profileData = await profileResponse.json();
+
+          if (profileData.success && profileData.profile) {
+            setBlueskyProfile(profileData.profile);
+          }
         }
       } catch (error) {
         console.error("Failed to check Bluesky session:", error);
@@ -327,6 +335,19 @@ export default function SettingsPage() {
       }
 
       setBlueskyHandle(data.handle);
+
+      // Fetch full profile data
+      try {
+        const profileResponse = await fetch("/api/bluesky/profile");
+        const profileData = await profileResponse.json();
+
+        if (profileData.success && profileData.profile) {
+          setBlueskyProfile(profileData.profile);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile data:", error);
+      }
+
       setShowBlueskyModal(false);
       setBlueskyHandleInput("");
       setAppPasswordInput("");
@@ -627,54 +648,10 @@ export default function SettingsPage() {
                   Connected Accounts
                 </h2>
                 <p className="text-gray-400 mb-6">
-                  These accounts are automatically detected from your Privy sign-in. They will be displayed on your profile.
+                  Connect your social accounts to display them on your profile and cross-post your content.
                 </p>
 
                 <div className="space-y-4">
-                  {/* Instagram */}
-                  <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 via-pink-600 to-yellow-500 flex items-center justify-center">
-                        <FaInstagram className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold">Instagram</p>
-                        {instagramHandle ? (
-                          <p className="text-sm text-gray-400">@{instagramHandle}</p>
-                        ) : (
-                          <p className="text-sm text-gray-500">Not connected</p>
-                        )}
-                      </div>
-                    </div>
-                    {instagramHandle && (
-                      <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
-                        Connected
-                      </span>
-                    )}
-                  </div>
-
-                  {/* TikTok */}
-                  <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center">
-                        <FaTiktok className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold">TikTok</p>
-                        {tiktokHandle ? (
-                          <p className="text-sm text-gray-400">@{tiktokHandle}</p>
-                        ) : (
-                          <p className="text-sm text-gray-500">Not connected</p>
-                        )}
-                      </div>
-                    </div>
-                    {tiktokHandle && (
-                      <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
-                        Connected
-                      </span>
-                    )}
-                  </div>
-
                   {/* Farcaster */}
                   <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
                     <div className="flex items-center gap-3">
@@ -690,23 +667,45 @@ export default function SettingsPage() {
                         )}
                       </div>
                     </div>
-                    {farcasterHandle && (
-                      <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
-                        Connected
-                      </span>
-                    )}
+                    <div className="flex flex-col items-end gap-1">
+                      {farcasterHandle && (
+                        <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                          Connected
+                        </span>
+                      )}
+                      <p className="text-xs text-gray-500">Via Privy</p>
+                    </div>
                   </div>
 
                   {/* Bluesky */}
                   <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-                        <SiBluesky className="w-6 h-6 text-white" />
-                      </div>
+                      {blueskyProfile?.avatar ? (
+                        <Image
+                          src={blueskyProfile.avatar}
+                          alt="Bluesky avatar"
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                          <SiBluesky className="w-6 h-6 text-white" />
+                        </div>
+                      )}
                       <div>
-                        <p className="font-semibold">Bluesky</p>
+                        <p className="font-semibold">
+                          {blueskyProfile?.displayName || "Bluesky"}
+                        </p>
                         {blueskyHandle ? (
-                          <p className="text-sm text-gray-400">@{blueskyHandle}</p>
+                          <>
+                            <p className="text-sm text-gray-400">@{blueskyHandle}</p>
+                            {blueskyProfile && (
+                              <p className="text-xs text-gray-500">
+                                {blueskyProfile.followersCount} followers · {blueskyProfile.followsCount} following
+                              </p>
+                            )}
+                          </>
                         ) : (
                           <p className="text-sm text-gray-500">Not connected</p>
                         )}
@@ -736,8 +735,11 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                  <p className="text-sm text-blue-400 mb-2">
+                    <strong>Farcaster:</strong> Connect via Privy when logging in (sign in with Farcaster)
+                  </p>
                   <p className="text-sm text-blue-400">
-                    💡 To connect or disconnect accounts, use the Privy sign-in options when logging in.
+                    <strong>Bluesky:</strong> Connect manually using the button above with your Bluesky app password
                   </p>
                 </div>
 
