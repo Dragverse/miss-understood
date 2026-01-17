@@ -34,7 +34,9 @@
       "Bash(while read line)",
       "Bash(do echo:*)",
       "Bash(done)",
-      "Bash(node -e \"\nconst { BskyAgent } = require\\(''@atproto/api''\\);\nconst agent = new BskyAgent\\({ service: ''https://bsky.social'' }\\);\n\nagent.login\\({\n  identifier: ''reinasalti.bsky.social'',\n  password: ''ccst-5onn-6tzx-7cdt''\n}\\).then\\(\\(\\) => {\n  console.log\\(''✓ Login successful!''\\);\n  console.log\\(''DID:'', agent.session?.did\\);\n}\\).catch\\(\\(err\\) => {\n  console.log\\(''✗ Login failed''\\);\n  console.log\\(''Error:'', err.message\\);\n  console.log\\(''Status:'', err.status\\);\n}\\);\n\")"
+      "Bash(node -e \"\nconst { BskyAgent } = require\\(''@atproto/api''\\);\nconst agent = new BskyAgent\\({ service: ''https://bsky.social'' }\\);\n\nagent.login\\({\n  identifier: ''reinasalti.bsky.social'',\n  password: ''ccst-5onn-6tzx-7cdt''\n}\\).then\\(\\(\\) => {\n  console.log\\(''✓ Login successful!''\\);\n  console.log\\(''DID:'', agent.session?.did\\);\n}\\).catch\\(\\(err\\) => {\n  console.log\\(''✗ Login failed''\\);\n  console.log\\(''Error:'', err.message\\);\n  console.log\\(''Status:'', err.status\\);\n}\\);\n\")",
+      "Bash(chmod:*)",
+      "Bash(node scripts/get-stream-info.js:*)"
     ]
   }
 }

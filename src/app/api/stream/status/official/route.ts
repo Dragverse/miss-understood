@@ -58,54 +58,61 @@ async function fallbackHLSCheck() {
     // Fetch the actual manifest content (not just HEAD)
     const response = await fetch(HLS_URL, {
       method: "GET",
-      cache: "no-store" // Prevent caching to get real-time status
+      cache: "no-store", // Prevent caching to get real-time status
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
     });
 
     if (!response.ok) {
       return NextResponse.json({
         isLive: false,
         fallback: true,
+        streamId: OFFICIAL_STREAM_ID,
+        playbackId: OFFICIAL_PLAYBACK_ID,
         method: "HLS manifest check",
         reason: "Manifest not found"
-      });
-    }
-
-    const contentType = response.headers.get("content-type");
-    const isM3U8 = contentType?.includes("application/vnd.apple.mpegurl") ||
-                   contentType?.includes("application/x-mpegURL");
-
-    if (!isM3U8) {
-      return NextResponse.json({
-        isLive: false,
-        fallback: true,
-        method: "HLS manifest check",
-        reason: "Invalid content type"
       });
     }
 
     // Read the manifest content
     const manifestText = await response.text();
 
-    // Check if manifest has actual media segments
-    // A live stream will have .ts segment files listed
-    // An offline stream will either have no segments or be empty/minimal
+    // Check for various indicators of a live stream
     const hasMediaSegments = manifestText.includes('.ts') ||
-                            manifestText.includes('.m4s') ||
-                            manifestText.includes('#EXTINF');
+                            manifestText.includes('.m4s');
 
-    const isLive = hasMediaSegments && manifestText.length > 100; // Reasonable size check
+    const hasExtInf = manifestText.includes('#EXTINF');
+    const hasSequence = manifestText.includes('#EXT-X-MEDIA-SEQUENCE');
+    const hasTargetDuration = manifestText.includes('#EXT-X-TARGETDURATION');
+
+    // A live stream should have:
+    // 1. Media segments OR
+    // 2. Playlist tags (EXTINF, sequence, target duration)
+    // 3. Non-trivial content (>50 characters)
+    const hasPlaylistIndicators = hasExtInf || hasSequence || hasTargetDuration;
+    const hasContent = manifestText.length > 50;
+
+    const isLive = (hasMediaSegments || hasPlaylistIndicators) && hasContent;
+
+    console.log(`Stream check: segments=${hasMediaSegments}, playlist=${hasPlaylistIndicators}, size=${manifestText.length}, isLive=${isLive}`);
 
     return NextResponse.json({
       isLive,
       fallback: true,
+      streamId: OFFICIAL_STREAM_ID,
+      playbackId: OFFICIAL_PLAYBACK_ID,
       method: "HLS manifest content check",
-      reason: isLive ? "Active segments found" : "No active segments"
+      reason: isLive ? "Active stream detected" : "No active stream"
     });
   } catch (error) {
     console.error("Fallback HLS check error:", error);
     return NextResponse.json({
       isLive: false,
       fallback: true,
+      streamId: OFFICIAL_STREAM_ID,
+      playbackId: OFFICIAL_PLAYBACK_ID,
       error: "Failed to check stream status",
     });
   }

@@ -16,9 +16,30 @@ export function HeroSection() {
     // Check if stream is live using backend API
     const checkStream = async () => {
       try {
-        const response = await fetch("/api/stream/status/official");
+        const response = await fetch("/api/stream/status/official", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
         const data = await response.json();
-        setIsLive(data.isLive || false);
+        const wasLive = isLive;
+        const nowLive = data.isLive || false;
+
+        setIsLive(nowLive);
+
+        // Log status changes
+        if (wasLive !== nowLive) {
+          console.log(`Stream status changed: ${wasLive ? 'LIVE' : 'OFFLINE'} → ${nowLive ? 'LIVE' : 'OFFLINE'}`);
+        }
+
+        // Log debug info
+        console.log('Stream status:', {
+          isLive: nowLive,
+          method: data.method,
+          reason: data.reason,
+          fallback: data.fallback
+        });
       } catch (error) {
         console.error("Failed to check stream status:", error);
         setIsLive(false);
@@ -28,10 +49,10 @@ export function HeroSection() {
     };
 
     checkStream();
-    // Re-check every 30 seconds
-    const interval = setInterval(checkStream, 30000);
+    // Re-check every 10 seconds for more responsive status updates
+    const interval = setInterval(checkStream, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isLive]); // Include isLive in deps to track changes
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
