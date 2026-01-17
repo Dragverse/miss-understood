@@ -56,9 +56,9 @@ export default function UploadPage() {
   const validateVideoFile = useCallback((file: File, contentType: "short" | "long"): Promise<boolean> => {
     return new Promise((resolve) => {
       // Check file type
-      const validTypes = ["video/mp4", "video/webm", "video/x-matroska", "video/quicktime"];
+      const validTypes = ["video/mp4", "video/webm", "video/x-matroska", "video/quicktime", "video/x-msvideo", "video/avi"];
       if (!validTypes.includes(file.type) && !file.type.startsWith("video/")) {
-        toast.error("Invalid file type. Please upload MP4, WebM, or MKV files.");
+        toast.error("Invalid file type. Please upload MP4, WebM, MOV, or AVI files.");
         resolve(false);
         return;
       }
@@ -75,9 +75,23 @@ export default function UploadPage() {
       const video = document.createElement("video");
       video.preload = "metadata";
 
+      let metadataLoaded = false;
+      let errorOccurred = false;
+
       video.onloadedmetadata = () => {
+        if (errorOccurred) return;
+        metadataLoaded = true;
+
         window.URL.revokeObjectURL(video.src);
         const duration = video.duration; // in seconds
+
+        // Skip duration check if duration is NaN or Infinity (metadata issue)
+        if (!isFinite(duration) || duration === 0) {
+          console.warn("Could not read video duration, skipping duration validation");
+          toast.success("Video file accepted (duration check skipped)");
+          resolve(true);
+          return;
+        }
 
         if (contentType === "short") {
           // Vertical/Short content: max 20 minutes
@@ -103,12 +117,39 @@ export default function UploadPage() {
         resolve(true);
       };
 
-      video.onerror = () => {
-        toast.error("Failed to read video metadata. Please try again.");
-        resolve(false);
+      video.onerror = (e) => {
+        if (metadataLoaded) return;
+        errorOccurred = true;
+
+        window.URL.revokeObjectURL(video.src);
+
+        // Be more forgiving - accept the file anyway if it's a valid video MIME type
+        // Livepeer will handle the actual transcoding
+        console.warn("Could not read video metadata in browser, but file appears to be video format");
+        console.error("Video element error:", e);
+
+        toast.success("Video file accepted (browser preview unavailable, but will upload)");
+        resolve(true); // Changed from false to true - accept the video anyway
       };
 
-      video.src = URL.createObjectURL(file);
+      // Timeout fallback in case metadata never loads
+      const timeout = setTimeout(() => {
+        if (!metadataLoaded && !errorOccurred) {
+          console.warn("Video metadata loading timeout, accepting file anyway");
+          window.URL.revokeObjectURL(video.src);
+          toast.success("Video file accepted");
+          resolve(true);
+        }
+      }, 5000); // 5 second timeout
+
+      try {
+        video.src = URL.createObjectURL(file);
+      } catch (error) {
+        clearTimeout(timeout);
+        console.error("Failed to create object URL:", error);
+        toast.error("Failed to process video file. Please try a different file.");
+        resolve(false);
+      }
     });
   }, []);
 
@@ -382,7 +423,7 @@ export default function UploadPage() {
             )}
             <input
               type="file"
-              accept="video/mp4,video/webm,video/x-matroska,video/quicktime"
+              accept="video/mp4,video/webm,video/x-matroska,video/quicktime,video/x-msvideo,video/avi,video/*"
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (file) {
