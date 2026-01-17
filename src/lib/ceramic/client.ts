@@ -34,12 +34,20 @@ export function getComposeClient(): ComposeClient | null {
     // The definition will be generated after running `npm run ceramic:setup`
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-      const { definition } = require("./__generated__/definition.json");
+      const definitionModule = require("./__generated__/definition.json");
+      const definition = definitionModule.definition || definitionModule;
+
+      // Check if the definition has actual models (not just a stub)
+      if (!definition.models || Object.keys(definition.models).length === 0) {
+        console.warn("Ceramic composite is a stub. Run 'npm run ceramic:setup' to initialize.");
+        return null;
+      }
+
       composeClient = new ComposeClient({
         ceramic: CERAMIC_URL,
         definition,
       });
-    } catch {
+    } catch (error) {
       // Composite not generated yet - return null to indicate Ceramic is not ready
       // This prevents build errors when the definition file doesn't exist
       console.warn("Ceramic composite not found. Run 'npm run ceramic:setup' to initialize.");
