@@ -2,7 +2,8 @@ import type { Video } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FiThumbsUp } from "react-icons/fi";
+import { FiThumbsUp, FiExternalLink } from "react-icons/fi";
+import { SiBluesky } from "react-icons/si";
 
 interface VideoCardProps {
   video: Video;
@@ -11,6 +12,10 @@ interface VideoCardProps {
 
 export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
   const router = useRouter();
+
+  // Check if this is external content (from Bluesky, etc.)
+  const isExternal = (video as any).source === "bluesky";
+  const externalUrl = (video as any).externalUrl;
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
@@ -27,11 +32,20 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const handleClick = () => {
+    // For external content, open in new tab
+    if (isExternal && externalUrl) {
+      window.open(externalUrl, "_blank");
+    } else {
+      router.push(`/watch/${video.id}`);
+    }
+  };
+
   if (layout === "list") {
     return (
       <div
         className="flex gap-4 p-3 hover:bg-gray-900/50 rounded-lg cursor-pointer transition"
-        onClick={() => router.push(`/watch/${video.id}`)}
+        onClick={handleClick}
       >
         <div className="relative w-48 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-gray-800">
           <Image
@@ -73,7 +87,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
   return (
     <div
       className="group cursor-pointer"
-      onClick={() => router.push(`/watch/${video.id}`)}
+      onClick={handleClick}
     >
         <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-3 shadow-lg">
           <Image
@@ -83,13 +97,22 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
             className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
           {/* Duration badge */}
-          <div className="absolute bottom-2 right-2 bg-black/90 px-2 py-0.5 rounded text-xs font-semibold backdrop-blur-sm">
-            {formatDuration(video.duration)}
-          </div>
+          {video.duration > 0 && (
+            <div className="absolute bottom-2 right-2 bg-black/90 px-2 py-0.5 rounded text-xs font-semibold backdrop-blur-sm">
+              {formatDuration(video.duration)}
+            </div>
+          )}
           {/* Content type badge */}
           {video.contentType !== "long" && (
             <div className="absolute top-2 left-2 bg-gradient-to-r from-purple-600 to-pink-600 px-2.5 py-1 rounded-full text-xs font-bold uppercase shadow-lg">
               {video.contentType}
+            </div>
+          )}
+          {/* External content indicator */}
+          {isExternal && (
+            <div className="absolute top-2 right-2 bg-blue-500/90 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm flex items-center gap-1">
+              <SiBluesky className="w-3 h-3" />
+              <FiExternalLink className="w-3 h-3" />
             </div>
           )}
           {/* Gradient overlay on hover */}

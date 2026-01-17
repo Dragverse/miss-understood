@@ -4,15 +4,77 @@ import { useAuthUser } from "@/lib/privy/hooks";
 import { mockCreators, mockVideos } from "@/lib/utils/mock-data";
 import Image from "next/image";
 import { FiUser, FiEdit2, FiLink2, FiLogIn } from "react-icons/fi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { VideoCard } from "@/components/video/video-card";
+import { SocialLinks } from "@/components/profile/social-links";
+import { getCreatorByDID } from "@/lib/ceramic/creators";
+import { Creator } from "@/types";
 
 export default function ProfilePage() {
-  const { isAuthenticated, isReady, signIn, userHandle, userEmail, user } = useAuthUser();
+  const router = useRouter();
+  const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle, farcasterHandle } = useAuthUser();
   const [activeTab, setActiveTab] = useState<"videos" | "about">("videos");
+  const [creator, setCreator] = useState<Creator | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // Fetch creator profile from Ceramic
+  useEffect(() => {
+    async function loadProfile() {
+      if (!user?.id) return;
+
+      setIsLoadingProfile(true);
+      try {
+        const ceramicProfile = await getCreatorByDID(user.id);
+
+        if (ceramicProfile) {
+          // Use Ceramic profile data
+          setCreator(ceramicProfile as Creator);
+        } else {
+          // No Ceramic profile yet, use Privy data as initial state
+          setCreator({
+            did: user.id,
+            handle: userHandle || userEmail?.split('@')[0] || "user",
+            displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
+            avatar: user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
+            description: "Welcome to my Dragverse profile! 🎭✨",
+            followerCount: 0,
+            followingCount: 0,
+            createdAt: new Date(user.createdAt || Date.now()),
+            verified: false,
+            instagramHandle: instagramHandle || undefined,
+            tiktokHandle: tiktokHandle || undefined,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load profile:", error);
+        // Fallback to Privy data
+        setCreator({
+          did: user.id,
+          handle: userHandle || userEmail?.split('@')[0] || "user",
+          displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
+          avatar: user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
+          description: "Welcome to my Dragverse profile! 🎭✨",
+          followerCount: 0,
+          followingCount: 0,
+          createdAt: new Date(user.createdAt || Date.now()),
+          verified: false,
+          instagramHandle: instagramHandle || undefined,
+          tiktokHandle: tiktokHandle || undefined,
+        });
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    }
+
+    if (isAuthenticated) {
+      loadProfile();
+    }
+  }, [isAuthenticated, user?.id]);
+
 
   // Show loading state while auth is initializing
-  if (!isReady) {
+  if (!isReady || (isAuthenticated && isLoadingProfile)) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EB83EA]"></div>
@@ -46,18 +108,14 @@ export default function ProfilePage() {
     );
   }
 
-  // For authenticated users, create profile from real user data
-  const creator = {
-    did: user?.id || "", // Use Privy user ID as DID
-    handle: userHandle || userEmail?.split('@')[0] || "user",
-    displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
-    avatar: user?.google?.pictureUrl || user?.twitter?.profilePictureUrl || user?.tiktok?.profilePictureUrl || user?.instagram?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
-    description: "Welcome to my Dragverse profile! 🎭✨",
-    followerCount: 0,
-    followingCount: 0,
-    createdAt: new Date(user?.createdAt || Date.now()),
-    verified: false,
-  };
+  // Return early if no creator data loaded yet
+  if (!creator) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EB83EA]"></div>
+      </div>
+    );
+  }
 
   // TODO: Replace with real video data from Ceramic when available
   // For now, show empty state since this is the user's real profile
@@ -67,13 +125,23 @@ export default function ProfilePage() {
     <div>
       {/* Cover Section */}
       <div className="relative h-44 md:h-[20vw] ultrawide:h-[25vh] bg-[#EB83EA] bg-cover bg-center bg-no-repeat overflow-hidden">
-        <Image
-          src={`https://api.dicebear.com/7.x/patterns/svg?seed=${userHandle}&backgroundColor=EB83EA`}
-          alt="banner"
-          fill
-          className="object-cover"
-          priority
-        />
+        {creator.banner ? (
+          <Image
+            src={creator.banner}
+            alt="banner"
+            fill
+            className="object-cover"
+            priority
+          />
+        ) : (
+          <Image
+            src={`https://api.dicebear.com/7.x/patterns/svg?seed=${userHandle}&backgroundColor=EB83EA`}
+            alt="banner"
+            fill
+            className="object-cover"
+            priority
+          />
+        )}
       </div>
 
       <div className="container mx-auto max-w-screen-xl px-2 xl:px-0">
@@ -110,7 +178,10 @@ export default function ProfilePage() {
 
             {/* Action Buttons - Edit Profile for own profile */}
             <div className="flex gap-3 pb-2">
-              <button className="px-6 py-2 bg-[#EB83EA] text-white rounded-lg font-medium hover:bg-[#E748E6] transition flex items-center gap-2">
+              <button
+                onClick={() => router.push("/settings")}
+                className="px-6 py-2 bg-[#EB83EA] text-white rounded-lg font-medium hover:bg-[#E748E6] transition flex items-center gap-2"
+              >
                 <FiEdit2 className="w-5 h-5" />
                 Edit Profile
               </button>
@@ -194,20 +265,7 @@ export default function ProfilePage() {
                 <h3 className="font-semibold mb-2 text-[#FCF1FC]">Bio</h3>
                 <p className="text-gray-400">{creator.description}</p>
               </div>
-              <div className="border-t border-[#2f2942] pt-4">
-                <h3 className="font-semibold mb-3 text-[#FCF1FC]">Links</h3>
-                <div className="space-y-2">
-                  <a
-                    href={`https://bsky.app/profile/${creator.handle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-[#EB83EA] hover:text-[#E748E6]"
-                  >
-                    <FiLink2 className="w-4 h-4" />
-                    Bluesky Profile
-                  </a>
-                </div>
-              </div>
+              <SocialLinks creator={creator} />
               <div className="border-t border-[#2f2942] pt-4">
                 <h3 className="font-semibold mb-2 text-[#FCF1FC]">Joined</h3>
                 <p className="text-gray-400">

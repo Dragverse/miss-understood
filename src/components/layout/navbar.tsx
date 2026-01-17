@@ -126,10 +126,7 @@ export function Navbar() {
                   height={40}
                   className="w-full h-full object-cover"
                   src={
-                    user?.google?.pictureUrl ||
                     user?.twitter?.profilePictureUrl ||
-                    user?.tiktok?.profilePictureUrl ||
-                    user?.instagram?.profilePictureUrl ||
                     `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.id}&backgroundColor=EB83EA`
                   }
                 />

@@ -17,7 +17,24 @@
       "Bash(npm audit:*)",
       "Bash(npm uninstall:*)",
       "Bash(npm install:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(vercel:*)",
+      "Bash(npx vercel:*)",
+      "Bash(curl:*)",
+      "Bash(git restore:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(npm run ceramic:setup:*)",
+      "Bash(export CERAMIC_ADMIN_SEED=ae8534fbed3b50704346ee1170911fdea746444d1fd118f4a289c13820365ec4)",
+      "Bash(export NEXT_PUBLIC_CERAMIC_URL=https://ceramic-clay.3boxlabs.com)",
+      "Bash(export NEXT_PUBLIC_CERAMIC_URL=https://ceramic-temp.hirenodes.io)",
+      "Bash(export NEXT_PUBLIC_CERAMIC_URL=https://gateway.ceramic.network)",
+      "Bash(npm run dev:*)",
+      "Bash(xargs kill -9)",
+      "Bash(while read line)",
+      "Bash(do echo:*)",
+      "Bash(done)",
+      "Bash(node -e \"\nconst { BskyAgent } = require\\(''@atproto/api''\\);\nconst agent = new BskyAgent\\({ service: ''https://bsky.social'' }\\);\n\nagent.login\\({\n  identifier: ''reinasalti.bsky.social'',\n  password: ''ccst-5onn-6tzx-7cdt''\n}\\).then\\(\\(\\) => {\n  console.log\\(''✓ Login successful!''\\);\n  console.log\\(''DID:'', agent.session?.did\\);\n}\\).catch\\(\\(err\\) => {\n  console.log\\(''✗ Login failed''\\);\n  console.log\\(''Error:'', err.message\\);\n  console.log\\(''Status:'', err.status\\);\n}\\);\n\")"
     ]
   }
 }

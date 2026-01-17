@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "@privy-io/wagmi";
 import { config } from "@/lib/privy/config";
 import { base, mainnet, optimism } from "wagmi/chains";
+import { CeramicProvider } from "@/lib/ceramic/ceramic-provider";
 
 const queryClient = new QueryClient();
 
@@ -32,35 +33,33 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
         // Primary login methods (shown upfront)
         loginMethods: ["email", "google", "tiktok", "instagram", "wallet"],
-        // Embedded wallets configuration
-        embeddedWallets: {
-          createOnLogin: "users-without-wallets",
-        },
         // Supported chains for wallet connections
         supportedChains: [base, mainnet, optimism],
       }}
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={config}>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-            {children}
-            <Toaster
-              position="bottom-right"
-              toastOptions={{
-                style: {
-                  background: "#18122D",
-                  color: "#FCF1FC",
-                  border: "1px solid #2f2942",
-                },
-                success: {
-                  iconTheme: {
-                    primary: "#EB83EA",
-                    secondary: "#FCF1FC",
+          <CeramicProvider>
+            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+              {children}
+              <Toaster
+                position="bottom-right"
+                toastOptions={{
+                  style: {
+                    background: "#18122D",
+                    color: "#FCF1FC",
+                    border: "1px solid #2f2942",
                   },
-                },
-              }}
-            />
-          </ThemeProvider>
+                  success: {
+                    iconTheme: {
+                      primary: "#EB83EA",
+                      secondary: "#FCF1FC",
+                    },
+                  },
+                }}
+              />
+            </ThemeProvider>
+          </CeramicProvider>
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>

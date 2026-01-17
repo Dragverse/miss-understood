@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { VideoCard } from "@/components/video/video-card";
 import { mockVideos, categories } from "@/lib/utils/mock-data";
 import { FiSearch } from "react-icons/fi";
@@ -9,16 +9,93 @@ import { BytesSection } from "@/components/home/bytes-section";
 import { CommunitySection } from "@/components/home/community-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
 import { LiveNowSection } from "@/components/home/live-now-section";
+import { getVideos } from "@/lib/ceramic/videos";
+import { Video } from "@/types";
+import { USE_MOCK_DATA } from "@/lib/config/env";
 
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [videos, setVideos] = useState<Video[]>(mockVideos);
+
+  // Fetch videos from Ceramic and Bluesky on mount
+  useEffect(() => {
+    async function loadVideos() {
+      const allVideos: Video[] = [];
+
+      // Load from Ceramic if not using mock data
+      if (!USE_MOCK_DATA) {
+        try {
+          const result = await getVideos(50); // Fetch first 50 videos
+          if (result.videos && result.videos.length > 0) {
+            // Convert Ceramic videos to our Video type
+            const ceramicVideos = result.videos.map((v: any) => ({
+              id: v.id,
+              title: v.title,
+              description: v.description || "",
+              thumbnail: v.thumbnail || "",
+              duration: v.duration || 0,
+              views: v.views || 0,
+              likes: v.likes || 0,
+              createdAt: new Date(v.createdAt),
+              playbackUrl: v.playbackUrl || "",
+              livepeerAssetId: v.livepeerAssetId,
+              contentType: v.contentType,
+              creator: v.creator || {
+                did: v.creatorDID,
+                handle: "creator",
+                displayName: "Creator",
+                avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${v.creatorDID}`,
+                description: "",
+                followerCount: 0,
+                followingCount: 0,
+                createdAt: new Date(),
+                verified: false,
+              },
+              category: v.category || "Other",
+              tags: v.tags ? v.tags.split(',') : [],
+            }));
+            allVideos.push(...ceramicVideos);
+            console.log(`Loaded ${ceramicVideos.length} videos from Ceramic`);
+          }
+        } catch (error) {
+          console.warn("Failed to load videos from Ceramic:", error);
+        }
+      }
+
+      // Always fetch Bluesky content to populate feed
+      try {
+        const response = await fetch("/api/bluesky/feed?limit=30");
+        const data = await response.json();
+
+        if (data.success && data.videos && data.videos.length > 0) {
+          allVideos.push(...data.videos);
+          console.log(`Loaded ${data.videos.length} videos from Bluesky`);
+        }
+      } catch (error) {
+        console.warn("Failed to load videos from Bluesky:", error);
+      }
+
+      // If we have videos from Ceramic or Bluesky, use them
+      if (allVideos.length > 0) {
+        // Sort by date (newest first)
+        allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setVideos(allVideos);
+      } else {
+        // Fallback to mock data if everything fails
+        console.log("No videos found, using mock data");
+        setVideos(mockVideos);
+      }
+    }
+
+    loadVideos();
+  }, []);
 
   // Separate shorts and regular videos
-  const shorts = mockVideos.filter((v) => v.contentType === "short");
-  const horizontalVideos = mockVideos.filter((v) => v.contentType !== "short");
+  const shorts = videos.filter((v) => v.contentType === "short");
+  const horizontalVideos = videos.filter((v) => v.contentType !== "short");
 
-  const filteredVideos = mockVideos.filter((video) => {
+  const filteredVideos = videos.filter((video) => {
     const matchesCategory =
       activeCategory === "All" || video.category === activeCategory;
     const matchesSearch =

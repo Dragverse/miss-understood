@@ -1,5 +1,6 @@
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
+import { useCeramic } from "@/lib/ceramic/ceramic-provider";
 
 /**
  * Combined hook that provides both Privy auth and our store
@@ -8,6 +9,12 @@ import { useAuth } from "@/lib/store/auth";
 export function useAuthUser() {
   const { authenticated, user, login, logout, ready } = usePrivy();
   const { session, creator } = useAuth();
+  const {
+    ceramicDID,
+    isAuthenticated: isCeramicAuthenticated,
+    isAuthenticating: isCeramicAuthenticating,
+    authenticateCeramic
+  } = useCeramic();
 
   return {
     // User info
@@ -27,5 +34,16 @@ export function useAuthUser() {
     userEmail: user?.email?.address,
     userHandle: user?.farcaster?.username || user?.google?.email || user?.email?.address || "user",
     userId: user?.id,
+
+    // Ceramic state
+    ceramicDID,
+    isCeramicAuthenticated,
+    isCeramicAuthenticating,
+    authenticateCeramic,
+
+    // Social handles from Privy
+    instagramHandle: user?.instagram?.username,
+    tiktokHandle: user?.tiktok?.username,
+    farcasterHandle: user?.farcaster?.username,
   };
 }

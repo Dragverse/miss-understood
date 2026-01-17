@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { mockVideos } from "@/lib/utils/mock-data";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,19 +9,102 @@ import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { TipModal } from "@/components/video/tip-modal";
 import { ChocolateBar } from "@/components/ui/chocolate-bar";
+import { getVideo } from "@/lib/ceramic/videos";
+import { Video } from "@/types";
+import { USE_MOCK_DATA } from "@/lib/config/env";
 
 export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
-  const video = mockVideos.find((v) => v.id === resolvedParams.id);
-  const [likes, setLikes] = useState(video?.likes || 0);
+  const [video, setVideo] = useState<Video | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [tipModalOpen, setTipModalOpen] = useState(false);
 
+  // Fetch video from Ceramic or use mock data
+  useEffect(() => {
+    async function loadVideo() {
+      if (USE_MOCK_DATA) {
+        // Use mock data in development
+        const mockVideo = mockVideos.find((v) => v.id === resolvedParams.id);
+        setVideo(mockVideo || null);
+        setLikes(mockVideo?.likes || 0);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const ceramicVideo = await getVideo(resolvedParams.id);
+        if (ceramicVideo) {
+          // Convert Ceramic video to our Video type
+          const formattedVideo: Video = {
+            id: ceramicVideo.id,
+            title: ceramicVideo.title,
+            description: ceramicVideo.description || "",
+            thumbnail: ceramicVideo.thumbnail || "",
+            duration: ceramicVideo.duration || 0,
+            views: ceramicVideo.views || 0,
+            likes: ceramicVideo.likes || 0,
+            createdAt: new Date(ceramicVideo.createdAt),
+            playbackUrl: ceramicVideo.playbackUrl || "",
+            livepeerAssetId: ceramicVideo.livepeerAssetId,
+            contentType: ceramicVideo.contentType,
+            creator: ceramicVideo.creator || {
+              did: ceramicVideo.creatorDID,
+              handle: "creator",
+              displayName: "Creator",
+              avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${ceramicVideo.creatorDID}`,
+              description: "",
+              followerCount: 0,
+              followingCount: 0,
+              createdAt: new Date(),
+              verified: false,
+            },
+            category: ceramicVideo.category || "Other",
+            tags: ceramicVideo.tags ? ceramicVideo.tags.split(',') : [],
+          };
+          setVideo(formattedVideo);
+          setLikes(formattedVideo.likes);
+        } else {
+          // Try mock data as fallback
+          const mockVideo = mockVideos.find((v) => v.id === resolvedParams.id);
+          setVideo(mockVideo || null);
+          setLikes(mockVideo?.likes || 0);
+        }
+      } catch (error) {
+        console.error("Failed to load video from Ceramic:", error);
+        // Fallback to mock data
+        const mockVideo = mockVideos.find((v) => v.id === resolvedParams.id);
+        setVideo(mockVideo || null);
+        setLikes(mockVideo?.likes || 0);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadVideo();
+  }, [resolvedParams.id]);
+
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#EB83EA]"></div>
+        </div>
+      </div>
+    );
+  }
+
   if (!video) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <p className="text-gray-400">Video not found</p>
+        <div className="text-center py-12">
+          <p className="text-gray-400 text-lg mb-4">Video not found</p>
+          <Link href="/" className="text-[#EB83EA] hover:underline">
+            Return to homepage
+          </Link>
+        </div>
       </div>
     );
   }

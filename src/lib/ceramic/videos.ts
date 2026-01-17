@@ -11,7 +11,7 @@ export interface CreateVideoInput {
   duration?: number;
   contentType: "short" | "long" | "podcast" | "music" | "live";
   category: string;
-  tags?: string[];
+  tags?: string; // Comma-separated string for Ceramic
 }
 
 /**

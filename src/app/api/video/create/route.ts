@@ -38,6 +38,9 @@ export async function POST(request: NextRequest) {
       tags,
     } = validation.data;
 
+    // Convert tags array to comma-separated string for Ceramic
+    const tagsString = Array.isArray(tags) ? tags.join(',') : (tags || '');
+
     const videoInput = {
       title: title.trim(),
       description: description?.trim(),
@@ -48,16 +51,20 @@ export async function POST(request: NextRequest) {
       duration,
       contentType,
       category,
-      tags: tags || [],
+      tags: tagsString,
     };
 
     // Save to Ceramic
     try {
       const videoDoc = await createVideo(videoInput);
 
+      if (!videoDoc || !videoDoc.id) {
+        throw new Error("Failed to create video document in Ceramic");
+      }
+
       return NextResponse.json({
         success: true,
-        videoId: videoDoc?.id || `mock-${Date.now()}`,
+        videoId: videoDoc.id,
         message: "Video metadata saved successfully",
       });
     } catch (ceramicError) {
@@ -70,6 +77,7 @@ export async function POST(request: NextRequest) {
         videoId: `mock-${Date.now()}`,
         message: "Video uploaded (Ceramic pending configuration)",
         fallbackMode: true,
+        warning: "Video saved locally but not yet synced to decentralized storage"
       });
     }
   } catch (error) {

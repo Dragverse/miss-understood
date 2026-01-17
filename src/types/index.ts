@@ -8,11 +8,23 @@ export interface Creator {
   handle: string;
   displayName: string;
   avatar: string;
+  banner?: string; // Profile banner/cover image
   description: string;
   followerCount: number;
   followingCount: number;
   createdAt: Date;
+  updatedAt?: Date;
   verified: boolean;
+  // Social links
+  twitterHandle?: string;
+  instagramHandle?: string;
+  tiktokHandle?: string;
+  farcasterHandle?: string;
+  website?: string;
+  // Monetization (for future use)
+  totalEarningsUSD?: number;
+  stripeAccountId?: string;
+  walletAddress?: string;
 }
 
 // Content types
@@ -33,6 +45,9 @@ export interface Video {
   creator: Creator;
   category: string;
   tags: string[];
+  // External content fields (for Bluesky, etc.)
+  source?: "ceramic" | "bluesky" | "farcaster";
+  externalUrl?: string; // Original post URL for external content
 }
 
 export interface Comment {
