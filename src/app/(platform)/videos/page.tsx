@@ -1,27 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { VideoCard } from "@/components/video/video-card";
-import { mockVideos, categories } from "@/lib/utils/mock-data";
+import { categories } from "@/lib/utils/mock-data";
+import { getLocalVideos } from "@/lib/utils/local-storage";
+import { getVideos } from "@/lib/ceramic/videos";
+import { Video } from "@/types";
 import { FiSearch } from "react-icons/fi";
 
 export default function VideosPage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadVideos() {
+      setLoading(true);
+      try {
+        // Try Ceramic first
+        const ceramicResult = await getVideos(50);
+        if (ceramicResult && ceramicResult.videos?.length > 0) {
+          setVideos(ceramicResult.videos);
+          setLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.warn("Ceramic unavailable, trying Bluesky fallback");
+      }
+
+      // Fallback: Fetch from Bluesky
+      try {
+        const blueskyResponse = await fetch("/api/bluesky/feed?limit=30");
+        if (blueskyResponse.ok) {
+          const blueskyData = await blueskyResponse.json();
+          const combinedVideos = [...(blueskyData.posts || []), ...getLocalVideos()];
+          setVideos(combinedVideos);
+          setLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.warn("Bluesky unavailable, using local videos only");
+      }
+
+      // Last resort: local uploads only
+      setVideos(getLocalVideos());
+      setLoading(false);
+    }
+
+    loadVideos();
+  }, []);
 
   // Only show horizontal videos (exclude shorts)
-  const horizontalVideos = mockVideos.filter((v) => v.contentType !== "short");
+  const horizontalVideos = videos.filter((v) => v.contentType !== "short");
 
   const filteredVideos = horizontalVideos.filter((video) => {
     const matchesCategory =
       activeCategory === "All" || video.category === activeCategory;
     const matchesSearch =
       video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      video.creator.displayName
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
+      (video.creator?.displayName || "").toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -94,7 +142,9 @@ export default function VideosPage() {
             No videos found
           </p>
           <p className="text-gray-500 text-sm mt-1">
-            Try adjusting your search or filters
+            {videos.length === 0
+              ? "Upload your first video or check back later for content from Bluesky"
+              : "Try adjusting your search or filters"}
           </p>
         </div>
       )}

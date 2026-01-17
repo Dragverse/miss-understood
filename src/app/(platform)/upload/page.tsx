@@ -7,6 +7,7 @@ import { uploadVideoToLivepeer, waitForAssetReady } from "@/lib/livepeer/client-
 import { useAuthUser } from "@/lib/privy/hooks";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { saveLocalVideo } from "@/lib/utils/local-storage";
 
 export default function UploadPage() {
   const { isAuthenticated, signIn } = useAuthUser();
@@ -206,14 +207,27 @@ export default function UploadPage() {
 
         const metadataResult = await metadataResponse.json();
         console.log("Video metadata saved:", metadataResult);
+
+        // If in fallback mode, store video data in localStorage
+        if (metadataResult.fallbackMode && metadataResult.videoData) {
+          console.log("Storing video in localStorage fallback mode");
+          saveLocalVideo(metadataResult.videoData);
+        }
+
+        setUploadStage("complete");
+
+        // Show appropriate success message based on mode
+        if (metadataResult.fallbackMode) {
+          toast.success("Video uploaded! (Saved locally - will sync when available)");
+        } else {
+          toast.success("Video uploaded successfully!");
+        }
       } catch (metadataError) {
         console.error("Failed to save metadata:", metadataError);
         // Don't fail the entire upload if metadata save fails
         toast.error("Video uploaded but metadata save failed");
+        setUploadStage("complete");
       }
-
-      setUploadStage("complete");
-      toast.success("Video uploaded successfully!");
 
       // Redirect to dashboard after successful upload
       setTimeout(() => {

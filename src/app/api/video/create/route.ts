@@ -68,16 +68,50 @@ export async function POST(request: NextRequest) {
         message: "Video metadata saved successfully",
       });
     } catch (ceramicError) {
-      // If Ceramic is not configured yet, still return success
-      // but log that we're in fallback mode
-      console.warn("Ceramic not configured, using fallback mode:", ceramicError);
+      // If Ceramic is not configured yet, return video data for localStorage
+      console.warn("Ceramic not configured, using localStorage fallback:", ceramicError);
+
+      // Generate stable video ID
+      const videoId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Convert tags back to array
+      const tagsArray = Array.isArray(tags) ? tags : (tagsString ? tagsString.split(',').map(t => t.trim()) : []);
+
+      // Create video object matching Video type for client-side storage
+      const videoData = {
+        id: videoId,
+        title: title.trim(),
+        description: description?.trim() || "",
+        thumbnail: thumbnail || "",
+        duration: duration || 0,
+        views: 0,
+        likes: 0,
+        createdAt: new Date(),
+        playbackUrl: playbackUrl || `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`,
+        livepeerAssetId,
+        contentType,
+        category,
+        tags: tagsArray,
+        creator: {
+          did: "local",
+          handle: "you",
+          displayName: "Your Profile",
+          avatar: "",
+          description: "",
+          followerCount: 0,
+          followingCount: 0,
+          createdAt: new Date(),
+          verified: false
+        },
+        source: "local" as const
+      };
 
       return NextResponse.json({
         success: true,
-        videoId: `mock-${Date.now()}`,
-        message: "Video uploaded (Ceramic pending configuration)",
+        videoId,
+        message: "Video uploaded successfully (local storage)",
         fallbackMode: true,
-        warning: "Video saved locally but not yet synced to decentralized storage"
+        videoData
       });
     }
   } catch (error) {

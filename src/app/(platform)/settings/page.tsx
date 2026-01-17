@@ -191,8 +191,15 @@ export default function SettingsPage() {
         }),
       });
 
-      const result = await response.json();
       toast.dismiss();
+
+      // Check response status first
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Profile save failed: ${errorText}`);
+      }
+
+      const result = await response.json();
 
       if (!result.success) {
         throw new Error(result.error || "Failed to save profile");
