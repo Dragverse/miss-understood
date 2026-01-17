@@ -1,24 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { FiStar, FiUsers, FiZap, FiTrendingUp, FiBookmark } from "react-icons/fi";
-
-interface StarterPack {
-  name: string;
-  description: string;
-  memberCount: number;
-  image: string;
-  url: string;
-}
-
-interface FeaturedList {
-  name: string;
-  description: string;
-  creatorCount: number;
-  url: string;
-}
+import { FiZap, FiTrendingUp, FiBookmark } from "react-icons/fi";
 
 interface TrendingTopic {
   hashtag: string;
@@ -26,47 +10,8 @@ interface TrendingTopic {
   estimatedTotal: number;
 }
 
-const STARTER_PACKS: StarterPack[] = [
-  {
-    name: "Drag Race Royalty",
-    description: "Follow all your favorite Ru girls",
-    memberCount: 150,
-    image: "https://api.dicebear.com/9.x/shapes/svg?seed=dragrace",
-    url: "https://bsky.app/starter-pack/dragrace",
-  },
-  {
-    name: "Rising Stars",
-    description: "Emerging drag talent to watch",
-    memberCount: 89,
-    image: "https://api.dicebear.com/9.x/shapes/svg?seed=rising",
-    url: "https://bsky.app/starter-pack/rising",
-  },
-];
-
-const FEATURED_LISTS: FeaturedList[] = [
-  {
-    name: "Legendary Queens",
-    description: "The icons who paved the way",
-    creatorCount: 42,
-    url: "#",
-  },
-  {
-    name: "Makeup Artists",
-    description: "Beauty tutorials & transformations",
-    creatorCount: 67,
-    url: "#",
-  },
-  {
-    name: "Performance Artists",
-    description: "Live shows, lip syncs, dance",
-    creatorCount: 58,
-    url: "#",
-  },
-];
-
 export function FeedRightSidebar() {
   const [bookmarkCount, setBookmarkCount] = useState(0);
-  const [starterPacks, setStarterPacks] = useState<StarterPack[]>(STARTER_PACKS);
   const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([]);
 
   useEffect(() => {
@@ -81,22 +26,6 @@ export function FeedRightSidebar() {
     // Listen for storage changes
     window.addEventListener("storage", updateBookmarkCount);
     return () => window.removeEventListener("storage", updateBookmarkCount);
-  }, []);
-
-  // Fetch real starter packs from Bluesky
-  useEffect(() => {
-    async function loadStarterPacks() {
-      try {
-        const response = await fetch("/api/bluesky/starter-packs");
-        const data = await response.json();
-        if (data.success && data.starterPacks) {
-          setStarterPacks(data.starterPacks);
-        }
-      } catch (error) {
-        console.error("Failed to load starter packs:", error);
-      }
-    }
-    loadStarterPacks();
   }, []);
 
   // Fetch trending hashtags from Bluesky
@@ -138,84 +67,6 @@ export function FeedRightSidebar() {
         >
           Watch Now
         </Link>
-      </div>
-
-      {/* Starter Packs */}
-      <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
-        <div className="flex items-center gap-3 mb-4">
-          <FiStar className="w-5 h-5 text-[#CDB531]" />
-          <h3 className="font-bold text-lg">Starter Packs</h3>
-        </div>
-        <p className="text-xs text-gray-400 mb-4">
-          New here? Join these curated communities
-        </p>
-        <div className="space-y-3">
-          {starterPacks.map((pack) => (
-            <a
-              key={pack.name}
-              href={pack.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-transparent hover:border-[#CDB531]/30 transition group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                  <Image
-                    src={pack.image}
-                    alt={pack.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-sm group-hover:text-[#CDB531] transition">
-                    {pack.name}
-                  </h4>
-                  <p className="text-xs text-gray-400 line-clamp-1">
-                    {pack.description}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {pack.memberCount} members
-                  </p>
-                </div>
-              </div>
-            </a>
-          ))}
-        </div>
-      </div>
-
-      {/* Featured Lists */}
-      <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
-        <div className="flex items-center gap-3 mb-4">
-          <FiUsers className="w-5 h-5 text-[#815BFF]" />
-          <h3 className="font-bold text-lg">Lists & Circles</h3>
-        </div>
-        <p className="text-xs text-gray-400 mb-4">
-          Discover creators by category
-        </p>
-        <div className="space-y-2">
-          {FEATURED_LISTS.map((list) => (
-            <Link
-              key={list.name}
-              href={list.url}
-              className="block p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-[#815BFF]/30 transition group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h4 className="font-semibold text-sm group-hover:text-[#815BFF] transition">
-                    {list.name}
-                  </h4>
-                  <p className="text-xs text-gray-400 line-clamp-1">
-                    {list.description}
-                  </p>
-                </div>
-                <span className="text-xs text-gray-500 ml-2">
-                  {list.creatorCount}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
       </div>
 
       {/* Your Bookmarks */}
