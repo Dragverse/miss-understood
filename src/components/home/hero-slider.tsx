@@ -17,15 +17,15 @@ interface Slide {
 const slides: Slide[] = [
   {
     id: "1",
-    title: "Where Drag Comes to Play",
+    title: "WHERE DRAG COMES TO PLAY",
     description: "A global community for drag creators and fans to connect, share, and thrive.",
-    image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=2070",
+    image: "/Famers/DRAGVERSE_HALL_OF_FAME.png",
     link: "/videos",
     cta: "Explore Now",
   },
   {
     id: "2",
-    title: "Life is Salty After All",
+    title: "LIFE IS SALTY AFTER ALL",
     description: "Meet saltï and her experiments",
     image: "/Famers/SALT.jpg",
     link: "https://salti.studio",
@@ -84,7 +84,7 @@ export function HeroSlider() {
 
             {/* Content */}
             <div className="absolute bottom-0 left-0 right-0 p-8 text-white z-20">
-              <h2 className="text-3xl font-bold mb-3 drop-shadow-lg">
+              <h2 className="text-3xl font-black uppercase mb-3 drop-shadow-lg tracking-tight">
                 {slide.title}
               </h2>
               <p className="text-lg text-gray-200 mb-6 max-w-lg drop-shadow-md">
