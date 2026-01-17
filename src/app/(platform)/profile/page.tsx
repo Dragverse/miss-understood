@@ -9,6 +9,7 @@ import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
 import { SocialLinks } from "@/components/profile/social-links";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
+import { VerificationBadge } from "@/components/ui/verification-badge";
 import { getCreatorByDID } from "@/lib/ceramic/creators";
 import { Creator, Video } from "@/types";
 import { getLocalVideos } from "@/lib/utils/local-storage";
@@ -16,7 +17,7 @@ import { getLocalVideos } from "@/lib/utils/local-storage";
 export default function ProfilePage() {
   const router = useRouter();
   const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle } = useAuthUser();
-  const [activeTab, setActiveTab] = useState<"videos" | "photos" | "posts" | "about">("videos");
+  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "audio" | "posts" | "photos" | "collections" | "about">("videos");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [userVideos, setUserVideos] = useState<Video[]>([]);
@@ -102,29 +103,49 @@ export default function ProfilePage() {
     setUserVideos(localVideos);
   }, []);
 
-  // Load Bluesky photos and posts if user has Bluesky connected
+  // Load Bluesky profile and content in parallel - FASTER!
   useEffect(() => {
-    async function loadBlueskyContent() {
+    async function loadAllBlueskyData() {
       try {
-        // Check session first
-        const sessionResponse = await fetch("/api/bluesky/session");
-        const sessionData = await sessionResponse.json();
+        // Load session, profile, and feed in parallel for faster loading
+        const [sessionResponse, profileResponse, feedResponse] = await Promise.all([
+          fetch("/api/bluesky/session"),
+          fetch("/api/bluesky/profile"),
+          fetch("/api/bluesky/feed?limit=50")
+        ]);
 
-        if (!sessionData.connected) {
-          return; // No Bluesky connection
+        const [sessionData, profileData, feedData] = await Promise.all([
+          sessionResponse.json(),
+          profileResponse.json(),
+          feedResponse.json()
+        ]);
+
+        // Update Bluesky profile data immediately
+        if (profileData.success && profileData.profile) {
+          setBlueskyProfile(profileData.profile);
+
+          // Update creator with Bluesky data
+          setCreator((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              avatar: profileData.profile.avatar || prev.avatar,
+              banner: profileData.profile.banner || prev.banner,
+              description: profileData.profile.description || prev.description,
+              followerCount: profileData.profile.followersCount || prev.followerCount,
+              followingCount: profileData.profile.followsCount || prev.followingCount,
+              blueskyHandle: profileData.profile.handle,
+            };
+          });
         }
 
-        // Load feed content
-        const response = await fetch("/api/bluesky/feed?limit=50");
-        const data = await response.json();
-
-        if (data.posts) {
-          // Filter for posts from this user
-          const userBlueskyPosts = data.posts.filter(
+        // Update posts and photos if connected
+        if (sessionData.connected && feedData.posts) {
+          const userBlueskyPosts = feedData.posts.filter(
             (post: any) => post.creator.handle === sessionData.handle
           );
 
-          // Separate photos (with images) and text posts (without images/videos)
+          // Separate photos and text posts
           const photos = userBlueskyPosts.filter(
             (post: any) => post.thumbnail && !post.playbackUrl?.includes("m3u8")
           );
@@ -136,51 +157,12 @@ export default function ProfilePage() {
           setUserPosts(textPosts);
         }
       } catch (error) {
-        console.error("Failed to load Bluesky content:", error);
+        console.error("Failed to load Bluesky data:", error);
       }
     }
 
     if (isAuthenticated) {
-      loadBlueskyContent();
-    }
-  }, [isAuthenticated]);
-
-  // Load Bluesky profile data (banner, bio, etc.)
-  useEffect(() => {
-    async function loadBlueskyProfile() {
-      try {
-        const response = await fetch("/api/bluesky/profile");
-        const data = await response.json();
-
-        if (data.success && data.profile) {
-          setBlueskyProfile(data.profile);
-
-          // Update creator with Bluesky data if available
-          setCreator((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              // Use Bluesky avatar if available and user prefers
-              avatar: data.profile.avatar || prev.avatar,
-              // Use Bluesky banner if available
-              banner: data.profile.banner || prev.banner,
-              // Use Bluesky description if no custom description set
-              description: data.profile.description || prev.description,
-              // Add Bluesky follower counts
-              followerCount: data.profile.followersCount || prev.followerCount,
-              followingCount: data.profile.followsCount || prev.followingCount,
-              // Add Bluesky handle for profile linking
-              blueskyHandle: data.profile.handle,
-            };
-          });
-        }
-      } catch (error) {
-        console.error("Failed to load Bluesky profile:", error);
-      }
-    }
-
-    if (isAuthenticated) {
-      loadBlueskyProfile();
+      loadAllBlueskyData();
     }
   }, [isAuthenticated]);
 
@@ -265,7 +247,7 @@ export default function ProfilePage() {
                 alt={creator.displayName}
                 width={128}
                 height={128}
-                className="size-24 laptop:size-32 rounded-small border-2 border-white dark:bg-[#100c1f] bg-white shadow-2xl"
+                className="size-24 laptop:size-32 rounded-full border-4 border-white dark:bg-[#100c1f] bg-white shadow-2xl object-cover"
               />
               <div className="flex-1 pb-2">
                 <div className="flex items-center gap-2 mb-1">
@@ -273,16 +255,12 @@ export default function ProfilePage() {
                     {creator.displayName}
                   </h1>
                   {creator.verified && (
-                    <svg
-                      className="w-5 h-5 text-[#EB83EA]"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                    </svg>
+                    <VerificationBadge type="creator" size={24} />
                   )}
                 </div>
-                <p className="text-[#EB83EA] text-base">@{userHandle}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[#EB83EA] text-base">@{creator.handle}</p>
+                </div>
                 {creator.blueskyHandle && (
                   <div className="mt-2">
                     <BlueskyBadge handle={creator.blueskyHandle} />
@@ -309,15 +287,26 @@ export default function ProfilePage() {
           <p className="text-[#FCF1FC] mb-4 max-w-3xl line-clamp-5">
             {creator.description}
           </p>
-          <div className="flex gap-6 text-sm">
+          <div className="flex gap-6 text-sm flex-wrap">
             <div>
               <span className="font-bold text-lg text-[#FCF1FC]">
-                {(creator.followerCount / 1000).toFixed(0)}K
+                {creator.followerCount.toLocaleString()}
               </span>
               <span className="text-gray-400 ml-2">
                 Followers
                 {creator.followerCount > 0 && blueskyProfile && (
-                  <span className="text-xs text-blue-400 ml-1">(from Bluesky)</span>
+                  <span className="text-xs text-blue-400 ml-1">(Bluesky)</span>
+                )}
+              </span>
+            </div>
+            <div>
+              <span className="font-bold text-lg text-[#FCF1FC]">
+                {creator.followingCount.toLocaleString()}
+              </span>
+              <span className="text-gray-400 ml-2">
+                Following
+                {creator.followingCount > 0 && blueskyProfile && (
+                  <span className="text-xs text-blue-400 ml-1">(Bluesky)</span>
                 )}
               </span>
             </div>
@@ -329,9 +318,15 @@ export default function ProfilePage() {
             </div>
             <div>
               <span className="font-bold text-lg text-[#FCF1FC]">
-                {(creator.followingCount / 1000).toFixed(1)}K
+                {userPhotos.length}
               </span>
-              <span className="text-gray-400 ml-2">Following</span>
+              <span className="text-gray-400 ml-2">Photos</span>
+            </div>
+            <div>
+              <span className="font-bold text-lg text-[#FCF1FC]">
+                {userPosts.length}
+              </span>
+              <span className="text-gray-400 ml-2">Posts</span>
             </div>
           </div>
         </div>
@@ -346,7 +341,37 @@ export default function ProfilePage() {
                 : "text-gray-400 hover:text-[#FCF1FC]"
             }`}
           >
-            Videos ({creatorVideos.length})
+            Videos ({creatorVideos.filter(v => v.contentType !== 'short').length})
+          </button>
+          <button
+            onClick={() => setActiveTab("bytes")}
+            className={`pb-3 font-semibold transition whitespace-nowrap ${
+              activeTab === "bytes"
+                ? "border-b-2 border-[#EB83EA] text-[#FCF1FC]"
+                : "text-gray-400 hover:text-[#FCF1FC]"
+            }`}
+          >
+            Bytes ({creatorVideos.filter(v => v.contentType === 'short').length})
+          </button>
+          <button
+            onClick={() => setActiveTab("audio")}
+            className={`pb-3 font-semibold transition whitespace-nowrap ${
+              activeTab === "audio"
+                ? "border-b-2 border-[#EB83EA] text-[#FCF1FC]"
+                : "text-gray-400 hover:text-[#FCF1FC]"
+            }`}
+          >
+            Audio (0)
+          </button>
+          <button
+            onClick={() => setActiveTab("posts")}
+            className={`pb-3 font-semibold transition whitespace-nowrap ${
+              activeTab === "posts"
+                ? "border-b-2 border-[#EB83EA] text-[#FCF1FC]"
+                : "text-gray-400 hover:text-[#FCF1FC]"
+            }`}
+          >
+            Posts ({userPosts.length})
           </button>
           <button
             onClick={() => setActiveTab("photos")}
@@ -359,14 +384,14 @@ export default function ProfilePage() {
             Photos ({userPhotos.length})
           </button>
           <button
-            onClick={() => setActiveTab("posts")}
+            onClick={() => setActiveTab("collections")}
             className={`pb-3 font-semibold transition whitespace-nowrap ${
-              activeTab === "posts"
+              activeTab === "collections"
                 ? "border-b-2 border-[#EB83EA] text-[#FCF1FC]"
                 : "text-gray-400 hover:text-[#FCF1FC]"
             }`}
           >
-            Posts ({userPosts.length})
+            Collections (0)
           </button>
           <button
             onClick={() => setActiveTab("about")}
@@ -383,9 +408,9 @@ export default function ProfilePage() {
         {/* Content */}
         {activeTab === "videos" && (
           <div>
-            {creatorVideos.length > 0 ? (
+            {creatorVideos.filter(v => v.contentType !== 'short').length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {creatorVideos.map((video) => (
+                {creatorVideos.filter(v => v.contentType !== 'short').map((video) => (
                   <VideoCard key={video.id} video={video} />
                 ))}
               </div>
@@ -395,6 +420,52 @@ export default function ProfilePage() {
                 <p className="text-gray-400">You haven&apos;t uploaded any videos yet</p>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "bytes" && (
+          <div>
+            {creatorVideos.filter(v => v.contentType === 'short').length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {creatorVideos.filter(v => v.contentType === 'short').map((video) => (
+                  <Link key={video.id} href={`/shorts?v=${video.id}`} className="group">
+                    <div className="relative aspect-[9/16] rounded-2xl overflow-hidden bg-[#0f071a]">
+                      <Image
+                        src={video.thumbnail}
+                        alt={video.title}
+                        fill
+                        className="object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
+                      <div className="absolute bottom-2 left-2 right-2">
+                        <p className="text-white text-sm font-semibold line-clamp-2">{video.title}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-[#18122D] rounded-lg">
+                <FiUser className="w-12 h-12 mx-auto mb-4 text-gray-600" />
+                <p className="text-gray-400">No bytes uploaded yet</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "audio" && (
+          <div className="text-center py-12 bg-[#18122D] rounded-lg">
+            <FiUser className="w-12 h-12 mx-auto mb-4 text-gray-600" />
+            <p className="text-gray-400 mb-2">Audio feature coming soon</p>
+            <p className="text-gray-500 text-sm">Upload songs and podcasts to share with your audience</p>
+          </div>
+        )}
+
+        {activeTab === "collections" && (
+          <div className="text-center py-12 bg-[#18122D] rounded-lg">
+            <FiUser className="w-12 h-12 mx-auto mb-4 text-gray-600" />
+            <p className="text-gray-400 mb-2">Collections feature coming soon</p>
+            <p className="text-gray-500 text-sm">Create collections of your favorite content</p>
           </div>
         )}
 
