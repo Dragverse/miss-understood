@@ -47,7 +47,7 @@ export function VerificationBadge({
       viewBox="0 0 215 215"
       fill="none"
       className={className}
-      title={getTitle()}
+      aria-label={getTitle()}
     >
       <path
         fillRule="evenodd"
