@@ -33,13 +33,28 @@ const nextConfig: NextConfig = {
     {
       source: "/:path*",
       headers: [
-        { key: "X-Frame-Options", value: "DENY" },
+        // Allow Privy embedded wallet iframes
+        { key: "X-Frame-Options", value: "SAMEORIGIN" },
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "X-XSS-Protection", value: "1; mode=block" },
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         {
           key: "Permissions-Policy",
           value: "camera=(), microphone=(self), geolocation=(), payment=()",
+        },
+        // Content Security Policy for Privy embedded wallets
+        {
+          key: "Content-Security-Policy",
+          value: [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://auth.privy.io https://*.privy.io",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' https://fonts.gstatic.com data:",
+            "img-src 'self' data: https: blob:",
+            "frame-src 'self' https://auth.privy.io https://*.privy.io https://verify.walletconnect.com https://verify.walletconnect.org",
+            "connect-src 'self' https://auth.privy.io https://*.privy.io https://*.walletconnect.com https://*.walletconnect.org https://*.infura.io https://*.alchemy.com wss://*.walletconnect.com wss://*.walletconnect.org https://livepeercdn.studio https://livepeer.studio",
+            "worker-src 'self' blob:",
+          ].join("; "),
         },
       ],
     },
