@@ -10,10 +10,10 @@ import { getBlueskyAgent } from "@/lib/bluesky/client";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { handle: string } }
+  { params }: { params: Promise<{ handle: string }> }
 ) {
   try {
-    const { handle } = params;
+    const { handle } = await params;
 
     if (!handle) {
       return NextResponse.json(
