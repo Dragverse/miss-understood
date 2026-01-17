@@ -121,20 +121,23 @@ export function Navbar() {
 
           {authenticated ? (
             <div className="relative group ml-2 hidden md:block">
-              <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#EB83EA] cursor-pointer hover:scale-105 transition-transform">
-                <Image
-                  alt="User Profile"
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-cover"
-                  src={
-                    blueskyProfile?.avatar ||
-                    user?.twitter?.profilePictureUrl ||
-                    `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.id}&backgroundColor=EB83EA`
-                  }
-                />
-                {/* Verification Badge - Example: shows "human" verification */}
-                <div className="absolute -bottom-0.5 -right-0.5">
+              <div className="relative">
+                {/* Avatar container - keeps overflow-hidden for rounded image */}
+                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#EB83EA] cursor-pointer hover:scale-105 transition-transform">
+                  <Image
+                    alt="User Profile"
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover"
+                    src={
+                      blueskyProfile?.avatar ||
+                      user?.twitter?.profilePictureUrl ||
+                      `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.id}&backgroundColor=EB83EA`
+                    }
+                  />
+                </div>
+                {/* Badge positioned relative to outer container */}
+                <div className="absolute bottom-0 right-0 translate-x-1 translate-y-1">
                   <VerificationBadge type="human" size={16} />
                 </div>
               </div>

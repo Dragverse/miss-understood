@@ -2,7 +2,8 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import { FiChevronLeft, FiChevronRight, FiImage, FiHeart, FiMessageCircle, FiExternalLink } from "react-icons/fi";
+import Link from "next/link";
+import { FiChevronLeft, FiChevronRight, FiImage, FiHeart, FiMessageCircle } from "react-icons/fi";
 
 interface PhotoPost {
   id: string;
@@ -16,6 +17,7 @@ interface PhotoPost {
   likes: number;
   replyCount?: number;
   externalUrl: string;
+  internalUrl?: string; // Internal Dragverse route
   createdAt: Date | string;
 }
 
@@ -62,47 +64,50 @@ export function TrendingPhotosSection({ photos }: { photos: PhotoPost[] }) {
 
       {/* Horizontal scroll container */}
       <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-        {photos.map((photo) => (
-          <a key={photo.id} href={photo.externalUrl} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 snap-start group">
-            <div className="relative w-[280px] aspect-square rounded-2xl overflow-hidden cursor-pointer shadow-lg">
-              <Image src={photo.thumbnail} alt={photo.description} fill className="object-cover group-hover:scale-110 transition-transform duration-700" />
+        {photos.map((photo) => {
+          // Use internal URL if available, otherwise fall back to profile route or external URL
+          const photoLink = photo.internalUrl ||
+                           (photo.creator?.handle ? `/profile/${photo.creator.handle}` : photo.externalUrl);
 
-              {/* Gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+          return (
+            <Link key={photo.id} href={photoLink} className="flex-shrink-0 snap-start group">
+              <div className="relative w-[280px] aspect-square rounded-2xl overflow-hidden cursor-pointer shadow-lg">
+                <Image src={photo.thumbnail} alt={photo.description} fill className="object-cover group-hover:scale-110 transition-transform duration-700" />
 
-              {/* Creator info & engagement */}
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Image src={photo.creator.avatar} alt={photo.creator.displayName} width={32} height={32} className="rounded-full border-2 border-white/20" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-semibold truncate">{photo.creator.displayName}</p>
-                    <p className="text-gray-300 text-xs truncate">@{photo.creator.handle}</p>
-                  </div>
-                </div>
+                {/* Gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
-                <div className="flex items-center gap-4 text-white text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <FiHeart className="w-4 h-4 text-red-400" />
-                    <span className="font-bold">{formatNumber(photo.likes)}</span>
-                  </div>
-                  {photo.replyCount !== undefined && photo.replyCount > 0 && (
-                    <div className="flex items-center gap-1.5">
-                      <FiMessageCircle className="w-4 h-4 text-blue-400" />
-                      <span className="font-bold">{formatNumber(photo.replyCount)}</span>
+                {/* Creator info & engagement */}
+                <div className="absolute bottom-0 left-0 right-0 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Image src={photo.creator.avatar} alt={photo.creator.displayName} width={32} height={32} className="rounded-full border-2 border-white/20" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-semibold truncate">{photo.creator.displayName}</p>
+                      <p className="text-gray-300 text-xs truncate">@{photo.creator.handle}</p>
                     </div>
-                  )}
-                  <div className="ml-auto">
-                    <FiExternalLink className="w-4 h-4 opacity-60" />
                   </div>
-                </div>
 
-                {photo.description && (
-                  <p className="text-white/90 text-xs mt-2 line-clamp-2 leading-relaxed">{photo.description}</p>
-                )}
+                  <div className="flex items-center gap-4 text-white text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <FiHeart className="w-4 h-4 text-red-400" />
+                      <span className="font-bold">{formatNumber(photo.likes)}</span>
+                    </div>
+                    {photo.replyCount !== undefined && photo.replyCount > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <FiMessageCircle className="w-4 h-4 text-blue-400" />
+                        <span className="font-bold">{formatNumber(photo.replyCount)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {photo.description && (
+                    <p className="text-white/90 text-xs mt-2 line-clamp-2 leading-relaxed">{photo.description}</p>
+                  )}
+                </div>
               </div>
-            </div>
-          </a>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </section>
   );

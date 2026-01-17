@@ -50,6 +50,7 @@ export interface Video {
   // External content fields (for Bluesky, etc.)
   source?: "ceramic" | "bluesky" | "farcaster";
   externalUrl?: string; // Original post URL for external content
+  internalUrl?: string; // Internal Dragverse route (e.g., /profile/handle)
 }
 
 export interface Comment {

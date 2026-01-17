@@ -317,6 +317,7 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
     tags: ["drag", "bluesky"],
     source: "bluesky", // Mark as external content
     externalUrl: `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split("/").pop()}`,
+    internalUrl: `/profile/${post.author.handle}`, // Internal Dragverse profile route
   };
 }
 

@@ -72,6 +72,21 @@ export function ShortVideo({ video, isActive }: ShortVideoProps) {
               src={getSrc(video.playbackUrl)}
               aspectRatio={9 / 16}
               volume={isMuted ? 0 : 1}
+              onError={(error) => {
+                console.error("Video playback error:", error);
+                console.log("Video URL:", video.playbackUrl);
+                console.log("Video data:", {
+                  id: video.id,
+                  title: video.title,
+                  source: video.source,
+                  externalUrl: video.externalUrl,
+                });
+              }}
+              onPlaybackStatusUpdate={(status) => {
+                if (status) {
+                  console.log("Playback status:", status);
+                }
+              }}
             >
               <Player.Container className="h-full w-full">
                 <Player.Video
