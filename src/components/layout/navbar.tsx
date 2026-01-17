@@ -28,7 +28,7 @@ export function Navbar() {
   const { setSession, clearAuth } = useAuth();
   const { canStream } = useCanLivestream();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notificationCount] = useState(3); // Mock count, will connect to real data later
+  const [notificationCount] = useState(0); // Will be populated from Ceramic when notification system is implemented
 
   const handleLogin = () => {
     login();

@@ -16,58 +16,8 @@ interface Notification {
   avatar?: string;
 }
 
-// Mock notifications - will connect to real data in future
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "tip",
-    title: "New Tip Received!",
-    message: "You received a 0.005 ETH tip from @dragfan123",
-    timestamp: "2 hours ago",
-    isRead: false,
-    actionUrl: "/dashboard",
-    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80",
-  },
-  {
-    id: "2",
-    type: "like",
-    title: "New Likes on Your Video",
-    message: "Your video 'Makeup Transformation' received 50 new likes",
-    timestamp: "5 hours ago",
-    isRead: false,
-    actionUrl: "/watch/1",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80",
-  },
-  {
-    id: "3",
-    type: "follow",
-    title: "New Follower",
-    message: "@queenofhearts started following you",
-    timestamp: "1 day ago",
-    isRead: true,
-    actionUrl: "/creator/queenofhearts",
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80",
-  },
-  {
-    id: "4",
-    type: "comment",
-    title: "New Comment",
-    message: "@dragqueen99 commented: 'Stunning performance! 👑'",
-    timestamp: "2 days ago",
-    isRead: true,
-    actionUrl: "/watch/2",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80",
-  },
-  {
-    id: "5",
-    type: "video_ready",
-    title: "Video Processing Complete",
-    message: "Your video 'Dance Performance' is now live!",
-    timestamp: "3 days ago",
-    isRead: true,
-    actionUrl: "/watch/3",
-  },
-];
+// Empty notifications - will be populated from Ceramic when notification system is implemented
+const mockNotifications: Notification[] = [];
 
 const notificationIcons = {
   tip: FiDollarSign,
@@ -127,11 +77,14 @@ export default function NotificationsPage() {
       {/* Notifications List */}
       <div className="space-y-3">
         {notifications.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-900 flex items-center justify-center">
-              <FiBell className="w-10 h-10 text-gray-600" />
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-24 h-24 mb-6 rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center">
+              <FiBell className="w-12 h-12 text-gray-500" />
             </div>
-            <p className="text-gray-400">No notifications yet</p>
+            <h2 className="text-2xl font-bold text-gray-300 mb-2">No notifications yet</h2>
+            <p className="text-gray-500 max-w-md">
+              When you receive tips, follows, or comments, they'll appear here.
+            </p>
           </div>
         ) : (
           notifications.map((notification) => {

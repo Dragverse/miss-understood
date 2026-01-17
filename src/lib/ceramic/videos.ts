@@ -233,3 +233,6 @@ export async function getVideosByCreator(creatorDID: string, first = 20) {
     throw error;
   }
 }
+
+// Alias for convenience
+export const getVideosByCreatorDID = getVideosByCreator;

@@ -25,46 +25,64 @@ export default function ProfilePage() {
 
       setIsLoadingProfile(true);
       try {
+        // Try to load from Ceramic first
         const ceramicProfile = await getCreatorByDID(user.id);
 
         if (ceramicProfile) {
           // Use Ceramic profile data
           setCreator(ceramicProfile as Creator);
-        } else {
-          // No Ceramic profile yet, use Privy data as initial state
+          setIsLoadingProfile(false);
+          return;
+        }
+      } catch (error) {
+        console.warn("Could not load from Ceramic, checking fallback:", error);
+      }
+
+      // Fallback: Load from localStorage if Ceramic unavailable
+      const fallbackProfile = localStorage.getItem("dragverse_profile");
+      if (fallbackProfile) {
+        try {
+          const profileData = JSON.parse(fallbackProfile);
+          // Create temporary creator object
           setCreator({
             did: user.id,
-            handle: userHandle || userEmail?.split('@')[0] || "user",
-            displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
-            avatar: user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
-            description: "Welcome to my Dragverse profile! 🎭✨",
+            id: `temp-${user.id}`,
+            handle: profileData.handle || userHandle || user.id.slice(0, 8),
+            displayName: profileData.displayName || "Unnamed Creator",
+            description: profileData.description || "",
+            avatar: profileData.avatar || user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
+            banner: profileData.banner,
+            website: profileData.website,
+            instagramHandle: profileData.instagramHandle || instagramHandle,
+            tiktokHandle: profileData.tiktokHandle || tiktokHandle,
             followerCount: 0,
             followingCount: 0,
             createdAt: new Date(user.createdAt || Date.now()),
             verified: false,
-            instagramHandle: instagramHandle || undefined,
-            tiktokHandle: tiktokHandle || undefined,
-          });
+          } as Creator);
+          console.log("Loaded profile from fallback storage");
+          setIsLoadingProfile(false);
+          return;
+        } catch (e) {
+          console.error("Failed to parse fallback profile:", e);
         }
-      } catch (error) {
-        console.error("Failed to load profile:", error);
-        // Fallback to Privy data
-        setCreator({
-          did: user.id,
-          handle: userHandle || userEmail?.split('@')[0] || "user",
-          displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
-          avatar: user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
-          description: "Welcome to my Dragverse profile! 🎭✨",
-          followerCount: 0,
-          followingCount: 0,
-          createdAt: new Date(user.createdAt || Date.now()),
-          verified: false,
-          instagramHandle: instagramHandle || undefined,
-          tiktokHandle: tiktokHandle || undefined,
-        });
-      } finally {
-        setIsLoadingProfile(false);
       }
+
+      // No Ceramic or fallback profile, use Privy data as initial state
+      setCreator({
+        did: user.id,
+        handle: userHandle || userEmail?.split('@')[0] || "user",
+        displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
+        avatar: user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
+        description: "Welcome to my Dragverse profile! 🎭✨",
+        followerCount: 0,
+        followingCount: 0,
+        createdAt: new Date(user.createdAt || Date.now()),
+        verified: false,
+        instagramHandle: instagramHandle || undefined,
+        tiktokHandle: tiktokHandle || undefined,
+      });
+      setIsLoadingProfile(false);
     }
 
     if (isAuthenticated) {

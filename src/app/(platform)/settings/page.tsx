@@ -43,6 +43,7 @@ export default function SettingsPage() {
 
       setIsLoadingProfile(true);
       try {
+        // Try to load from Ceramic first
         const ceramicProfile = await getCreatorByDID(user.id);
 
         if (ceramicProfile) {
@@ -55,36 +56,56 @@ export default function SettingsPage() {
           });
           setBannerPreview(ceramicProfile.banner || null);
           setAvatarPreview(ceramicProfile.avatar);
-        } else {
-          // No Ceramic profile yet, use Privy data
-          const defaultCreator: Creator = {
-            did: user.id,
-            handle: userHandle || userEmail?.split('@')[0] || "user",
-            displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
-            avatar: user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
-            description: "Welcome to my Dragverse profile! 🎭✨",
-            followerCount: 0,
-            followingCount: 0,
-            createdAt: new Date(user.createdAt || Date.now()),
-            verified: false,
-            instagramHandle: instagramHandle || undefined,
-            tiktokHandle: tiktokHandle || undefined,
-          };
-          setCreator(defaultCreator);
-          setFormData({
-            displayName: defaultCreator.displayName,
-            handle: defaultCreator.handle,
-            description: defaultCreator.description,
-            website: "",
-          });
-          setAvatarPreview(defaultCreator.avatar);
+          return;
         }
       } catch (error) {
-        console.error("Failed to load profile:", error);
-        toast.error("Failed to load profile data");
-      } finally {
-        setIsLoadingProfile(false);
+        console.warn("Could not load from Ceramic, checking fallback:", error);
       }
+
+      // Fallback: Load from localStorage if Ceramic unavailable
+      const fallbackProfile = localStorage.getItem("dragverse_profile");
+      if (fallbackProfile) {
+        try {
+          const profileData = JSON.parse(fallbackProfile);
+          setFormData({
+            displayName: profileData.displayName || "",
+            handle: profileData.handle || "",
+            description: profileData.description || "",
+            website: profileData.website || "",
+          });
+          setBannerPreview(profileData.banner || null);
+          setAvatarPreview(profileData.avatar || user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`);
+          console.log("Loaded profile from fallback storage");
+          setIsLoadingProfile(false);
+          return;
+        } catch (e) {
+          console.error("Failed to parse fallback profile:", e);
+        }
+      }
+
+      // No Ceramic or fallback profile, use Privy data
+      const defaultCreator: Creator = {
+        did: user.id,
+        handle: userHandle || userEmail?.split('@')[0] || "user",
+        displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
+        avatar: user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
+        description: "Welcome to my Dragverse profile! 🎭✨",
+        followerCount: 0,
+        followingCount: 0,
+        createdAt: new Date(user.createdAt || Date.now()),
+        verified: false,
+        instagramHandle: instagramHandle || undefined,
+        tiktokHandle: tiktokHandle || undefined,
+      };
+      setCreator(defaultCreator);
+      setFormData({
+        displayName: defaultCreator.displayName,
+        handle: defaultCreator.handle,
+        description: defaultCreator.description,
+        website: "",
+      });
+      setAvatarPreview(defaultCreator.avatar);
+      setIsLoadingProfile(false);
     }
 
     if (isAuthenticated) {
@@ -152,27 +173,54 @@ export default function SettingsPage() {
         toast.dismiss();
       }
 
-      // Save to Ceramic
+      // Save profile via API route (with fallback support)
       toast.loading("Saving profile...");
-      await createOrUpdateCreator({
-        handle: formData.handle,
-        displayName: formData.displayName,
-        description: formData.description,
-        avatar: avatarUrl,
-        banner: bannerUrl,
-        website: formData.website || undefined,
-        instagramHandle: instagramHandle || undefined,
-        tiktokHandle: tiktokHandle || undefined,
+      const response = await fetch("/api/profile/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          handle: formData.handle,
+          displayName: formData.displayName,
+          description: formData.description,
+          avatar: avatarUrl,
+          banner: bannerUrl,
+          website: formData.website || undefined,
+          instagramHandle: instagramHandle || undefined,
+          tiktokHandle: tiktokHandle || undefined,
+        }),
       });
+
+      const result = await response.json();
       toast.dismiss();
 
-      toast.success("Profile saved successfully!");
+      if (!result.success) {
+        throw new Error(result.error || "Failed to save profile");
+      }
+
+      // If in fallback mode, store profile data in localStorage
+      if (result.fallbackMode && result.profileData) {
+        console.log("Storing profile in fallback mode");
+        localStorage.setItem("dragverse_profile", JSON.stringify(result.profileData));
+      }
+
+      toast.success(result.message || "Profile saved successfully!");
+
+      // Reset file states
+      setBannerFile(null);
+      setAvatarFile(null);
 
       // Reload profile data
       if (user?.id) {
-        const updated = await getCreatorByDID(user.id);
-        if (updated) {
-          setCreator(updated as Creator);
+        try {
+          const updated = await getCreatorByDID(user.id);
+          if (updated) {
+            setCreator(updated as Creator);
+          }
+        } catch (error) {
+          // Silently fail if Ceramic is unavailable, we already saved to fallback
+          console.warn("Could not reload from Ceramic:", error);
         }
       }
     } catch (error) {
