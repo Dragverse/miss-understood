@@ -12,6 +12,7 @@ import { LiveNowSection } from "@/components/home/live-now-section";
 import { getVideos } from "@/lib/ceramic/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
+import { getLocalVideos } from "@/lib/utils/local-storage";
 
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("All");
@@ -76,7 +77,14 @@ export default function HomePage() {
         console.warn("Failed to load videos from Bluesky:", error);
       }
 
-      // If we have videos from Ceramic or Bluesky, use them
+      // Add local uploads from localStorage
+      const localVideos = getLocalVideos();
+      if (localVideos.length > 0) {
+        allVideos.push(...localVideos);
+        console.log(`Loaded ${localVideos.length} videos from local storage`);
+      }
+
+      // If we have videos from Ceramic, Bluesky, or local, use them
       if (allVideos.length > 0) {
         // Sort by date (newest first)
         allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

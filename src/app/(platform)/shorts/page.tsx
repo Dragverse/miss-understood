@@ -3,16 +3,65 @@
 import { useState, useEffect } from "react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
-import { mockVideos } from "@/lib/utils/mock-data";
+import { getLocalVideos } from "@/lib/utils/local-storage";
+import { getVideos } from "@/lib/ceramic/videos";
+import { Video } from "@/types";
 import { ShortVideo } from "@/components/shorts/short-video";
 import { ShortOverlayTop } from "@/components/shorts/short-overlay-top";
 import { ShortOverlayBottom } from "@/components/shorts/short-overlay-bottom";
 import { FiChevronUp, FiChevronDown } from "react-icons/fi";
 
 export default function ShortsPage() {
-  const shorts = mockVideos.filter((v) => v.contentType === "short");
+  const [shorts, setShorts] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [sliderReady, setSliderReady] = useState(false);
+
+  // Load shorts from various sources
+  useEffect(() => {
+    async function loadShorts() {
+      setLoading(true);
+      const allVideos: Video[] = [];
+
+      // Try Ceramic first
+      try {
+        const ceramicResult = await getVideos(50);
+        if (ceramicResult && ceramicResult.videos?.length > 0) {
+          allVideos.push(...ceramicResult.videos);
+        }
+      } catch (error) {
+        console.warn("Ceramic unavailable");
+      }
+
+      // Fetch from Bluesky
+      try {
+        const blueskyResponse = await fetch("/api/bluesky/feed?limit=30");
+        if (blueskyResponse.ok) {
+          const blueskyData = await blueskyResponse.json();
+          if (blueskyData.posts) {
+            allVideos.push(...blueskyData.posts);
+          }
+        }
+      } catch (error) {
+        console.warn("Bluesky unavailable");
+      }
+
+      // Add local uploads
+      const localVideos = getLocalVideos();
+      allVideos.push(...localVideos);
+
+      // Filter only shorts
+      const shortsOnly = allVideos.filter((v) => v.contentType === "short");
+
+      // Sort by date (newest first)
+      shortsOnly.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      setShorts(shortsOnly);
+      setLoading(false);
+    }
+
+    loadShorts();
+  }, []);
 
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
     initial: 0,
@@ -45,11 +94,22 @@ export default function ShortsPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [instanceRef]);
 
+  if (loading) {
+    return (
+      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+      </div>
+    );
+  }
+
   if (shorts.length === 0) {
     return (
       <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-400 text-lg">No shorts available yet</p>
+          <p className="text-gray-400 text-lg mb-4">No shorts available yet</p>
+          <p className="text-gray-500 text-sm">
+            Upload a short video or check back for content from Bluesky
+          </p>
         </div>
       </div>
     );
