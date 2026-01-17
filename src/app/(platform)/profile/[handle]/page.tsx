@@ -58,7 +58,7 @@ export default function DynamicProfilePage() {
               handle: blueskyProfile.handle,
               displayName: blueskyProfile.displayName,
               avatar: blueskyProfile.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${blueskyProfile.handle}`,
-              banner: blueskyProfile.banner,
+              banner: blueskyProfile.banner || undefined,
               description: blueskyProfile.description || "",
               followerCount: blueskyProfile.followersCount,
               followingCount: blueskyProfile.followsCount,
