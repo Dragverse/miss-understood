@@ -19,7 +19,7 @@ export function ChocolateBar({
       viewBox="0 0 24 24"
       fill="none"
       className={className}
-      title="Chocolate Bar"
+      aria-label="Chocolate Bar"
     >
       {filled ? (
         // Filled chocolate bar
