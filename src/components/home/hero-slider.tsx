@@ -27,9 +27,9 @@ const slides: Slide[] = [
     id: "2",
     title: "Life is Salty After All",
     description: "Meet saltï and her experiments",
-    image: "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?q=80&w=2076",
-    link: "/creator/salti",
-    cta: "Watch Now",
+    image: "/Famers/SALT.jpg",
+    link: "https://salti.studio",
+    cta: "Visit Studio",
   },
 ];
 
@@ -92,6 +92,7 @@ export function HeroSlider() {
               </p>
               <Link
                 href={slide.link}
+                {...(slide.link.startsWith('http') ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                 className="inline-block px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] text-white font-semibold rounded-full transition-all shadow-lg hover:shadow-xl"
               >
                 {slide.cta}

@@ -2,9 +2,10 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import { useRouter } from "next/navigation";
-import { FiVideo, FiHeart, FiUsers, FiDollarSign, FiTrendingUp, FiEye, FiCopy, FiEdit, FiTrash2 } from "react-icons/fi";
+import { FiVideo, FiHeart, FiUsers, FiTrendingUp, FiEye, FiCopy, FiEdit, FiTrash2 } from "react-icons/fi";
 import Image from "next/image";
 import { useState } from "react";
+import { ChocolateBar } from "@/components/ui/chocolate-bar";
 
 // Mock data - will be replaced with real Ceramic data later
 const mockStats = {
@@ -121,15 +122,20 @@ export default function DashboardPage() {
           {/* Total Earnings */}
           <div className="bg-gradient-to-br from-[#1a0b2e] to-[#0f071a] rounded-[24px] p-6 border border-[#2f2942]">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
-                <FiDollarSign className="w-6 h-6 text-green-400" />
+              <div className="w-12 h-12 rounded-full bg-[#EB83EA]/20 flex items-center justify-center">
+                <ChocolateBar size={24} filled={true} />
               </div>
             </div>
-            <div className="text-3xl font-bold mb-1">
-              ${mockStats.totalEarnings.toFixed(2)}
+            <div className="flex items-baseline gap-2 mb-1">
+              <div className="text-3xl font-bold">—</div>
+              <span className="px-2 py-1 bg-[#EB83EA]/20 text-[#EB83EA] text-xs font-semibold rounded-full">
+                Coming Soon
+              </span>
             </div>
             <div className="text-sm text-gray-400">Total Earnings</div>
-            <div className="mt-2 text-xs text-[#EB83EA]">Phase 7: Coming Soon</div>
+            <div className="mt-2 text-xs text-gray-500">
+              Tipping will be enabled soon
+            </div>
           </div>
         </div>
 

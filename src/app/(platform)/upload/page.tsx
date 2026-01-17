@@ -294,7 +294,7 @@ export default function UploadPage() {
               <FiZap className={`w-8 h-8 ${formData.contentType === "short" ? "text-[#EB83EA]" : "text-gray-400"}`} />
               <div className="text-center">
                 <div className="font-bold">Byte</div>
-                <div className="text-xs text-gray-400">Vertical - Max 60 seconds</div>
+                <div className="text-xs text-gray-400">Vertical - Max 20 minutes</div>
               </div>
             </button>
             <button

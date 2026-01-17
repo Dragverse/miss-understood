@@ -4,10 +4,11 @@ import React, { useState } from "react";
 import { mockVideos, mockCreators } from "@/lib/utils/mock-data";
 import Image from "next/image";
 import Link from "next/link";
-import { FiThumbsUp, FiMessageCircle, FiShare2, FiUserPlus, FiDollarSign } from "react-icons/fi";
+import { FiThumbsUp, FiMessageCircle, FiShare2, FiUserPlus } from "react-icons/fi";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { TipModal } from "@/components/video/tip-modal";
+import { ChocolateBar } from "@/components/ui/chocolate-bar";
 
 export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
@@ -104,9 +105,6 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   </span>
                 </div>
               </div>
-              <div className="inline-block bg-purple-600 px-4 py-2 rounded-full text-sm font-semibold uppercase">
-                {video.contentType}
-              </div>
             </div>
 
             {/* Action Buttons */}
@@ -134,7 +132,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 onClick={() => setTipModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] text-white rounded-lg hover:from-[#E748E6] hover:to-[#6b2fd5] transition font-semibold"
               >
-                <FiDollarSign className="w-5 h-5" />
+                <ChocolateBar size={20} filled={true} />
                 <span>Tip Creator</span>
               </button>
             </div>
