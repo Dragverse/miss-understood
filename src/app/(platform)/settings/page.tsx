@@ -15,7 +15,24 @@ import { clearBlueskyCache } from "@/lib/bluesky/hooks";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { isAuthenticated, isReady, userHandle, userEmail, user, instagramHandle, tiktokHandle, farcasterHandle } = useAuthUser();
+  const {
+    isAuthenticated,
+    isReady,
+    userHandle,
+    userEmail,
+    user,
+    farcasterHandle,
+    wallets,
+    linkedAccounts,
+    emailAccount,
+    googleAccount,
+    linkWallet,
+    linkEmail,
+    linkGoogle,
+    unlinkWallet,
+    unlinkEmail,
+    unlinkGoogle,
+  } = useAuthUser();
 
   const [activeSection, setActiveSection] = useState<"profile" | "accounts">("profile");
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -45,6 +62,101 @@ export default function SettingsPage() {
 
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Utility functions
+  const formatAddress = (address: string): string => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard");
+  };
+
+  const getWalletType = (wallet: any): string => {
+    if (wallet.walletClientType) {
+      return wallet.walletClientType
+        .split('_')
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    }
+    return wallet.connectorType || 'Wallet';
+  };
+
+  const canUnlinkAccount = (): boolean => {
+    // Must have at least 2 authentication methods to unlink one
+    const authMethods = [];
+    if (emailAccount) authMethods.push('email');
+    if (googleAccount) authMethods.push('google');
+    if (farcasterHandle) authMethods.push('farcaster');
+    if (wallets && wallets.length > 0) authMethods.push('wallet');
+    return authMethods.length > 1;
+  };
+
+  // Handle wallet linking
+  const handleLinkWallet = async () => {
+    try {
+      await linkWallet();
+      toast.success("Wallet connected successfully");
+    } catch (error) {
+      console.error("Failed to link wallet:", error);
+      toast.error("Failed to connect wallet");
+    }
+  };
+
+  // Handle wallet unlinking
+  const handleUnlinkWallet = async (address: string) => {
+    if (!canUnlinkAccount()) {
+      toast.error("Cannot unlink: You must have at least one authentication method");
+      return;
+    }
+
+    if (confirm(`Are you sure you want to unlink wallet ${formatAddress(address)}?`)) {
+      try {
+        await unlinkWallet(address);
+        toast.success("Wallet disconnected");
+      } catch (error) {
+        console.error("Failed to unlink wallet:", error);
+        toast.error("Failed to disconnect wallet");
+      }
+    }
+  };
+
+  // Handle email unlinking
+  const handleUnlinkEmail = async () => {
+    if (!canUnlinkAccount()) {
+      toast.error("Cannot unlink: You must have at least one authentication method");
+      return;
+    }
+
+    if (confirm(`Are you sure you want to unlink your email account?`)) {
+      try {
+        await unlinkEmail(emailAccount!.address);
+        toast.success("Email disconnected");
+      } catch (error) {
+        console.error("Failed to unlink email:", error);
+        toast.error("Failed to disconnect email");
+      }
+    }
+  };
+
+  // Handle Google unlinking
+  const handleUnlinkGoogle = async () => {
+    if (!canUnlinkAccount()) {
+      toast.error("Cannot unlink: You must have at least one authentication method");
+      return;
+    }
+
+    if (confirm(`Are you sure you want to unlink your Google account?`)) {
+      try {
+        await unlinkGoogle(googleAccount!.subject);
+        toast.success("Google account disconnected");
+      } catch (error) {
+        console.error("Failed to unlink Google:", error);
+        toast.error("Failed to disconnect Google account");
+      }
+    }
+  };
 
   // Load profile data
   useEffect(() => {
@@ -104,8 +216,6 @@ export default function SettingsPage() {
         followingCount: 0,
         createdAt: new Date(user.createdAt || Date.now()),
         verified: false,
-        instagramHandle: instagramHandle || undefined,
-        tiktokHandle: tiktokHandle || undefined,
       };
       setCreator(defaultCreator);
       setFormData({
@@ -225,8 +335,6 @@ export default function SettingsPage() {
           avatar: avatarUrl,
           banner: bannerUrl,
           website: formData.website || undefined,
-          instagramHandle: instagramHandle || undefined,
-          tiktokHandle: tiktokHandle || undefined,
         }),
       });
 
@@ -659,6 +767,116 @@ export default function SettingsPage() {
                 </p>
 
                 <div className="space-y-4">
+                  {/* Wallets Section */}
+                  {wallets && wallets.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-[#FCF1FC] mb-3">Wallets</h3>
+                      <div className="space-y-3">
+                        {wallets.map((wallet, index) => (
+                          <div
+                            key={wallet.address}
+                            className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-[#EB83EA] flex items-center justify-center">
+                                <span className="text-white font-bold text-lg">W</span>
+                              </div>
+                              <div>
+                                <p className="font-semibold">{getWalletType(wallet)}</p>
+                                <p className="text-sm text-gray-400 font-mono">
+                                  {formatAddress(wallet.address)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {index === 0 && (
+                                <span className="text-xs px-3 py-1 bg-[#EB83EA]/10 text-[#EB83EA] rounded-full">
+                                  PRIMARY
+                                </span>
+                              )}
+                              <button
+                                onClick={() => copyToClipboard(wallet.address)}
+                                className="text-sm px-3 py-1 text-gray-400 hover:text-white border border-[#2f2942] hover:border-[#EB83EA] rounded-lg transition"
+                              >
+                                Copy
+                              </button>
+                              {wallets.length > 1 && (
+                                <button
+                                  onClick={() => handleUnlinkWallet(wallet.address)}
+                                  className="text-sm px-3 py-1 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={handleLinkWallet}
+                        className="mt-3 w-full px-4 py-3 bg-[#18122D] hover:bg-[#2f2942] border border-[#2f2942] hover:border-[#EB83EA] rounded-xl transition text-[#FCF1FC] font-semibold"
+                      >
+                        + Link New Wallet
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Email Account */}
+                  {emailAccount && (
+                    <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">@</span>
+                        </div>
+                        <div>
+                          <p className="font-semibold">Email</p>
+                          <p className="text-sm text-gray-400">{emailAccount.address}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                          Connected
+                        </span>
+                        {canUnlinkAccount() && (
+                          <button
+                            onClick={handleUnlinkEmail}
+                            className="text-sm px-3 py-1 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Google Account */}
+                  {googleAccount && (
+                    <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">G</span>
+                        </div>
+                        <div>
+                          <p className="font-semibold">Google</p>
+                          <p className="text-sm text-gray-400">{googleAccount.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                          Connected
+                        </span>
+                        {canUnlinkAccount() && (
+                          <button
+                            onClick={handleUnlinkGoogle}
+                            className="text-sm px-3 py-1 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Farcaster */}
                   <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
                     <div className="flex items-center gap-3">
@@ -742,6 +960,12 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                  <p className="text-sm text-blue-400 mb-2">
+                    <strong>Wallets:</strong> Connect crypto wallets (MetaMask, Coinbase Wallet, WalletConnect) via Privy
+                  </p>
+                  <p className="text-sm text-blue-400 mb-2">
+                    <strong>Email & Google:</strong> Connect via Privy when logging in or using the link button
+                  </p>
                   <p className="text-sm text-blue-400 mb-2">
                     <strong>Farcaster:</strong> Connect via Privy when logging in (sign in with Farcaster)
                   </p>

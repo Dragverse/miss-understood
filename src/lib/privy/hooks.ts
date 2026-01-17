@@ -1,4 +1,4 @@
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useWallets, useLinkAccount } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
 import { useCeramic } from "@/lib/ceramic/ceramic-provider";
 import { useBlueskyProfile } from "@/lib/bluesky/hooks";
@@ -8,7 +8,18 @@ import { useBlueskyProfile } from "@/lib/bluesky/hooks";
  * No crypto language exposed - just clean auth state
  */
 export function useAuthUser() {
-  const { authenticated, user, login, logout, ready } = usePrivy();
+  const {
+    authenticated,
+    user,
+    login,
+    logout,
+    ready,
+    unlinkWallet,
+    unlinkEmail,
+    unlinkGoogle,
+  } = usePrivy();
+  const { wallets } = useWallets();
+  const { linkWallet, linkEmail, linkGoogle } = useLinkAccount();
   const { session, creator } = useAuth();
   const {
     ceramicDID,
@@ -51,5 +62,19 @@ export function useAuthUser() {
     // Bluesky profile
     blueskyProfile,
     blueskyConnected,
+
+    // Wallet management
+    wallets,
+    linkedAccounts: user?.linkedAccounts || [],
+    emailAccount: user?.email,
+    googleAccount: user?.google,
+
+    // Link/unlink actions
+    linkWallet,
+    linkEmail,
+    linkGoogle,
+    unlinkWallet,
+    unlinkEmail,
+    unlinkGoogle,
   };
 }
