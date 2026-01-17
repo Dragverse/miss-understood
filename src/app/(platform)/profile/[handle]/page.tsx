@@ -64,7 +64,6 @@ export default function DynamicProfilePage() {
               followingCount: blueskyProfile.followsCount,
               createdAt: new Date(),
               verified: false,
-              profileSource: "bluesky",
             });
             setProfileType("bluesky");
 
