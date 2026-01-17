@@ -61,6 +61,23 @@ export async function POST(request: NextRequest) {
       let errorMessage = "Failed to upload image.";
       let errorType = "UPLOAD_FAILED";
 
+      // Get detailed error from Livepeer API
+      let apiError = null;
+      try {
+        apiError = await response.json();
+      } catch (e) {
+        // Response body might not be JSON
+      }
+
+      console.error("Livepeer upload failed:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: apiError,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      });
+
       if (response.status === 401) {
         errorMessage = "Storage authentication failed. Contact support.";
         errorType = "AUTH_FAILED";
@@ -72,7 +89,7 @@ export async function POST(request: NextRequest) {
         errorType = "SERVICE_UNAVAILABLE";
       }
 
-      return NextResponse.json({ error: errorMessage, errorType }, { status: response.status });
+      return NextResponse.json({ error: errorMessage, errorType, details: apiError }, { status: response.status });
     }
 
     const data = await response.json();
@@ -86,6 +103,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, url: ipfsUrl, ipfsUrl, asset: data });
   } catch (error) {
-    return NextResponse.json({ error: "Unexpected error during upload.", errorType: "UNKNOWN_ERROR" }, { status: 500 });
+    console.error("Unexpected error during image upload:", error);
+    return NextResponse.json(
+      {
+        error: "Unexpected error during upload.",
+        errorType: "UNKNOWN_ERROR",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
   }
 }
