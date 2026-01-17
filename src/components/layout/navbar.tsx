@@ -125,7 +125,13 @@ export function Navbar() {
                   width={40}
                   height={40}
                   className="w-full h-full object-cover"
-                  src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=80"
+                  src={
+                    user?.google?.pictureUrl ||
+                    user?.twitter?.profilePictureUrl ||
+                    user?.tiktok?.profilePictureUrl ||
+                    user?.instagram?.profilePictureUrl ||
+                    `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.id}&backgroundColor=EB83EA`
+                  }
                 />
                 {/* Verification Badge - Example: shows "human" verification */}
                 <div className="absolute -bottom-0.5 -right-0.5">

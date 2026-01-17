@@ -19,6 +19,8 @@ export function RightSidebar() {
   const { authenticated } = usePrivy();
 
   // Get some creators to suggest
+  // TODO: Replace with real creator discovery from Ceramic when available
+  // For now, showing mock creators as suggestions is acceptable since these are OTHER users
   const suggestedCreators = mockCreators.slice(0, 3);
 
   return (
