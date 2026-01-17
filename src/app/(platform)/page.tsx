@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { VideoCard } from "@/components/video/video-card";
-import { categories } from "@/lib/utils/mock-data";
 import { FiSearch } from "react-icons/fi";
 import { HeroSection } from "@/components/home/hero-section";
 import { BytesSection } from "@/components/home/bytes-section";
@@ -15,7 +14,6 @@ import { USE_MOCK_DATA } from "@/lib/config/env";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 
 export default function HomePage() {
-  const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,25 +103,23 @@ export default function HomePage() {
   const horizontalVideos = videos.filter((v) => v.contentType !== "short");
 
   const filteredVideos = videos.filter((video) => {
-    const matchesCategory =
-      activeCategory === "All" || video.category === activeCategory;
     const matchesSearch =
       video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       video.creator.displayName
         .toLowerCase()
         .includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesSearch;
   });
 
-  // If searching or filtering, show filtered results in grid
-  const isFiltering = searchQuery || activeCategory !== "All";
+  // If searching, show filtered results in grid
+  const isFiltering = searchQuery.length > 0;
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
       <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-8">
         {/* Main Content */}
         <div className="col-span-12 lg:col-span-9 space-y-10">
-          {/* Categories */}
+          {/* Categories - Hidden until we have more content
           <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {categories.map((category) => (
               <button
@@ -139,6 +135,7 @@ export default function HomePage() {
               </button>
             ))}
           </div>
+          */}
 
           {isFiltering ? (
             <>
@@ -159,7 +156,6 @@ export default function HomePage() {
                 {filteredVideos.length}{" "}
                 {filteredVideos.length === 1 ? "video" : "videos"}
                 {searchQuery && ` matching "${searchQuery}"`}
-                {activeCategory !== "All" && ` in ${activeCategory}`}
               </div>
 
               {/* Filtered Video Grid */}

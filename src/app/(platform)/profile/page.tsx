@@ -14,10 +14,12 @@ import { getLocalVideos } from "@/lib/utils/local-storage";
 export default function ProfilePage() {
   const router = useRouter();
   const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle } = useAuthUser();
-  const [activeTab, setActiveTab] = useState<"videos" | "about">("videos");
+  const [activeTab, setActiveTab] = useState<"videos" | "photos" | "posts" | "about">("videos");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [userVideos, setUserVideos] = useState<Video[]>([]);
+  const [userPhotos, setUserPhotos] = useState<any[]>([]);
+  const [userPosts, setUserPosts] = useState<any[]>([]);
 
   // Fetch creator profile from Ceramic
   useEffect(() => {
@@ -96,6 +98,42 @@ export default function ProfilePage() {
     const localVideos = getLocalVideos();
     setUserVideos(localVideos);
   }, []);
+
+  // Load Bluesky photos and posts if user has Bluesky connected
+  useEffect(() => {
+    async function loadBlueskyContent() {
+      if (!creator?.blueskyHandle) return;
+
+      try {
+        const response = await fetch("/api/bluesky/feed?limit=50");
+        const data = await response.json();
+
+        if (data.posts) {
+          // Filter for posts from this user
+          const userBlueskyPosts = data.posts.filter(
+            (post: any) => post.creator.handle === creator.blueskyHandle
+          );
+
+          // Separate photos (with images) and text posts (without images/videos)
+          const photos = userBlueskyPosts.filter(
+            (post: any) => post.thumbnail && !post.playbackUrl?.includes("m3u8")
+          );
+          const textPosts = userBlueskyPosts.filter(
+            (post: any) => !post.thumbnail
+          );
+
+          setUserPhotos(photos);
+          setUserPosts(textPosts);
+        }
+      } catch (error) {
+        console.error("Failed to load Bluesky content:", error);
+      }
+    }
+
+    if (creator?.blueskyHandle) {
+      loadBlueskyContent();
+    }
+  }, [creator?.blueskyHandle]);
 
   // Show loading state while auth is initializing
   if (!isReady || (isAuthenticated && isLoadingProfile)) {
@@ -240,10 +278,10 @@ export default function ProfilePage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-8 border-b border-[#2f2942] mb-8">
+        <div className="flex gap-8 border-b border-[#2f2942] mb-8 overflow-x-auto">
           <button
             onClick={() => setActiveTab("videos")}
-            className={`pb-3 font-semibold transition ${
+            className={`pb-3 font-semibold transition whitespace-nowrap ${
               activeTab === "videos"
                 ? "border-b-2 border-[#EB83EA] text-[#FCF1FC]"
                 : "text-gray-400 hover:text-[#FCF1FC]"
@@ -252,8 +290,28 @@ export default function ProfilePage() {
             Videos ({creatorVideos.length})
           </button>
           <button
+            onClick={() => setActiveTab("photos")}
+            className={`pb-3 font-semibold transition whitespace-nowrap ${
+              activeTab === "photos"
+                ? "border-b-2 border-[#EB83EA] text-[#FCF1FC]"
+                : "text-gray-400 hover:text-[#FCF1FC]"
+            }`}
+          >
+            Photos ({userPhotos.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("posts")}
+            className={`pb-3 font-semibold transition whitespace-nowrap ${
+              activeTab === "posts"
+                ? "border-b-2 border-[#EB83EA] text-[#FCF1FC]"
+                : "text-gray-400 hover:text-[#FCF1FC]"
+            }`}
+          >
+            Posts ({userPosts.length})
+          </button>
+          <button
             onClick={() => setActiveTab("about")}
-            className={`pb-3 font-semibold transition ${
+            className={`pb-3 font-semibold transition whitespace-nowrap ${
               activeTab === "about"
                 ? "border-b-2 border-[#EB83EA] text-[#FCF1FC]"
                 : "text-gray-400 hover:text-[#FCF1FC]"
@@ -276,6 +334,87 @@ export default function ProfilePage() {
               <div className="text-center py-12 bg-[#18122D] rounded-lg">
                 <FiUser className="w-12 h-12 mx-auto mb-4 text-gray-600" />
                 <p className="text-gray-400">You haven&apos;t uploaded any videos yet</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "photos" && (
+          <div>
+            {userPhotos.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {userPhotos.map((photo) => (
+                  <a
+                    key={photo.id}
+                    href={photo.externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative aspect-square rounded-lg overflow-hidden bg-[#0f071a] hover:opacity-90 transition"
+                  >
+                    <Image
+                      src={photo.thumbnail}
+                      alt={photo.description || "Photo"}
+                      fill
+                      className="object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-[#18122D] rounded-lg">
+                <FiUser className="w-12 h-12 mx-auto mb-4 text-gray-600" />
+                <p className="text-gray-400">
+                  {creator.blueskyHandle
+                    ? "No photos posted yet"
+                    : "Connect your Bluesky account in Settings to display photos"}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "posts" && (
+          <div>
+            {userPosts.length > 0 ? (
+              <div className="max-w-2xl space-y-4">
+                {userPosts.map((post) => (
+                  <div
+                    key={post.id}
+                    className="bg-[#1a0b2e] border border-[#2f2942] rounded-xl p-6"
+                  >
+                    <p className="text-gray-200 mb-3 whitespace-pre-wrap">
+                      {post.description}
+                    </p>
+                    <div className="flex items-center justify-between text-sm text-gray-400">
+                      <span>
+                        {new Date(post.createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                      {post.externalUrl && (
+                        <a
+                          href={post.externalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-[#EB83EA] transition"
+                        >
+                          View on Bluesky →
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-[#18122D] rounded-lg">
+                <FiUser className="w-12 h-12 mx-auto mb-4 text-gray-600" />
+                <p className="text-gray-400">
+                  {creator.blueskyHandle
+                    ? "No text posts yet"
+                    : "Connect your Bluesky account in Settings to display posts"}
+                </p>
               </div>
             )}
           </div>

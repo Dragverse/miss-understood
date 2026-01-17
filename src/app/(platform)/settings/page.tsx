@@ -4,12 +4,15 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft } from "react-icons/fi";
 import { FaInstagram, FaTiktok } from "react-icons/fa";
+import { SiBluesky } from "react-icons/si";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { Creator } from "@/types";
 import { uploadBanner, uploadAvatar, getImageDataURL } from "@/lib/livepeer/upload-image";
 import { getCreatorByDID } from "@/lib/ceramic/creators";
+import { encryptPassword } from "@/lib/utils/bluesky-auth";
+import { saveLocalProfile, getLocalProfile } from "@/lib/utils/local-storage";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -31,6 +34,12 @@ export default function SettingsPage() {
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
+
+  // Bluesky connection state
+  const [showBlueskyModal, setShowBlueskyModal] = useState(false);
+  const [blueskyHandleInput, setBlueskyHandleInput] = useState("");
+  const [appPasswordInput, setAppPasswordInput] = useState("");
+  const [blueskyHandle, setBlueskyHandle] = useState<string | null>(null);
 
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -111,6 +120,14 @@ export default function SettingsPage() {
       loadProfile();
     }
   }, [isAuthenticated, user?.id]);
+
+  // Load Bluesky credentials from localStorage
+  useEffect(() => {
+    const profile = getLocalProfile();
+    if (profile?.blueskyHandle) {
+      setBlueskyHandle(profile.blueskyHandle);
+    }
+  }, []);
 
   const handleBannerChange = async (file: File | null) => {
     if (file) {
@@ -236,6 +253,67 @@ export default function SettingsPage() {
       );
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleConnectBluesky = async () => {
+    if (!blueskyHandleInput.trim()) {
+      toast.error("Please enter your Bluesky handle");
+      return;
+    }
+
+    if (!appPasswordInput.trim()) {
+      toast.error("Please enter your app password");
+      return;
+    }
+
+    try {
+      toast.loading("Connecting Bluesky account...");
+
+      // Encrypt the app password
+      const encryptedPassword = await encryptPassword(appPasswordInput);
+
+      // Get current profile and update with Bluesky credentials
+      const currentProfile = getLocalProfile();
+      const updatedProfile = {
+        ...currentProfile,
+        blueskyHandle: blueskyHandleInput.trim(),
+        blueskyAppPassword: encryptedPassword,
+      };
+
+      // Save to localStorage
+      saveLocalProfile(updatedProfile);
+
+      // Update state
+      setBlueskyHandle(blueskyHandleInput.trim());
+      setShowBlueskyModal(false);
+      setBlueskyHandleInput("");
+      setAppPasswordInput("");
+
+      toast.dismiss();
+      toast.success("Bluesky account connected successfully!");
+    } catch (error) {
+      console.error("Bluesky connection error:", error);
+      toast.dismiss();
+      toast.error("Failed to connect Bluesky account");
+    }
+  };
+
+  const handleDisconnectBluesky = () => {
+    try {
+      const currentProfile = getLocalProfile();
+      const updatedProfile = {
+        ...currentProfile,
+        blueskyHandle: undefined,
+        blueskyAppPassword: undefined,
+      };
+
+      saveLocalProfile(updatedProfile);
+      setBlueskyHandle(null);
+      toast.success("Bluesky account disconnected");
+    } catch (error) {
+      console.error("Bluesky disconnection error:", error);
+      toast.error("Failed to disconnect Bluesky account");
     }
   };
 
@@ -566,6 +644,43 @@ export default function SettingsPage() {
                       </span>
                     )}
                   </div>
+
+                  {/* Bluesky */}
+                  <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <SiBluesky className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">Bluesky</p>
+                        {blueskyHandle ? (
+                          <p className="text-sm text-gray-400">@{blueskyHandle}</p>
+                        ) : (
+                          <p className="text-sm text-gray-500">Not connected</p>
+                        )}
+                      </div>
+                    </div>
+                    {blueskyHandle ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                          Connected
+                        </span>
+                        <button
+                          onClick={handleDisconnectBluesky}
+                          className="text-xs px-3 py-1 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500/20 transition"
+                        >
+                          Disconnect
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowBlueskyModal(true)}
+                        className="text-sm px-4 py-2 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg transition font-semibold"
+                      >
+                        Connect
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
@@ -573,6 +688,79 @@ export default function SettingsPage() {
                     💡 To connect or disconnect accounts, use the Privy sign-in options when logging in.
                   </p>
                 </div>
+
+                {/* Bluesky Connection Modal */}
+                {showBlueskyModal && (
+                  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                    <div className="bg-[#1a0b2e] border border-[#2f2942] rounded-xl p-6 max-w-md w-full">
+                      <h3 className="text-xl font-bold mb-4 flex items-center gap-3">
+                        <SiBluesky className="w-6 h-6 text-blue-500" />
+                        Connect Bluesky Account
+                      </h3>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            Bluesky Handle
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="username.bsky.social"
+                            value={blueskyHandleInput}
+                            onChange={(e) => setBlueskyHandleInput(e.target.value)}
+                            className="w-full px-4 py-3 bg-[#0f071a] border border-[#2f2942] rounded-lg focus:outline-none focus:border-[#EB83EA] transition"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            App Password
+                          </label>
+                          <input
+                            type="password"
+                            placeholder="xxxx-xxxx-xxxx-xxxx"
+                            value={appPasswordInput}
+                            onChange={(e) => setAppPasswordInput(e.target.value)}
+                            className="w-full px-4 py-3 bg-[#0f071a] border border-[#2f2942] rounded-lg focus:outline-none focus:border-[#EB83EA] transition"
+                          />
+                        </div>
+
+                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                          <p className="text-xs text-blue-400">
+                            Create an app password at{" "}
+                            <a
+                              href="https://bsky.app/settings/app-passwords"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline hover:text-blue-300"
+                            >
+                              bsky.app/settings/app-passwords
+                            </a>
+                          </p>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                          <button
+                            onClick={handleConnectBluesky}
+                            className="flex-1 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg font-semibold transition"
+                          >
+                            Connect
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowBlueskyModal(false);
+                              setBlueskyHandleInput("");
+                              setAppPasswordInput("");
+                            }}
+                            className="flex-1 py-3 bg-white/5 hover:bg-white/10 rounded-lg font-semibold transition"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

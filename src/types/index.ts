@@ -20,6 +20,8 @@ export interface Creator {
   instagramHandle?: string;
   tiktokHandle?: string;
   farcasterHandle?: string;
+  blueskyHandle?: string; // User's Bluesky handle (for posting)
+  blueskyAppPassword?: string; // Encrypted Bluesky app password
   website?: string;
   // Monetization (for future use)
   totalEarningsUSD?: number;
