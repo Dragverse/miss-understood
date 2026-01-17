@@ -1,5 +1,17 @@
 import type { Video, Creator } from "@/types";
 
+/**
+ * MOCK DATA - DEVELOPMENT ONLY
+ *
+ * This file contains placeholder data for local development.
+ * In production, this data should NOT be used. Instead:
+ * - Use real user data from Privy authentication
+ * - Use real video data from Ceramic/ComposeDB
+ * - Use real livestream data from Livepeer
+ *
+ * To enable/disable mock data, use the USE_MOCK_DATA flag from @/lib/config/env
+ */
+
 // Rich mock creators with diverse drag personas
 export const mockCreators: Creator[] = [
   {

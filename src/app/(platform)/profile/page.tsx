@@ -8,7 +8,7 @@ import { useState } from "react";
 import { VideoCard } from "@/components/video/video-card";
 
 export default function ProfilePage() {
-  const { isAuthenticated, isReady, signIn, userHandle } = useAuthUser();
+  const { isAuthenticated, isReady, signIn, userHandle, userEmail, user } = useAuthUser();
   const [activeTab, setActiveTab] = useState<"videos" | "about">("videos");
 
   // Show loading state while auth is initializing
@@ -46,10 +46,22 @@ export default function ProfilePage() {
     );
   }
 
-  // For authenticated users, show their profile
-  // Using mock data for now - in production this would fetch the user's actual profile
-  const creator = mockCreators[0]; // Placeholder - replace with actual user data
-  const creatorVideos = mockVideos.filter((v) => v.creator.did === creator.did);
+  // For authenticated users, create profile from real user data
+  const creator = {
+    did: user?.id || "", // Use Privy user ID as DID
+    handle: userHandle || userEmail?.split('@')[0] || "user",
+    displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
+    avatar: user?.google?.pictureUrl || user?.twitter?.profilePictureUrl || user?.tiktok?.profilePictureUrl || user?.instagram?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
+    description: "Welcome to my Dragverse profile! 🎭✨",
+    followerCount: 0,
+    followingCount: 0,
+    createdAt: new Date(user?.createdAt || Date.now()),
+    verified: false,
+  };
+
+  // TODO: Replace with real video data from Ceramic when available
+  // For now, show empty state since this is the user's real profile
+  const creatorVideos: any[] = [];
 
   return (
     <div>
