@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { VideoCard } from "@/components/video/video-card";
-import { mockVideos, categories } from "@/lib/utils/mock-data";
+import { categories } from "@/lib/utils/mock-data";
 import { FiSearch } from "react-icons/fi";
 import { HeroSection } from "@/components/home/hero-section";
 import { BytesSection } from "@/components/home/bytes-section";
@@ -17,11 +17,13 @@ import { getLocalVideos } from "@/lib/utils/local-storage";
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [videos, setVideos] = useState<Video[]>(mockVideos);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Fetch videos from Ceramic and Bluesky on mount
   useEffect(() => {
     async function loadVideos() {
+      setLoading(true);
       const allVideos: Video[] = [];
 
       // Load from Ceramic if not using mock data
@@ -84,16 +86,13 @@ export default function HomePage() {
         console.log(`Loaded ${localVideos.length} videos from local storage`);
       }
 
-      // If we have videos from Ceramic, Bluesky, or local, use them
+      // Sort by date (newest first) and set videos
       if (allVideos.length > 0) {
-        // Sort by date (newest first)
         allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setVideos(allVideos);
-      } else {
-        // Fallback to mock data if everything fails
-        console.log("No videos found, using mock data");
-        setVideos(mockVideos);
       }
+
+      setVideos(allVideos);
+      setLoading(false);
     }
 
     loadVideos();
