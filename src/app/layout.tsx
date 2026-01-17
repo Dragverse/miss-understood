@@ -6,7 +6,7 @@ import { Providers } from "@/components/providers";
 import { Layout } from "@/components/layout";
 
 const donutHole = localFont({
-  src: "../../public/fonts/Donut Hole.otf",
+  src: "../../public/fonts/DonutHole.otf",
   variable: "--font-donut-hole",
   display: "swap",
 });

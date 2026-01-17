@@ -75,7 +75,7 @@ export function HeroSection() {
           // Offline placeholder
           <div className="absolute inset-0">
             <Image
-              src="/stream-offline.png"
+              src="/currently-offline.jpg"
               alt="Stream Currently Offline"
               fill
               className="object-cover"
