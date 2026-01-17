@@ -2,7 +2,7 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import { useRouter } from "next/navigation";
-import { FiVideo, FiHeart, FiUsers, FiTrendingUp, FiEye, FiCopy, FiEdit, FiTrash2 } from "react-icons/fi";
+import { FiVideo, FiHeart, FiUsers, FiTrendingUp, FiEye, FiCopy, FiEdit, FiTrash2, FiDollarSign } from "react-icons/fi";
 import Image from "next/image";
 import { useState } from "react";
 import { ChocolateBar } from "@/components/ui/chocolate-bar";
