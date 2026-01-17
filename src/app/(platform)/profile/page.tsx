@@ -1,9 +1,8 @@
 "use client";
 
 import { useAuthUser } from "@/lib/privy/hooks";
-import { mockCreators, mockVideos } from "@/lib/utils/mock-data";
 import Image from "next/image";
-import { FiUser, FiEdit2, FiLink2, FiLogIn } from "react-icons/fi";
+import { FiUser, FiEdit2, FiLogIn } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { VideoCard } from "@/components/video/video-card";
@@ -13,7 +12,7 @@ import { Creator } from "@/types";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle, farcasterHandle } = useAuthUser();
+  const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle } = useAuthUser();
   const [activeTab, setActiveTab] = useState<"videos" | "about">("videos");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);

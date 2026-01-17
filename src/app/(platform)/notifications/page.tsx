@@ -83,7 +83,7 @@ export default function NotificationsPage() {
             </div>
             <h2 className="text-2xl font-bold text-gray-300 mb-2">No notifications yet</h2>
             <p className="text-gray-500 max-w-md">
-              When you receive tips, follows, or comments, they'll appear here.
+              When you receive tips, follows, or comments, they&apos;ll appear here.
             </p>
           </div>
         ) : (

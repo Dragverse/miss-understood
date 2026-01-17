@@ -4,17 +4,16 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft } from "react-icons/fi";
 import { FaInstagram, FaTiktok } from "react-icons/fa";
-import { SiBluesky } from "react-icons/si";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { Creator } from "@/types";
 import { uploadBanner, uploadAvatar, getImageDataURL } from "@/lib/livepeer/upload-image";
-import { createOrUpdateCreator, getCreatorByDID } from "@/lib/ceramic/creators";
+import { getCreatorByDID } from "@/lib/ceramic/creators";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle, farcasterHandle } = useAuthUser();
+  const { isAuthenticated, isReady, userHandle, userEmail, user, instagramHandle, tiktokHandle, farcasterHandle } = useAuthUser();
 
   const [activeSection, setActiveSection] = useState<"profile" | "accounts">("profile");
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
