@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiHeart, FiMessageCircle, FiExternalLink, FiBookmark } from "react-icons/fi";
+import { FiHeart, FiMessageCircle, FiExternalLink, FiBookmark, FiUserPlus, FiUserCheck } from "react-icons/fi";
+import { parseTextWithLinks } from "@/lib/text-parser";
+import { CommentModal } from "./comment-modal";
 
 interface PostCardProps {
   post: {
@@ -12,6 +14,7 @@ interface PostCardProps {
       displayName: string;
       handle: string;
       avatar: string;
+      did?: string; // Bluesky DID for following
     };
     description: string;
     thumbnail?: string;
@@ -28,6 +31,9 @@ export function PostCard({ post }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [isLiking, setIsLiking] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
 
   const formattedDate = new Date(post.createdAt).toLocaleDateString("en-US", {
     month: "short",
@@ -35,7 +41,7 @@ export function PostCard({ post }: PostCardProps) {
     year: "numeric",
   });
 
-  // Check bookmark and like status on mount
+  // Check bookmark, like, and follow status on mount
   useEffect(() => {
     const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
     setIsBookmarked(bookmarks.includes(post.id));
@@ -43,7 +49,13 @@ export function PostCard({ post }: PostCardProps) {
     // Check if user has liked this post (stored locally)
     const likes = JSON.parse(localStorage.getItem("dragverse_likes") || "[]");
     setIsLiked(likes.includes(post.id));
-  }, [post.id]);
+
+    // Check if user is following this creator (stored locally)
+    if (post.creator.did) {
+      const following = JSON.parse(localStorage.getItem("dragverse_following") || "[]");
+      setIsFollowing(following.includes(post.creator.did));
+    }
+  }, [post.id, post.creator.did]);
 
   const toggleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -122,8 +134,49 @@ export function PostCard({ post }: PostCardProps) {
     window.dispatchEvent(new Event("storage"));
   };
 
+  const toggleFollow = async (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    if (!post.creator.did) return;
+
+    setIsFollowLoading(true);
+    try {
+      const response = await fetch("/api/bluesky/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          did: post.creator.did,
+          action: isFollowing ? "unfollow" : "follow",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update local state
+        const following = JSON.parse(localStorage.getItem("dragverse_following") || "[]");
+        if (isFollowing) {
+          const updated = following.filter((did: string) => did !== post.creator.did);
+          localStorage.setItem("dragverse_following", JSON.stringify(updated));
+          setIsFollowing(false);
+        } else {
+          following.push(post.creator.did);
+          localStorage.setItem("dragverse_following", JSON.stringify(following));
+          setIsFollowing(true);
+        }
+      } else {
+        console.error("Failed to follow/unfollow:", data.error);
+      }
+    } catch (error) {
+      console.error("Error following/unfollowing:", error);
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
+
   return (
-    <div className="bg-[#1a0b2e] border border-[#2f2942] rounded-xl p-6 hover:border-[#EB83EA]/30 transition">
+    <>
+      <div className="bg-[#1a0b2e] border border-[#2f2942] rounded-xl p-6 hover:border-[#EB83EA]/30 transition">
       {/* Author */}
       <div className="flex items-start gap-3 mb-4">
         <Link href={`/profile/${post.creator.handle}`}>
@@ -144,13 +197,38 @@ export function PostCard({ post }: PostCardProps) {
           </Link>
           <p className="text-sm text-gray-400">@{post.creator.handle}</p>
         </div>
-        <span className="text-xs text-gray-500">{formattedDate}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500">{formattedDate}</span>
+          {post.creator.did && (
+            <button
+              onClick={toggleFollow}
+              disabled={isFollowLoading}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                isFollowing
+                  ? "bg-white/10 text-gray-300 hover:bg-white/20"
+                  : "bg-[#EB83EA] text-white hover:bg-[#E748E6]"
+              } ${isFollowLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {isFollowing ? (
+                <>
+                  <FiUserCheck className="w-4 h-4" />
+                  <span>Following</span>
+                </>
+              ) : (
+                <>
+                  <FiUserPlus className="w-4 h-4" />
+                  <span>Follow</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Content */}
-      <p className="text-gray-200 mb-4 whitespace-pre-wrap leading-relaxed">
-        {post.description}
-      </p>
+      <div className="text-gray-200 mb-4 whitespace-pre-wrap leading-relaxed">
+        {parseTextWithLinks(post.description)}
+      </div>
 
       {/* Images */}
       {post.thumbnail && (
@@ -177,7 +255,10 @@ export function PostCard({ post }: PostCardProps) {
           <FiHeart className={`w-5 h-5 ${isLiked ? "fill-current" : ""}`} />
           <span>{likeCount.toLocaleString()}</span>
         </button>
-        <button className="flex items-center gap-2 hover:text-blue-400 transition-colors">
+        <button
+          onClick={() => setIsCommentModalOpen(true)}
+          className="flex items-center gap-2 hover:text-blue-400 transition-colors"
+        >
           <FiMessageCircle className="w-5 h-5" />
           <span>Comment</span>
         </button>
@@ -203,5 +284,20 @@ export function PostCard({ post }: PostCardProps) {
         )}
       </div>
     </div>
+
+    {/* Comment Modal */}
+    {post.uri && post.cid && (
+      <CommentModal
+        isOpen={isCommentModalOpen}
+        onClose={() => setIsCommentModalOpen(false)}
+        postUri={post.uri}
+        postCid={post.cid}
+        postAuthor={{
+          displayName: post.creator.displayName,
+          handle: post.creator.handle,
+        }}
+      />
+    )}
+    </>
   );
 }
