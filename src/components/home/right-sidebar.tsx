@@ -7,33 +7,26 @@ import {
   FiUser,
   FiCheck,
   FiCircle,
-  FiUserPlus,
-  FiEye,
   FiAward,
   FiGlobe,
+  FiVideo,
 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
-import { mockCreators } from "@/lib/utils/mock-data";
 
 export function RightSidebar() {
   const { authenticated } = usePrivy();
 
-  // Get some creators to suggest
-  // TODO: Replace with real creator discovery from Ceramic when available
-  // For now, showing mock creators as suggestions is acceptable since these are OTHER users
-  const suggestedCreators = mockCreators.slice(0, 3);
-
   return (
     <aside className="hidden lg:block space-y-6">
-      {/* Beta Notice */}
-      <div className="p-6 rounded-[24px] bg-amber-900/20 border border-amber-900/30">
-        <div className="flex items-center gap-3 mb-3 text-amber-400">
+      {/* Platform Status */}
+      <div className="p-6 rounded-[24px] bg-purple-900/20 border border-purple-900/30">
+        <div className="flex items-center gap-3 mb-3 text-purple-400">
           <FiAlertTriangle className="w-5 h-5" />
-          <h3 className="font-bold text-lg">Beta Phase</h3>
+          <h3 className="font-bold text-lg">Early Access</h3>
         </div>
-        <p className="text-sm text-amber-300/80 leading-relaxed">
-          The Dragverse is currently in beta. We&apos;re polishing the stage for
-          you. Thanks for your patience!
+        <p className="text-sm text-purple-300/80 leading-relaxed">
+          Upload videos, build your profile, and explore content from Bluesky.
+          More features coming soon!
         </p>
       </div>
 
@@ -124,52 +117,29 @@ export function RightSidebar() {
         </Link>
       </div>
 
-      {/* Connect */}
+      {/* Discover Creators */}
       <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
-        <h2 className="font-bold text-lg uppercase tracking-widest mb-6">
-          Connect
-        </h2>
-
-        <div className="space-y-4">
-          {suggestedCreators.map((creator) => (
-            <div key={creator.did} className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] p-0.5">
-                  <Image
-                    src={creator.avatar}
-                    alt={creator.displayName}
-                    width={40}
-                    height={40}
-                    className="w-full h-full object-cover rounded-full border-2 border-[#1a0b2e]"
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold">
-                      {creator.displayName}
-                    </span>
-                    {creator.verified && (
-                      <span className="text-[#EB83EA] text-xs">✓</span>
-                    )}
-                  </div>
-                  <Link
-                    href={`/creator/${creator.handle}`}
-                    className="text-xs text-[#EB83EA] font-bold hover:underline"
-                  >
-                    View Profile
-                  </Link>
-                </div>
-              </div>
-              <button className="w-8 h-8 rounded-full bg-white/5 hover:bg-[#EB83EA] hover:text-white transition-all flex items-center justify-center">
-                <FiUserPlus className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+        <div className="flex items-center gap-3 mb-4">
+          <FiVideo className="text-[#EB83EA] w-5 h-5" />
+          <h2 className="font-bold text-lg uppercase tracking-widest">
+            Discover
+          </h2>
         </div>
 
-        <button className="w-full mt-6 py-3 text-sm font-bold text-gray-400 hover:text-white transition-colors border-t border-[#2f2942] flex items-center justify-center gap-2">
-          <FiEye className="w-4 h-4" /> Show more
-        </button>
+        <div className="text-center py-6">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
+            <FiVideo className="w-8 h-8 text-[#EB83EA]" />
+          </div>
+          <p className="text-sm text-gray-400 mb-4">
+            Discover creators from the Videos feed and Bluesky integration
+          </p>
+          <Link
+            href="/videos"
+            className="inline-block px-6 py-2 bg-[#EB83EA] text-white text-sm font-bold rounded-full hover:bg-[#E748E6] transition-all"
+          >
+            Browse Videos
+          </Link>
+        </div>
       </div>
     </aside>
   );

@@ -1,200 +1,77 @@
 "use client";
 
-import { mockCreators, mockVideos } from "@/lib/utils/mock-data";
-import Image from "next/image";
-import { FiUser, FiUserPlus, FiMail, FiLink2 } from "react-icons/fi";
-import { useState } from "react";
-import { VideoCard } from "@/components/video/video-card";
-import { LivestreamEmbed } from "@/components/profile/livestream-embed";
+import Link from "next/link";
+import { FiUser, FiVideo, FiArrowLeft } from "react-icons/fi";
+import { use } from "react";
 
-export default function ProfilePage({
+export default function CreatorPage({
   params,
 }: {
-  params: { handle: string };
+  params: Promise<{ handle: string }>;
 }) {
-  const creator = mockCreators.find(
-    (c) => c.handle.split(".")[0] === params.handle
-  ) || mockCreators[0];
-  const creatorVideos = mockVideos.filter((v) => v.creator.did === creator.did);
-
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"videos" | "about">("videos");
+  const { handle } = use(params);
 
   return (
-    <div>
-      {/* Cover Section - Marsha v2 Style */}
-      <div className="relative h-44 md:h-[20vw] ultrawide:h-[25vh] bg-[#EB83EA] bg-cover bg-center bg-no-repeat overflow-hidden">
-        <Image
-          src={`https://api.dicebear.com/7.x/patterns/svg?seed=${creator.handle}&backgroundColor=EB83EA`}
-          alt="banner"
-          fill
-          className="object-cover"
-          priority
-        />
-      </div>
+    <div className="container mx-auto max-w-4xl px-4 py-16">
+      <div className="text-center">
+        {/* Back Button */}
+        <Link
+          href="/videos"
+          className="inline-flex items-center gap-2 text-[#EB83EA] hover:text-[#E748E6] transition mb-8"
+        >
+          <FiArrowLeft className="w-5 h-5" />
+          Back to Videos
+        </Link>
 
-      <div className="container mx-auto max-w-screen-xl px-2 xl:px-0">
-        {/* Profile Header */}
-        <div className="relative -mt-16 mb-6">
-          <div className="flex flex-wrap justify-between items-end gap-4">
-            {/* Avatar & Basic Info */}
-            <div className="flex items-end gap-4">
-              <Image
-                src={creator.avatar}
-                alt={creator.displayName}
-                width={128}
-                height={128}
-                className="size-24 laptop:size-32 rounded-small border-2 border-white dark:bg-[#100c1f] bg-white shadow-2xl"
-              />
-              <div className="flex-1 pb-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-2xl md:text-3xl font-bold text-[#FCF1FC]">
-                    {creator.displayName}
-                  </h1>
-                  {creator.verified && (
-                    <svg
-                      className="w-5 h-5 text-[#EB83EA]"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                    </svg>
-                  )}
-                </div>
-                <p className="text-[#EB83EA] text-base">@{creator.handle}</p>
-              </div>
-            </div>
+        {/* Icon */}
+        <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
+          <FiUser className="w-12 h-12 text-[#EB83EA]" />
+        </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3 pb-2">
-              <button
-                onClick={() => setIsFollowing(!isFollowing)}
-                className={`px-6 py-2 rounded-lg font-medium transition flex items-center gap-2 ${
-                  isFollowing
-                    ? "bg-[#18122D] text-[#FCF1FC] hover:bg-[#2f2942]"
-                    : "bg-[#EB83EA] text-white hover:bg-[#E748E6]"
-                }`}
-              >
-                <FiUserPlus className="w-5 h-5" />
-                {isFollowing ? "Following" : "Follow"}
-              </button>
-              <button className="px-6 py-2 bg-[#18122D] text-[#FCF1FC] rounded-lg font-medium hover:bg-[#2f2942] transition flex items-center gap-2">
-                <FiMail className="w-5 h-5" />
-                Message
-              </button>
+        {/* Title */}
+        <h1 className="text-3xl font-bold text-[#FCF1FC] mb-4">
+          Creator Profile: @{handle}
+        </h1>
+
+        {/* Message */}
+        <p className="text-gray-400 text-lg mb-6 max-w-2xl mx-auto">
+          Individual creator profiles are coming soon! We&apos;re building a comprehensive
+          creator discovery system with Bluesky integration.
+        </p>
+
+        {/* Info Box */}
+        <div className="bg-[#18122D] border border-[#2f2942] rounded-xl p-6 max-w-xl mx-auto mb-8">
+          <div className="flex items-start gap-4 text-left">
+            <FiVideo className="w-6 h-6 text-[#EB83EA] flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="font-semibold text-[#FCF1FC] mb-2">
+                In the meantime
+              </h3>
+              <p className="text-sm text-gray-400">
+                Browse all videos from creators on the Videos page, including content
+                from the Bluesky drag community. Follow creators and discover amazing
+                performances!
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Livestream Embed (if active) */}
-        <LivestreamEmbed
-          creatorDID={creator.did}
-          creatorName={creator.displayName}
-        />
-
-        {/* Bio & Stats */}
-        <div className="mb-6">
-          <p className="text-[#FCF1FC] mb-4 max-w-3xl line-clamp-5">
-            {creator.description}
-          </p>
-          <div className="flex gap-6 text-sm">
-            <div>
-              <span className="font-bold text-lg text-[#FCF1FC]">
-                {(creator.followerCount / 1000).toFixed(0)}K
-              </span>
-              <span className="text-gray-400 ml-2">Followers</span>
-            </div>
-            <div>
-              <span className="font-bold text-lg text-[#FCF1FC]">
-                {creatorVideos.length}
-              </span>
-              <span className="text-gray-400 ml-2">Videos</span>
-            </div>
-            <div>
-              <span className="font-bold text-lg text-[#FCF1FC]">
-                {(creator.followingCount / 1000).toFixed(1)}K
-              </span>
-              <span className="text-gray-400 ml-2">Following</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-8 border-b border-[#2f2942] mb-8">
-          <button
-            onClick={() => setActiveTab("videos")}
-            className={`pb-3 font-semibold transition ${
-              activeTab === "videos"
-                ? "border-b-2 border-[#EB83EA] text-[#FCF1FC]"
-                : "text-gray-400 hover:text-[#FCF1FC]"
-            }`}
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Link
+            href="/videos"
+            className="px-8 py-3 bg-[#EB83EA] text-white rounded-lg font-semibold hover:bg-[#E748E6] transition inline-flex items-center justify-center gap-2"
           >
-            Videos ({creatorVideos.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("about")}
-            className={`pb-3 font-semibold transition ${
-              activeTab === "about"
-                ? "border-b-2 border-[#EB83EA] text-[#FCF1FC]"
-                : "text-gray-400 hover:text-[#FCF1FC]"
-            }`}
+            <FiVideo className="w-5 h-5" />
+            Browse All Videos
+          </Link>
+          <Link
+            href="/"
+            className="px-8 py-3 bg-[#18122D] border border-[#2f2942] text-[#FCF1FC] rounded-lg font-semibold hover:bg-[#2f2942] transition"
           >
-            About
-          </button>
+            Go to Home
+          </Link>
         </div>
-
-        {/* Content */}
-        {activeTab === "videos" && (
-          <div>
-            {creatorVideos.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {creatorVideos.map((video) => (
-                  <VideoCard key={video.id} video={video} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 bg-[#18122D] rounded-lg">
-                <FiUser className="w-12 h-12 mx-auto mb-4 text-gray-600" />
-                <p className="text-gray-400">This creator has not uploaded yet</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "about" && (
-          <div className="max-w-2xl">
-            <div className="bg-[#18122D] p-6 rounded-lg space-y-4">
-              <div>
-                <h3 className="font-semibold mb-2 text-[#FCF1FC]">Bio</h3>
-                <p className="text-gray-400">{creator.description}</p>
-              </div>
-              <div className="border-t border-[#2f2942] pt-4">
-                <h3 className="font-semibold mb-3 text-[#FCF1FC]">Links</h3>
-                <div className="space-y-2">
-                  <a
-                    href={`https://bsky.app/profile/${creator.handle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-[#EB83EA] hover:text-[#E748E6]"
-                  >
-                    <FiLink2 className="w-4 h-4" />
-                    Bluesky Profile
-                  </a>
-                </div>
-              </div>
-              <div className="border-t border-[#2f2942] pt-4">
-                <h3 className="font-semibold mb-2 text-[#FCF1FC]">Joined</h3>
-                <p className="text-gray-400">
-                  {creator.createdAt.toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
