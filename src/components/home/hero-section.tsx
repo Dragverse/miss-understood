@@ -6,11 +6,16 @@ import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { HeroSlider } from "./hero-slider";
 
-const STREAM_URL = "https://livepeercdn.studio/hls/fb7fdq50qnczbi4u/index.m3u8";
-
 export function HeroSection() {
-  const [isLive, setIsLive] = useState(false);
+  const [streamInfo, setStreamInfo] = useState<{
+    isLive: boolean;
+    playbackId?: string;
+    playbackUrl?: string;
+  }>({
+    isLive: false,
+  });
   const [checkingStream, setCheckingStream] = useState(true);
+  const [playerError, setPlayerError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if stream is live using backend API
@@ -23,26 +28,32 @@ export function HeroSection() {
           }
         });
         const data = await response.json();
-        const wasLive = isLive;
+        const wasLive = streamInfo.isLive;
         const nowLive = data.isLive || false;
 
-        setIsLive(nowLive);
+        setStreamInfo({
+          isLive: nowLive,
+          playbackId: data.playbackId || process.env.NEXT_PUBLIC_OFFICIAL_PLAYBACK_ID || 'fb7fdq50qnczbi4u',
+          playbackUrl: data.playbackUrl,
+        });
 
-        // Log status changes
+        // Clear error when stream status changes
         if (wasLive !== nowLive) {
+          setPlayerError(null);
           console.log(`Stream status changed: ${wasLive ? 'LIVE' : 'OFFLINE'} → ${nowLive ? 'LIVE' : 'OFFLINE'}`);
         }
 
         // Log debug info
         console.log('Stream status:', {
           isLive: nowLive,
+          playbackId: data.playbackId,
           method: data.method,
           reason: data.reason,
           fallback: data.fallback
         });
       } catch (error) {
         console.error("Failed to check stream status:", error);
-        setIsLive(false);
+        setStreamInfo({ isLive: false });
       } finally {
         setCheckingStream(false);
       }
@@ -52,7 +63,7 @@ export function HeroSection() {
     // Re-check every 10 seconds for more responsive status updates
     const interval = setInterval(checkStream, 10000);
     return () => clearInterval(interval);
-  }, [isLive]); // Include isLive in deps to track changes
+  }, [streamInfo.isLive]); // Include streamInfo.isLive in deps to track changes
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -66,10 +77,10 @@ export function HeroSection() {
         {/* Status Badge */}
         {!checkingStream && (
           <div className={`absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full ${
-            isLive ? 'bg-[#4CAF50]' : 'bg-[#C62828]'
+            streamInfo.isLive ? 'bg-[#4CAF50]' : 'bg-[#C62828]'
           }`}>
-            <span className={`w-2 h-2 bg-white rounded-full ${isLive ? 'animate-pulse' : ''}`} />
-            <span className="text-xs font-bold uppercase text-white">{isLive ? 'Live' : 'Offline'}</span>
+            <span className={`w-2 h-2 bg-white rounded-full ${streamInfo.isLive ? 'animate-pulse' : ''}`} />
+            <span className="text-xs font-bold uppercase text-white">{streamInfo.isLive ? 'Live' : 'Offline'}</span>
           </div>
         )}
 
@@ -78,20 +89,38 @@ export function HeroSection() {
           <div className="absolute inset-0 flex items-center justify-center bg-[#1a0b2e]">
             <div className="w-8 h-8 border-2 border-[#EB83EA] border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : isLive ? (
+        ) : streamInfo.isLive ? (
           // Live stream player
-          <Player.Root src={getSrc(STREAM_URL)} autoPlay>
-            <Player.Container className="h-full">
-              <Player.Video className="w-full h-full object-cover" />
-              <Player.Controls autoHide={3000} className="p-4">
-                <div className="flex items-center gap-2">
-                  <Player.PlayPauseTrigger className="w-10 h-10 flex items-center justify-center bg-white/20 rounded-full hover:bg-white/30 transition" />
-                  <Player.MuteTrigger className="w-10 h-10 flex items-center justify-center bg-white/20 rounded-full hover:bg-white/30 transition" />
-                  <Player.FullscreenTrigger className="ml-auto w-10 h-10 flex items-center justify-center bg-white/20 rounded-full hover:bg-white/30 transition" />
+          <div className="relative h-full">
+            <Player.Root
+              src={getSrc(streamInfo.playbackUrl || `https://livepeercdn.studio/hls/${streamInfo.playbackId}/index.m3u8`)}
+              autoPlay
+              onError={(error) => {
+                console.error('Livepeer player error:', error);
+                setPlayerError('Unable to load stream. Please try again.');
+              }}
+            >
+              <Player.Container className="h-full">
+                <Player.Video className="w-full h-full object-cover" />
+                <Player.Controls autoHide={3000} className="p-4">
+                  <div className="flex items-center gap-2">
+                    <Player.PlayPauseTrigger className="w-10 h-10 flex items-center justify-center bg-white/20 rounded-full hover:bg-white/30 transition" />
+                    <Player.MuteTrigger className="w-10 h-10 flex items-center justify-center bg-white/20 rounded-full hover:bg-white/30 transition" />
+                    <Player.FullscreenTrigger className="ml-auto w-10 h-10 flex items-center justify-center bg-white/20 rounded-full hover:bg-white/30 transition" />
+                  </div>
+                </Player.Controls>
+              </Player.Container>
+            </Player.Root>
+
+            {/* Error Display */}
+            {playerError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                <div className="bg-red-500/20 border border-red-500/40 rounded-lg p-4 max-w-sm mx-4">
+                  <p className="text-red-300 text-sm text-center">{playerError}</p>
                 </div>
-              </Player.Controls>
-            </Player.Container>
-          </Player.Root>
+              </div>
+            )}
+          </div>
         ) : (
           // Offline placeholder
           <div className="absolute inset-0">

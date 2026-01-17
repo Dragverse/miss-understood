@@ -26,6 +26,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.bsky.app",
+      },
     ],
   },
   // Security headers (moved from deprecated middleware.ts)

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 const LIVEPEER_API_URL = "https://livepeer.studio/api";
 // Use environment variable or fallback to extracting from HLS URL
-const OFFICIAL_STREAM_ID = process.env.OFFICIAL_STREAM_ID || "fb7fdq50-qncz-bi4u-0000-000000000000";
+const OFFICIAL_STREAM_ID = process.env.OFFICIAL_STREAM_ID || "fb7f1684-1b1a-4779-a4fd-2397bc714b96";
 const OFFICIAL_PLAYBACK_ID = process.env.OFFICIAL_PLAYBACK_ID || "fb7fdq50qnczbi4u";
+const STREAM_URL = `https://livepeercdn.studio/hls/${OFFICIAL_PLAYBACK_ID}/index.m3u8`;
 
 export async function GET() {
   try {
@@ -40,8 +41,11 @@ export async function GET() {
       isLive: streamData.isActive || false,
       streamId: OFFICIAL_STREAM_ID,
       playbackId: streamData.playbackId || OFFICIAL_PLAYBACK_ID,
+      playbackUrl: `https://livepeercdn.studio/hls/${streamData.playbackId || OFFICIAL_PLAYBACK_ID}/index.m3u8`,
       viewerCount: streamData.viewerCount || 0,
       startedAt: streamData.lastSeen || null,
+      method: "Livepeer API",
+      fallback: false,
     });
   } catch (error) {
     console.error("Error checking stream status:", error);
@@ -71,6 +75,7 @@ async function fallbackHLSCheck() {
         fallback: true,
         streamId: OFFICIAL_STREAM_ID,
         playbackId: OFFICIAL_PLAYBACK_ID,
+        playbackUrl: STREAM_URL,
         method: "HLS manifest check",
         reason: "Manifest not found"
       });
@@ -103,6 +108,7 @@ async function fallbackHLSCheck() {
       fallback: true,
       streamId: OFFICIAL_STREAM_ID,
       playbackId: OFFICIAL_PLAYBACK_ID,
+      playbackUrl: STREAM_URL,
       method: "HLS manifest content check",
       reason: isLive ? "Active stream detected" : "No active stream"
     });
@@ -113,6 +119,7 @@ async function fallbackHLSCheck() {
       fallback: true,
       streamId: OFFICIAL_STREAM_ID,
       playbackId: OFFICIAL_PLAYBACK_ID,
+      playbackUrl: STREAM_URL,
       error: "Failed to check stream status",
     });
   }
