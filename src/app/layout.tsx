@@ -30,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${donutHole.variable} ${parkinsans.variable} font-sans antialiased`}>
+      <body className={`${donutHole.variable} ${parkinsans.variable} font-parkinsans antialiased`}>
         <Providers>
           <Layout>{children}</Layout>
         </Providers>
