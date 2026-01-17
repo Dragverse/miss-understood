@@ -194,10 +194,10 @@ export async function getDragAccountsPosts(
 
 /**
  * Convert Bluesky post to our Video format
- * Only includes posts with video embeds or external video links
+ * Includes posts with video embeds, external video links, or images (treated as content)
  */
 export function blueskyPostToVideo(post: BlueskyPost): any | null {
-  // Check if post has video content
+  // Check if post has video content or images
   const hasVideo =
     post.embed?.video ||
     (post.embed?.external &&
@@ -206,7 +206,10 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
         post.embed.external.uri.includes("vimeo") ||
         post.embed.external.uri.includes("tiktok")));
 
-  if (!hasVideo) {
+  const hasImages = post.embed?.images && post.embed.images.length > 0;
+
+  // Accept posts with video OR images (drag content often shared as images)
+  if (!hasVideo && !hasImages) {
     return null;
   }
 
@@ -220,6 +223,10 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
   } else if (post.embed?.external) {
     playbackUrl = post.embed.external.uri;
     thumbnail = post.embed.external.thumb || "";
+  } else if (hasImages) {
+    // For image posts, use first image as thumbnail and link to Bluesky post
+    thumbnail = post.embed!.images![0].fullsize;
+    playbackUrl = `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split("/").pop()}`;
   }
 
   // Generate a unique ID from the post URI

@@ -40,7 +40,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      videos,
+      posts: videos, // Pages expect "posts" field
+      videos, // Keep both for compatibility
       count: videos.length,
       source: "bluesky",
     });
