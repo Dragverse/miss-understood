@@ -9,9 +9,10 @@ import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { TipModal } from "@/components/video/tip-modal";
 import { ChocolateBar } from "@/components/ui/chocolate-bar";
-import { getVideo } from "@/lib/ceramic/videos";
+import { getVideo, getVideos } from "@/lib/ceramic/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
+import { getLocalVideos } from "@/lib/utils/local-storage";
 
 export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
@@ -21,6 +22,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   const [isLiked, setIsLiked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [tipModalOpen, setTipModalOpen] = useState(false);
+  const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
 
   // Fetch video from Ceramic or use mock data
   useEffect(() => {
@@ -85,6 +87,59 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
 
     loadVideo();
   }, [resolvedParams.id]);
+
+  // Load related videos from various sources
+  useEffect(() => {
+    async function loadRelatedVideos() {
+      const allVideos: Video[] = [];
+
+      // Try Ceramic first
+      try {
+        const ceramicResult = await getVideos(20);
+        if (ceramicResult && ceramicResult.videos?.length > 0) {
+          allVideos.push(...ceramicResult.videos);
+        }
+      } catch (error) {
+        console.warn("Ceramic unavailable for related videos");
+      }
+
+      // Fetch from Bluesky
+      try {
+        const blueskyResponse = await fetch("/api/bluesky/feed?limit=10");
+        if (blueskyResponse.ok) {
+          const blueskyData = await blueskyResponse.json();
+          if (blueskyData.posts) {
+            allVideos.push(...blueskyData.posts);
+          }
+        }
+      } catch (error) {
+        console.warn("Bluesky unavailable for related videos");
+      }
+
+      // Add local uploads
+      const localVideos = getLocalVideos();
+      allVideos.push(...localVideos);
+
+      // Filter out current video and same content type
+      const related = allVideos
+        .filter((v) => v.id !== resolvedParams.id && v.contentType === video?.contentType)
+        .slice(0, 5);
+
+      // If not enough related videos, use any videos
+      if (related.length < 5) {
+        const additional = allVideos
+          .filter((v) => v.id !== resolvedParams.id && !related.includes(v))
+          .slice(0, 5 - related.length);
+        related.push(...additional);
+      }
+
+      setRelatedVideos(related);
+    }
+
+    if (video) {
+      loadRelatedVideos();
+    }
+  }, [resolvedParams.id, video]);
 
   if (isLoading) {
     return (
@@ -282,10 +337,8 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         <div className="lg:col-span-1">
           <h3 className="font-bold text-lg mb-4">Up Next</h3>
           <div className="space-y-4">
-            {mockVideos
-              .filter((v) => v.id !== video.id)
-              .slice(0, 5)
-              .map((v) => (
+            {relatedVideos.length > 0 ? (
+              relatedVideos.map((v) => (
                 <Link
                   key={v.id}
                   href={`/watch/${v.id}`}
@@ -293,7 +346,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 >
                   <div className="relative w-28 h-16 flex-shrink-0 rounded bg-gray-800">
                     <Image
-                      src={v.thumbnail}
+                      src={v.thumbnail || `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`}
                       alt={v.title}
                       fill
                       className="object-cover rounded"
@@ -311,7 +364,15 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                     </p>
                   </div>
                 </Link>
-              ))}
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                <p>No related videos available</p>
+                <Link href="/videos" className="text-purple-400 hover:underline mt-2 block">
+                  Browse all videos
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

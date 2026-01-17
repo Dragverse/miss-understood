@@ -8,7 +8,8 @@ import { useRouter } from "next/navigation";
 import { VideoCard } from "@/components/video/video-card";
 import { SocialLinks } from "@/components/profile/social-links";
 import { getCreatorByDID } from "@/lib/ceramic/creators";
-import { Creator } from "@/types";
+import { Creator, Video } from "@/types";
+import { getLocalVideos } from "@/lib/utils/local-storage";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"videos" | "about">("videos");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [userVideos, setUserVideos] = useState<Video[]>([]);
 
   // Fetch creator profile from Ceramic
   useEffect(() => {
@@ -89,6 +91,11 @@ export default function ProfilePage() {
     }
   }, [isAuthenticated, user?.id]);
 
+  // Load user's uploaded videos from localStorage
+  useEffect(() => {
+    const localVideos = getLocalVideos();
+    setUserVideos(localVideos);
+  }, []);
 
   // Show loading state while auth is initializing
   if (!isReady || (isAuthenticated && isLoadingProfile)) {
@@ -134,9 +141,8 @@ export default function ProfilePage() {
     );
   }
 
-  // TODO: Replace with real video data from Ceramic when available
-  // For now, show empty state since this is the user's real profile
-  const creatorVideos: any[] = [];
+  // Use videos from localStorage (uploaded by user)
+  const creatorVideos = userVideos;
 
   return (
     <div>
