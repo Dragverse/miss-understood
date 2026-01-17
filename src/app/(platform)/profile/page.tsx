@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
 import { SocialLinks } from "@/components/profile/social-links";
+import { BlueskyBadge } from "@/components/profile/bluesky-badge";
 import { getCreatorByDID } from "@/lib/ceramic/creators";
 import { Creator, Video } from "@/types";
 import { getLocalVideos } from "@/lib/utils/local-storage";
@@ -165,6 +166,9 @@ export default function ProfilePage() {
               banner: data.profile.banner || prev.banner,
               // Use Bluesky description if no custom description set
               description: data.profile.description || prev.description,
+              // Add Bluesky follower counts
+              followerCount: data.profile.followersCount || prev.followerCount,
+              followingCount: data.profile.followsCount || prev.followingCount,
               // Add Bluesky handle for profile linking
               blueskyHandle: data.profile.handle,
             };
@@ -280,17 +284,9 @@ export default function ProfilePage() {
                 </div>
                 <p className="text-[#EB83EA] text-base">@{userHandle}</p>
                 {creator.blueskyHandle && (
-                  <a
-                    href={`https://bsky.app/profile/${creator.blueskyHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-400 hover:text-blue-300 transition inline-flex items-center gap-1"
-                  >
-                    View Bluesky Profile
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </a>
+                  <div className="mt-2">
+                    <BlueskyBadge handle={creator.blueskyHandle} />
+                  </div>
                 )}
               </div>
             </div>
@@ -318,7 +314,12 @@ export default function ProfilePage() {
               <span className="font-bold text-lg text-[#FCF1FC]">
                 {(creator.followerCount / 1000).toFixed(0)}K
               </span>
-              <span className="text-gray-400 ml-2">Followers</span>
+              <span className="text-gray-400 ml-2">
+                Followers
+                {creator.followerCount > 0 && blueskyProfile && (
+                  <span className="text-xs text-blue-400 ml-1">(from Bluesky)</span>
+                )}
+              </span>
             </div>
             <div>
               <span className="font-bold text-lg text-[#FCF1FC]">

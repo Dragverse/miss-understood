@@ -100,3 +100,55 @@ export function clearBlueskyCache() {
   cacheTimestamp = null;
   fetchPromise = null;
 }
+
+/**
+ * Hook to fetch any public Bluesky profile by handle
+ * Use this to display external Bluesky accounts on Dragverse
+ *
+ * @param handle - Bluesky handle (e.g., "rupaulsdragrace.bsky.social")
+ * @returns Profile data, loading state
+ */
+export function useBlueskyProfileByHandle(handle: string | null) {
+  const [profile, setProfile] = useState<BlueskyProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!handle) {
+      setProfile(null);
+      setError(null);
+      return;
+    }
+
+    async function fetchProfile() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(`/api/bluesky/profile/${encodeURIComponent(handle)}`);
+        const data = await response.json();
+
+        if (data.success && data.profile) {
+          setProfile(data.profile);
+        } else {
+          setError(data.error || "Failed to fetch profile");
+          setProfile(null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch Bluesky profile:", err);
+        setError("Network error");
+        setProfile(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchProfile();
+  }, [handle]);
+
+  return {
+    profile,
+    isLoading,
+    error,
+  };
+}

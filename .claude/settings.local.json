@@ -37,7 +37,8 @@
       "Bash(node -e \"\nconst { BskyAgent } = require\\(''@atproto/api''\\);\nconst agent = new BskyAgent\\({ service: ''https://bsky.social'' }\\);\n\nagent.login\\({\n  identifier: ''reinasalti.bsky.social'',\n  password: ''ccst-5onn-6tzx-7cdt''\n}\\).then\\(\\(\\) => {\n  console.log\\(''✓ Login successful!''\\);\n  console.log\\(''DID:'', agent.session?.did\\);\n}\\).catch\\(\\(err\\) => {\n  console.log\\(''✗ Login failed''\\);\n  console.log\\(''Error:'', err.message\\);\n  console.log\\(''Status:'', err.status\\);\n}\\);\n\")",
       "Bash(chmod:*)",
       "Bash(node scripts/get-stream-info.js:*)",
-      "Bash(COMMUNITY\" section to show fake content on first load.\n\nChanges:\n- Initialize videos state with empty array instead of mockVideos\n- Add loading state management\n- Remove mockVideos fallback completely\n- Homepage now shows ONLY: Ceramic + Bluesky + Local uploads\n- Empty state handled by CommunitySection component\n\nThis ensures no mock data ever appears on production, even during initial load.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(COMMUNITY\" section to show fake content on first load.\n\nChanges:\n- Initialize videos state with empty array instead of mockVideos\n- Add loading state management\n- Remove mockVideos fallback completely\n- Homepage now shows ONLY: Ceramic + Bluesky + Local uploads\n- Empty state handled by CommunitySection component\n\nThis ensures no mock data ever appears on production, even during initial load.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(xargs:*)"
     ]
   }
 }
