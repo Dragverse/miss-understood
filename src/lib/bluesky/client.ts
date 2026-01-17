@@ -109,6 +109,44 @@ export async function searchDragContent(
       "sherrypoppins.bsky.social",
       "xunamimuse.bsky.social",
       "maddymorphosis.bsky.social",
+      "vandervonodd.bsky.social",
+      "pietraparker.com",
+      "sheacoulee.com",
+      "dragracemexico.bsky.social",
+      "dragrace-brasil.bsky.social",
+      "ramonaslick.bsky.social",
+      "evahdestruction.bsky.social",
+      "notpi.net",
+      "bbdragula.bsky.social",
+      "bouletbrothers.bsky.social",
+      "therealelvira.bsky.social",
+      "rupaulsdragcon.bsky.social",
+      "dragracelive.bsky.social",
+      "dragraceph.bsky.social",
+      "jaidaehall.bsky.social",
+      "thepandoraboxx.bsky.social",
+      "biblegirl666.bsky.social",
+      "theonlydetox.bsky.social",
+      "jasminekennedie.bsky.social",
+      "estrellaxtra.bsky.social",
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       
 
 
@@ -185,7 +223,12 @@ export async function getDragAccountsPosts(
       }
     }
 
-    return allPosts.slice(0, limit);
+    // Calculate engagement scores and sort by engagement
+    allPosts.forEach(post => {
+      (post as any).engagementScore = calculateEngagementScore(post);
+    });
+
+    return sortPostsByEngagement(allPosts).slice(0, limit);
   } catch (error) {
     console.error("Failed to fetch drag accounts posts:", error);
     return [];
@@ -275,4 +318,45 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
     source: "bluesky", // Mark as external content
     externalUrl: `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split("/").pop()}`,
   };
+}
+
+/**
+ * Calculate engagement score for a post
+ * Formula: (likes * 3 + reposts * 2 + replies * 1) * time_decay
+ */
+export function calculateEngagementScore(
+  post: BlueskyPost,
+  timeDecayHours: number = 48
+): number {
+  const likes = post.likeCount || 0;
+  const reposts = post.repostCount || 0;
+  const replies = post.replyCount || 0;
+
+  // Base engagement score (weighted)
+  const baseScore = likes * 3 + reposts * 2 + replies * 1;
+
+  // Time decay factor (newer posts get boost)
+  const postAge = Date.now() - new Date(post.createdAt).getTime();
+  const ageInHours = postAge / (1000 * 60 * 60);
+  const timeDecay = Math.max(0.1, 1 - (ageInHours / timeDecayHours));
+
+  return baseScore * timeDecay;
+}
+
+/**
+ * Sort posts by engagement or recency
+ */
+export function sortPostsByEngagement(
+  posts: BlueskyPost[],
+  sortBy: "engagement" | "recent" = "engagement"
+): BlueskyPost[] {
+  if (sortBy === "recent") {
+    return posts.sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  return posts.sort((a, b) =>
+    calculateEngagementScore(b) - calculateEngagementScore(a)
+  );
 }

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { FiUser, FiEdit2, FiLogIn } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
 import { SocialLinks } from "@/components/profile/social-links";
 import { getCreatorByDID } from "@/lib/ceramic/creators";
@@ -20,6 +21,7 @@ export default function ProfilePage() {
   const [userVideos, setUserVideos] = useState<Video[]>([]);
   const [userPhotos, setUserPhotos] = useState<any[]>([]);
   const [userPosts, setUserPosts] = useState<any[]>([]);
+  const [blueskyProfile, setBlueskyProfile] = useState<any>(null);
 
   // Fetch creator profile from Ceramic
   useEffect(() => {
@@ -102,16 +104,23 @@ export default function ProfilePage() {
   // Load Bluesky photos and posts if user has Bluesky connected
   useEffect(() => {
     async function loadBlueskyContent() {
-      if (!creator?.blueskyHandle) return;
-
       try {
+        // Check session first
+        const sessionResponse = await fetch("/api/bluesky/session");
+        const sessionData = await sessionResponse.json();
+
+        if (!sessionData.connected) {
+          return; // No Bluesky connection
+        }
+
+        // Load feed content
         const response = await fetch("/api/bluesky/feed?limit=50");
         const data = await response.json();
 
         if (data.posts) {
           // Filter for posts from this user
           const userBlueskyPosts = data.posts.filter(
-            (post: any) => post.creator.handle === creator.blueskyHandle
+            (post: any) => post.creator.handle === sessionData.handle
           );
 
           // Separate photos (with images) and text posts (without images/videos)
@@ -130,10 +139,46 @@ export default function ProfilePage() {
       }
     }
 
-    if (creator?.blueskyHandle) {
+    if (isAuthenticated) {
       loadBlueskyContent();
     }
-  }, [creator?.blueskyHandle]);
+  }, [isAuthenticated]);
+
+  // Load Bluesky profile data (banner, bio, etc.)
+  useEffect(() => {
+    async function loadBlueskyProfile() {
+      try {
+        const response = await fetch("/api/bluesky/profile");
+        const data = await response.json();
+
+        if (data.success && data.profile) {
+          setBlueskyProfile(data.profile);
+
+          // Update creator with Bluesky data if available
+          setCreator((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              // Use Bluesky avatar if available and user prefers
+              avatar: data.profile.avatar || prev.avatar,
+              // Use Bluesky banner if available
+              banner: data.profile.banner || prev.banner,
+              // Use Bluesky description if no custom description set
+              description: data.profile.description || prev.description,
+              // Add Bluesky handle for profile linking
+              blueskyHandle: data.profile.handle,
+            };
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load Bluesky profile:", error);
+      }
+    }
+
+    if (isAuthenticated) {
+      loadBlueskyProfile();
+    }
+  }, [isAuthenticated]);
 
   // Show loading state while auth is initializing
   if (!isReady || (isAuthenticated && isLoadingProfile)) {
@@ -234,6 +279,19 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <p className="text-[#EB83EA] text-base">@{userHandle}</p>
+                {creator.blueskyHandle && (
+                  <a
+                    href={`https://bsky.app/profile/${creator.blueskyHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-400 hover:text-blue-300 transition inline-flex items-center gap-1"
+                  >
+                    View Bluesky Profile
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
               </div>
             </div>
 
@@ -363,11 +421,19 @@ export default function ProfilePage() {
             ) : (
               <div className="text-center py-12 bg-[#18122D] rounded-lg">
                 <FiUser className="w-12 h-12 mx-auto mb-4 text-gray-600" />
-                <p className="text-gray-400">
+                <p className="text-gray-400 mb-3">
                   {creator.blueskyHandle
                     ? "No photos posted yet"
-                    : "Connect your Bluesky account in Settings to display photos"}
+                    : "Connect Bluesky to share photos"}
                 </p>
+                {!creator.blueskyHandle && (
+                  <Link
+                    href="/settings"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg font-semibold transition"
+                  >
+                    Connect Bluesky
+                  </Link>
+                )}
               </div>
             )}
           </div>
@@ -410,11 +476,19 @@ export default function ProfilePage() {
             ) : (
               <div className="text-center py-12 bg-[#18122D] rounded-lg">
                 <FiUser className="w-12 h-12 mx-auto mb-4 text-gray-600" />
-                <p className="text-gray-400">
+                <p className="text-gray-400 mb-3">
                   {creator.blueskyHandle
                     ? "No text posts yet"
-                    : "Connect your Bluesky account in Settings to display posts"}
+                    : "Connect Bluesky to share updates"}
                 </p>
+                {!creator.blueskyHandle && (
+                  <Link
+                    href="/settings"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg font-semibold transition"
+                  >
+                    Connect Bluesky
+                  </Link>
+                )}
               </div>
             )}
           </div>

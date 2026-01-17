@@ -11,7 +11,6 @@ import { useAuthUser } from "@/lib/privy/hooks";
 import { Creator } from "@/types";
 import { uploadBanner, uploadAvatar, getImageDataURL } from "@/lib/livepeer/upload-image";
 import { getCreatorByDID } from "@/lib/ceramic/creators";
-import { encryptPassword } from "@/lib/utils/bluesky-auth";
 import { saveLocalProfile, getLocalProfile } from "@/lib/utils/local-storage";
 
 export default function SettingsPage() {
@@ -40,6 +39,8 @@ export default function SettingsPage() {
   const [blueskyHandleInput, setBlueskyHandleInput] = useState("");
   const [appPasswordInput, setAppPasswordInput] = useState("");
   const [blueskyHandle, setBlueskyHandle] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -121,13 +122,25 @@ export default function SettingsPage() {
     }
   }, [isAuthenticated, user?.id]);
 
-  // Load Bluesky credentials from localStorage
+  // Load Bluesky session status
   useEffect(() => {
-    const profile = getLocalProfile();
-    if (profile?.blueskyHandle) {
-      setBlueskyHandle(profile.blueskyHandle);
+    async function checkBlueskySession() {
+      try {
+        const response = await fetch("/api/bluesky/session");
+        const data = await response.json();
+
+        if (data.connected) {
+          setBlueskyHandle(data.handle);
+        }
+      } catch (error) {
+        console.error("Failed to check Bluesky session:", error);
+      }
     }
-  }, []);
+
+    if (isAuthenticated) {
+      checkBlueskySession();
+    }
+  }, [isAuthenticated]);
 
   const handleBannerChange = async (file: File | null) => {
     if (file) {
@@ -257,62 +270,101 @@ export default function SettingsPage() {
   };
 
   const handleConnectBluesky = async () => {
-    if (!blueskyHandleInput.trim()) {
-      toast.error("Please enter your Bluesky handle");
+    // Validation
+    if (!blueskyHandleInput.trim() || !appPasswordInput.trim()) {
+      toast.error("Please enter both handle and app password");
       return;
     }
 
-    if (!appPasswordInput.trim()) {
-      toast.error("Please enter your app password");
-      return;
-    }
+    setIsConnecting(true);
+    setConnectionError(null);
+
+    const toastId = toast.loading("Testing connection to Bluesky...");
 
     try {
-      toast.loading("Connecting Bluesky account...");
+      const response = await fetch("/api/bluesky/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          handle: blueskyHandleInput.trim(),
+          appPassword: appPasswordInput.trim(),
+        }),
+      });
 
-      // Encrypt the app password
-      const encryptedPassword = await encryptPassword(appPasswordInput);
+      const data = await response.json();
 
-      // Get current profile and update with Bluesky credentials
-      const currentProfile = getLocalProfile();
-      const updatedProfile = {
-        ...currentProfile,
-        blueskyHandle: blueskyHandleInput.trim(),
-        blueskyAppPassword: encryptedPassword,
-      };
+      if (!data.success) {
+        toast.dismiss(toastId);
 
-      // Save to localStorage
-      saveLocalProfile(updatedProfile);
+        // Show specific error based on type
+        let errorMessage = data.error;
 
-      // Update state
-      setBlueskyHandle(blueskyHandleInput.trim());
+        if (data.errorType === "INVALID_HANDLE") {
+          errorMessage = "Invalid handle format. Use: username.bsky.social";
+        } else if (data.errorType === "INVALID_PASSWORD") {
+          errorMessage = "Invalid credentials. Create app password at bsky.app/settings/app-passwords";
+        }
+
+        setConnectionError(errorMessage);
+        toast.error(errorMessage, { duration: 5000 });
+        return;
+      }
+
+      // Success!
+      toast.dismiss(toastId);
+      toast.success(`Connected as @${data.handle}!`, { duration: 4000 });
+
+      // Clear old localStorage credentials
+      try {
+        const profile = getLocalProfile();
+        if (profile) {
+          delete profile.blueskyHandle;
+          delete profile.blueskyAppPassword;
+          saveLocalProfile(profile);
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+
+      setBlueskyHandle(data.handle);
       setShowBlueskyModal(false);
       setBlueskyHandleInput("");
       setAppPasswordInput("");
-
-      toast.dismiss();
-      toast.success("Bluesky account connected successfully!");
+      setConnectionError(null);
     } catch (error) {
-      console.error("Bluesky connection error:", error);
-      toast.dismiss();
-      toast.error("Failed to connect Bluesky account");
+      toast.dismiss(toastId);
+      setConnectionError("Network error. Check your connection.");
+      toast.error("Network error. Please try again.");
+    } finally {
+      setIsConnecting(false);
     }
   };
 
-  const handleDisconnectBluesky = () => {
+  const handleDisconnectBluesky = async () => {
     try {
-      const currentProfile = getLocalProfile();
-      const updatedProfile = {
-        ...currentProfile,
-        blueskyHandle: undefined,
-        blueskyAppPassword: undefined,
-      };
+      const response = await fetch("/api/bluesky/session", {
+        method: "DELETE",
+      });
 
-      saveLocalProfile(updatedProfile);
-      setBlueskyHandle(null);
-      toast.success("Bluesky account disconnected");
+      if (response.ok) {
+        // Also clear old localStorage if present
+        try {
+          const profile = getLocalProfile();
+          if (profile) {
+            delete profile.blueskyHandle;
+            delete profile.blueskyAppPassword;
+            saveLocalProfile(profile);
+          }
+        } catch (e) {
+          // Ignore errors
+        }
+
+        setBlueskyHandle(null);
+        toast.success("Bluesky account disconnected");
+      } else {
+        throw new Error("Failed to disconnect");
+      }
     } catch (error) {
-      console.error("Bluesky disconnection error:", error);
       toast.error("Failed to disconnect Bluesky account");
     }
   };
@@ -725,6 +777,12 @@ export default function SettingsPage() {
                           />
                         </div>
 
+                        {connectionError && (
+                          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                            <p className="text-sm text-red-400">{connectionError}</p>
+                          </div>
+                        )}
+
                         <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
                           <p className="text-xs text-blue-400">
                             Create an app password at{" "}
@@ -742,17 +800,20 @@ export default function SettingsPage() {
                         <div className="flex gap-3 mt-6">
                           <button
                             onClick={handleConnectBluesky}
-                            className="flex-1 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg font-semibold transition"
+                            disabled={isConnecting || !blueskyHandleInput.trim() || !appPasswordInput.trim()}
+                            className="flex-1 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
                           >
-                            Connect
+                            {isConnecting ? "Testing Connection..." : "Connect"}
                           </button>
                           <button
                             onClick={() => {
                               setShowBlueskyModal(false);
                               setBlueskyHandleInput("");
                               setAppPasswordInput("");
+                              setConnectionError(null);
                             }}
-                            className="flex-1 py-3 bg-white/5 hover:bg-white/10 rounded-lg font-semibold transition"
+                            disabled={isConnecting}
+                            className="flex-1 py-3 bg-white/5 hover:bg-white/10 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
                           >
                             Cancel
                           </button>

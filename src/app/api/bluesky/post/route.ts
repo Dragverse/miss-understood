@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { BskyAgent } from "@atproto/api";
-import { decryptPassword } from "@/lib/utils/bluesky-auth";
-
-const BLUESKY_SERVICE = "https://bsky.social";
+import { getIronSession } from "iron-session";
+import { sessionOptions, SessionData } from "@/lib/session/config";
+import { getAuthenticatedAgent } from "@/lib/session/bluesky";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { text, images, blueskyHandle, blueskyPassword } = body;
+    const { text, images } = body;
 
-    if (!blueskyHandle || !blueskyPassword) {
+    // Get session
+    const response = NextResponse.next();
+    const session = await getIronSession<SessionData>(
+      request,
+      response,
+      sessionOptions
+    );
+
+    if (!session.bluesky) {
       return NextResponse.json(
-        { error: "Bluesky credentials required" },
-        { status: 400 }
+        {
+          error: "No active Bluesky connection. Please connect in Settings.",
+          requiresConnection: true,
+        },
+        { status: 401 }
       );
     }
 
@@ -23,21 +33,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Decrypt the app password
-    const decryptedPassword = await decryptPassword(blueskyPassword);
+    // Get authenticated agent from session
+    const { agent, error: authError } = await getAuthenticatedAgent(
+      session.bluesky
+    );
 
-    // Create Bluesky agent and login
-    const agent = new BskyAgent({ service: BLUESKY_SERVICE });
-
-    try {
-      await agent.login({
-        identifier: blueskyHandle,
-        password: decryptedPassword,
-      });
-    } catch (error) {
-      console.error("Bluesky login failed:", error);
+    if (authError || !agent) {
       return NextResponse.json(
-        { error: "Failed to authenticate with Bluesky. Please check your credentials." },
+        {
+          error: authError || "Your Bluesky session expired. Please reconnect in Settings.",
+          requiresConnection: true,
+        },
         { status: 401 }
       );
     }

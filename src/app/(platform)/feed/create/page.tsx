@@ -6,30 +6,44 @@ import { FiImage, FiX, FiArrowLeft } from "react-icons/fi";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAuthUser } from "@/lib/privy/hooks";
-import { isBlueskyConnected } from "@/lib/utils/bluesky-auth";
-import { getLocalProfile } from "@/lib/utils/local-storage";
-import { Creator } from "@/types";
 
 export default function CreatePostPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthUser();
-  const [profile, setProfile] = useState<Partial<Creator> | null>(null);
   const [text, setText] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [posting, setPosting] = useState(false);
-
-  const hasBluesky = isBlueskyConnected(profile);
+  const [isBlueskyConnected, setIsBlueskyConnected] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
-    const localProfile = getLocalProfile();
-    setProfile(localProfile);
+    async function checkSession() {
+      try {
+        const response = await fetch("/api/bluesky/session");
+        const data = await response.json();
 
-    if (!localProfile || !isBlueskyConnected(localProfile)) {
-      toast.error("Please connect your Bluesky account first");
-      router.push("/settings");
+        if (!data.connected) {
+          toast.error("Please connect your Bluesky account first");
+          router.push("/settings");
+          return;
+        }
+
+        setIsBlueskyConnected(true);
+      } catch (error) {
+        toast.error("Please connect your Bluesky account");
+        router.push("/settings");
+      } finally {
+        setIsCheckingSession(false);
+      }
     }
-  }, [router]);
+
+    if (isAuthenticated) {
+      checkSession();
+    }
+  }, [isAuthenticated, router]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -57,78 +71,111 @@ export default function CreatePostPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUploadError(null);
 
     if (!text.trim() && images.length === 0) {
       toast.error("Post must have text or images");
       return;
     }
 
-    if (!profile?.blueskyHandle || !profile?.blueskyAppPassword) {
-      toast.error("Bluesky credentials not found");
-      return;
-    }
-
     setPosting(true);
 
     try {
-      // Upload images first if any
       const imageUrls: string[] = [];
-      for (const image of images) {
-        const formData = new FormData();
-        formData.append("file", image);
 
-        toast.loading(`Uploading image ${imageUrls.length + 1}/${images.length}...`);
-        const uploadResponse = await fetch("/api/upload/image", {
-          method: "POST",
-          body: formData,
-        });
+      if (images.length > 0) {
+        setUploadProgress({ current: 0, total: images.length });
 
-        toast.dismiss();
+        for (let i = 0; i < images.length; i++) {
+          const image = images[i];
+          const formData = new FormData();
+          formData.append("file", image);
 
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload image");
+          setUploadProgress({ current: i + 1, total: images.length });
+          const toastId = toast.loading(`Uploading image ${i + 1}/${images.length}...`);
+
+          try {
+            const uploadResponse = await fetch("/api/upload/image", {
+              method: "POST",
+              body: formData,
+            });
+
+            const uploadData = await uploadResponse.json();
+            toast.dismiss(toastId);
+
+            if (!uploadResponse.ok) {
+              const errorType = uploadData.errorType;
+              let userMessage = uploadData.error || "Failed to upload image";
+
+              if (errorType === "CONFIG_ERROR") {
+                userMessage = "Image uploads temporarily unavailable. Contact support.";
+              } else if (errorType === "FILE_TOO_LARGE") {
+                userMessage = `Image ${i + 1} is too large. Use images under 10MB.`;
+              } else if (errorType === "INVALID_FILE_TYPE") {
+                userMessage = `Image ${i + 1} format not supported. Use JPG, PNG, or WebP.`;
+              } else if (errorType === "RATE_LIMIT") {
+                userMessage = "Too many uploads. Wait a few minutes.";
+              }
+
+              throw new Error(userMessage);
+            }
+
+            if (uploadData.url) {
+              imageUrls.push(uploadData.url);
+              toast.success(`Image ${i + 1}/${images.length} uploaded!`, { duration: 1000 });
+            } else {
+              throw new Error(`Image ${i + 1} uploaded but no URL returned`);
+            }
+          } catch (error) {
+            toast.dismiss(toastId);
+            throw error;
+          }
         }
 
-        const uploadData = await uploadResponse.json();
-        if (uploadData.url) {
-          imageUrls.push(uploadData.url);
-        }
+        setUploadProgress(null);
       }
 
       // Create post
-      toast.loading("Creating post...");
+      const toastId = toast.loading("Creating post...");
       const response = await fetch("/api/bluesky/post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: text.trim(),
-          images: imageUrls,
-          blueskyHandle: profile.blueskyHandle,
-          blueskyPassword: profile.blueskyAppPassword,
-        }),
+        body: JSON.stringify({ text: text.trim(), images: imageUrls }),
       });
 
-      toast.dismiss();
+      toast.dismiss(toastId);
 
       if (!response.ok) {
         const errorData = await response.json();
+        if (errorData.requiresConnection) {
+          toast.error("Session expired. Redirecting to Settings...");
+          setTimeout(() => router.push("/settings"), 2000);
+          return;
+        }
         throw new Error(errorData.error || "Failed to create post");
       }
 
-      toast.success("Post created successfully!");
-      router.push("/feed");
+      toast.success("Post created successfully! 🎉");
+      setText("");
+      setImages([]);
+      setPreviews([]);
+      setTimeout(() => router.push("/feed"), 1000);
     } catch (error) {
-      console.error("Post creation error:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create post"
-      );
+      const errorMessage = error instanceof Error ? error.message : "Failed to create post";
+      setUploadError(errorMessage);
+      toast.error(errorMessage, { duration: 5000 });
     } finally {
       setPosting(false);
+      setUploadProgress(null);
     }
   };
 
-  if (!hasBluesky) {
-    return null; // Redirecting in useEffect
+  if (isCheckingSession || !isBlueskyConnected) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EB83EA]"></div>
+      </div>
+    );
   }
 
   return (
@@ -210,6 +257,26 @@ export default function CreatePostPage() {
             </div>
           )}
         </div>
+
+        {/* Upload Progress */}
+        {uploadProgress && (
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-blue-300">Uploading images...</span>
+              <span className="text-sm font-semibold text-blue-300">{uploadProgress.current}/{uploadProgress.total}</span>
+            </div>
+            <div className="w-full bg-blue-900/30 rounded-full h-2">
+              <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }} />
+            </div>
+          </div>
+        )}
+
+        {/* Error Display */}
+        {uploadError && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+            <p className="text-sm text-red-300">{uploadError}</p>
+          </div>
+        )}
 
         {/* Submit Buttons */}
         <div className="flex gap-3">

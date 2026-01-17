@@ -4,29 +4,37 @@ import { useState, useEffect } from "react";
 import { FiMessageSquare, FiPlus } from "react-icons/fi";
 import Link from "next/link";
 import { useAuthUser } from "@/lib/privy/hooks";
-import { isBlueskyConnected } from "@/lib/utils/bluesky-auth";
-import { getLocalProfile } from "@/lib/utils/local-storage";
 import { PostCard } from "@/components/feed/post-card";
-import { Creator } from "@/types";
 
 export default function FeedPage() {
   const { isAuthenticated } = useAuthUser();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<Partial<Creator> | null>(null);
+  const [hasBluesky, setHasBluesky] = useState(false);
+  const [sortBy, setSortBy] = useState<"engagement" | "recent">("engagement");
 
-  const hasBluesky = isBlueskyConnected(profile);
-
+  // Check Bluesky session status
   useEffect(() => {
-    const localProfile = getLocalProfile();
-    setProfile(localProfile);
-  }, []);
+    async function checkBlueskySession() {
+      try {
+        const response = await fetch("/api/bluesky/session");
+        const data = await response.json();
+        setHasBluesky(data.connected);
+      } catch (error) {
+        console.error("Failed to check Bluesky session:", error);
+      }
+    }
+
+    if (isAuthenticated) {
+      checkBlueskySession();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     async function loadFeed() {
       setLoading(true);
       try {
-        const response = await fetch("/api/bluesky/feed?limit=30");
+        const response = await fetch(`/api/bluesky/feed?limit=30&sortBy=${sortBy}`);
         const data = await response.json();
 
         // Filter for text/photo posts only (exclude videos)
@@ -50,7 +58,7 @@ export default function FeedPage() {
       }
     }
     loadFeed();
-  }, []);
+  }, [sortBy]);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -85,6 +93,33 @@ export default function FeedPage() {
           </p>
         </div>
       )}
+
+      {/* Sort Selector */}
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-sm text-gray-400">Sort by:</span>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setSortBy("engagement")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              sortBy === "engagement"
+                ? "bg-[#EB83EA] text-white"
+                : "bg-white/5 text-gray-400 hover:bg-white/10"
+            }`}
+          >
+            Trending
+          </button>
+          <button
+            onClick={() => setSortBy("recent")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              sortBy === "recent"
+                ? "bg-[#EB83EA] text-white"
+                : "bg-white/5 text-gray-400 hover:bg-white/10"
+            }`}
+          >
+            Recent
+          </button>
+        </div>
+      </div>
 
       {/* Posts Feed */}
       {loading ? (

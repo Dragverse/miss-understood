@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   title: "Dragverse - Creator Platform",
   description:
     "Stream, share, and discover amazing drag content. Upload shorts, long videos, podcasts, and music.",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

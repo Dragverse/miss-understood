@@ -3,6 +3,7 @@ import {
   searchDragContent,
   getDragAccountsPosts,
   blueskyPostToVideo,
+  sortPostsByEngagement,
 } from "@/lib/bluesky/client";
 
 /**
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const source = searchParams.get("source") || "search"; // "search" or "accounts"
+    const sortBy = searchParams.get("sortBy") as "engagement" | "recent" || "engagement";
 
     let posts;
 
@@ -33,6 +35,9 @@ export async function GET(request: NextRequest) {
       posts = await searchDragContent(limit);
     }
 
+    // Sort posts by engagement or recency
+    posts = sortPostsByEngagement(posts, sortBy);
+
     // Convert posts to video format (filter out non-video posts)
     const videos = posts
       .map(blueskyPostToVideo)
@@ -44,6 +49,7 @@ export async function GET(request: NextRequest) {
       videos, // Keep both for compatibility
       count: videos.length,
       source: "bluesky",
+      sortedBy: sortBy,
     });
   } catch (error) {
     console.error("Bluesky feed fetch error:", error);

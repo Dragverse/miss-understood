@@ -8,6 +8,7 @@ import { BytesSection } from "@/components/home/bytes-section";
 import { CommunitySection } from "@/components/home/community-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
 import { LiveNowSection } from "@/components/home/live-now-section";
+import { TrendingPhotosSection } from "@/components/home/trending-photos-section";
 import { getVideos } from "@/lib/ceramic/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
@@ -17,6 +18,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [photoPosts, setPhotoPosts] = useState<any[]>([]);
 
   // Fetch videos from Ceramic and Bluesky on mount
   useEffect(() => {
@@ -74,6 +76,17 @@ export default function HomePage() {
         if (data.success && blueskyContent.length > 0) {
           allVideos.push(...blueskyContent);
           console.log(`Loaded ${blueskyContent.length} videos from Bluesky`);
+
+          // Extract photo posts (with images but no videos)
+          const photos = blueskyContent.filter((post: any) =>
+            post.thumbnail &&
+            !post.playbackUrl?.includes("m3u8") &&
+            !post.playbackUrl?.includes("youtube") &&
+            !post.playbackUrl?.includes("vimeo") &&
+            !post.playbackUrl?.includes("tiktok")
+          ).slice(0, 15); // Top 15 photo posts
+
+          setPhotoPosts(photos);
         }
       } catch (error) {
         console.warn("Failed to load videos from Bluesky:", error);
@@ -186,6 +199,9 @@ export default function HomePage() {
 
               {/* Live Now Section (shows when creators are streaming) */}
               <LiveNowSection />
+
+              {/* Trending Photos */}
+              <TrendingPhotosSection photos={photoPosts} />
 
               {/* Bytes (Shorts) Section */}
               <BytesSection shorts={shorts} />
