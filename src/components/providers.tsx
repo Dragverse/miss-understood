@@ -31,7 +31,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           walletList: ["metamask", "coinbase_wallet", "wallet_connect"],
         },
         // Primary login methods (shown upfront)
-        loginMethods: ["email", "google", "discord", "twitter", "wallet"],
+        loginMethods: ["email", "google", "tiktok", "instagram", "wallet"],
         // Embedded wallets configuration
         embeddedWallets: {
           createOnLogin: "users-without-wallets",
