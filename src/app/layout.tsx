@@ -1,12 +1,20 @@
 import type { Metadata } from "next";
 import { Parkinsans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Layout } from "@/components/layout";
 
+const donutHole = localFont({
+  src: "../../public/fonts/Donut Hole.otf",
+  variable: "--font-donut-hole",
+  display: "swap",
+});
+
 const parkinsans = Parkinsans({
   subsets: ["latin"],
   variable: "--font-parkinsans",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -22,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${parkinsans.variable} font-parkinsans antialiased`}>
+      <body className={`${donutHole.variable} ${parkinsans.variable} font-sans antialiased`}>
         <Providers>
           <Layout>{children}</Layout>
         </Providers>

@@ -5,9 +5,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-parkinsans);
+  --font-sans: var(--font-donut-hole), var(--font-parkinsans);
   --font-mono: var(--font-geist-mono);
   --font-parkinsans: var(--font-parkinsans);
+  --font-donut-hole: var(--font-donut-hole);
 
   /* Custom border radius for video containers */
   --radius-large: 1rem;
