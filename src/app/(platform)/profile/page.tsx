@@ -362,7 +362,12 @@ export default function ProfilePage() {
   }
 
   const videosList = userVideos.filter(v => v.contentType !== 'short');
-  const bytesList = userVideos.filter(v => v.contentType === 'short');
+  // Filter bytes to exclude external videos (YouTube/Bluesky) as they can't be played in vertical player
+  const bytesList = userVideos.filter(v =>
+    v.contentType === 'short' &&
+    v.source !== 'youtube' &&
+    v.source !== 'bluesky'
+  );
 
   // Keen Slider for vertical video player (BYTES tab)
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({

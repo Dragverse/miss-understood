@@ -100,8 +100,13 @@ function ShortsContent() {
           source: v.source
         })));
 
-        // Filter only shorts
-        const shortsOnly = allVideos.filter((v) => v.contentType === "short");
+        // Filter only shorts that are not external (YouTube/Bluesky)
+        // External videos should only appear in card views that can open them in new tabs
+        const shortsOnly = allVideos.filter((v) =>
+          v.contentType === "short" &&
+          v.source !== "youtube" &&
+          v.source !== "bluesky"
+        );
 
         // Sort by date (newest first)
         shortsOnly.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
