@@ -15,6 +15,8 @@ export async function GET(
   try {
     const { handle } = await params;
 
+    console.log(`[Bluesky Profile API] Fetching profile for handle: ${handle}`);
+
     if (!handle) {
       return NextResponse.json(
         { error: "Handle is required" },
@@ -24,9 +26,11 @@ export async function GET(
 
     // Get Bluesky agent (can fetch public profiles without authentication)
     const agent = await getBlueskyAgent();
+    console.log(`[Bluesky Profile API] Agent created, fetching profile for ${handle}...`);
 
     // Fetch the public profile
     const profileResponse = await agent.getProfile({ actor: handle });
+    console.log(`[Bluesky Profile API] Profile response success:`, profileResponse.success);
 
     if (!profileResponse.success) {
       return NextResponse.json(
@@ -53,7 +57,7 @@ export async function GET(
       profile,
     });
   } catch (error) {
-    console.error("Failed to fetch Bluesky profile:", error);
+    console.error(`[Bluesky Profile API] Exception fetching profile for ${await params.then(p => p.handle)}:`, error);
 
     // Check if it's a "profile not found" error
     if (error instanceof Error && error.message.includes("not found")) {
@@ -70,6 +74,7 @@ export async function GET(
       {
         error: "Failed to fetch Bluesky profile",
         message: error instanceof Error ? error.message : "Unknown error",
+        details: error instanceof Error ? error.stack : undefined,
       },
       { status: 500 }
     );
