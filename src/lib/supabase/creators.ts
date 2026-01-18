@@ -32,63 +32,44 @@ export type CreateCreatorInput = Partial<Omit<Creator, 'id' | 'created_at' | 'up
 export async function createOrUpdateCreator(input: CreateCreatorInput) {
   const client = getSupabaseServerClient();
 
-  // Try to find existing creator by DID
-  const { data: existing, error: fetchError } = await client
+  console.log('[createOrUpdateCreator] Input:', {
+    did: input.did,
+    handle: input.handle,
+    display_name: input.display_name
+  });
+
+  // Use upsert to handle both insert and update in one operation
+  // This is simpler and more reliable than separate insert/update logic
+  const { data, error } = await client
     .from('creators')
-    .select('*')
-    .eq('did', input.did)
-    .maybeSingle();
+    .upsert({
+      did: input.did!,
+      handle: input.handle!,
+      display_name: input.display_name!,
+      avatar: input.avatar || '',
+      banner: input.banner || '',
+      description: input.description || '',
+      website: input.website || '',
+      twitter_handle: input.twitter_handle || '',
+      instagram_handle: input.instagram_handle || '',
+      tiktok_handle: input.tiktok_handle || '',
+      bluesky_handle: input.bluesky_handle || '',
+      bluesky_did: input.bluesky_did || '',
+      farcaster_handle: input.farcaster_handle || '',
+    }, {
+      onConflict: 'did', // Use DID as the unique constraint for upsert
+      ignoreDuplicates: false, // Update if exists
+    })
+    .select()
+    .single();
 
-  if (fetchError) throw fetchError;
-
-  if (existing) {
-    // Update existing
-    const { data, error } = await client
-      .from('creators')
-      .update({
-        display_name: input.display_name,
-        avatar: input.avatar,
-        banner: input.banner,
-        description: input.description,
-        website: input.website,
-        twitter_handle: input.twitter_handle,
-        instagram_handle: input.instagram_handle,
-        tiktok_handle: input.tiktok_handle,
-        bluesky_handle: input.bluesky_handle,
-        bluesky_did: input.bluesky_did,
-        farcaster_handle: input.farcaster_handle,
-      })
-      .eq('id', existing.id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data as Creator;
-  } else {
-    // Create new
-    const { data, error } = await client
-      .from('creators')
-      .insert({
-        did: input.did!,
-        handle: input.handle!,
-        display_name: input.display_name!,
-        avatar: input.avatar,
-        banner: input.banner,
-        description: input.description,
-        website: input.website,
-        twitter_handle: input.twitter_handle,
-        instagram_handle: input.instagram_handle,
-        tiktok_handle: input.tiktok_handle,
-        bluesky_handle: input.bluesky_handle,
-        bluesky_did: input.bluesky_did,
-        farcaster_handle: input.farcaster_handle,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data as Creator;
+  if (error) {
+    console.error('[createOrUpdateCreator] Failed:', error);
+    throw error;
   }
+
+  console.log('[createOrUpdateCreator] Success:', data.id);
+  return data as Creator;
 }
 
 export async function getCreatorByDID(did: string): Promise<Creator | null> {
