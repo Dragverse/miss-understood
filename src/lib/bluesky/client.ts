@@ -78,86 +78,25 @@ export interface BlueskyPost {
 
 /**
  * Get posts from the "What's Hot" feed (popular posts)
- * This doesn't require authentication and includes trending content
+ * Optimized to fetch from top 10 accounts for faster loading
  */
 export async function searchDragContent(
   limit: number = 50
 ): Promise<BlueskyPost[]> {
   try {
-    // Use popular drag-related accounts as a feed source
-    // These are verified accounts that exist on Bluesky
+    // Use top drag-related accounts (optimized for performance - reduced from 42 to 10)
+    // These are the most active verified accounts on Bluesky
     const dragAccounts = [
-      "rupaulsdragrace.bsky.social",
-      "drag.bsky.social",
-      "dragqueen.bsky.social",
-      "queendom.bsky.social",
-      "lgbtq.bsky.social",
-      "thevivllainous.bsky.social",
-      "deltabadhand.bsky.social",
-      "tenderoni88.bsky.social",
-      "fayludes.bsky.social",
-      "rupawl.bsky.social",
-      "ajquinwest.bsky.social",
-      "wowpresentsplus.bsky.social",
-      "thesashacolby.bsky.social",
-      "paintedwithraven.bsky.social",
-      "junobirch.bsky.social",
-      "amandatorimeating.bsky.social",
-      "upuntildawn.net",
-      "ckdesignedit.bsky.social",
-      "dragverse.app",
-      "sherrypoppins.bsky.social",
-      "xunamimuse.bsky.social",
-      "maddymorphosis.bsky.social",
-      "vandervonodd.bsky.social",
-      "pietraparker.com",
-      "sheacoulee.com",
-      "dragracemexico.bsky.social",
-      "dragrace-brasil.bsky.social",
-      "ramonaslick.bsky.social",
-      "evahdestruction.bsky.social",
-      "notpi.net",
-      "bbdragula.bsky.social",
-      "bouletbrothers.bsky.social",
-      "therealelvira.bsky.social",
-      "rupaulsdragcon.bsky.social",
-      "dragracelive.bsky.social",
-      "dragraceph.bsky.social",
-      "jaidaehall.bsky.social",
-      "thepandoraboxx.bsky.social",
-      "biblegirl666.bsky.social",
-      "theonlydetox.bsky.social",
-      "jasminekennedie.bsky.social",
-      "estrellaxtra.bsky.social",
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      
-
-
-
-
-
-
-
-
-
-
+      "dragverse.app", // Dragverse official
+      "rupaulsdragrace.bsky.social", // RuPaul's Drag Race
+      "wowpresentsplus.bsky.social", // WOW Presents Plus
+      "bbdragula.bsky.social", // Dragula
+      "bouletbrothers.bsky.social", // Boulet Brothers
+      "thesashacolby.bsky.social", // Sasha Colby
+      "sheacoulee.com", // Shea Couleé
+      "jaidaehall.bsky.social", // Jaida Essence Hall
+      "maddymorphosis.bsky.social", // Maddy Morphosis
+      "drag.bsky.social", // General drag community
     ];
 
     return await getDragAccountsPosts(dragAccounts, limit);

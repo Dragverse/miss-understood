@@ -20,86 +20,99 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [photoPosts, setPhotoPosts] = useState<any[]>([]);
 
-  // Fetch videos from Ceramic and Bluesky on mount
+  // Fetch videos from Supabase and Bluesky in parallel
   useEffect(() => {
     async function loadVideos() {
       setLoading(true);
-      const allVideos: Video[] = [];
 
-      // Load from Ceramic if not using mock data
-      if (!USE_MOCK_DATA) {
-        try {
-          const result = await getVideos(50); // Fetch first 50 videos
-          if (result && result.length > 0) {
-            // Convert Supabase videos to our Video type
-            const ceramicVideos = result.map((v: any) => ({
-              id: v.id,
-              title: v.title,
-              description: v.description || "",
-              thumbnail: v.thumbnail || "",
-              duration: v.duration || 0,
-              views: v.views || 0,
-              likes: v.likes || 0,
-              createdAt: new Date(v.created_at),
-              playbackUrl: v.playback_url || "",
-              livepeerAssetId: v.livepeer_asset_id,
-              contentType: v.content_type,
-              creator: v.creator || {
-                did: v.creator_did,
-                handle: "creator",
-                displayName: "Creator",
-                avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${v.creator_did}`,
-                description: "",
-                followerCount: 0,
-                followingCount: 0,
-                createdAt: new Date(),
-                verified: false,
-              },
-              category: v.category || "Other",
-              tags: Array.isArray(v.tags) ? v.tags : (v.tags ? v.tags.split(',') : []),
-            }));
-            allVideos.push(...ceramicVideos);
-            console.log(`Loaded ${ceramicVideos.length} videos from Ceramic`);
-          }
-        } catch (error) {
-          console.warn("Failed to load videos from Ceramic:", error);
-        }
-      }
-
-      // Always fetch Bluesky content to populate feed
-      try {
-        const response = await fetch("/api/bluesky/feed?limit=30");
-        const data = await response.json();
-
-        // API returns both 'posts' and 'videos' - use posts for consistency
-        const blueskyContent = data.posts || data.videos || [];
-        if (data.success && blueskyContent.length > 0) {
-          allVideos.push(...blueskyContent);
-          console.log(`Loaded ${blueskyContent.length} videos from Bluesky`);
-
-          // Extract photo posts (with images but no videos)
-          const photos = blueskyContent.filter((post: any) =>
-            post.thumbnail &&
-            !post.playbackUrl?.includes("m3u8") &&
-            !post.playbackUrl?.includes("youtube") &&
-            !post.playbackUrl?.includes("vimeo") &&
-            !post.playbackUrl?.includes("tiktok")
-          ).slice(0, 15); // Top 15 photo posts
-
-          setPhotoPosts(photos);
-        }
-      } catch (error) {
-        console.warn("Failed to load videos from Bluesky:", error);
-      }
-
-      // Add local uploads from localStorage
+      // Load local videos immediately (synchronous)
       const localVideos = getLocalVideos();
       if (localVideos.length > 0) {
-        allVideos.push(...localVideos);
+        setVideos(localVideos);
         console.log(`Loaded ${localVideos.length} videos from local storage`);
       }
 
-      // Sort by date (newest first) and set videos
+      // Fetch Supabase and Bluesky in parallel (non-blocking)
+      const fetchPromises = [];
+
+      // Supabase videos
+      if (!USE_MOCK_DATA) {
+        fetchPromises.push(
+          getVideos(50)
+            .then((result) => {
+              if (result && result.length > 0) {
+                const ceramicVideos = result.map((v: any) => ({
+                  id: v.id,
+                  title: v.title,
+                  description: v.description || "",
+                  thumbnail: v.thumbnail || "",
+                  duration: v.duration || 0,
+                  views: v.views || 0,
+                  likes: v.likes || 0,
+                  createdAt: new Date(v.created_at),
+                  playbackUrl: v.playback_url || "",
+                  livepeerAssetId: v.livepeer_asset_id,
+                  contentType: v.content_type,
+                  creator: v.creator || {
+                    did: v.creator_did,
+                    handle: "creator",
+                    displayName: "Creator",
+                    avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${v.creator_did}`,
+                    description: "",
+                    followerCount: 0,
+                    followingCount: 0,
+                    createdAt: new Date(),
+                    verified: false,
+                  },
+                  category: v.category || "Other",
+                  tags: Array.isArray(v.tags) ? v.tags : (v.tags ? v.tags.split(',') : []),
+                }));
+                console.log(`Loaded ${ceramicVideos.length} videos from Supabase`);
+                return ceramicVideos;
+              }
+              return [];
+            })
+            .catch((error) => {
+              console.warn("Failed to load videos from Supabase:", error);
+              return [];
+            })
+        );
+      }
+
+      // Bluesky content (reduced to 15 limit for faster loading)
+      fetchPromises.push(
+        fetch("/api/bluesky/feed?limit=15")
+          .then((response) => response.json())
+          .then((data) => {
+            const blueskyContent = data.posts || data.videos || [];
+            if (data.success && blueskyContent.length > 0) {
+              console.log(`Loaded ${blueskyContent.length} posts from Bluesky`);
+
+              // Extract photo posts
+              const photos = blueskyContent.filter((post: any) =>
+                post.thumbnail &&
+                !post.playbackUrl?.includes("m3u8") &&
+                !post.playbackUrl?.includes("youtube") &&
+                !post.playbackUrl?.includes("vimeo") &&
+                !post.playbackUrl?.includes("tiktok")
+              ).slice(0, 15);
+
+              setPhotoPosts(photos);
+              return blueskyContent;
+            }
+            return [];
+          })
+          .catch((error) => {
+            console.warn("Failed to load videos from Bluesky:", error);
+            return [];
+          })
+      );
+
+      // Wait for all fetches to complete in parallel
+      const results = await Promise.all(fetchPromises);
+      const allVideos = [...localVideos, ...results.flat()];
+
+      // Sort by date (newest first)
       if (allVideos.length > 0) {
         allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       }
