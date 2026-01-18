@@ -35,6 +35,7 @@ export default function UploadPage() {
   const [uploadSpeed, setUploadSpeed] = useState<string>("");
   const [uploadedBytes, setUploadedBytes] = useState<number>(0);
   const [totalBytes, setTotalBytes] = useState<number>(0);
+  const [timeRemaining, setTimeRemaining] = useState<string>("");
 
   const categories = [
     "Entertainment",
@@ -253,13 +254,25 @@ export default function UploadPage() {
           setUploadedBytes(progress.loaded);
           setTotalBytes(progress.total);
 
-          // Calculate upload speed
+          // Calculate upload speed and time remaining
           const now = Date.now();
           const timeDiff = (now - lastUpdate) / 1000; // seconds
           if (timeDiff >= 1) { // Update speed every second
             const bytesDiff = progress.loaded - lastLoaded;
-            const speedMBps = (bytesDiff / timeDiff) / (1024 * 1024);
+            const speedBps = bytesDiff / timeDiff;
+            const speedMBps = speedBps / (1024 * 1024);
             setUploadSpeed(speedMBps.toFixed(2));
+
+            // Calculate time remaining
+            const bytesRemaining = progress.total - progress.loaded;
+            const secondsRemaining = bytesRemaining / speedBps;
+            if (secondsRemaining < 60) {
+              setTimeRemaining(`${Math.ceil(secondsRemaining)}s remaining`);
+            } else {
+              const minutesRemaining = Math.ceil(secondsRemaining / 60);
+              setTimeRemaining(`${minutesRemaining} min remaining`);
+            }
+
             lastUpdate = now;
             lastLoaded = progress.loaded;
           }
@@ -711,10 +724,15 @@ export default function UploadPage() {
                       <FiUpload className="text-lg text-[#EB83EA] animate-pulse" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg">Uploading Video</h3>
+                      <h3 className="font-bold text-lg">
+                        {totalBytes > 500 * 1024 * 1024 ? "Hang tight! Large file uploading..." :
+                         totalBytes > 200 * 1024 * 1024 ? "Uploading Video..." :
+                         "Almost there!"}
+                      </h3>
                       <p className="text-xs text-gray-400">
                         {uploadSpeed && `${uploadSpeed} MB/s • `}
                         {(uploadedBytes / (1024 * 1024)).toFixed(0)} / {(totalBytes / (1024 * 1024)).toFixed(0)} MB
+                        {timeRemaining && ` • ${timeRemaining}`}
                       </p>
                     </div>
                   </div>
