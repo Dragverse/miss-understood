@@ -3,6 +3,13 @@ import { createVideo } from "@/lib/supabase/videos";
 import { getCreatorByDID, createOrUpdateCreator } from "@/lib/supabase/creators";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 import { validateBody, createVideoSchema } from "@/lib/validation/schemas";
+import {
+  getPrivyUserProfile,
+  extractDisplayName,
+  extractHandle,
+  extractAvatar,
+  extractSocialHandles,
+} from "@/lib/privy/server";
 
 /**
  * POST /api/video/create
@@ -75,13 +82,37 @@ export async function POST(request: NextRequest) {
     if (!creator) {
       console.log("[Video Create] Creator not found, creating new creator record for:", userDID);
       try {
-        creator = await createOrUpdateCreator({
-          did: userDID,
-          handle: `user-${userDID.substring(0, 8)}`,
-          display_name: "Dragverse User",
-          avatar: "",
-          description: "",
-        });
+        // Fetch full user profile from Privy to get actual display name, handle, avatar
+        const privyUser = await getPrivyUserProfile(userDID);
+
+        let creatorData;
+        if (privyUser) {
+          console.log("[Video Create] ✅ Fetched Privy user profile");
+          creatorData = {
+            did: userDID,
+            handle: extractHandle(privyUser, userDID),
+            display_name: extractDisplayName(privyUser),
+            avatar: extractAvatar(privyUser, userDID),
+            description: "",
+            ...extractSocialHandles(privyUser),
+          };
+          console.log("[Video Create] Using profile data:", {
+            handle: creatorData.handle,
+            display_name: creatorData.display_name,
+            avatar: creatorData.avatar,
+          });
+        } else {
+          console.warn("[Video Create] ⚠️ Failed to fetch Privy profile, using fallback");
+          creatorData = {
+            did: userDID,
+            handle: `user-${userDID.substring(0, 8)}`,
+            display_name: "Dragverse User",
+            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${userDID}`,
+            description: "",
+          };
+        }
+
+        creator = await createOrUpdateCreator(creatorData);
         console.log("[Video Create] ✅ Creator created:", creator.id);
       } catch (creatorError) {
         console.error("[Video Create] ❌ Failed to create creator:", creatorError);

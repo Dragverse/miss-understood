@@ -27,8 +27,8 @@ export default function VideosPage() {
             console.warn("[Videos] Supabase fetch failed:", err);
             return [];
           }),
-          // Bluesky videos
-          fetch("/api/bluesky/feed?limit=30")
+          // Bluesky videos (video content only for /videos page)
+          fetch("/api/bluesky/feed?limit=30&contentType=videos")
             .then((res) => (res.ok ? res.json() : { posts: [] }))
             .then((data) => data.posts || [])
             .catch((err) => {
