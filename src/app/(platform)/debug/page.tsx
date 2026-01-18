@@ -87,6 +87,8 @@ export default function DebugPage() {
             title: v.title,
             source: v.source,
           })),
+          warning: youtubeData.warning,
+          apiKeyConfigured: youtubeData.apiKeyConfigured,
           raw: youtubeData,
         };
       } catch (error) {
@@ -241,6 +243,21 @@ export default function DebugPage() {
                   <span className="text-gray-400">Video Count:</span>
                   <span className="text-white font-bold">{diagnostics.sources.youtube?.count || 0}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">API Key:</span>
+                  <span className={diagnostics.sources.youtube?.apiKeyConfigured ? "text-green-400" : "text-red-400"}>
+                    {diagnostics.sources.youtube?.apiKeyConfigured ? "Configured ✓" : "Missing ✗"}
+                  </span>
+                </div>
+                {diagnostics.sources.youtube?.warning && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-3 mt-2">
+                    <p className="text-yellow-400 text-xs font-semibold mb-1">⚠️ Warning</p>
+                    <p className="text-yellow-300 text-xs">{diagnostics.sources.youtube.warning}</p>
+                    <p className="text-gray-400 text-xs mt-2">
+                      Check Vercel logs or run: <code className="bg-black/30 px-1 rounded">vercel logs</code>
+                    </p>
+                  </div>
+                )}
                 {diagnostics.sources.youtube?.error && (
                   <div className="bg-red-500/10 border border-red-500/20 rounded p-3 mt-2">
                     <p className="text-red-400 text-xs">{diagnostics.sources.youtube.error}</p>
