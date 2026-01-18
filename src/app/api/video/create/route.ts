@@ -47,12 +47,12 @@ export async function POST(request: NextRequest) {
     const tagsArray = Array.isArray(tags) ? tags : (tags ? [tags] : []);
 
     // Ensure creator exists in database before creating video
-    try {
-      let creator = await getCreatorByDID(userDID);
+    // CRITICAL: Video insert will fail if creator doesn't exist (foreign key constraint)
+    let creator = await getCreatorByDID(userDID);
 
-      if (!creator) {
-        console.log("[Video Create] Creator not found, creating new creator record for:", userDID);
-        // Create a basic creator profile
+    if (!creator) {
+      console.log("[Video Create] Creator not found, creating new creator record for:", userDID);
+      try {
         creator = await createOrUpdateCreator({
           did: userDID,
           handle: `user-${userDID.substring(0, 8)}`,
@@ -61,12 +61,15 @@ export async function POST(request: NextRequest) {
           description: "",
         });
         console.log("[Video Create] ✅ Creator created:", creator.id);
-      } else {
-        console.log("[Video Create] ✅ Creator exists:", creator.id);
+      } catch (creatorError) {
+        console.error("[Video Create] ❌ Failed to create creator:", creatorError);
+        return NextResponse.json(
+          { error: "Failed to create creator profile", details: creatorError instanceof Error ? creatorError.message : String(creatorError) },
+          { status: 500 }
+        );
       }
-    } catch (creatorError) {
-      console.error("[Video Create] Failed to ensure creator exists:", creatorError);
-      // Continue anyway - creator_id is nullable
+    } else {
+      console.log("[Video Create] ✅ Creator exists:", creator.id);
     }
 
     const videoInput = {
