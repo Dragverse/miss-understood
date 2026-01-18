@@ -38,7 +38,7 @@ export function useAuthUser() {
 
     // Derived values
     userEmail: user?.email?.address,
-    userHandle: user?.farcaster?.username || user?.google?.email || user?.email?.address || "user",
+    userHandle: blueskyProfile?.handle || user?.twitter?.username || user?.farcaster?.username || user?.google?.email?.split('@')[0] || user?.email?.address?.split('@')[0] || "user",
     userId: user?.id,
 
     // Social handles from Privy

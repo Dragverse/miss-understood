@@ -20,7 +20,7 @@ import { SiBluesky } from "react-icons/si";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle } = useAuthUser();
+  const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle, blueskyProfile: blueskyProfileFromHook } = useAuthUser();
   const { getAccessToken } = usePrivy();
   const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "photos" | "posts" | "about">("bytes");
   const [creator, setCreator] = useState<Creator | null>(null);
@@ -95,12 +95,16 @@ export default function ProfilePage() {
       }
 
       // Use Privy data as initial state
+      const displayName = blueskyProfileFromHook?.displayName || user?.twitter?.name || userHandle || userEmail?.split('@')[0] || "Drag Artist";
+      const handle = userHandle;
+      const avatar = blueskyProfileFromHook?.avatar || user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`;
+
       setCreator({
         did: user.id,
-        handle: userHandle || userEmail?.split('@')[0] || "user",
-        displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
-        avatar: user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
-        description: "Welcome to my Dragverse profile! 🎭✨",
+        handle: handle,
+        displayName: displayName,
+        avatar: avatar,
+        description: blueskyProfileFromHook?.description || "Welcome to my Dragverse profile! 🎭✨",
         followerCount: 0,
         followingCount: 0,
         createdAt: new Date(user.createdAt || Date.now()),

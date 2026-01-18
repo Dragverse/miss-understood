@@ -19,7 +19,7 @@ export function ShortCard({ video }: ShortCardProps) {
         {/* Vertical video thumbnail */}
         <div className="relative w-full aspect-[9/16] rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-3 shadow-lg">
           <Image
-            src={video.thumbnail}
+            src={video.thumbnail || '/placeholder-video.svg'}
             alt={video.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
