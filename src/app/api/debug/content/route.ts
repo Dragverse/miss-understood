@@ -37,14 +37,21 @@ export async function GET(request: NextRequest) {
     console.log("[Debug] Testing Bluesky API...");
     const blueskyResponse = await fetch(`${request.nextUrl.origin}/api/bluesky/feed?limit=5`);
     const blueskyData = await blueskyResponse.json();
+    const content = blueskyData.videos || blueskyData.posts || [];
     diagnostics.sources.bluesky = {
       success: blueskyData.success || false,
-      count: blueskyData.videos?.length || 0,
-      sample: (blueskyData.videos || []).slice(0, 2).map((v: any) => ({
+      count: content.length,
+      sample: content.slice(0, 2).map((v: any) => ({
         id: v.id,
-        title: v.title,
+        title: v.title || v.description?.substring(0, 50),
         source: v.source,
       })),
+      error: blueskyData.error || null,
+      rawResponse: {
+        hasVideos: !!blueskyData.videos,
+        hasPosts: !!blueskyData.posts,
+        success: blueskyData.success,
+      },
     };
   } catch (error) {
     diagnostics.sources.bluesky = {
@@ -88,6 +95,8 @@ export async function GET(request: NextRequest) {
         title: v.title,
         source: v.source,
       })),
+      warning: youtubeData.warning || null,
+      error: youtubeData.error || null,
     };
   } catch (error) {
     diagnostics.sources.youtube_endpoint = {
@@ -101,8 +110,8 @@ export async function GET(request: NextRequest) {
     hasYouTubeKey: !!process.env.YOUTUBE_API_KEY,
     hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
     hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    hasBlueskyHandle: !!process.env.BLUESKY_HANDLE,
-    hasBlueskyPassword: !!process.env.BLUESKY_PASSWORD,
+    hasBlueskyIdentifier: !!process.env.BLUESKY_IDENTIFIER,
+    hasBlueskyAppPassword: !!process.env.BLUESKY_APP_PASSWORD,
   };
 
   return NextResponse.json(diagnostics, { status: 200 });
