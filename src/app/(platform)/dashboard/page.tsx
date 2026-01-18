@@ -2,7 +2,7 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import { useRouter } from "next/navigation";
-import { FiVideo, FiHeart, FiUsers, FiEye, FiCopy, FiEdit, FiTrash2, FiTrendingUp, FiZap } from "react-icons/fi";
+import { FiVideo, FiHeart, FiUsers, FiEye, FiCopy, FiEdit, FiTrash2, FiZap } from "react-icons/fi";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { getVideosByCreator, type SupabaseVideo } from "@/lib/supabase/videos";
@@ -26,15 +26,40 @@ export default function DashboardPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  // Load dashboard data from Ceramic
+  // Load dashboard data from Supabase
   useEffect(() => {
     async function loadDashboardData() {
       if (!user?.id) return;
 
       setLoading(true);
       try {
-        // Fetch user's videos from Supabase
-        const supabaseVideos = await getVideosByCreator(user.id);
+        // CRITICAL FIX: Get the verified user ID from the backend
+        // This ensures we use the same identifier that was stored during video upload
+        const authToken = await getAccessToken();
+
+        let verifiedUserId = user.id; // Fallback to client ID
+
+        try {
+          const meResponse = await fetch("/api/user/me", {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
+
+          if (meResponse.ok) {
+            const meData = await meResponse.json();
+            verifiedUserId = meData.userId; // Use the verified ID from JWT
+            console.log("✅ Using verified user ID:", verifiedUserId);
+          } else {
+            console.warn("⚠️  Could not verify user ID, using client ID as fallback");
+          }
+        } catch (error) {
+          console.error("Failed to get verified user ID:", error);
+        }
+
+        // Fetch user's videos from Supabase using the verified DID
+        // This matches the creator_did that was stored during upload
+        const supabaseVideos = await getVideosByCreator(verifiedUserId);
 
         // Transform Supabase videos to match Video type (without creator for now)
         const transformedVideos = supabaseVideos.map((v: SupabaseVideo) => ({
@@ -64,7 +89,7 @@ export default function DashboardPage() {
         // Fetch creator profile for follower count
         let totalFollowers = 0;
         try {
-          const creator = await getCreatorByDID(user.id);
+          const creator = await getCreatorByDID(verifiedUserId);
           totalFollowers = creator?.follower_count || 0;
         } catch (error) {
           console.warn("Could not fetch creator profile:", error);
