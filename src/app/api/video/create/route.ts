@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createVideo } from "@/lib/supabase/videos";
-import { getCreatorByDID, createCreator } from "@/lib/supabase/creators";
+import { getCreatorByDID, createOrUpdateCreator } from "@/lib/supabase/creators";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 import { validateBody, createVideoSchema } from "@/lib/validation/schemas";
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       if (!creator) {
         console.log("[Video Create] Creator not found, creating new creator record for:", userDID);
         // Create a basic creator profile
-        creator = await createCreator({
+        creator = await createOrUpdateCreator({
           did: userDID,
           handle: `user-${userDID.substring(0, 8)}`,
           display_name: "Dragverse User",
