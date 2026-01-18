@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       contentType,
       category,
       tags,
+      visibility,
     } = validation.data;
 
     // Tags in Supabase is an array, no conversion needed
@@ -56,6 +57,7 @@ export async function POST(request: NextRequest) {
       content_type: contentType,
       category,
       tags: tagsArray,
+      visibility: visibility || "public",
     };
 
     // Save to Supabase

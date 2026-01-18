@@ -66,6 +66,9 @@ CREATE TABLE videos (
   category TEXT,
   tags TEXT[], -- Array of strings
 
+  -- Privacy & Access Control
+  visibility TEXT DEFAULT 'public' CHECK (visibility IN ('public', 'unlisted', 'private')),
+
   -- Stats
   views INTEGER DEFAULT 0,
   likes INTEGER DEFAULT 0,
@@ -76,6 +79,36 @@ CREATE TABLE videos (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   published_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================
+-- VIDEO SHARING & ACCESS CONTROL
+-- ============================================
+
+-- Share tokens table - For private/unlisted video sharing
+CREATE TABLE video_share_tokens (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  video_id UUID REFERENCES videos(id) ON DELETE CASCADE,
+  token TEXT UNIQUE NOT NULL,
+  created_by TEXT NOT NULL, -- DID of creator
+  expires_at TIMESTAMPTZ,
+  max_views INTEGER,
+  view_count INTEGER DEFAULT 0,
+  revoked BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Video access logs table - Track who accesses videos
+CREATE TABLE video_access_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  video_id UUID REFERENCES videos(id) ON DELETE CASCADE,
+  viewer_ip TEXT,
+  viewer_did TEXT,
+  access_method TEXT CHECK (access_method IN ('direct', 'share_token', 'embed')),
+  share_token_id UUID REFERENCES video_share_tokens(id) ON DELETE SET NULL,
+  user_agent TEXT,
+  referer TEXT,
+  accessed_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ============================================
@@ -138,6 +171,17 @@ CREATE INDEX idx_videos_creator_id ON videos(creator_id);
 CREATE INDEX idx_videos_creator_did ON videos(creator_did);
 CREATE INDEX idx_videos_content_type ON videos(content_type);
 CREATE INDEX idx_videos_created_at ON videos(created_at DESC);
+CREATE INDEX idx_videos_visibility ON videos(visibility);
+
+-- Share token indexes
+CREATE INDEX idx_share_tokens_token ON video_share_tokens(token);
+CREATE INDEX idx_share_tokens_video ON video_share_tokens(video_id);
+CREATE INDEX idx_share_tokens_expires ON video_share_tokens(expires_at);
+
+-- Access log indexes
+CREATE INDEX idx_access_logs_video ON video_access_logs(video_id, accessed_at DESC);
+CREATE INDEX idx_access_logs_viewer ON video_access_logs(viewer_did);
+CREATE INDEX idx_access_logs_ip ON video_access_logs(viewer_ip, accessed_at DESC);
 
 -- Social feature indexes
 CREATE INDEX idx_follows_follower ON follows(follower_did);

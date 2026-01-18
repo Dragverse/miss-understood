@@ -21,6 +21,7 @@ export default function UploadPage() {
     description: "",
     category: "",
     tags: "",
+    visibility: "public" as "public" | "unlisted" | "private",
     thumbnail: null as File | null,
     thumbnailPreview: null as string | null,
     video: null as File | null,
@@ -270,6 +271,7 @@ export default function UploadPage() {
             contentType: formData.contentType,
             category: formData.category,
             tags: formData.tags ? formData.tags.split(",").map((t: string) => t.trim()) : [],
+            visibility: formData.visibility,
           }),
         });
 
@@ -305,6 +307,7 @@ export default function UploadPage() {
           description: "",
           category: "",
           tags: "",
+          visibility: "public",
           thumbnail: null,
           thumbnailPreview: null,
           video: null,
@@ -545,6 +548,69 @@ export default function UploadPage() {
               placeholder="drag, makeup, performance (comma separated)"
               className="w-full px-4 py-3 bg-[#0f071a] border border-[#2f2942] rounded-xl focus:outline-none focus:border-[#EB83EA] transition placeholder:text-gray-500"
             />
+          </div>
+
+          {/* Privacy/Visibility */}
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-gray-300">
+              Privacy *
+            </label>
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-[#EB83EA]/50 transition">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="public"
+                  checked={formData.visibility === "public"}
+                  onChange={(e) =>
+                    setFormData({ ...formData, visibility: e.target.value as "public" | "unlisted" | "private" })
+                  }
+                  className="mt-1 accent-[#EB83EA]"
+                />
+                <div>
+                  <div className="font-semibold text-white">Public</div>
+                  <div className="text-sm text-gray-400">
+                    Anyone can search for and view your video
+                  </div>
+                </div>
+              </label>
+              <label className="flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-[#EB83EA]/50 transition">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="unlisted"
+                  checked={formData.visibility === "unlisted"}
+                  onChange={(e) =>
+                    setFormData({ ...formData, visibility: e.target.value as "public" | "unlisted" | "private" })
+                  }
+                  className="mt-1 accent-[#EB83EA]"
+                />
+                <div>
+                  <div className="font-semibold text-white">Unlisted</div>
+                  <div className="text-sm text-gray-400">
+                    Only people with the link can view your video
+                  </div>
+                </div>
+              </label>
+              <label className="flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-[#EB83EA]/50 transition">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="private"
+                  checked={formData.visibility === "private"}
+                  onChange={(e) =>
+                    setFormData({ ...formData, visibility: e.target.value as "public" | "unlisted" | "private" })
+                  }
+                  className="mt-1 accent-[#EB83EA]"
+                />
+                <div>
+                  <div className="font-semibold text-white">Private</div>
+                  <div className="text-sm text-gray-400">
+                    Only you can view your video (share with invite links)
+                  </div>
+                </div>
+              </label>
+            </div>
           </div>
         </div>
 

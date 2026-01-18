@@ -34,6 +34,7 @@ export interface Creator {
 
 // Content types
 export type ContentType = "short" | "long" | "podcast" | "music" | "live";
+export type VideoVisibility = "public" | "unlisted" | "private";
 
 export interface Video {
   id: string;
@@ -50,10 +51,23 @@ export interface Video {
   creator: Creator;
   category: string;
   tags: string[];
+  visibility?: VideoVisibility; // Privacy setting
   // External content fields (for Bluesky, etc.)
   source?: "ceramic" | "bluesky" | "farcaster";
   externalUrl?: string; // Original post URL for external content
   internalUrl?: string; // Internal Dragverse route (e.g., /profile/handle)
+}
+
+export interface ShareToken {
+  id: string;
+  token: string;
+  video_id: string;
+  created_by: string;
+  expires_at?: string;
+  max_views?: number;
+  view_count: number;
+  revoked: boolean;
+  created_at: string;
 }
 
 export interface Comment {

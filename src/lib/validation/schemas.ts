@@ -46,6 +46,11 @@ export const createVideoSchema = z.object({
   }),
   category: z.string().min(1, "Category is required"),
   tags: z.array(z.string()).max(10, "Maximum 10 tags allowed").optional(),
+  visibility: z
+    .enum(["public", "unlisted", "private"], {
+      message: "Visibility must be one of: public, unlisted, private",
+    })
+    .default("public"),
 });
 
 /**

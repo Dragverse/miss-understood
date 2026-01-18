@@ -4,31 +4,42 @@ import React, { useState, useEffect } from "react";
 import { mockVideos } from "@/lib/utils/mock-data";
 import Image from "next/image";
 import Link from "next/link";
-import { FiThumbsUp, FiMessageCircle, FiShare2, FiUserPlus } from "react-icons/fi";
+import { FiThumbsUp, FiMessageCircle, FiShare2, FiUserPlus, FiLock } from "react-icons/fi";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { TipModal } from "@/components/video/tip-modal";
+import { ShareModal } from "@/components/video/share-modal";
 import { ChocolateBar } from "@/components/ui/chocolate-bar";
 import { getVideo, getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
 import { getLocalVideos } from "@/lib/utils/local-storage";
+import { usePrivy } from "@privy-io/react-auth";
+import { useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
 
 export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
+  const searchParams = useSearchParams();
+  const shareToken = searchParams.get("token");
+  const { getAccessToken, login } = usePrivy();
+
   const [video, setVideo] = useState<Video | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [accessDeniedReason, setAccessDeniedReason] = useState("");
   const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [tipModalOpen, setTipModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
 
-  // Fetch video from Ceramic or use mock data
+  // Fetch video with access control
   useEffect(() => {
     async function loadVideo() {
       if (USE_MOCK_DATA) {
-        // Use mock data in development
+        // Use mock data in development (no access control)
         const mockVideo = mockVideos.find((v) => v.id === resolvedParams.id);
         setVideo(mockVideo || null);
         setLikes(mockVideo?.likes || 0);
@@ -37,56 +48,85 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
       }
 
       try {
-        const ceramicVideo = await getVideo(resolvedParams.id);
-        if (ceramicVideo) {
-          // Convert Ceramic video to our Video type
-          const formattedVideo: Video = {
-            id: ceramicVideo.id,
-            title: ceramicVideo.title,
-            description: ceramicVideo.description || "",
-            thumbnail: ceramicVideo.thumbnail || "",
-            duration: ceramicVideo.duration || 0,
-            views: ceramicVideo.views || 0,
-            likes: ceramicVideo.likes || 0,
-            createdAt: new Date(ceramicVideo.created_at),
-            playbackUrl: ceramicVideo.playback_url || "",
-            livepeerAssetId: ceramicVideo.livepeer_asset_id || "",
-            contentType: ceramicVideo.content_type || "long" as any,
-            creator: {
-              did: ceramicVideo.creator_did,
-              handle: "creator",
-              displayName: "Creator",
-              avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${ceramicVideo.creator_did}`,
-              description: "",
-              followerCount: 0,
-              followingCount: 0,
-              createdAt: new Date(),
-              verified: false,
-            },
-            category: ceramicVideo.category || "Other",
-            tags: ceramicVideo.tags || [],
-          };
-          setVideo(formattedVideo);
-          setLikes(formattedVideo.likes);
-        } else {
-          // Try mock data as fallback
-          const mockVideo = mockVideos.find((v) => v.id === resolvedParams.id);
-          setVideo(mockVideo || null);
-          setLikes(mockVideo?.likes || 0);
+        // Check access via API (includes privacy check)
+        const authToken = await getAccessToken().catch(() => null);
+
+        const accessUrl = new URL(`/api/video/access/${resolvedParams.id}`, window.location.origin);
+        if (shareToken) {
+          accessUrl.searchParams.set("token", shareToken);
         }
+
+        const accessResponse = await fetch(accessUrl.toString(), {
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        });
+
+        if (!accessResponse.ok) {
+          const accessData = await accessResponse.json();
+
+          if (accessResponse.status === 403) {
+            // Access denied
+            setAccessDenied(true);
+            setAccessDeniedReason(accessData.reason || "You don't have permission to view this video");
+            setIsLoading(false);
+            return;
+          }
+
+          throw new Error("Failed to check video access");
+        }
+
+        const accessData = await accessResponse.json();
+
+        if (!accessData.allowed || !accessData.video) {
+          setAccessDenied(true);
+          setAccessDeniedReason(accessData.reason || "Video not found");
+          setIsLoading(false);
+          return;
+        }
+
+        // Access granted - format video data
+        const ceramicVideo = accessData.video;
+        const formattedVideo: Video = {
+          id: ceramicVideo.id,
+          title: ceramicVideo.title,
+          description: ceramicVideo.description || "",
+          thumbnail: ceramicVideo.thumbnail || "",
+          duration: ceramicVideo.duration || 0,
+          views: ceramicVideo.views || 0,
+          likes: ceramicVideo.likes || 0,
+          createdAt: new Date(ceramicVideo.created_at),
+          playbackUrl: ceramicVideo.playback_url || "",
+          livepeerAssetId: ceramicVideo.livepeer_asset_id || "",
+          contentType: ceramicVideo.content_type || "long" as any,
+          visibility: ceramicVideo.visibility as any,
+          creator: {
+            did: ceramicVideo.creator_did,
+            handle: "creator",
+            displayName: "Creator",
+            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${ceramicVideo.creator_did}`,
+            description: "",
+            followerCount: 0,
+            followingCount: 0,
+            createdAt: new Date(),
+            verified: false,
+          },
+          category: ceramicVideo.category || "Other",
+          tags: ceramicVideo.tags || [],
+        };
+
+        setVideo(formattedVideo);
+        setLikes(formattedVideo.likes);
+        setAccessDenied(false);
       } catch (error) {
-        console.error("Failed to load video from Ceramic:", error);
-        // Fallback to mock data
-        const mockVideo = mockVideos.find((v) => v.id === resolvedParams.id);
-        setVideo(mockVideo || null);
-        setLikes(mockVideo?.likes || 0);
+        console.error("Failed to load video:", error);
+        toast.error("Failed to load video");
+        setVideo(null);
       } finally {
         setIsLoading(false);
       }
     }
 
     loadVideo();
-  }, [resolvedParams.id]);
+  }, [resolvedParams.id, shareToken, getAccessToken]);
 
   // Load related videos from various sources
   useEffect(() => {
@@ -164,6 +204,34 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#EB83EA]"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-md mx-auto text-center py-12">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gray-800 flex items-center justify-center">
+            <FiLock className="w-10 h-10 text-gray-400" />
+          </div>
+          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <p className="text-gray-400 mb-6">{accessDeniedReason}</p>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => login()}
+              className="px-6 py-3 bg-[#EB83EA] hover:bg-[#E748E6] text-white rounded-lg font-semibold transition"
+            >
+              Sign In
+            </button>
+            <Link
+              href="/"
+              className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-semibold transition"
+            >
+              Go Home
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -280,7 +348,10 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 <FiMessageCircle className="w-5 h-5" />
                 <span>Comment</span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-gray-300 rounded-lg hover:bg-gray-800 transition">
+              <button
+                onClick={() => setShareModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-gray-300 rounded-lg hover:bg-gray-800 transition"
+              >
                 <FiShare2 className="w-5 h-5" />
                 <span>Share</span>
               </button>
@@ -402,6 +473,16 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         creatorName={video.creator.displayName}
         creatorDID={video.creator.did}
         videoId={video.id}
+      />
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        videoId={video.id}
+        videoTitle={video.title}
+        videoVisibility={video.visibility || "public"}
+        isOwner={false} // TODO: Check if current user is owner
       />
     </div>
   );
