@@ -78,30 +78,54 @@ export interface BlueskyPost {
 
 /**
  * Get posts from the "What's Hot" feed (popular posts)
- * Optimized to fetch from top 10 accounts for faster loading
+ * Expanded to include more drag creators and performers for comprehensive coverage
  */
 export async function searchDragContent(
   limit: number = 50
 ): Promise<BlueskyPost[]> {
   try {
-    // Use top drag-related accounts (optimized for performance - reduced from 42 to 10)
-    // These are the most active verified accounts on Bluesky
+    // Comprehensive drag-related accounts on Bluesky
+    // Expanded from 10 to cover major performers, shows, and communities
     const dragAccounts = [
+      // Official Dragverse & Major Shows
       "dragverse.app", // Dragverse official
       "rupaulsdragrace.bsky.social", // RuPaul's Drag Race
       "wowpresentsplus.bsky.social", // WOW Presents Plus
       "bbdragula.bsky.social", // Dragula
       "bouletbrothers.bsky.social", // Boulet Brothers
+
+      // Drag Race Winners & All Stars
       "thesashacolby.bsky.social", // Sasha Colby
       "sheacoulee.com", // Shea Couleé
       "jaidaehall.bsky.social", // Jaida Essence Hall
+      "symonetik.bsky.social", // Symone
+      "aquaria.bsky.social", // Aquaria
+
+      // Popular Performers
+      "trixiemattel.bsky.social", // Trixie Mattel
+      "katya.bsky.social", // Katya Zamolodchikova
+      "bobdragqueen.bsky.social", // Bob The Drag Queen
       "maddymorphosis.bsky.social", // Maddy Morphosis
+      "gottmik.bsky.social", // Gottmik
+      "kimchi.bsky.social", // Kim Chi
+      "violet.bsky.social", // Violet Chachki
+      "biqtchpuddin.bsky.social", // Biqtch Puddin
+
+      // Drag Kings & Non-Binary Performers
+      "landonlegit.bsky.social", // Landon Cider (Drag King)
+      "adamallbright.bsky.social", // Adam All (Drag King)
+
+      // Community & Industry
       "drag.bsky.social", // General drag community
+      "dragrace.bsky.social", // Drag Race community
+      "dragula.bsky.social", // Dragula community
+      "queer.bsky.social", // Queer community (may include drag)
     ];
 
+    console.log(`[Bluesky] Fetching drag content from ${dragAccounts.length} accounts (limit: ${limit})...`);
     return await getDragAccountsPosts(dragAccounts, limit);
   } catch (error) {
-    console.error("Failed to fetch Bluesky content:", error);
+    console.error("[Bluesky] Failed to fetch content:", error);
     return [];
   }
 }
