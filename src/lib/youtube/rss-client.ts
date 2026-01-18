@@ -1,0 +1,177 @@
+/**
+ * YouTube RSS Feed Client
+ * Fetches YouTube content via RSS feeds (no API quota limits!)
+ *
+ * RSS Feed format: https://www.youtube.com/feeds/videos.xml?channel_id={channelId}
+ */
+
+import { Video } from "@/types";
+import { CURATED_DRAG_CHANNELS, getChannelRSSUrl } from "./channels";
+import { XMLParser } from "fast-xml-parser";
+
+interface RSSVideo {
+  "yt:videoId": string;
+  "yt:channelId": string;
+  title: string;
+  link: { "@_href": string };
+  author: { name: string; uri: string };
+  published: string;
+  updated: string;
+  "media:group": {
+    "media:title": string;
+    "media:content": { "@_url": string; "@_type": string; "@_width": string; "@_height": string };
+    "media:thumbnail": { "@_url": string; "@_width": string; "@_height": string };
+    "media:description": string;
+    "media:community": {
+      "media:starRating": { "@_count": string; "@_average": string; "@_min": string; "@_max": string };
+      "media:statistics": { "@_views": string };
+    };
+  };
+}
+
+/**
+ * Fetch RSS feed for a YouTube channel
+ */
+async function fetchChannelRSS(channelId: string): Promise<RSSVideo[]> {
+  try {
+    const url = getChannelRSSUrl(channelId);
+    console.log(`[YouTube RSS] Fetching feed for channel ${channelId}...`);
+
+    const response = await fetch(url, {
+      next: { revalidate: 3600 }, // Cache for 1 hour
+    });
+
+    if (!response.ok) {
+      console.error(`[YouTube RSS] Failed to fetch ${channelId}: ${response.status}`);
+      return [];
+    }
+
+    const xmlText = await response.text();
+
+    // Parse XML
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: "@_",
+    });
+
+    const result = parser.parse(xmlText);
+
+    // Extract entries from feed
+    const entries = result?.feed?.entry;
+    if (!entries) {
+      console.warn(`[YouTube RSS] No entries found for channel ${channelId}`);
+      return [];
+    }
+
+    // Ensure entries is an array
+    const videoEntries = Array.isArray(entries) ? entries : [entries];
+    console.log(`[YouTube RSS] Found ${videoEntries.length} videos from ${channelId}`);
+
+    return videoEntries;
+  } catch (error) {
+    console.error(`[YouTube RSS] Error fetching channel ${channelId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Transform RSS video entry to internal Video type
+ */
+function rssVideoToVideo(rssVideo: RSSVideo): Video {
+  const videoId = rssVideo["yt:videoId"];
+  const channelId = rssVideo["yt:channelId"];
+  const channel = CURATED_DRAG_CHANNELS.find(ch => ch.channelId === channelId);
+
+  const title = rssVideo["media:group"]["media:title"] || rssVideo.title;
+  const description = rssVideo["media:group"]["media:description"] || "";
+  const thumbnail = rssVideo["media:group"]["media:thumbnail"]?.["@_url"] || "";
+  const views = parseInt(rssVideo["media:group"]["media:community"]?.["media:statistics"]?.["@_views"] || "0", 10);
+  const publishedAt = new Date(rssVideo.published);
+
+  // Determine if it's a Short based on thumbnail aspect ratio or duration
+  // YouTube Shorts have portrait thumbnails (9:16)
+  const thumbnailHeight = parseInt(rssVideo["media:group"]["media:thumbnail"]?.["@_height"] || "0", 10);
+  const thumbnailWidth = parseInt(rssVideo["media:group"]["media:thumbnail"]?.["@_width"] || "0", 10);
+  const isShort = thumbnailHeight > thumbnailWidth; // Portrait = Short
+
+  return {
+    id: `youtube-${videoId}`,
+    title,
+    description,
+    thumbnail,
+    duration: 0, // RSS doesn't provide duration
+    views,
+    likes: 0, // RSS doesn't provide likes
+    createdAt: publishedAt,
+    playbackUrl: `https://www.youtube.com/watch?v=${videoId}`,
+    livepeerAssetId: "",
+    contentType: isShort ? "short" : "long",
+    creator: {
+      did: channelId,
+      handle: channel?.handle || "youtube",
+      displayName: channel?.displayName || rssVideo.author?.name || "YouTube Channel",
+      avatar: channel?.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${channelId}`,
+      description: channel?.description || "",
+      followerCount: 0,
+      followingCount: 0,
+      createdAt: publishedAt,
+      verified: true,
+    },
+    category: "Drag",
+    tags: ["youtube", "drag"],
+    source: "youtube",
+    externalUrl: `https://www.youtube.com/watch?v=${videoId}`,
+    internalUrl: `/profile/${channel?.handle || "youtube"}`,
+    youtubeId: videoId,
+    youtubeChannelId: channelId,
+  };
+}
+
+/**
+ * Fetch drag content from curated YouTube channels via RSS
+ * No API quota limits!
+ */
+export async function fetchCuratedDragContent(limit: number = 50): Promise<Video[]> {
+  try {
+    console.log(`[YouTube RSS] Fetching from ${CURATED_DRAG_CHANNELS.length} curated channels...`);
+
+    // Fetch RSS feeds from all channels in parallel
+    const feedPromises = CURATED_DRAG_CHANNELS.map(channel =>
+      fetchChannelRSS(channel.channelId)
+    );
+
+    const allFeeds = await Promise.all(feedPromises);
+    const allVideos = allFeeds.flat();
+
+    console.log(`[YouTube RSS] Fetched ${allVideos.length} total videos from RSS feeds`);
+
+    if (allVideos.length === 0) {
+      console.warn("[YouTube RSS] No videos found in any channel feeds");
+      return [];
+    }
+
+    // Transform to internal Video type
+    const videos = allVideos.map(rssVideoToVideo);
+
+    // Sort by date (newest first)
+    videos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    // Limit results
+    const limitedVideos = videos.slice(0, limit);
+
+    console.log(`[YouTube RSS] Returning ${limitedVideos.length} videos after sorting and limiting`);
+    return limitedVideos;
+  } catch (error) {
+    console.error("[YouTube RSS] Failed to fetch curated drag content:", error);
+    return [];
+  }
+}
+
+/**
+ * Fetch only YouTube Shorts from curated channels
+ */
+export async function fetchCuratedShorts(limit: number = 30): Promise<Video[]> {
+  const allVideos = await fetchCuratedDragContent(limit * 2); // Fetch more to filter
+  const shorts = allVideos.filter(v => v.contentType === "short");
+  return shorts.slice(0, limit);
+}

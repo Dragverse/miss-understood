@@ -1,24 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchDragContent } from "@/lib/youtube/client";
+import { fetchCuratedDragContent } from "@/lib/youtube/rss-client";
 
 /**
  * GET /api/youtube/feed
- * Fetch drag content from curated YouTube channels
+ * Fetch drag content from curated YouTube channels via RSS (no API quota!)
  *
  * Query params:
  * - limit: number of videos to return (default: 20)
- * - sortBy: "engagement" | "recent" (default: "engagement")
+ * - sortBy: "engagement" | "recent" (default: "recent")
  */
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "20", 10);
-    const sortBy = searchParams.get("sortBy") || "engagement";
+    const sortBy = searchParams.get("sortBy") || "recent";
 
-    console.log(`[YouTube Feed API] Fetching ${limit} videos...`);
+    console.log(`[YouTube Feed API] Fetching ${limit} videos from RSS feeds...`);
 
-    // Fetch drag content from YouTube
-    const videos = await searchDragContent(limit);
+    // Fetch drag content from curated YouTube channels (RSS - no quota limits!)
+    const videos = await fetchCuratedDragContent(limit);
 
     console.log(`[YouTube Feed API] Returned ${videos.length} videos`);
 
@@ -33,23 +33,9 @@ export async function GET(request: NextRequest) {
         success: true,
         videos: [],
         count: 0,
-        source: "youtube",
-        warning: "No videos returned - check server logs for [YouTube] messages",
-        apiKeyConfigured: !!process.env.YOUTUBE_API_KEY,
-        diagnostics: {
-          message: "YouTube API returned 0 videos",
-          possibleCauses: [
-            "API quota exceeded (10,000 units/day)",
-            "Search queries returning no results",
-            "API key restrictions blocking requests",
-            "Network/timeout errors",
-          ],
-          nextSteps: [
-            "Check /api/youtube/test for detailed diagnostics",
-            "Check Google Cloud Console quota: https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas",
-            "Check server logs for [YouTube] error messages",
-          ],
-        },
+        source: "youtube-rss",
+        warning: "No videos returned from RSS feeds - check server logs",
+        message: "Using RSS feeds from curated drag channels (no API quota limits)",
       });
     }
 
@@ -57,7 +43,8 @@ export async function GET(request: NextRequest) {
       success: true,
       videos,
       count: videos.length,
-      source: "youtube",
+      source: "youtube-rss",
+      message: "Videos fetched from RSS feeds (no API quota limits)",
     });
   } catch (error) {
     console.error("[YouTube Feed API] Exception:", error);
