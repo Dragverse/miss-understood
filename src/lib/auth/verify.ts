@@ -12,9 +12,16 @@ function getJWKS() {
       throw new Error("NEXT_PUBLIC_PRIVY_APP_ID is not configured");
     }
     // Privy's JWKS endpoint
-    jwksCache = createRemoteJWKSet(
-      new URL(`https://auth.privy.io/api/v1/apps/${appId}/.well-known/jwks.json`)
-    );
+    const jwksUrl = `https://auth.privy.io/api/v1/apps/${appId}/.well-known/jwks.json`;
+    console.log("🔐 Creating JWKS fetcher for URL:", jwksUrl);
+
+    try {
+      jwksCache = createRemoteJWKSet(new URL(jwksUrl));
+      console.log("✅ JWKS fetcher created successfully");
+    } catch (error) {
+      console.error("❌ Failed to create JWKS fetcher:", error);
+      throw error;
+    }
   }
   return jwksCache;
 }
