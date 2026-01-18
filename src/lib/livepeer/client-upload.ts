@@ -3,6 +3,8 @@
  * Uses secure backend API routes instead of direct API calls
  */
 
+import * as tus from "tus-js-client";
+
 interface UploadProgress {
   loaded: number;
   total: number;
@@ -76,39 +78,34 @@ export async function uploadVideoToLivepeer(
 
   // Step 2: Upload file using TUS protocol (direct to Livepeer)
   return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-
-    xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable && onProgress) {
-        onProgress({
-          loaded: e.loaded,
-          total: e.total,
-          percentage: Math.round((e.loaded / e.total) * 100),
-        });
-      }
-    });
-
-    xhr.addEventListener("load", () => {
-      if (xhr.status === 200 || xhr.status === 201 || xhr.status === 204) {
+    const upload = new tus.Upload(file, {
+      endpoint: tusEndpoint,
+      metadata: {
+        filename: file.name,
+        filetype: file.type,
+      },
+      uploadSize: file.size,
+      onError: (error) => {
+        console.error("TUS upload error:", error);
+        reject(error);
+      },
+      onProgress: (bytesUploaded, bytesTotal) => {
+        if (onProgress) {
+          onProgress({
+            loaded: bytesUploaded,
+            total: bytesTotal,
+            percentage: Math.round((bytesUploaded / bytesTotal) * 100),
+          });
+        }
+      },
+      onSuccess: () => {
+        console.log("TUS upload completed successfully");
         resolve(asset);
-      } else {
-        reject(new Error(`Upload failed with status ${xhr.status}`));
-      }
+      },
     });
 
-    xhr.addEventListener("error", () => {
-      reject(new Error("Upload failed"));
-    });
-
-    // TUS protocol requires PATCH, not PUT
-    xhr.open("PATCH", tusEndpoint);
-
-    // Required TUS headers
-    xhr.setRequestHeader("Tus-Resumable", "1.0.0");
-    xhr.setRequestHeader("Upload-Offset", "0");
-    xhr.setRequestHeader("Content-Type", "application/offset+octet-stream");
-
-    xhr.send(file);
+    // Start the upload
+    upload.start();
   });
 }
 
