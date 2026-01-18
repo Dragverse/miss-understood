@@ -69,10 +69,15 @@ export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
       userId: verifiedClaims.user_id,
     };
   } catch (error) {
-    console.error("Auth verification failed:", error);
+    console.error("Auth verification failed - Full error:", error);
+    console.error("Error type:", error instanceof Error ? error.constructor.name : typeof error);
+    console.error("Error message:", error instanceof Error ? error.message : String(error));
+
+    // Return more specific error message
+    const errorMessage = error instanceof Error ? error.message : "Invalid or expired token";
     return {
       authenticated: false,
-      error: "Invalid or expired token",
+      error: `Invalid or expired token: ${errorMessage}`,
     };
   }
 }
