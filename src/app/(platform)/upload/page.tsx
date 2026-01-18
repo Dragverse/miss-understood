@@ -691,7 +691,7 @@ export default function UploadPage() {
                       <FiUpload className="text-2xl text-[#EB83EA] animate-pulse" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-xl">Uploading to Livepeer</h3>
+                      <h3 className="font-bold text-xl">Uploading Your Video</h3>
                       <p className="text-sm text-gray-400">Please don't close this page</p>
                     </div>
                   </div>
