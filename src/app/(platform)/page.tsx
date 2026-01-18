@@ -13,6 +13,7 @@ import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
 import { getLocalVideos } from "@/lib/utils/local-storage";
+import { VideoGridSkeleton, ShortsSectionSkeleton } from "@/components/loading/video-card-skeleton";
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -204,6 +205,23 @@ export default function HomePage() {
                   </p>
                 </div>
               )}
+            </>
+          ) : loading ? (
+            <>
+              {/* Hero Section */}
+              <HeroSection />
+
+              {/* Loading skeletons while data fetches */}
+              <div className="space-y-10">
+                {/* Shorts skeleton */}
+                <ShortsSectionSkeleton />
+
+                {/* Community videos skeleton */}
+                <div className="space-y-4">
+                  <div className="h-8 bg-white/10 rounded-md w-48 animate-pulse" />
+                  <VideoGridSkeleton count={6} />
+                </div>
+              </div>
             </>
           ) : (
             <>
