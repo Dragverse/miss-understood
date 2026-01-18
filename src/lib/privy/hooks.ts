@@ -1,6 +1,5 @@
 import { usePrivy, useWallets, useLinkAccount } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
-import { useCeramic } from "@/lib/ceramic/ceramic-provider";
 import { useBlueskyProfile } from "@/lib/bluesky/hooks";
 
 /**
@@ -21,12 +20,6 @@ export function useAuthUser() {
   const { wallets } = useWallets();
   const { linkWallet, linkEmail, linkGoogle } = useLinkAccount();
   const { session, creator } = useAuth();
-  const {
-    ceramicDID,
-    isAuthenticated: isCeramicAuthenticated,
-    isAuthenticating: isCeramicAuthenticating,
-    authenticateCeramic
-  } = useCeramic();
   const { profile: blueskyProfile, isConnected: blueskyConnected } = useBlueskyProfile();
 
   return {
@@ -47,12 +40,6 @@ export function useAuthUser() {
     userEmail: user?.email?.address,
     userHandle: user?.farcaster?.username || user?.google?.email || user?.email?.address || "user",
     userId: user?.id,
-
-    // Ceramic state
-    ceramicDID,
-    isCeramicAuthenticated,
-    isCeramicAuthenticating,
-    authenticateCeramic,
 
     // Social handles from Privy
     instagramHandle: user?.instagram?.username,
