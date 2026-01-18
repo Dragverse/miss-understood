@@ -13,12 +13,25 @@ export async function POST(request: NextRequest) {
     // Verify authentication and get user DID
     let userDID = "anonymous";
 
+    console.log("[Video Create] Privy configured:", isPrivyConfigured());
+
     if (isPrivyConfigured()) {
       const auth = await verifyAuth(request);
+      console.log("[Video Create] Auth result:", { authenticated: auth.authenticated, userId: auth.userId, error: auth.error });
+
       if (!auth.authenticated) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        console.error("[Video Create] ❌ Authentication failed:", auth.error);
+        return NextResponse.json({
+          error: "Unauthorized",
+          details: auth.error,
+          privyConfigured: isPrivyConfigured(),
+          hasAuthHeader: !!request.headers.get("authorization")
+        }, { status: 401 });
       }
       userDID = auth.userId || "anonymous";
+      console.log("[Video Create] ✅ Authenticated as:", userDID);
+    } else {
+      console.log("[Video Create] ⚠️ Privy not configured, using anonymous mode");
     }
 
     // Parse and validate request body
