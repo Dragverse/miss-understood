@@ -203,20 +203,19 @@ export async function getDragAccountsPosts(
  * Includes posts with video embeds, external video links, images, or text-only posts
  */
 export function blueskyPostToVideo(post: BlueskyPost): any | null {
-  // Check if post has video content or images
-  const hasVideo =
-    post.embed?.video ||
-    (post.embed?.external &&
-      (post.embed.external.uri.includes("youtube") ||
-        post.embed.external.uri.includes("youtu.be") ||
-        post.embed.external.uri.includes("vimeo") ||
-        post.embed.external.uri.includes("tiktok")));
+  // Check if post has actual video content (not just images/text)
+  const hasNativeVideo = !!post.embed?.video;
+  const hasExternalVideo =
+    post.embed?.external &&
+    (post.embed.external.uri.includes("youtube") ||
+      post.embed.external.uri.includes("youtu.be") ||
+      post.embed.external.uri.includes("vimeo") ||
+      post.embed.external.uri.includes("tiktok"));
 
-  const hasImages = post.embed?.images && post.embed.images.length > 0;
-  const hasText = post.text && post.text.trim().length > 0;
+  const hasVideo = hasNativeVideo || hasExternalVideo;
 
-  // Accept posts with video, images, OR text-only posts
-  if (!hasVideo && !hasImages && !hasText) {
+  // Only accept posts with actual video content for video feeds
+  if (!hasVideo) {
     return null;
   }
 
@@ -225,19 +224,16 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
   let thumbnail = "";
 
   if (post.embed?.video) {
+    // Native Bluesky video
     playbackUrl = post.embed.video.playlist;
     thumbnail = post.embed.video.thumbnail || "";
   } else if (post.embed?.external) {
+    // External video link (YouTube, Vimeo, TikTok)
     playbackUrl = post.embed.external.uri;
     thumbnail = post.embed.external.thumb || "";
-  } else if (hasImages) {
-    // For image posts, use first image as thumbnail and link to Bluesky post
-    thumbnail = post.embed!.images![0].fullsize;
-    playbackUrl = `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split("/").pop()}`;
   } else {
-    // Text-only post - no thumbnail or playback URL
-    playbackUrl = "";
-    thumbnail = "";
+    // No valid video playback URL - skip this post
+    return null;
   }
 
   // Generate a unique ID from the post URI
