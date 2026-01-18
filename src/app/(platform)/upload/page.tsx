@@ -235,6 +235,9 @@ export default function UploadPage() {
       }
 
       console.log("✓ Got auth token, starting upload...");
+      console.log("🔍 Token type:", typeof authToken);
+      console.log("🔍 Token length:", authToken.length);
+      console.log("🔍 Token prefix:", authToken.substring(0, 30) + "...");
 
       const asset = await uploadVideoToLivepeer(
         formData.video,
