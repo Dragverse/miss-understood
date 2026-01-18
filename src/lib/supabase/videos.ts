@@ -29,9 +29,27 @@ export type CreateVideoInput = Omit<SupabaseVideo, 'id' | 'creator_id' | 'views'
 export async function createVideo(input: Partial<CreateVideoInput>) {
   const client = getSupabaseServerClient();
 
+  // Look up creator_id from creator_did
+  const { data: creator, error: creatorError } = await client
+    .from('creators')
+    .select('id')
+    .eq('did', input.creator_did!)
+    .maybeSingle();
+
+  if (creatorError) {
+    console.error('[createVideo] Failed to lookup creator:', creatorError);
+    throw new Error(`Creator lookup failed: ${creatorError.message}`);
+  }
+
+  if (!creator) {
+    console.error('[createVideo] No creator found for DID:', input.creator_did);
+    throw new Error(`No creator found with DID: ${input.creator_did}`);
+  }
+
   const { data, error } = await client
     .from('videos')
     .insert({
+      creator_id: creator.id,
       creator_did: input.creator_did!,
       title: input.title!,
       description: input.description,
@@ -49,7 +67,10 @@ export async function createVideo(input: Partial<CreateVideoInput>) {
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[createVideo] Insert failed:', error);
+    throw error;
+  }
   return data as SupabaseVideo;
 }
 
