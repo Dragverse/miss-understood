@@ -58,17 +58,8 @@ function FeedContent() {
         const response = await fetch(url);
         const data = await response.json();
 
-        // Filter for text/photo posts only (exclude videos)
-        const feedPosts = (data.posts || []).filter((post: any) => {
-          const hasVideoPlayback = post.playbackUrl?.includes("m3u8");
-          const hasExternalVideo =
-            post.playbackUrl?.includes("youtube") ||
-            post.playbackUrl?.includes("youtu.be") ||
-            post.playbackUrl?.includes("vimeo") ||
-            post.playbackUrl?.includes("tiktok");
-
-          return !hasVideoPlayback && !hasExternalVideo;
-        });
+        // Include all posts (videos, photos, text)
+        const feedPosts = (data.posts || []);
 
         // Filter by bookmarks if needed
         if (showBookmarks) {

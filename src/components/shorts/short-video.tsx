@@ -9,9 +9,10 @@ import type { Video } from "@/types";
 interface ShortVideoProps {
   video: Video;
   isActive: boolean;
+  onNext?: () => void;
 }
 
-export function ShortVideo({ video, isActive }: ShortVideoProps) {
+export function ShortVideo({ video, isActive, onNext }: ShortVideoProps) {
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const playerRef = useRef<HTMLVideoElement>(null);
@@ -23,15 +24,22 @@ export function ShortVideo({ video, isActive }: ShortVideoProps) {
 
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => {
+      if (onNext) {
+        onNext();
+      }
+    };
 
     player.addEventListener("play", handlePlay);
     player.addEventListener("pause", handlePause);
+    player.addEventListener("ended", handleEnded);
 
     return () => {
       player.removeEventListener("play", handlePlay);
       player.removeEventListener("pause", handlePause);
+      player.removeEventListener("ended", handleEnded);
     };
-  }, []);
+  }, [onNext]);
 
   // Control play/pause based on isActive prop
   useEffect(() => {

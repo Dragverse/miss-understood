@@ -161,7 +161,11 @@ export default function ShortsPage() {
       >
         {shorts.map((video, idx) => (
           <div key={video.id} className="keen-slider__slide relative">
-            <ShortVideo video={video} isActive={currentSlide === idx} />
+            <ShortVideo
+              video={video}
+              isActive={currentSlide === idx}
+              onNext={() => instanceRef.current?.next()}
+            />
             <ShortOverlayTop video={video} />
             <ShortOverlayBottom video={video} />
           </div>
