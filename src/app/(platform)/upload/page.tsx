@@ -252,11 +252,14 @@ export default function UploadPage() {
 
       console.log("Video ready:", readyAsset);
 
-      // Save video metadata to Ceramic via backend API
+      // Save video metadata to Supabase via backend API
       try {
         const metadataResponse = await fetch("/api/video/create", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`,
+          },
           body: JSON.stringify({
             title: formData.title,
             description: formData.description,
