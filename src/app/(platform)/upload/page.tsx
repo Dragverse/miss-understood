@@ -291,6 +291,9 @@ export default function UploadPage() {
 
       // Save video metadata to Supabase via backend API
       try {
+        console.log("🔐 Auth token available:", !!authToken);
+        console.log("📤 Sending video metadata to /api/video/create");
+
         const metadataResponse = await fetch("/api/video/create", {
           method: "POST",
           headers: {
@@ -311,8 +314,16 @@ export default function UploadPage() {
           }),
         });
 
+        console.log("📥 Response status:", metadataResponse.status, metadataResponse.statusText);
         const metadataResult = await metadataResponse.json();
-        console.log("Video metadata saved:", metadataResult);
+        console.log("📦 Response data:", metadataResult);
+
+        if (!metadataResponse.ok) {
+          console.error("❌ Video metadata save failed:", metadataResult);
+          throw new Error(metadataResult.error || "Failed to save video metadata");
+        }
+
+        console.log("✅ Video metadata saved successfully:", metadataResult);
 
         // If in fallback mode, store video data in localStorage
         if (metadataResult.fallbackMode && metadataResult.videoData) {
