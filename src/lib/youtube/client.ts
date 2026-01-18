@@ -8,16 +8,16 @@ import { Video } from "@/types";
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "";
 const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
 
-// Drag-related search queries and hashtags
+// Drag-related search queries (ordered by likelihood of results)
 const DRAG_SEARCH_QUERIES = [
-  "drag queen performance",
-  "drag race",
-  "drag makeup tutorial",
-  "drag show",
-  "rupaul drag race",
-  "drag transformation",
-  "drag lip sync",
-  "drag artist",
+  "drag race",                  // Most popular
+  "drag queen",                 // Broad term
+  "rupaul",                     // Specific show
+  "drag performance",           // General performances
+  "drag makeup",                // Popular content type
+  "drag show",                  // Live performances
+  "drag transformation",        // Transformation videos
+  "drag lip sync",              // Performance type
 ];
 
 const DRAG_HASHTAGS = [
@@ -171,9 +171,10 @@ async function searchByQueries(queries: string[], limit: number): Promise<YouTub
 
       if (!response.ok) {
         const errorBody = await response.text();
-        console.error(`[YouTube] Search error for "${query}":`, {
+        console.error(`[YouTube] ❌ Search HTTP error for "${query}":`, {
           status: response.status,
-          body: errorBody,
+          statusText: response.statusText,
+          body: errorBody.substring(0, 200),
         });
         return [];
       }
@@ -181,16 +182,20 @@ async function searchByQueries(queries: string[], limit: number): Promise<YouTub
       const data = await response.json();
 
       if (data.error) {
-        console.error(`[YouTube] API error for "${query}":`, data.error);
+        console.error(`[YouTube] ❌ API error for "${query}":`, {
+          code: data.error.code,
+          message: data.error.message,
+          errors: data.error.errors,
+        });
         return [];
       }
 
       if (!data.items || data.items.length === 0) {
-        console.log(`[YouTube] No results for "${query}"`);
+        console.log(`[YouTube] ⚠️  No results for "${query}" (this is normal, trying next query)`);
         return [];
       }
 
-      console.log(`[YouTube] Found ${data.items.length} videos for "${query}"`);
+      console.log(`[YouTube] ✅ Found ${data.items.length} videos for "${query}"`);
 
       // Enrich with video details
       const videoIds = data.items.map((item: YouTubeVideo) =>
