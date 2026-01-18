@@ -75,7 +75,12 @@ export default function VideosPage() {
         console.log(`[Videos] Loaded ${transformedSupabase.length} Supabase, ${blueskyVideos?.length || 0} Bluesky, ${youtubeVideos?.length || 0} YouTube videos`);
 
         // Sort by creation date (newest first)
-        allVideos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        // Handle both Date objects and ISO strings
+        allVideos.sort((a, b) => {
+          const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+          const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+          return bTime - aTime;
+        });
 
         setVideos(allVideos);
       } catch (error) {

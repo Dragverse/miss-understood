@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       .from("posts")
       .select(`
         *,
-        creator:creators!posts_creator_did_fkey(
+        creator:creators!posts_creator_id_fkey(
           did,
           handle,
           display_name,
