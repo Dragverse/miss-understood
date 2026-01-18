@@ -80,9 +80,19 @@ export const CURATED_DRAG_CHANNELS: CuratedChannel[] = [
 
 /**
  * Get RSS feed URL for a YouTube channel
+ * Try both channel_id and user formats as fallback
  */
-export function getChannelRSSUrl(channelId: string): string {
+export function getChannelRSSUrl(channelId: string, handle?: string): string {
+  // Primary: Use channel_id
+  // Note: Some channels may not have working RSS feeds
   return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+}
+
+/**
+ * Get alternative RSS feed URL using channel handle
+ */
+export function getChannelRSSUrlByHandle(handle: string): string {
+  return `https://www.youtube.com/feeds/videos.xml?user=${handle}`;
 }
 
 /**

@@ -98,22 +98,16 @@ export async function searchDragContent(
       "thesashacolby.bsky.social", // Sasha Colby
       "sheacoulee.com", // Shea Couleé
       "jaidaehall.bsky.social", // Jaida Essence Hall
-      "symonetik.bsky.social", // Symone
       "aquaria.bsky.social", // Aquaria
 
       // Popular Performers
       "trixiemattel.bsky.social", // Trixie Mattel
       "katya.bsky.social", // Katya Zamolodchikova
-      "bobdragqueen.bsky.social", // Bob The Drag Queen
       "maddymorphosis.bsky.social", // Maddy Morphosis
       "gottmik.bsky.social", // Gottmik
       "kimchi.bsky.social", // Kim Chi
       "violet.bsky.social", // Violet Chachki
       "biqtchpuddin.bsky.social", // Biqtch Puddin
-
-      // Drag Kings & Non-Binary Performers
-      "landonlegit.bsky.social", // Landon Cider (Drag King)
-      "adamallbright.bsky.social", // Adam All (Drag King)
 
       // Community & Industry
       "drag.bsky.social", // General drag community

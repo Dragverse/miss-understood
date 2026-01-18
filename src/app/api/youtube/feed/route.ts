@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { searchDragContent } from "@/lib/youtube/client";
 import { fetchCuratedDragContent } from "@/lib/youtube/rss-client";
 
 /**
  * GET /api/youtube/feed
- * Fetch drag content from curated YouTube channels via RSS (no API quota!)
+ * Fetch drag content from YouTube
+ * - Tries YouTube Data API first (if YOUTUBE_API_KEY is set)
+ * - Falls back to RSS feeds if API fails
  *
  * Query params:
  * - limit: number of videos to return (default: 20)
@@ -15,27 +18,48 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20", 10);
     const sortBy = searchParams.get("sortBy") || "recent";
 
-    console.log(`[YouTube Feed API] Fetching ${limit} videos from RSS feeds...`);
+    console.log(`[YouTube Feed API] Fetching ${limit} videos...`);
 
-    // Fetch drag content from curated YouTube channels (RSS - no quota limits!)
-    const videos = await fetchCuratedDragContent(limit);
+    let videos = [];
+    let source = "unknown";
 
-    console.log(`[YouTube Feed API] Returned ${videos.length} videos`);
+    // Try YouTube Data API first (more reliable, has engagement data)
+    if (process.env.YOUTUBE_API_KEY) {
+      console.log("[YouTube Feed API] Attempting YouTube Data API...");
+      try {
+        videos = await searchDragContent(limit);
+        source = "youtube-api";
+        console.log(`[YouTube Feed API] ✅ Got ${videos.length} videos from YouTube Data API`);
+      } catch (apiError) {
+        console.warn("[YouTube Feed API] API failed, falling back to RSS:", apiError);
+        videos = [];
+      }
+    }
+
+    // Fallback to RSS if API didn't work
+    if (videos.length === 0) {
+      console.log("[YouTube Feed API] Trying RSS feeds as fallback...");
+      videos = await fetchCuratedDragContent(limit);
+      source = "youtube-rss";
+      console.log(`[YouTube Feed API] ${videos.length > 0 ? '✅' : '⚠️'} Got ${videos.length} videos from RSS`);
+    }
 
     // Sort by recent if requested
     if (sortBy === "recent") {
       videos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }
 
-    // If no videos, return diagnostic info
+    // If still no videos, return diagnostic info
     if (videos.length === 0) {
       return NextResponse.json({
         success: true,
         videos: [],
         count: 0,
-        source: "youtube-rss",
-        warning: "No videos returned from RSS feeds - check server logs",
-        message: "Using RSS feeds from curated drag channels (no API quota limits)",
+        source,
+        warning: "No videos returned from YouTube - check server logs",
+        message: source === "youtube-api"
+          ? "YouTube Data API returned no results"
+          : "RSS feeds returned no results (may be blocked or channels have no recent content)",
       });
     }
 
@@ -43,8 +67,10 @@ export async function GET(request: NextRequest) {
       success: true,
       videos,
       count: videos.length,
-      source: "youtube-rss",
-      message: "Videos fetched from RSS feeds (no API quota limits)",
+      source,
+      message: source === "youtube-api"
+        ? "Videos fetched from YouTube Data API"
+        : "Videos fetched from RSS feeds",
     });
   } catch (error) {
     console.error("[YouTube Feed API] Exception:", error);
