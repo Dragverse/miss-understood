@@ -56,7 +56,8 @@
       "Bash(__NEW_LINE_d9b60c8d285c40d3__ git commit --allow-empty -m \"chore: trigger Vercel deployment for commit 4667d3d\n\nPrivacy and sharing features deployed:\n- Database migration complete\n- All code pushed\n- Forcing Vercel redeploy\")",
       "Bash(__NEW_LINE_d9b60c8d285c40d3__ git push origin main)",
       "Bash(__NEW_LINE_d9b60c8d285c40d3__ echo \"\")",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(SKIP_ENV_VALIDATION=true npm run build:*)"
     ]
   }
 }

@@ -1,8 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiExternalLink, FiAward } from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import { FiExternalLink, FiAward, FiTrendingUp, FiStar, FiUsers, FiVideo } from "react-icons/fi";
+import { LoadingShimmer } from "@/components/shared";
 
 const famers = [
   { name: "ALLESIA", image: "/Famers/ALLESIA.png" },

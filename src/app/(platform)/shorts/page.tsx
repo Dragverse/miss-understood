@@ -64,6 +64,19 @@ export default function ShortsPage() {
         console.warn("Bluesky unavailable");
       }
 
+      // Fetch from YouTube
+      try {
+        const youtubeResponse = await fetch("/api/youtube/feed?limit=30");
+        if (youtubeResponse.ok) {
+          const youtubeData = await youtubeResponse.json();
+          if (youtubeData.success && youtubeData.videos) {
+            allVideos.push(...youtubeData.videos);
+          }
+        }
+      } catch (error) {
+        console.warn("YouTube unavailable");
+      }
+
       // Add local uploads
       const localVideos = getLocalVideos();
       allVideos.push(...localVideos);
