@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { FiUploadCloud, FiCheck, FiFilm, FiZap, FiUpload, FiLoader } from "react-icons/fi";
+import { FiUploadCloud, FiCheck, FiFilm, FiZap, FiUpload, FiLoader, FiClock } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { uploadVideoToLivepeer, waitForAssetReady } from "@/lib/livepeer/client-upload";
 import { useAuthUser } from "@/lib/privy/hooks";
