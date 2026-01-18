@@ -680,28 +680,28 @@ export default function UploadPage() {
           {uploading ? "Uploading..." : "Upload Content"}
         </button>
 
-        {/* Upload Progress - Enhanced */}
+        {/* Upload Progress - Fixed Bottom Right Popup */}
         {uploading && (
-          <div className="p-8 bg-gradient-to-br from-[#1a0b2e] to-[#0f071a] border-2 border-[#EB83EA]/30 rounded-[24px] shadow-2xl shadow-[#EB83EA]/10">
+          <div className="fixed bottom-6 right-6 w-[420px] p-6 bg-gradient-to-br from-[#1a0b2e] to-[#0f071a] border-2 border-[#EB83EA]/30 rounded-[20px] shadow-2xl shadow-[#EB83EA]/20 backdrop-blur-sm z-50 animate-in slide-in-from-bottom-4 duration-300">
             {uploadStage === "uploading" && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-[#EB83EA]/20 flex items-center justify-center">
-                      <FiUpload className="text-2xl text-[#EB83EA] animate-pulse" />
+                    <div className="w-10 h-10 rounded-full bg-[#EB83EA]/20 flex items-center justify-center">
+                      <FiUpload className="text-lg text-[#EB83EA] animate-pulse" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-xl">Uploading Your Video</h3>
-                      <p className="text-sm text-gray-400">Please don't close this page</p>
+                      <h3 className="font-bold text-lg">Uploading Video</h3>
+                      <p className="text-xs text-gray-400">Don't close this page</p>
                     </div>
                   </div>
-                  <span className="text-4xl font-bold bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+                  <span className="text-2xl font-bold bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
                     {uploadProgress}%
                   </span>
                 </div>
-                <div className="w-full bg-[#0f071a] rounded-full h-4 overflow-hidden shadow-inner">
+                <div className="w-full bg-[#0f071a] rounded-full h-3 overflow-hidden shadow-inner">
                   <div
-                    className="bg-gradient-to-r from-[#EB83EA] via-[#B86DE5] to-[#7c3aed] h-4 rounded-full transition-all duration-300 relative overflow-hidden"
+                    className="bg-gradient-to-r from-[#EB83EA] via-[#B86DE5] to-[#7c3aed] h-3 rounded-full transition-all duration-300 relative overflow-hidden"
                     style={{ width: `${uploadProgress}%` }}
                   >
                     <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
@@ -711,44 +711,44 @@ export default function UploadPage() {
             )}
 
             {uploadStage === "processing" && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-[#EB83EA]/20 flex items-center justify-center">
-                      <FiLoader className="text-2xl text-[#EB83EA] animate-spin" />
+                    <div className="w-10 h-10 rounded-full bg-[#EB83EA]/20 flex items-center justify-center">
+                      <FiLoader className="text-lg text-[#EB83EA] animate-spin" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-xl">Processing Video</h3>
-                      <p className="text-sm text-gray-400">Optimizing for streaming...</p>
+                      <h3 className="font-bold text-lg">Processing Video</h3>
+                      <p className="text-xs text-gray-400">Optimizing for streaming...</p>
                     </div>
                   </div>
-                  <span className="text-4xl font-bold bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+                  <span className="text-2xl font-bold bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
                     {processingProgress}%
                   </span>
                 </div>
-                <div className="w-full bg-[#0f071a] rounded-full h-4 overflow-hidden shadow-inner">
+                <div className="w-full bg-[#0f071a] rounded-full h-3 overflow-hidden shadow-inner">
                   <div
-                    className="bg-gradient-to-r from-[#EB83EA] via-[#B86DE5] to-[#7c3aed] h-4 rounded-full transition-all duration-300 relative overflow-hidden"
+                    className="bg-gradient-to-r from-[#EB83EA] via-[#B86DE5] to-[#7c3aed] h-3 rounded-full transition-all duration-300 relative overflow-hidden"
                     style={{ width: `${processingProgress}%` }}
                   >
                     <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
                   </div>
                 </div>
-                <p className="text-sm text-gray-400 flex items-center gap-2">
+                <p className="text-xs text-gray-400 flex items-center gap-2">
                   <FiClock className="text-[#EB83EA]" />
-                  This may take a few minutes depending on video length
+                  This may take a few minutes
                 </p>
               </div>
             )}
 
             {uploadStage === "complete" && (
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <FiCheck className="text-3xl text-green-500 animate-bounce" />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <FiCheck className="text-2xl text-green-500 animate-bounce" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-xl text-green-500">Upload Complete!</h3>
-                  <p className="text-sm text-gray-400">Redirecting to your video...</p>
+                  <h3 className="font-bold text-lg text-green-500">Upload Complete!</h3>
+                  <p className="text-xs text-gray-400">Redirecting to your video...</p>
                 </div>
               </div>
             )}
