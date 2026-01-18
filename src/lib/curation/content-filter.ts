@@ -261,7 +261,7 @@ export function flagContentBatch<T extends Video | any>(
   items: T[]
 ): Array<T & { contentFlags: ContentFlags }> {
   return items.map((item) => ({
-    ...item,
+    ...(item as any),
     contentFlags: detectMatureContent(item),
   }));
 }
