@@ -32,6 +32,9 @@ export default function UploadPage() {
   const [processingProgress, setProcessingProgress] = useState(0);
   const [uploadStage, setUploadStage] = useState<"idle" | "uploading" | "processing" | "complete">("idle");
   const [dragActive, setDragActive] = useState(false);
+  const [uploadSpeed, setUploadSpeed] = useState<string>("");
+  const [uploadedBytes, setUploadedBytes] = useState<number>(0);
+  const [totalBytes, setTotalBytes] = useState<number>(0);
 
   const categories = [
     "Entertainment",
@@ -239,10 +242,27 @@ export default function UploadPage() {
       console.log("🔍 Token length:", authToken.length);
       console.log("🔍 Token prefix:", authToken.substring(0, 30) + "...");
 
+      let startTime = Date.now();
+      let lastUpdate = startTime;
+      let lastLoaded = 0;
+
       const asset = await uploadVideoToLivepeer(
         formData.video,
         (progress) => {
           setUploadProgress(progress.percentage);
+          setUploadedBytes(progress.loaded);
+          setTotalBytes(progress.total);
+
+          // Calculate upload speed
+          const now = Date.now();
+          const timeDiff = (now - lastUpdate) / 1000; // seconds
+          if (timeDiff >= 1) { // Update speed every second
+            const bytesDiff = progress.loaded - lastLoaded;
+            const speedMBps = (bytesDiff / timeDiff) / (1024 * 1024);
+            setUploadSpeed(speedMBps.toFixed(2));
+            lastUpdate = now;
+            lastLoaded = progress.loaded;
+          }
         },
         authToken
       );
@@ -692,7 +712,10 @@ export default function UploadPage() {
                     </div>
                     <div>
                       <h3 className="font-bold text-lg">Uploading Video</h3>
-                      <p className="text-xs text-gray-400">Don't close this page</p>
+                      <p className="text-xs text-gray-400">
+                        {uploadSpeed && `${uploadSpeed} MB/s • `}
+                        {(uploadedBytes / (1024 * 1024)).toFixed(0)} / {(totalBytes / (1024 * 1024)).toFixed(0)} MB
+                      </p>
                     </div>
                   </div>
                   <span className="text-2xl font-bold bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
