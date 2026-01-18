@@ -30,6 +30,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "cdn.bsky.app",
       },
+      {
+        protocol: "https",
+        hostname: "image.lp-playback.studio",
+      },
     ],
   },
   // Security headers (moved from deprecated middleware.ts)

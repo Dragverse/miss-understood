@@ -303,7 +303,7 @@ export default function UploadPage() {
           body: JSON.stringify({
             title: formData.title,
             description: formData.description,
-            thumbnail: formData.thumbnailPreview || readyAsset.playbackUrl?.replace("index.m3u8", "thumbnail.jpg"),
+            thumbnail: formData.thumbnailPreview || `https://image.lp-playback.studio/image/${readyAsset.playbackId}/thumbnail.webp`,
             livepeerAssetId: readyAsset.id,
             playbackId: readyAsset.playbackId,
             playbackUrl: readyAsset.playbackUrl,
