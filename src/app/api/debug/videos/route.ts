@@ -72,7 +72,7 @@ export async function GET() {
         videosWithIssues: videosWithIssues.length,
         orphanedVideos: orphanedVideos?.length || 0,
       },
-      videos: videos?.map(v => ({
+      videos: videos?.map((v: any) => ({
         id: v.id,
         title: v.title,
         contentType: v.content_type,
@@ -86,7 +86,7 @@ export async function GET() {
         createdAt: v.created_at,
       })),
       issues: {
-        videosWithMissingCreator: videosWithIssues.map(v => ({
+        videosWithMissingCreator: videosWithIssues.map((v: any) => ({
           videoId: v.id,
           title: v.title,
           creatorDID: v.creator_did,
