@@ -680,46 +680,76 @@ export default function UploadPage() {
           {uploading ? "Uploading..." : "Upload Content"}
         </button>
 
-        {/* Upload Progress */}
+        {/* Upload Progress - Enhanced */}
         {uploading && (
-          <div className="p-6 bg-[#1a0b2e] border border-[#2f2942] rounded-[24px]">
+          <div className="p-8 bg-gradient-to-br from-[#1a0b2e] to-[#0f071a] border-2 border-[#EB83EA]/30 rounded-[24px] shadow-2xl shadow-[#EB83EA]/10">
             {uploadStage === "uploading" && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-semibold">Uploading to Livepeer...</span>
-                  <span className="text-[#EB83EA] font-bold">{uploadProgress}%</span>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-[#EB83EA]/20 flex items-center justify-center">
+                      <FiUpload className="text-2xl text-[#EB83EA] animate-pulse" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xl">Uploading to Livepeer</h3>
+                      <p className="text-sm text-gray-400">Please don't close this page</p>
+                    </div>
+                  </div>
+                  <span className="text-4xl font-bold bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+                    {uploadProgress}%
+                  </span>
                 </div>
-                <div className="w-full bg-[#0f071a] rounded-full h-3">
+                <div className="w-full bg-[#0f071a] rounded-full h-4 overflow-hidden shadow-inner">
                   <div
-                    className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] h-3 rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-[#EB83EA] via-[#B86DE5] to-[#7c3aed] h-4 rounded-full transition-all duration-300 relative overflow-hidden"
                     style={{ width: `${uploadProgress}%` }}
-                  />
+                  >
+                    <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
+                  </div>
                 </div>
               </div>
             )}
 
             {uploadStage === "processing" && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-semibold">Processing video...</span>
-                  <span className="text-[#EB83EA] font-bold">{processingProgress}%</span>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-[#EB83EA]/20 flex items-center justify-center">
+                      <FiLoader className="text-2xl text-[#EB83EA] animate-spin" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xl">Processing Video</h3>
+                      <p className="text-sm text-gray-400">Optimizing for streaming...</p>
+                    </div>
+                  </div>
+                  <span className="text-4xl font-bold bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+                    {processingProgress}%
+                  </span>
                 </div>
-                <div className="w-full bg-[#0f071a] rounded-full h-3">
+                <div className="w-full bg-[#0f071a] rounded-full h-4 overflow-hidden shadow-inner">
                   <div
-                    className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] h-3 rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-[#EB83EA] via-[#B86DE5] to-[#7c3aed] h-4 rounded-full transition-all duration-300 relative overflow-hidden"
                     style={{ width: `${processingProgress}%` }}
-                  />
+                  >
+                    <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-3">
+                <p className="text-sm text-gray-400 flex items-center gap-2">
+                  <FiClock className="text-[#EB83EA]" />
                   This may take a few minutes depending on video length
                 </p>
               </div>
             )}
 
             {uploadStage === "complete" && (
-              <div className="flex items-center gap-3 text-green-500">
-                <FiCheck className="text-2xl" />
-                <span className="font-semibold">Video ready! Redirecting...</span>
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <FiCheck className="text-3xl text-green-500 animate-bounce" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xl text-green-500">Upload Complete!</h3>
+                  <p className="text-sm text-gray-400">Redirecting to your video...</p>
+                </div>
               </div>
             )}
           </div>

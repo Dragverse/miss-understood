@@ -101,6 +101,15 @@
   animation: slide-up 0.4s ease-out forwards;
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 @media (min-width: 1921px) {
   .ultrawide\:w-\[650px\] {
     width: 650px;
