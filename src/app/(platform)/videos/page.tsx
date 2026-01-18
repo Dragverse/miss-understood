@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { VideoCard } from "@/components/video/video-card";
 import { categories } from "@/lib/utils/mock-data";
 import { getLocalVideos } from "@/lib/utils/local-storage";
-import { getVideos } from "@/lib/ceramic/videos";
+import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { FiSearch } from "react-icons/fi";
 
@@ -18,15 +18,33 @@ export default function VideosPage() {
     async function loadVideos() {
       setLoading(true);
       try {
-        // Try Ceramic first
+        // Try Supabase first
         const ceramicResult = await getVideos(50);
-        if (ceramicResult && ceramicResult.videos?.length > 0) {
-          setVideos(ceramicResult.videos);
+        if (ceramicResult && ceramicResult?.length > 0) {
+          // Transform Supabase videos to Video type
+          const transformedVideos = ceramicResult.map(v => ({
+            id: v.id,
+            title: v.title,
+            description: v.description || '',
+            thumbnail: v.thumbnail || '',
+            duration: v.duration || 0,
+            views: v.views,
+            likes: v.likes,
+            createdAt: new Date(v.created_at),
+            playbackUrl: v.playback_url || '',
+            livepeerAssetId: v.livepeer_asset_id || '',
+            contentType: v.content_type as any || 'long',
+            creator: {} as any,
+            category: v.category || '',
+            tags: v.tags || [],
+            source: 'ceramic' as const,
+          })) as Video[];
+          setVideos(transformedVideos);
           setLoading(false);
           return;
         }
       } catch (error) {
-        console.warn("Ceramic unavailable, trying Bluesky fallback");
+        console.warn("Supabase unavailable, trying Bluesky fallback");
       }
 
       // Fallback: Fetch from Bluesky

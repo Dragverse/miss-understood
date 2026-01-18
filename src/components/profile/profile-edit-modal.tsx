@@ -6,7 +6,6 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import { Creator } from "@/types";
 import { uploadBanner, uploadAvatar, getImageDataURL } from "@/lib/livepeer/upload-image";
-import { createOrUpdateCreator } from "@/lib/ceramic/creators";
 
 interface ProfileEditModalProps {
   isOpen: boolean;
@@ -99,20 +98,46 @@ export function ProfileEditModal({
         toast.dismiss();
       }
 
-      // Save to Ceramic
+      // Save to Ceramic via API endpoint (has fallback to localStorage)
       toast.loading("Saving profile...");
-      await createOrUpdateCreator({
-        handle: formData.handle,
-        displayName: formData.displayName,
-        description: formData.description,
-        avatar: avatarUrl,
-        banner: bannerUrl,
-        website: formData.website || undefined,
+
+      const response = await fetch('/api/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          handle: formData.handle,
+          displayName: formData.displayName,
+          description: formData.description,
+          avatar: avatarUrl,
+          banner: bannerUrl,
+          website: formData.website || undefined,
+        }),
       });
+
+      const data = await response.json();
       toast.dismiss();
 
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      if (data.fallbackMode) {
+        console.warn('Profile saved to localStorage (Ceramic unavailable)');
+        // Store in localStorage as backup
+        localStorage.setItem('dragverse_profile', JSON.stringify({
+          handle: formData.handle,
+          displayName: formData.displayName,
+          description: formData.description,
+          avatar: avatarUrl,
+          banner: bannerUrl,
+          website: formData.website,
+        }));
+        toast.success("Profile saved locally (will sync when online)");
+      } else {
+        toast.success("Profile updated successfully!");
+      }
+
       setUploadSuccess(true);
-      toast.success("Profile updated successfully!");
 
       // Close modal after brief delay
       setTimeout(() => {

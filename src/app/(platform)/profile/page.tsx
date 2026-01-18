@@ -10,7 +10,8 @@ import { VideoCard } from "@/components/video/video-card";
 import { SocialLinks } from "@/components/profile/social-links";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
 import { VerificationBadge } from "@/components/ui/verification-badge";
-import { getCreatorByDID } from "@/lib/ceramic/creators";
+import { getCreatorByDID } from "@/lib/supabase/creators";
+import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { Creator, Video } from "@/types";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 
@@ -36,13 +37,13 @@ export default function ProfilePage() {
         const ceramicProfile = await getCreatorByDID(user.id);
 
         if (ceramicProfile) {
-          // Use Ceramic profile data
-          setCreator(ceramicProfile as Creator);
+          // Use Supabase profile data
+          setCreator(transformSupabaseCreator(ceramicProfile));
           setIsLoadingProfile(false);
           return;
         }
       } catch (error) {
-        console.warn("Could not load from Ceramic, checking fallback:", error);
+        console.warn("Could not load from Supabase, checking fallback:", error);
       }
 
       // Fallback: Load from localStorage if Ceramic unavailable

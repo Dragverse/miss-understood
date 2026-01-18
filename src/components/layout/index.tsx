@@ -7,7 +7,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#0f071a] text-white">
       <Navbar />
       <Sidebar />
-      <main className="pt-16 md:ml-20">{children}</main>
+      <main className="pt-16 pb-20 md:pb-0 md:ml-20">{children}</main>
     </div>
   );
 }

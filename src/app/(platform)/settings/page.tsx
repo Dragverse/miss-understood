@@ -9,7 +9,8 @@ import toast from "react-hot-toast";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { Creator } from "@/types";
 import { uploadBanner, uploadAvatar, getImageDataURL } from "@/lib/livepeer/upload-image";
-import { getCreatorByDID } from "@/lib/ceramic/creators";
+import { getCreatorByDID } from "@/lib/supabase/creators";
+import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { saveLocalProfile, getLocalProfile } from "@/lib/utils/local-storage";
 import { clearBlueskyCache } from "@/lib/bluesky/hooks";
 
@@ -171,17 +172,17 @@ export default function SettingsPage() {
         const ceramicProfile = await getCreatorByDID(user.id);
 
         if (ceramicProfile) {
-          setCreator(ceramicProfile as Creator);
+          setCreator(transformSupabaseCreator(ceramicProfile));
           setFormData({
-            displayName: ceramicProfile.displayName,
+            displayName: ceramicProfile.display_name,
             handle: ceramicProfile.handle,
             description: ceramicProfile.description || "",
             website: ceramicProfile.website || "",
-            instagramHandle: ceramicProfile.instagramHandle || user?.instagram?.username || "",
-            tiktokHandle: ceramicProfile.tiktokHandle || user?.tiktok?.username || "",
+            instagramHandle: ceramicProfile.instagram_handle || user?.instagram?.username || "",
+            tiktokHandle: ceramicProfile.tiktok_handle || user?.tiktok?.username || "",
           });
           setBannerPreview(ceramicProfile.banner || null);
-          setAvatarPreview(ceramicProfile.avatar);
+          setAvatarPreview(ceramicProfile.avatar || "");
           return;
         }
       } catch (error) {
@@ -379,7 +380,7 @@ export default function SettingsPage() {
         try {
           const updated = await getCreatorByDID(user.id);
           if (updated) {
-            setCreator(updated as Creator);
+            setCreator(transformSupabaseCreator(updated));
           }
         } catch (error) {
           // Silently fail if Ceramic is unavailable, we already saved to fallback

@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     // TODO: Once Ceramic is configured, save to Transaction model
     // Example implementation:
-    // import { createTransaction } from "@/lib/ceramic/transactions";
+    // import { createTransaction } from "@/lib/supabase/transactions";
     //
     // const transaction = await createTransaction({
     //   fromDID: userId || "anonymous",
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     }
 
     // TODO: Once Ceramic is configured, query transactions
-    // import { getTransactionsByCreator } from "@/lib/ceramic/transactions";
+    // import { getTransactionsByCreator } from "@/lib/supabase/transactions";
     // const transactions = await getTransactionsByCreator(creatorDID, "crypto");
 
     return NextResponse.json({

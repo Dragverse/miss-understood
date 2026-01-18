@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
 import { getLocalVideos } from "@/lib/utils/local-storage";
-import { getVideos } from "@/lib/ceramic/videos";
+import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/shorts/short-video";
 import { ShortOverlayTop } from "@/components/shorts/short-overlay-top";
@@ -23,14 +23,32 @@ export default function ShortsPage() {
       setLoading(true);
       const allVideos: Video[] = [];
 
-      // Try Ceramic first
+      // Try Supabase first
       try {
         const ceramicResult = await getVideos(50);
-        if (ceramicResult && ceramicResult.videos?.length > 0) {
-          allVideos.push(...ceramicResult.videos);
+        if (ceramicResult && ceramicResult.length > 0) {
+          // Transform Supabase videos to Video type
+          const transformedVideos = ceramicResult.map(v => ({
+            id: v.id,
+            title: v.title,
+            description: v.description || '',
+            thumbnail: v.thumbnail || '',
+            duration: v.duration || 0,
+            views: v.views,
+            likes: v.likes,
+            createdAt: new Date(v.created_at),
+            playbackUrl: v.playback_url || '',
+            livepeerAssetId: v.livepeer_asset_id || '',
+            contentType: v.content_type as any || 'short',
+            creator: {} as any,
+            category: v.category || '',
+            tags: v.tags || [],
+            source: 'ceramic' as const,
+          }));
+          allVideos.push(...transformedVideos as Video[]);
         }
       } catch (error) {
-        console.warn("Ceramic unavailable");
+        console.warn("Supabase unavailable");
       }
 
       // Fetch from Bluesky

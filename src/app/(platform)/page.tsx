@@ -9,7 +9,7 @@ import { CommunitySection } from "@/components/home/community-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
 import { LiveNowSection } from "@/components/home/live-now-section";
 import { TrendingPhotosSection } from "@/components/home/trending-photos-section";
-import { getVideos } from "@/lib/ceramic/videos";
+import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
 import { getLocalVideos } from "@/lib/utils/local-storage";
@@ -30,9 +30,9 @@ export default function HomePage() {
       if (!USE_MOCK_DATA) {
         try {
           const result = await getVideos(50); // Fetch first 50 videos
-          if (result.videos && result.videos.length > 0) {
-            // Convert Ceramic videos to our Video type
-            const ceramicVideos = result.videos.map((v: any) => ({
+          if (result && result.length > 0) {
+            // Convert Supabase videos to our Video type
+            const ceramicVideos = result.map((v: any) => ({
               id: v.id,
               title: v.title,
               description: v.description || "",

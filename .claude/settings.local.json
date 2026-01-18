@@ -45,7 +45,11 @@
       "Bash(test:*)",
       "Bash(source:*)",
       "Bash(tee:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(node:*)",
+      "Bash(export NEXT_PUBLIC_CERAMIC_URL=http://localhost:7007)",
+      "Bash(export NEXT_PUBLIC_CERAMIC_URL=inmemory://)",
+      "Bash(find:*)"
     ]
   }
 }

@@ -7,7 +7,9 @@ import { FiArrowLeft } from "react-icons/fi";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
 import { SocialLinks } from "@/components/profile/social-links";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
-import { getCreatorByHandle } from "@/lib/ceramic/creators";
+import { VerificationBadge } from "@/components/ui/verification-badge";
+import { getCreatorByHandle } from "@/lib/supabase/creators";
+import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { useBlueskyProfileByHandle } from "@/lib/bluesky/hooks";
 import { Creator } from "@/types";
 
@@ -81,17 +83,17 @@ export default function DynamicProfilePage() {
       try {
         const ceramicProfile = await getCreatorByHandle(handle);
         if (ceramicProfile) {
-          setCreator(ceramicProfile as Creator);
+          setCreator(transformSupabaseCreator(ceramicProfile));
           setProfileType("dragverse");
 
           // If Dragverse user has Bluesky connected, fetch their Bluesky content too
-          if (ceramicProfile.blueskyHandle) {
+          if (ceramicProfile.bluesky_handle) {
             fetchBlueskyContent();
           }
           return;
         }
       } catch (error) {
-        console.log("Not found in Ceramic, checking Bluesky");
+        console.log("Not found in Supabase, checking Bluesky");
       }
 
       // If not in Ceramic and looks like Bluesky handle, wait for Bluesky fetch
@@ -226,7 +228,10 @@ export default function DynamicProfilePage() {
               <BlueskyBadge handle={creator.blueskyHandle} />
             )}
           </div>
-          <p className="text-white/90 text-lg drop-shadow-lg">@{creator.handle}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-white/90 text-lg drop-shadow-lg">@{creator.handle}</p>
+            {creator.verified && <VerificationBadge type="human" size={18} />}
+          </div>
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { DID } from "dids";
 import { authenticateWithCeramic, authenticateWithSeed, getCeramicClient, getCurrentDID, isAuthenticated } from "./client";
+import { useAutoProfileCreation } from "./hooks/use-auto-profile";
 import toast from "react-hot-toast";
 
 interface CeramicContextType {
@@ -40,6 +41,9 @@ export function CeramicProvider({ children }: CeramicProviderProps) {
   const [ceramicDID, setCeramicDID] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-create profile on first login
+  useAutoProfileCreation();
 
   // Auto-authenticate when user signs in
   useEffect(() => {

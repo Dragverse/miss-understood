@@ -14,7 +14,10 @@ interface SearchResult {
     avatar: string;
     description: string;
     followerCount: number;
-    source: string;
+    source?: string; // Deprecated: use sources array instead
+    sources?: string[]; // Array of platforms: ["dragverse", "bluesky"]
+    dragverseFollowerCount?: number;
+    blueskyFollowerCount?: number;
   }>;
   posts: Array<{
     id: string;
@@ -132,11 +135,18 @@ export function SearchDropdown() {
                       @{user.handle} • {user.followerCount} followers
                     </p>
                   </div>
-                  {user.source === "bluesky" && (
-                    <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-1 rounded-full">
-                      Bluesky
-                    </span>
-                  )}
+                  <div className="flex gap-2">
+                    {(user.sources?.includes("dragverse") || user.source === "dragverse") && (
+                      <span className="text-xs text-purple-400 bg-purple-500/10 px-2 py-1 rounded-full">
+                        Dragverse
+                      </span>
+                    )}
+                    {(user.sources?.includes("bluesky") || user.source === "bluesky") && (
+                      <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-1 rounded-full">
+                        Bluesky
+                      </span>
+                    )}
+                  </div>
                 </Link>
               ))}
             </div>

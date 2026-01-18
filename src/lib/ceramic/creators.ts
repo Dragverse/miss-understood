@@ -180,8 +180,13 @@ export async function getCreatorByHandle(handle: string) {
  * Search creators by name or handle
  */
 export async function searchCreators(searchTerm: string, first = 20) {
+  console.log('[searchCreators] Searching for:', searchTerm);
+
   const compose = getComposeClient();
-  if (!compose) return [];
+  if (!compose) {
+    console.warn('[searchCreators] Ceramic not initialized, returning []');
+    return [];
+  }
 
   // Note: This is a simplified search. In production, you'd want to use
   // a proper search solution like Algolia or implement text search in your queries
@@ -206,15 +211,19 @@ export async function searchCreators(searchTerm: string, first = 20) {
   try {
     const result: any = await compose.executeQuery(query, { first });
     const creators = result.data?.creatorIndex?.edges?.map((edge: any) => edge.node) || [];
+    console.log('[searchCreators] Found', creators.length, 'total creators');
 
     // Client-side filtering (in production, do this server-side)
     const searchLower = searchTerm.toLowerCase();
-    return creators.filter((creator: any) =>
+    const filtered = creators.filter((creator: any) =>
       creator.handle.toLowerCase().includes(searchLower) ||
       creator.displayName.toLowerCase().includes(searchLower)
     );
+    console.log('[searchCreators] After filtering:', filtered.length, 'matches');
+
+    return filtered;
   } catch (error) {
-    console.error("Error searching creators:", error);
+    console.error("[searchCreators] Error searching creators:", error);
     return [];
   }
 }

@@ -21,7 +21,6 @@ import { BsPlayFill, BsLightningFill } from "react-icons/bs";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
 import { useCanLivestream } from "@/lib/livestream";
-import { VerificationBadge } from "@/components/ui/verification-badge";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { SearchDropdown } from "./search-dropdown";
 
@@ -138,25 +137,18 @@ export function Navbar() {
 
           {authenticated ? (
             <div className="relative group ml-2 hidden md:block">
-              <div className="relative">
-                {/* Avatar container - keeps overflow-hidden for rounded image */}
-                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#EB83EA] cursor-pointer hover:scale-105 transition-transform">
-                  <Image
-                    alt="User Profile"
-                    width={40}
-                    height={40}
-                    className="w-full h-full object-cover"
-                    src={
-                      blueskyProfile?.avatar ||
-                      user?.twitter?.profilePictureUrl ||
-                      `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.id}&backgroundColor=EB83EA`
-                    }
-                  />
-                </div>
-                {/* Badge positioned relative to outer container */}
-                <div className="absolute bottom-0 right-0 translate-x-1 translate-y-1">
-                  <VerificationBadge type="human" size={16} />
-                </div>
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#EB83EA] cursor-pointer hover:scale-105 transition-transform">
+                <Image
+                  alt="User Profile"
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover"
+                  src={
+                    blueskyProfile?.avatar ||
+                    user?.twitter?.profilePictureUrl ||
+                    `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.id}&backgroundColor=EB83EA`
+                  }
+                />
               </div>
               {/* Dropdown */}
               <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2 z-50">

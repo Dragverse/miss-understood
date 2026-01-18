@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { FiVideo, FiHeart, FiUsers, FiEye, FiCopy, FiEdit, FiTrash2 } from "react-icons/fi";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { getVideosByCreatorDID } from "@/lib/ceramic/videos";
-import { getCreatorByDID } from "@/lib/ceramic/creators";
+import { getVideosByCreator, type SupabaseVideo } from "@/lib/supabase/videos";
+import { getCreatorByDID } from "@/lib/supabase/creators";
 import { Video } from "@/types";
 
 export default function DashboardPage() {
@@ -28,19 +28,39 @@ export default function DashboardPage() {
 
       setLoading(true);
       try {
-        // Fetch user's videos from Ceramic
-        const userVideos = await getVideosByCreatorDID(user.id);
-        setVideos(userVideos);
+        // Fetch user's videos from Supabase
+        const supabaseVideos = await getVideosByCreator(user.id);
+
+        // Transform Supabase videos to match Video type (without creator for now)
+        const transformedVideos = supabaseVideos.map((v: SupabaseVideo) => ({
+          id: v.id,
+          title: v.title,
+          description: v.description || '',
+          thumbnail: v.thumbnail || '',
+          duration: v.duration || 0,
+          views: v.views,
+          likes: v.likes,
+          createdAt: new Date(v.created_at),
+          playbackUrl: v.playback_url || '',
+          livepeerAssetId: v.livepeer_asset_id || '',
+          contentType: v.content_type as any || 'long',
+          creator: {} as any, // Will be populated if needed
+          category: v.category || '',
+          tags: v.tags || [],
+          source: 'ceramic' as const,
+        })) as Video[];
+
+        setVideos(transformedVideos);
 
         // Calculate statistics from videos
-        const totalViews = userVideos.reduce((sum: number, v: Video) => sum + (v.views || 0), 0);
-        const totalLikes = userVideos.reduce((sum: number, v: Video) => sum + (v.likes || 0), 0);
+        const totalViews = supabaseVideos.reduce((sum: number, v: SupabaseVideo) => sum + (v.views || 0), 0);
+        const totalLikes = supabaseVideos.reduce((sum: number, v: SupabaseVideo) => sum + (v.likes || 0), 0);
 
         // Fetch creator profile for follower count
         let totalFollowers = 0;
         try {
           const creator = await getCreatorByDID(user.id);
-          totalFollowers = creator?.followerCount || 0;
+          totalFollowers = creator?.follower_count || 0;
         } catch (error) {
           console.warn("Could not fetch creator profile:", error);
         }

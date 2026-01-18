@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createVideo } from "@/lib/ceramic/videos";
+import { createVideo } from "@/lib/supabase/videos";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 import { validateBody, createVideoSchema } from "@/lib/validation/schemas";
 
@@ -38,23 +38,23 @@ export async function POST(request: NextRequest) {
       tags,
     } = validation.data;
 
-    // Convert tags array to comma-separated string for Ceramic
-    const tagsString = Array.isArray(tags) ? tags.join(',') : (tags || '');
+    // Tags in Supabase is an array, no conversion needed
+    const tagsArray = Array.isArray(tags) ? tags : (tags ? [tags] : []);
 
     const videoInput = {
       title: title.trim(),
       description: description?.trim(),
       thumbnail,
-      livepeerAssetId,
-      playbackId,
-      playbackUrl,
+      livepeer_asset_id: livepeerAssetId,
+      playback_id: playbackId,
+      playback_url: playbackUrl,
       duration,
-      contentType,
+      content_type: contentType,
       category,
-      tags: tagsString,
+      tags: tagsArray,
     };
 
-    // Save to Ceramic
+    // Save to Supabase
     try {
       const videoDoc = await createVideo(videoInput);
 
@@ -74,9 +74,6 @@ export async function POST(request: NextRequest) {
       // Generate stable video ID
       const videoId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      // Convert tags back to array
-      const tagsArray = Array.isArray(tags) ? tags : (tagsString ? tagsString.split(',').map(t => t.trim()) : []);
-
       // Create video object matching Video type for client-side storage
       const videoData = {
         id: videoId,
@@ -87,9 +84,9 @@ export async function POST(request: NextRequest) {
         views: 0,
         likes: 0,
         createdAt: new Date(),
-        playbackUrl: playbackUrl || `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`,
-        livepeerAssetId,
-        contentType,
+        playback_url: playbackUrl || `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`,
+        livepeer_asset_id: livepeerAssetId,
+        content_type: contentType,
         category,
         tags: tagsArray,
         creator: {

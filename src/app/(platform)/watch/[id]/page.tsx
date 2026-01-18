@@ -9,7 +9,7 @@ import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { TipModal } from "@/components/video/tip-modal";
 import { ChocolateBar } from "@/components/ui/chocolate-bar";
-import { getVideo, getVideos } from "@/lib/ceramic/videos";
+import { getVideo, getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
 import { getLocalVideos } from "@/lib/utils/local-storage";
@@ -48,15 +48,15 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
             duration: ceramicVideo.duration || 0,
             views: ceramicVideo.views || 0,
             likes: ceramicVideo.likes || 0,
-            createdAt: new Date(ceramicVideo.createdAt),
-            playbackUrl: ceramicVideo.playbackUrl || "",
-            livepeerAssetId: ceramicVideo.livepeerAssetId,
-            contentType: ceramicVideo.contentType,
-            creator: ceramicVideo.creator || {
-              did: ceramicVideo.creatorDID,
+            createdAt: new Date(ceramicVideo.created_at),
+            playbackUrl: ceramicVideo.playback_url || "",
+            livepeerAssetId: ceramicVideo.livepeer_asset_id || "",
+            contentType: ceramicVideo.content_type || "long" as any,
+            creator: {
+              did: ceramicVideo.creator_did,
               handle: "creator",
               displayName: "Creator",
-              avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${ceramicVideo.creatorDID}`,
+              avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${ceramicVideo.creator_did}`,
               description: "",
               followerCount: 0,
               followingCount: 0,
@@ -64,7 +64,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
               verified: false,
             },
             category: ceramicVideo.category || "Other",
-            tags: ceramicVideo.tags ? ceramicVideo.tags.split(',') : [],
+            tags: ceramicVideo.tags || [],
           };
           setVideo(formattedVideo);
           setLikes(formattedVideo.likes);
@@ -93,14 +93,32 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
     async function loadRelatedVideos() {
       const allVideos: Video[] = [];
 
-      // Try Ceramic first
+      // Try Supabase first
       try {
         const ceramicResult = await getVideos(20);
-        if (ceramicResult && ceramicResult.videos?.length > 0) {
-          allVideos.push(...ceramicResult.videos);
+        if (ceramicResult && ceramicResult.length > 0) {
+          // Transform to Video type
+          const transformed = ceramicResult.map(v => ({
+            id: v.id,
+            title: v.title,
+            description: v.description || '',
+            thumbnail: v.thumbnail || '',
+            duration: v.duration || 0,
+            views: v.views,
+            likes: v.likes,
+            createdAt: new Date(v.created_at),
+            playbackUrl: v.playback_url || '',
+            livepeerAssetId: v.livepeer_asset_id || '',
+            contentType: v.content_type as any || 'long',
+            creator: {} as any,
+            category: v.category || '',
+            tags: v.tags || [],
+            source: 'ceramic' as const,
+          }));
+          allVideos.push(...transformed as Video[]);
         }
       } catch (error) {
-        console.warn("Ceramic unavailable for related videos");
+        console.warn("Supabase unavailable for related videos");
       }
 
       // Fetch from Bluesky
