@@ -145,21 +145,21 @@ export function applyContentFilter<T extends Video | any>(
   // Content type filter
   if (filter.contentTypes && filter.contentTypes.length > 0) {
     filtered = filtered.filter((item) =>
-      filter.contentTypes.includes(item.contentType)
+      filter.contentTypes.includes((item as any).contentType)
     );
   }
 
   // Category filter
   if (filter.categories && filter.categories.length > 0) {
     filtered = filtered.filter((item) =>
-      filter.categories.includes(item.category)
+      filter.categories.includes((item as any).category)
     );
   }
 
   // Platform filter
   if (filter.platforms && filter.platforms.length > 0) {
     filtered = filtered.filter((item) =>
-      filter.platforms.includes(item.source)
+      filter.platforms.includes((item as any).source)
     );
   }
 
@@ -280,7 +280,7 @@ export function passesFilter(content: Video | any, filter: ContentFilter): boole
   // Content type check
   if (
     filter.contentTypes.length > 0 &&
-    !filter.contentTypes.includes(content.contentType)
+    !filter.contentTypes.includes((content as any).contentType)
   ) {
     return false;
   }
@@ -288,7 +288,7 @@ export function passesFilter(content: Video | any, filter: ContentFilter): boole
   // Category check
   if (
     filter.categories.length > 0 &&
-    !filter.categories.includes(content.category)
+    !filter.categories.includes((content as any).category)
   ) {
     return false;
   }
@@ -296,7 +296,7 @@ export function passesFilter(content: Video | any, filter: ContentFilter): boole
   // Platform check
   if (
     filter.platforms.length > 0 &&
-    !filter.platforms.includes(content.source)
+    !filter.platforms.includes((content as any).source)
   ) {
     return false;
   }
@@ -339,13 +339,13 @@ export function getFilterStats<T extends Video | any>(
     }
     if (
       filter.categories.length > 0 &&
-      !filter.categories.includes(item.category)
+      !filter.categories.includes((item as any).category)
     ) {
       categoryFiltered++;
     }
     if (
       filter.platforms.length > 0 &&
-      !filter.platforms.includes(item.source)
+      !filter.platforms.includes((item as any).source)
     ) {
       platformFiltered++;
     }
