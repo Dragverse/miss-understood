@@ -296,7 +296,7 @@ export function scoreContentBatch<T extends Video | any>(
   items: T[]
 ): Array<T & { qualityScore: ContentQualityScore }> {
   return items.map((item) => ({
-    ...item,
+    ...(item as any),
     qualityScore: calculateQualityScore(item),
   }));
 }
