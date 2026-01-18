@@ -40,15 +40,15 @@ export default function HomePage() {
               duration: v.duration || 0,
               views: v.views || 0,
               likes: v.likes || 0,
-              createdAt: new Date(v.createdAt),
-              playbackUrl: v.playbackUrl || "",
-              livepeerAssetId: v.livepeerAssetId,
-              contentType: v.contentType,
+              createdAt: new Date(v.created_at),
+              playbackUrl: v.playback_url || "",
+              livepeerAssetId: v.livepeer_asset_id,
+              contentType: v.content_type,
               creator: v.creator || {
-                did: v.creatorDID,
+                did: v.creator_did,
                 handle: "creator",
                 displayName: "Creator",
-                avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${v.creatorDID}`,
+                avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${v.creator_did}`,
                 description: "",
                 followerCount: 0,
                 followingCount: 0,
@@ -56,7 +56,7 @@ export default function HomePage() {
                 verified: false,
               },
               category: v.category || "Other",
-              tags: v.tags ? v.tags.split(',') : [],
+              tags: Array.isArray(v.tags) ? v.tags : (v.tags ? v.tags.split(',') : []),
             }));
             allVideos.push(...ceramicVideos);
             console.log(`Loaded ${ceramicVideos.length} videos from Ceramic`);

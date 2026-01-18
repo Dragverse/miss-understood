@@ -76,6 +76,7 @@ export async function getVideos(limit = 50): Promise<SupabaseVideo[]> {
   const { data, error } = await supabase
     .from('videos')
     .select('*')
+    .eq('visibility', 'public') // Only show public videos on homepage
     .order('created_at', { ascending: false })
     .limit(limit);
 
