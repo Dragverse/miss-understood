@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
 import { useSearchParams } from "next/navigation";
@@ -12,7 +12,7 @@ import { ShortOverlayTop } from "@/components/shorts/short-overlay-top";
 import { ShortOverlayBottom } from "@/components/shorts/short-overlay-bottom";
 import { FiChevronUp, FiChevronDown } from "react-icons/fi";
 
-export default function ShortsPage() {
+function ShortsContent() {
   const searchParams = useSearchParams();
   const videoId = searchParams.get("v");
   const [shorts, setShorts] = useState<Video[]>([]);
@@ -245,5 +245,19 @@ export default function ShortsPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+export default function ShortsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+        </div>
+      }
+    >
+      <ShortsContent />
+    </Suspense>
   );
 }
