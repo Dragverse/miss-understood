@@ -145,16 +145,32 @@ async function getChannelVideos(channelId: string, maxResults: number = 10): Pro
     searchUrl.searchParams.set("maxResults", maxResults.toString());
     searchUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
+    console.log(`[YouTube] Fetching videos from channel ${channelId}...`);
     const searchResponse = await fetch(searchUrl.toString());
+
     if (!searchResponse.ok) {
-      console.error(`YouTube API error for channel ${channelId}:`, searchResponse.status);
+      const errorBody = await searchResponse.text();
+      console.error(`[YouTube] API error for channel ${channelId}:`, {
+        status: searchResponse.status,
+        statusText: searchResponse.statusText,
+        body: errorBody,
+      });
       return [];
     }
 
     const searchData = await searchResponse.json();
-    if (!searchData.items || searchData.items.length === 0) {
+
+    if (searchData.error) {
+      console.error(`[YouTube] API returned error:`, searchData.error);
       return [];
     }
+
+    if (!searchData.items || searchData.items.length === 0) {
+      console.log(`[YouTube] No videos found for channel ${channelId}`);
+      return [];
+    }
+
+    console.log(`[YouTube] Found ${searchData.items.length} videos for channel ${channelId}`);
 
     // Step 2: Get video statistics and content details
     const videoIds = searchData.items.map((item: YouTubeVideo) =>
@@ -168,13 +184,15 @@ async function getChannelVideos(channelId: string, maxResults: number = 10): Pro
 
     const videosResponse = await fetch(videosUrl.toString());
     if (!videosResponse.ok) {
+      console.error(`[YouTube] Failed to fetch video details for channel ${channelId}`);
       return searchData.items; // Return basic data if stats fetch fails
     }
 
     const videosData = await videosResponse.json();
+    console.log(`[YouTube] Successfully enriched ${videosData.items?.length || 0} videos for channel ${channelId}`);
     return videosData.items || [];
   } catch (error) {
-    console.error(`Failed to fetch videos for channel ${channelId}:`, error);
+    console.error(`[YouTube] Exception while fetching videos for channel ${channelId}:`, error);
     return [];
   }
 }
@@ -184,18 +202,28 @@ async function getChannelVideos(channelId: string, maxResults: number = 10): Pro
  */
 export async function searchDragContent(limit: number = 50): Promise<Video[]> {
   if (!YOUTUBE_API_KEY) {
-    console.warn("YouTube API key not configured");
+    console.warn("[YouTube] API key not configured - skipping YouTube content");
     return [];
   }
 
   try {
-    // Fetch videos from all drag channels in parallel
-    const channelPromises = DRAG_CHANNELS.slice(0, 5).map((channelId) =>
-      getChannelVideos(channelId, Math.ceil(limit / 5))
+    console.log(`[YouTube] Searching drag content from ${DRAG_CHANNELS.length} channels (limit: ${limit})...`);
+
+    // Fetch videos from ALL drag channels in parallel (not just 5)
+    const videosPerChannel = Math.ceil(limit / DRAG_CHANNELS.length);
+    const channelPromises = DRAG_CHANNELS.map((channelId) =>
+      getChannelVideos(channelId, videosPerChannel)
     );
 
     const channelResults = await Promise.all(channelPromises);
     const allYouTubeVideos = channelResults.flat();
+
+    console.log(`[YouTube] Fetched ${allYouTubeVideos.length} total videos from all channels`);
+
+    if (allYouTubeVideos.length === 0) {
+      console.warn("[YouTube] No videos returned from any channel - possible API quota issue");
+      return [];
+    }
 
     // Transform to internal Video type
     const videos = allYouTubeVideos.map(youtubeVideoToVideo);
@@ -213,9 +241,11 @@ export async function searchDragContent(limit: number = 50): Promise<Video[]> {
       return calculateEngagementScore(bYt) - calculateEngagementScore(aYt);
     });
 
-    return videos.slice(0, limit);
+    const finalVideos = videos.slice(0, limit);
+    console.log(`[YouTube] Returning ${finalVideos.length} videos after sorting and limiting`);
+    return finalVideos;
   } catch (error) {
-    console.error("Failed to fetch YouTube drag content:", error);
+    console.error("[YouTube] Failed to fetch YouTube drag content:", error);
     return [];
   }
 }
@@ -268,6 +298,49 @@ export async function searchYouTubeVideos(query: string, limit: number = 20): Pr
   } catch (error) {
     console.error("Failed to search YouTube:", error);
     return [];
+  }
+}
+
+/**
+ * Get YouTube channel subscriber count and statistics
+ */
+export async function getChannelStats(channelId: string): Promise<{
+  subscriberCount: number;
+  videoCount: number;
+  viewCount: number;
+} | null> {
+  if (!YOUTUBE_API_KEY) {
+    console.warn("[YouTube] API key not configured");
+    return null;
+  }
+
+  try {
+    const url = new URL(`${YOUTUBE_API_BASE}/channels`);
+    url.searchParams.set("part", "statistics");
+    url.searchParams.set("id", channelId);
+    url.searchParams.set("key", YOUTUBE_API_KEY);
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      console.error(`[YouTube] Failed to fetch channel stats for ${channelId}:`, response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data.items || data.items.length === 0) {
+      console.warn(`[YouTube] No channel found for ID ${channelId}`);
+      return null;
+    }
+
+    const stats = data.items[0].statistics;
+    return {
+      subscriberCount: parseInt(stats.subscriberCount || "0", 10),
+      videoCount: parseInt(stats.videoCount || "0", 10),
+      viewCount: parseInt(stats.viewCount || "0", 10),
+    };
+  } catch (error) {
+    console.error(`[YouTube] Exception fetching channel stats for ${channelId}:`, error);
+    return null;
   }
 }
 

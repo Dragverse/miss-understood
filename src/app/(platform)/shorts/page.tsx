@@ -21,74 +21,80 @@ export default function ShortsPage() {
   useEffect(() => {
     async function loadShorts() {
       setLoading(true);
-      const allVideos: Video[] = [];
 
-      // Try Supabase first
       try {
-        const ceramicResult = await getVideos(50);
-        if (ceramicResult && ceramicResult.length > 0) {
-          // Transform Supabase videos to Video type
-          const transformedVideos = ceramicResult.map(v => ({
-            id: v.id,
-            title: v.title,
-            description: v.description || '',
-            thumbnail: v.thumbnail || '',
-            duration: v.duration || 0,
-            views: v.views,
-            likes: v.likes,
-            createdAt: new Date(v.created_at),
-            playbackUrl: v.playback_url || '',
-            livepeerAssetId: v.livepeer_asset_id || '',
-            contentType: v.content_type as any || 'short',
-            creator: {} as any,
-            category: v.category || '',
-            tags: v.tags || [],
-            source: 'ceramic' as const,
-          }));
-          allVideos.push(...transformedVideos as Video[]);
-        }
+        console.log("[Shorts] Fetching from all sources in parallel...");
+
+        // Fetch from ALL sources in parallel (faster!)
+        const [supabaseVideos, blueskyVideos, youtubeVideos] = await Promise.all([
+          // Supabase/Dragverse videos
+          getVideos(50).catch((err) => {
+            console.warn("[Shorts] Supabase fetch failed:", err);
+            return [];
+          }),
+          // Bluesky videos
+          fetch("/api/bluesky/feed?limit=30")
+            .then((res) => (res.ok ? res.json() : { posts: [] }))
+            .then((data) => data.posts || [])
+            .catch((err) => {
+              console.warn("[Shorts] Bluesky fetch failed:", err);
+              return [];
+            }),
+          // YouTube videos
+          fetch("/api/youtube/feed?limit=30")
+            .then((res) => (res.ok ? res.json() : { videos: [] }))
+            .then((data) => data.videos || [])
+            .catch((err) => {
+              console.warn("[Shorts] YouTube fetch failed:", err);
+              return [];
+            }),
+        ]);
+
+        // Transform Supabase videos to Video type
+        const transformedSupabase = (supabaseVideos || []).map((v) => ({
+          id: v.id,
+          title: v.title,
+          description: v.description || "",
+          thumbnail: v.thumbnail || "",
+          duration: v.duration || 0,
+          views: v.views,
+          likes: v.likes,
+          createdAt: new Date(v.created_at),
+          playbackUrl: v.playback_url || "",
+          livepeerAssetId: v.livepeer_asset_id || "",
+          contentType: (v.content_type as any) || "short",
+          creator: {} as any,
+          category: v.category || "",
+          tags: v.tags || [],
+          source: "ceramic" as const,
+        })) as Video[];
+
+        // Combine all sources
+        const allVideos = [
+          ...transformedSupabase,
+          ...(blueskyVideos || []),
+          ...(youtubeVideos || []),
+          ...getLocalVideos(),
+        ];
+
+        console.log(`[Shorts] Loaded ${transformedSupabase.length} Supabase, ${blueskyVideos?.length || 0} Bluesky, ${youtubeVideos?.length || 0} YouTube videos`);
+
+        // Filter only shorts
+        const shortsOnly = allVideos.filter((v) => v.contentType === "short");
+
+        // Sort by date (newest first)
+        shortsOnly.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        console.log(`[Shorts] Displaying ${shortsOnly.length} shorts after filtering`);
+        setShorts(shortsOnly);
       } catch (error) {
-        console.warn("Supabase unavailable");
+        console.error("[Shorts] Failed to load shorts:", error);
+        // Fallback to local videos only
+        const localVideos = getLocalVideos();
+        setShorts(localVideos.filter((v) => v.contentType === "short"));
+      } finally {
+        setLoading(false);
       }
-
-      // Fetch from Bluesky
-      try {
-        const blueskyResponse = await fetch("/api/bluesky/feed?limit=30");
-        if (blueskyResponse.ok) {
-          const blueskyData = await blueskyResponse.json();
-          if (blueskyData.posts) {
-            allVideos.push(...blueskyData.posts);
-          }
-        }
-      } catch (error) {
-        console.warn("Bluesky unavailable");
-      }
-
-      // Fetch from YouTube
-      try {
-        const youtubeResponse = await fetch("/api/youtube/feed?limit=30");
-        if (youtubeResponse.ok) {
-          const youtubeData = await youtubeResponse.json();
-          if (youtubeData.success && youtubeData.videos) {
-            allVideos.push(...youtubeData.videos);
-          }
-        }
-      } catch (error) {
-        console.warn("YouTube unavailable");
-      }
-
-      // Add local uploads
-      const localVideos = getLocalVideos();
-      allVideos.push(...localVideos);
-
-      // Filter only shorts
-      const shortsOnly = allVideos.filter((v) => v.contentType === "short");
-
-      // Sort by date (newest first)
-      shortsOnly.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-      setShorts(shortsOnly);
-      setLoading(false);
     }
 
     loadShorts();

@@ -36,6 +36,18 @@ export default function ProfilePage() {
     videoCount: 0,
     photoCount: 0,
   });
+  const [aggregatedStats, setAggregatedStats] = useState<{
+    totalFollowers: number;
+    totalFollowing: number;
+    dragverseFollowers: number;
+    blueskyFollowers: number;
+    youtubeSubscribers: number;
+    platforms: {
+      dragverse: boolean;
+      bluesky: boolean;
+      youtube: boolean;
+    };
+  } | null>(null);
 
   // Fetch creator profile
   useEffect(() => {
@@ -260,6 +272,37 @@ export default function ProfilePage() {
     }
   }, [isAuthenticated]);
 
+  // Fetch aggregated follower stats from all platforms
+  useEffect(() => {
+    async function loadAggregatedStats() {
+      if (!user?.id) return;
+
+      try {
+        console.log("[Profile] Fetching aggregated stats...");
+        const authToken = await getAccessToken();
+        const response = await fetch("/api/stats/aggregate", {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.stats) {
+            setAggregatedStats(data.stats);
+            console.log("[Profile] Aggregated stats loaded:", data.stats);
+          }
+        }
+      } catch (error) {
+        console.error("[Profile] Failed to fetch aggregated stats:", error);
+      }
+    }
+
+    if (isAuthenticated && user?.id) {
+      loadAggregatedStats();
+    }
+  }, [isAuthenticated, user?.id, getAccessToken]);
+
   if (!isReady || (isAuthenticated && isLoadingProfile)) {
     return (
       <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
@@ -465,7 +508,31 @@ export default function ProfilePage() {
               </div>
               <div>
                 <p className="text-gray-400 text-xs">Followers</p>
-                <p className="text-white font-bold text-lg">{creator.followerCount.toLocaleString()}</p>
+                <p className="text-white font-bold text-lg">
+                  {aggregatedStats ? aggregatedStats.totalFollowers.toLocaleString() : creator.followerCount.toLocaleString()}
+                </p>
+                {/* Platform breakdown on hover/click */}
+                {aggregatedStats && (aggregatedStats.blueskyFollowers > 0 || aggregatedStats.youtubeSubscribers > 0) && (
+                  <div className="flex items-center gap-1 mt-1">
+                    {aggregatedStats.dragverseFollowers > 0 && (
+                      <span className="text-[10px] text-gray-500" title="Dragverse">
+                        {aggregatedStats.dragverseFollowers.toLocaleString()} DV
+                      </span>
+                    )}
+                    {aggregatedStats.blueskyFollowers > 0 && (
+                      <span className="text-[10px] text-[#0085ff]" title="Bluesky">
+                        {aggregatedStats.dragverseFollowers > 0 && " • "}
+                        {aggregatedStats.blueskyFollowers.toLocaleString()} BS
+                      </span>
+                    )}
+                    {aggregatedStats.youtubeSubscribers > 0 && (
+                      <span className="text-[10px] text-red-500" title="YouTube">
+                        {(aggregatedStats.dragverseFollowers > 0 || aggregatedStats.blueskyFollowers > 0) && " • "}
+                        {aggregatedStats.youtubeSubscribers.toLocaleString()} YT
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3">

@@ -18,52 +18,73 @@ export default function VideosPage() {
     async function loadVideos() {
       setLoading(true);
       try {
-        // Try Supabase first
-        const ceramicResult = await getVideos(50);
-        if (ceramicResult && ceramicResult?.length > 0) {
-          // Transform Supabase videos to Video type
-          const transformedVideos = ceramicResult.map(v => ({
-            id: v.id,
-            title: v.title,
-            description: v.description || '',
-            thumbnail: v.thumbnail || '',
-            duration: v.duration || 0,
-            views: v.views,
-            likes: v.likes,
-            createdAt: new Date(v.created_at),
-            playbackUrl: v.playback_url || '',
-            livepeerAssetId: v.livepeer_asset_id || '',
-            contentType: v.content_type as any || 'long',
-            creator: {} as any,
-            category: v.category || '',
-            tags: v.tags || [],
-            source: 'ceramic' as const,
-          })) as Video[];
-          setVideos(transformedVideos);
-          setLoading(false);
-          return;
-        }
-      } catch (error) {
-        console.warn("Supabase unavailable, trying Bluesky fallback");
-      }
+        console.log("[Videos] Fetching from all sources in parallel...");
 
-      // Fallback: Fetch from Bluesky
-      try {
-        const blueskyResponse = await fetch("/api/bluesky/feed?limit=30");
-        if (blueskyResponse.ok) {
-          const blueskyData = await blueskyResponse.json();
-          const combinedVideos = [...(blueskyData.posts || []), ...getLocalVideos()];
-          setVideos(combinedVideos);
-          setLoading(false);
-          return;
-        }
-      } catch (error) {
-        console.warn("Bluesky unavailable, using local videos only");
-      }
+        // Fetch from ALL sources in parallel (not sequential with early returns)
+        const [supabaseVideos, blueskyVideos, youtubeVideos] = await Promise.all([
+          // Supabase/Dragverse videos
+          getVideos(50).catch((err) => {
+            console.warn("[Videos] Supabase fetch failed:", err);
+            return [];
+          }),
+          // Bluesky videos
+          fetch("/api/bluesky/feed?limit=30")
+            .then((res) => (res.ok ? res.json() : { posts: [] }))
+            .then((data) => data.posts || [])
+            .catch((err) => {
+              console.warn("[Videos] Bluesky fetch failed:", err);
+              return [];
+            }),
+          // YouTube videos
+          fetch("/api/youtube/feed?limit=30")
+            .then((res) => (res.ok ? res.json() : { videos: [] }))
+            .then((data) => data.videos || [])
+            .catch((err) => {
+              console.warn("[Videos] YouTube fetch failed:", err);
+              return [];
+            }),
+        ]);
 
-      // Last resort: local uploads only
-      setVideos(getLocalVideos());
-      setLoading(false);
+        // Transform Supabase videos to Video type
+        const transformedSupabase = (supabaseVideos || []).map((v) => ({
+          id: v.id,
+          title: v.title,
+          description: v.description || "",
+          thumbnail: v.thumbnail || "",
+          duration: v.duration || 0,
+          views: v.views,
+          likes: v.likes,
+          createdAt: new Date(v.created_at),
+          playbackUrl: v.playback_url || "",
+          livepeerAssetId: v.livepeer_asset_id || "",
+          contentType: (v.content_type as any) || "long",
+          creator: {} as any,
+          category: v.category || "",
+          tags: v.tags || [],
+          source: "ceramic" as const,
+        })) as Video[];
+
+        // Combine all sources
+        const allVideos = [
+          ...transformedSupabase,
+          ...(blueskyVideos || []),
+          ...(youtubeVideos || []),
+          ...getLocalVideos(),
+        ];
+
+        console.log(`[Videos] Loaded ${transformedSupabase.length} Supabase, ${blueskyVideos?.length || 0} Bluesky, ${youtubeVideos?.length || 0} YouTube videos`);
+
+        // Sort by creation date (newest first)
+        allVideos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+        setVideos(allVideos);
+      } catch (error) {
+        console.error("[Videos] Failed to load videos:", error);
+        // Fallback to local videos only
+        setVideos(getLocalVideos());
+      } finally {
+        setLoading(false);
+      }
     }
 
     loadVideos();
