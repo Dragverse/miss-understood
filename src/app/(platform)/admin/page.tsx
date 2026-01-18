@@ -11,6 +11,12 @@ export default function AdminPage() {
   const [verifiedUserId, setVerifiedUserId] = useState<string>("");
   const [copied, setCopied] = useState(false);
 
+  // Cleanup state
+  const [cleanupPreview, setCleanupPreview] = useState<any>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<any>(null);
+
   useEffect(() => {
     async function loadVerifiedId() {
       if (!user?.id) return;
@@ -41,6 +47,48 @@ export default function AdminPage() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const loadCleanupPreview = async () => {
+    setIsLoadingPreview(true);
+    try {
+      const response = await fetch("/api/admin/cleanup-test-users");
+      const data = await response.json();
+      setCleanupPreview(data);
+    } catch (error) {
+      console.error("Failed to load cleanup preview:", error);
+      alert("Failed to load cleanup preview");
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
+  const executeCleanup = async () => {
+    if (!confirm(`Are you sure you want to delete ${cleanupPreview?.summary?.testUsersToDelete || 0} test users? This cannot be undone!`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch("/api/admin/cleanup-test-users", {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      setCleanupResult(data);
+
+      if (data.success) {
+        alert(`Successfully deleted ${data.summary.testUsersDeleted} test users!`);
+        // Reload preview
+        loadCleanupPreview();
+      } else {
+        alert(`Cleanup failed: ${data.error}`);
+      }
+    } catch (error) {
+      console.error("Cleanup failed:", error);
+      alert("Cleanup operation failed");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -105,6 +153,103 @@ export default function AdminPage() {
               <code className="bg-[#2f2942]/60 px-2 py-1 rounded">src/config/verified-creators.ts</code>
             </p>
           </div>
+        </div>
+
+        {/* Database Cleanup Section */}
+        <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10">
+          <h2 className="text-xl font-bold mb-4 text-white">Database Cleanup</h2>
+
+          <p className="text-gray-400 text-sm mb-4">
+            Remove test users from the database. Only keeps real Privy users (DIDs starting with "did:privy:").
+          </p>
+
+          <button
+            onClick={loadCleanupPreview}
+            disabled={isLoadingPreview}
+            className="w-full px-4 py-3 bg-[#2f2942] hover:bg-[#3f3952] disabled:opacity-50 text-white font-semibold rounded-xl transition-colors mb-4"
+          >
+            {isLoadingPreview ? "Loading..." : "Preview Cleanup"}
+          </button>
+
+          {cleanupPreview && (
+            <div className="space-y-4">
+              {/* Summary */}
+              <div className="bg-[#2f2942]/40 rounded-xl p-4">
+                <h3 className="text-white font-semibold mb-3">Summary</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Total Creators:</span>
+                    <span className="text-white font-mono">{cleanupPreview.summary.totalCreators}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Real Users (Keep):</span>
+                    <span className="text-green-400 font-mono">{cleanupPreview.summary.realUsersToKeep}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Test Users (Delete):</span>
+                    <span className="text-red-400 font-mono">{cleanupPreview.summary.testUsersToDelete}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Test Users to Delete */}
+              {cleanupPreview.testUsers && cleanupPreview.testUsers.length > 0 && (
+                <div className="bg-[#2f2942]/40 rounded-xl p-4">
+                  <h3 className="text-white font-semibold mb-3">Test Users to Delete</h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {cleanupPreview.testUsers.map((user: any) => (
+                      <div key={user.id} className="text-xs bg-[#18122D]/60 rounded p-2">
+                        <div className="text-red-400 font-mono">{user.handle}</div>
+                        <div className="text-gray-500">{user.displayName}</div>
+                        <div className="text-gray-600 text-[10px] truncate">{user.did}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Real Users to Keep */}
+              {cleanupPreview.realUsers && cleanupPreview.realUsers.length > 0 && (
+                <div className="bg-[#2f2942]/40 rounded-xl p-4">
+                  <h3 className="text-white font-semibold mb-3">Real Users (Will Keep)</h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {cleanupPreview.realUsers.map((user: any) => (
+                      <div key={user.did} className="text-xs bg-[#18122D]/60 rounded p-2">
+                        <div className="text-green-400 font-mono">{user.handle}</div>
+                        <div className="text-gray-400">{user.displayName}</div>
+                        <div className="text-gray-600 text-[10px] truncate">{user.did}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Delete Button */}
+              {cleanupPreview.summary.testUsersToDelete > 0 && (
+                <button
+                  onClick={executeCleanup}
+                  disabled={isDeleting}
+                  className="w-full px-4 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold rounded-xl transition-colors"
+                >
+                  {isDeleting ? "Deleting..." : `Delete ${cleanupPreview.summary.testUsersToDelete} Test Users`}
+                </button>
+              )}
+
+              {cleanupPreview.summary.testUsersToDelete === 0 && (
+                <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
+                  <p className="text-green-400 font-semibold">✓ No test users found!</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {cleanupResult && (
+            <div className="mt-4 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+              <p className="text-green-400 font-semibold">
+                ✓ {cleanupResult.message}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
