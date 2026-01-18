@@ -9,12 +9,15 @@ import { validateBody, createVideoSchema } from "@/lib/validation/schemas";
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify authentication
+    // Verify authentication and get user DID
+    let userDID = "anonymous";
+
     if (isPrivyConfigured()) {
       const auth = await verifyAuth(request);
       if (!auth.authenticated) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
+      userDID = auth.userId || "anonymous";
     }
 
     // Parse and validate request body
@@ -42,6 +45,7 @@ export async function POST(request: NextRequest) {
     const tagsArray = Array.isArray(tags) ? tags : (tags ? [tags] : []);
 
     const videoInput = {
+      creator_did: userDID,
       title: title.trim(),
       description: description?.trim(),
       thumbnail,
