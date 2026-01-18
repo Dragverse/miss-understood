@@ -43,10 +43,26 @@ export async function validateVideoAccess(
   const supabase = getSupabaseServerClient();
 
   try {
-    // Fetch video with visibility
+    // Fetch video with creator information
     const { data: video, error: videoError } = await supabase
       .from("videos")
-      .select("*")
+      .select(`
+        *,
+        creator:creators!creator_id (
+          id,
+          did,
+          handle,
+          display_name,
+          avatar,
+          description,
+          verified,
+          follower_count,
+          following_count,
+          dragverse_follower_count,
+          bluesky_follower_count,
+          created_at
+        )
+      `)
       .eq("id", videoId)
       .single();
 

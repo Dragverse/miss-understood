@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
+import { useSearchParams } from "next/navigation";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
@@ -12,6 +13,8 @@ import { ShortOverlayBottom } from "@/components/shorts/short-overlay-bottom";
 import { FiChevronUp, FiChevronDown } from "react-icons/fi";
 
 export default function ShortsPage() {
+  const searchParams = useSearchParams();
+  const videoId = searchParams.get("v");
   const [shorts, setShorts] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -63,7 +66,17 @@ export default function ShortsPage() {
           playbackUrl: v.playback_url || "",
           livepeerAssetId: v.livepeer_asset_id || "",
           contentType: (v.content_type as any) || "short",
-          creator: {} as any,
+          creator: {
+            did: v.creator_did || "unknown",
+            handle: v.creator_did?.split(":").pop()?.substring(0, 8) || "creator",
+            displayName: "Dragverse Creator",
+            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${v.creator_did}&backgroundColor=EB83EA`,
+            description: "",
+            followerCount: 0,
+            followingCount: 0,
+            createdAt: new Date(v.created_at),
+            verified: false,
+          } as any,
           category: v.category || "",
           tags: v.tags || [],
           source: "ceramic" as const,
@@ -79,6 +92,14 @@ export default function ShortsPage() {
 
         console.log(`[Shorts] Loaded ${transformedSupabase.length} Supabase, ${blueskyVideos?.length || 0} Bluesky, ${youtubeVideos?.length || 0} YouTube videos`);
 
+        // Debug: Log all video contentTypes
+        console.log("[Shorts] All videos with contentType:", allVideos.map(v => ({
+          id: v.id.substring(0, 8),
+          title: v.title,
+          contentType: v.contentType,
+          source: v.source
+        })));
+
         // Filter only shorts
         const shortsOnly = allVideos.filter((v) => v.contentType === "short");
 
@@ -86,6 +107,11 @@ export default function ShortsPage() {
         shortsOnly.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
         console.log(`[Shorts] Displaying ${shortsOnly.length} shorts after filtering`);
+        console.log("[Shorts] Filtered shorts:", shortsOnly.map(v => ({
+          id: v.id.substring(0, 8),
+          title: v.title,
+          playbackUrl: v.playbackUrl ? "✅" : "❌"
+        })));
         setShorts(shortsOnly);
       } catch (error) {
         console.error("[Shorts] Failed to load shorts:", error);
@@ -114,6 +140,19 @@ export default function ShortsPage() {
       setSliderReady(true);
     },
   });
+
+  // Jump to specific video if ?v=videoId query param is present
+  useEffect(() => {
+    if (videoId && shorts.length > 0 && sliderReady) {
+      const index = shorts.findIndex((s) => s.id === videoId);
+      if (index >= 0) {
+        console.log(`[Shorts] Jumping to video ${videoId} at index ${index}`);
+        instanceRef.current?.moveToIdx(index);
+      } else {
+        console.warn(`[Shorts] Video ${videoId} not found in shorts list`);
+      }
+    }
+  }, [videoId, shorts, sliderReady, instanceRef]);
 
   // Keyboard navigation
   useEffect(() => {
