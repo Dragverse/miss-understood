@@ -22,7 +22,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle } = useAuthUser();
   const { getAccessToken } = usePrivy();
-  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "photos" | "posts" | "about">("videos");
+  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "photos" | "posts" | "about">("bytes");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -570,16 +570,6 @@ export default function ProfilePage() {
           {/* Tabs */}
           <div className="flex gap-4 border-b border-[#EB83EA]/20 mb-8 overflow-x-auto pb-px">
             <button
-              onClick={() => setActiveTab("videos")}
-              className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
-                activeTab === "videos"
-                  ? "border-b-2 border-[#EB83EA] text-[#EB83EA]"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              VIDEOS ({videosList.length})
-            </button>
-            <button
               onClick={() => setActiveTab("bytes")}
               className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
                 activeTab === "bytes"
@@ -588,6 +578,16 @@ export default function ProfilePage() {
               }`}
             >
               BYTES ({bytesList.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("videos")}
+              className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
+                activeTab === "videos"
+                  ? "border-b-2 border-[#EB83EA] text-[#EB83EA]"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              VIDEOS ({videosList.length})
             </button>
             <button
               onClick={() => setActiveTab("photos")}
