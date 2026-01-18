@@ -89,7 +89,7 @@ export async function uploadVideoToLivepeer(
     });
 
     xhr.addEventListener("load", () => {
-      if (xhr.status === 200 || xhr.status === 201) {
+      if (xhr.status === 200 || xhr.status === 201 || xhr.status === 204) {
         resolve(asset);
       } else {
         reject(new Error(`Upload failed with status ${xhr.status}`));
@@ -100,9 +100,14 @@ export async function uploadVideoToLivepeer(
       reject(new Error("Upload failed"));
     });
 
-    xhr.open("PUT", tusEndpoint);
-    xhr.setRequestHeader("Upload-Length", file.size.toString());
+    // TUS protocol requires PATCH, not PUT
+    xhr.open("PATCH", tusEndpoint);
+
+    // Required TUS headers
+    xhr.setRequestHeader("Tus-Resumable", "1.0.0");
+    xhr.setRequestHeader("Upload-Offset", "0");
     xhr.setRequestHeader("Content-Type", "application/offset+octet-stream");
+
     xhr.send(file);
   });
 }
