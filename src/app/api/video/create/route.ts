@@ -62,20 +62,27 @@ export async function POST(request: NextRequest) {
 
     // Save to Supabase
     try {
+      console.log("[Video Create] Attempting to save to Supabase with creator_did:", userDID);
       const videoDoc = await createVideo(videoInput);
 
       if (!videoDoc || !videoDoc.id) {
-        throw new Error("Failed to create video document in Ceramic");
+        throw new Error("Failed to create video document in Supabase");
       }
 
+      console.log("[Video Create] ✅ Video saved to Supabase successfully:", videoDoc.id);
       return NextResponse.json({
         success: true,
         videoId: videoDoc.id,
         message: "Video metadata saved successfully",
       });
-    } catch (ceramicError) {
-      // If Ceramic is not configured yet, return video data for localStorage
-      console.warn("Ceramic not configured, using localStorage fallback:", ceramicError);
+    } catch (supabaseError) {
+      // If Supabase fails, return video data for localStorage fallback
+      console.error("[Video Create] ❌ Supabase save failed:", supabaseError);
+      console.error("[Video Create] Error details:", {
+        message: supabaseError instanceof Error ? supabaseError.message : String(supabaseError),
+        creator_did: userDID,
+        title: videoInput.title,
+      });
 
       // Generate stable video ID
       const videoId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
