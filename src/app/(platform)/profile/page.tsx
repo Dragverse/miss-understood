@@ -2,16 +2,12 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import Image from "next/image";
-import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe, FiChevronUp, FiChevronDown, FiX } from "react-icons/fi";
+import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
-import { useKeenSlider } from "keen-slider/react";
-import "keen-slider/keen-slider.min.css";
-import { ShortVideo } from "@/components/shorts/short-video";
-import { ShortOverlayTop } from "@/components/shorts/short-overlay-top";
-import { ShortOverlayBottom } from "@/components/shorts/short-overlay-bottom";
+import { BytesSlider } from "@/components/profile/bytes-slider";
 import { getCreatorByDID } from "@/lib/supabase/creators";
 import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { getVideosByCreator } from "@/lib/supabase/videos";
@@ -35,8 +31,6 @@ export default function ProfilePage() {
   const [userPhotos, setUserPhotos] = useState<any[]>([]);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [blueskyProfile, setBlueskyProfile] = useState<any>(null);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [sliderReady, setSliderReady] = useState(false);
   const [stats, setStats] = useState({
     totalViews: 0,
     totalLikes: 0,
@@ -369,41 +363,6 @@ export default function ProfilePage() {
     v.source !== 'bluesky'
   );
 
-  // Keen Slider for vertical video player (BYTES tab)
-  const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
-    initial: 0,
-    vertical: true,
-    slides: {
-      perView: 1,
-      spacing: 0,
-    },
-    slideChanged(slider) {
-      setCurrentSlide(slider.track.details.rel);
-    },
-    created() {
-      setSliderReady(true);
-    },
-  });
-
-  // Keyboard navigation for BYTES player
-  useEffect(() => {
-    if (activeTab !== "bytes" || bytesList.length === 0) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        instanceRef.current?.prev();
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        instanceRef.current?.next();
-      } else if (e.key === "Escape") {
-        setActiveTab("videos");
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeTab, bytesList.length, instanceRef]);
 
   return (
     <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
@@ -701,79 +660,10 @@ export default function ProfilePage() {
           )}
 
           {activeTab === "bytes" && (
-            <>
-              {bytesList.length > 0 ? (
-                <div className="fixed inset-0 bg-black z-50">
-                  {/* Close button */}
-                  <button
-                    onClick={() => setActiveTab("videos")}
-                    className="fixed top-4 right-4 z-50 w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition"
-                  >
-                    <FiX className="w-6 h-6 text-white" />
-                  </button>
-
-                  {/* Vertical Slider */}
-                  <div
-                    ref={sliderRef}
-                    className="keen-slider h-full snap-y snap-mandatory overflow-y-hidden"
-                  >
-                    {bytesList.map((video, idx) => (
-                      <div key={video.id} className="keen-slider__slide relative">
-                        <ShortVideo
-                          video={video}
-                          isActive={currentSlide === idx}
-                          onNext={() => instanceRef.current?.next()}
-                        />
-                        <ShortOverlayTop video={video} />
-                        <ShortOverlayBottom video={video} />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Navigation Buttons - Desktop Only */}
-                  {sliderReady && (
-                    <div className="hidden md:flex flex-col gap-4 fixed right-8 top-1/2 -translate-y-1/2 z-20">
-                      <button
-                        onClick={() => instanceRef.current?.prev()}
-                        disabled={currentSlide === 0}
-                        className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <FiChevronUp className="w-6 h-6 text-white" />
-                      </button>
-                      <button
-                        onClick={() => instanceRef.current?.next()}
-                        disabled={currentSlide === bytesList.length - 1}
-                        className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <FiChevronDown className="w-6 h-6 text-white" />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Slide Indicator */}
-                  <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-20">
-                    {bytesList.map((_, idx) => (
-                      <div
-                        key={idx}
-                        className={`h-1 rounded-full transition-all ${
-                          currentSlide === idx
-                            ? "w-8 bg-[#EB83EA]"
-                            : "w-1 bg-gray-600"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
-                    <FiVideo className="w-10 h-10 text-gray-500" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">No Bytes Yet</h3>
-                  <p className="text-gray-400">Upload short-form content to get started</p>
-                </div>
-              )}
-            </>
+            <BytesSlider
+              bytesList={bytesList}
+              onClose={() => setActiveTab("videos")}
+            />
           )}
 
           {activeTab === "photos" && (

@@ -57,7 +57,8 @@
       "Bash(__NEW_LINE_d9b60c8d285c40d3__ git push origin main)",
       "Bash(__NEW_LINE_d9b60c8d285c40d3__ echo \"\")",
       "Bash(npm view:*)",
-      "Bash(SKIP_ENV_VALIDATION=true npm run build:*)"
+      "Bash(SKIP_ENV_VALIDATION=true npm run build:*)",
+      "Bash(fetch reporting URL\" errors. Added playback.livepeer.studio domain\nto connect-src to allow Livepeer analytics and video metadata fetching.\n\nThis fixes the CSP violations seen in console:\n- https://playback.livepeer.studio/analytics/log\n- https://playback.livepeer.studio/json_video+*.js\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
