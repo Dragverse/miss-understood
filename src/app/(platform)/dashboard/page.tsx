@@ -8,9 +8,12 @@ import { useState, useEffect } from "react";
 import { getVideosByCreator, type SupabaseVideo } from "@/lib/supabase/videos";
 import { getCreatorByDID } from "@/lib/supabase/creators";
 import { Video } from "@/types";
+import toast from "react-hot-toast";
+import { usePrivy } from "@privy-io/react-auth";
 
 export default function DashboardPage() {
   const { isAuthenticated, signIn, user } = useAuthUser();
+  const { getAccessToken } = usePrivy();
   const router = useRouter();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,6 +23,7 @@ export default function DashboardPage() {
     totalFollowers: 0,
   });
   const [videos, setVideos] = useState<Video[]>([]);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   // Load dashboard data from Ceramic
   useEffect(() => {
@@ -99,6 +103,38 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  const handleDeleteVideo = async (videoId: string) => {
+    if (!confirm("Are you sure you want to delete this video? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeleting(videoId);
+    try {
+      const authToken = await getAccessToken();
+      const response = await fetch("/api/video/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ videoId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete video");
+      }
+
+      // Remove video from state
+      setVideos(videos.filter(v => v.id !== videoId));
+      toast.success("Video deleted successfully");
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error("Failed to delete video");
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -246,9 +282,13 @@ export default function DashboardPage() {
                         <FiEdit className="w-3 h-3" />
                         Edit
                       </button>
-                      <button className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-semibold transition flex items-center gap-1">
+                      <button
+                        onClick={() => handleDeleteVideo(video.id)}
+                        disabled={deleting === video.id}
+                        className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-semibold transition flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
                         <FiTrash2 className="w-3 h-3" />
-                        Delete
+                        {deleting === video.id ? 'Deleting...' : 'Delete'}
                       </button>
                     </div>
                   </div>
