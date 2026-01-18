@@ -11,7 +11,7 @@ import Image from "next/image";
 import { saveLocalVideo } from "@/lib/utils/local-storage";
 
 export default function UploadPage() {
-  const { isAuthenticated, signIn } = useAuthUser();
+  const { isAuthenticated, signIn, user } = useAuthUser();
   const { getAccessToken, ready } = usePrivy();
   const router = useRouter();
 
