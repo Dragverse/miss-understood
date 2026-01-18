@@ -12,7 +12,7 @@ import { saveLocalVideo } from "@/lib/utils/local-storage";
 
 export default function UploadPage() {
   const { isAuthenticated, signIn } = useAuthUser();
-  const { getAccessToken } = usePrivy();
+  const { getAccessToken, ready } = usePrivy();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -192,6 +192,11 @@ export default function UploadPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!ready) {
+      toast.error("Please wait, authentication is loading...");
+      return;
+    }
+
     if (!isAuthenticated) {
       toast.error("Please sign in to upload videos");
       signIn();
@@ -219,6 +224,16 @@ export default function UploadPage() {
 
       // Get Privy auth token for authenticated API calls
       const authToken = await getAccessToken();
+
+      if (!authToken) {
+        console.error("❌ Failed to get access token from Privy");
+        toast.error("Authentication failed. Please try signing in again.");
+        setUploading(false);
+        setUploadStage("idle");
+        return;
+      }
+
+      console.log("✓ Got auth token, starting upload...");
 
       const asset = await uploadVideoToLivepeer(
         formData.video,
