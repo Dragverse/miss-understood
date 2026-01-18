@@ -92,12 +92,15 @@ export async function createOrUpdateCreator(input: CreateCreatorInput) {
 }
 
 export async function getCreatorByDID(did: string): Promise<Creator | null> {
-  if (!supabase) {
+  // Use server client for API routes, fall back to regular client for client-side
+  const client = typeof window === 'undefined' ? getSupabaseServerClient() : supabase;
+
+  if (!client) {
     console.warn('Supabase not configured');
     return null;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('creators')
     .select('*')
     .eq('did', did)
@@ -108,12 +111,15 @@ export async function getCreatorByDID(did: string): Promise<Creator | null> {
 }
 
 export async function getCreatorByHandle(handle: string): Promise<Creator | null> {
-  if (!supabase) {
+  // Use server client for API routes, fall back to regular client for client-side
+  const client = typeof window === 'undefined' ? getSupabaseServerClient() : supabase;
+
+  if (!client) {
     console.warn('Supabase not configured');
     return null;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('creators')
     .select('*')
     .eq('handle', handle)
