@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { mockVideos } from "@/lib/utils/mock-data";
 import Image from "next/image";
 import Link from "next/link";
-import { FiThumbsUp, FiMessageCircle, FiShare2, FiUserPlus, FiLock } from "react-icons/fi";
+import { FiMessageCircle, FiShare2, FiUserPlus, FiLock, FiMaximize2, FiMinimize2 } from "react-icons/fi";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { TipModal } from "@/components/video/tip-modal";
@@ -17,6 +17,7 @@ import { getLocalVideos } from "@/lib/utils/local-storage";
 import { usePrivy } from "@privy-io/react-auth";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
+import { HeartAnimation, ActionButton, EmptyState, LoadingShimmer, MoodBadge } from "@/components/shared";
 
 export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
@@ -34,6 +35,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   const [tipModalOpen, setTipModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
+  const [theaterMode, setTheaterMode] = useState(false);
 
   // Fetch video with access control
   useEffect(() => {
@@ -202,8 +204,15 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#EB83EA]"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <LoadingShimmer aspectRatio="video" className="mb-6" />
+            <LoadingShimmer lines={3} className="mb-4" />
+            <LoadingShimmer className="h-16 mb-4" />
+          </div>
+          <div className="lg:col-span-1">
+            <LoadingShimmer lines={5} />
+          </div>
         </div>
       </div>
     );
@@ -260,12 +269,25 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className={`${theaterMode ? "max-w-full" : "max-w-7xl"} mx-auto px-4 py-8 transition-all duration-300`}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Video */}
-        <div className="lg:col-span-2">
-          {/* Livepeer Player */}
-          <div className="rounded-large overflow-hidden mb-6">
+        <div className={`${theaterMode ? "lg:col-span-3" : "lg:col-span-2"} transition-all duration-300`}>
+          {/* Livepeer Player with theater mode */}
+          <div className="rounded-3xl overflow-hidden mb-6 border-2 border-[#EB83EA]/10 shadow-xl relative group">
+            {/* Theater mode toggle */}
+            <button
+              onClick={() => setTheaterMode(!theaterMode)}
+              className="absolute top-4 right-4 z-10 p-3 bg-black/60 hover:bg-[#EB83EA]/80 rounded-xl transition-all opacity-0 group-hover:opacity-100 border border-[#EB83EA]/20"
+              title={theaterMode ? "Exit theater mode" : "Enter theater mode"}
+            >
+              {theaterMode ? (
+                <FiMinimize2 className="w-5 h-5 text-white" />
+              ) : (
+                <FiMaximize2 className="w-5 h-5 text-white" />
+              )}
+            </button>
+
             {video.playbackUrl ? (
               <Player.Root
                 src={getSrc(video.playbackUrl)}
@@ -313,12 +335,16 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           </div>
 
           {/* Video Info */}
-          <div className="mb-6">
+          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10 mb-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
-                <h1 className="text-2xl font-bold mb-2">{video.title}</h1>
-                <div className="flex items-center gap-4 text-sm text-gray-400">
-                  <span>{(video.views / 1000).toFixed(0)}K views</span>
+                <h1 className="text-2xl lg:text-3xl font-bold mb-3 bg-gradient-to-r from-white to-[#EB83EA] bg-clip-text text-transparent">
+                  {video.title}
+                </h1>
+                <div className="flex items-center gap-4 text-sm text-gray-400 mb-3">
+                  <span className="flex items-center gap-1">
+                    <span className="text-[#EB83EA] font-bold">{(video.views / 1000).toFixed(1)}K</span> views
+                  </span>
                   <span>•</span>
                   <span>
                     {new Date(video.createdAt).toLocaleDateString("en-US", {
@@ -328,142 +354,154 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                     })}
                   </span>
                 </div>
+                {/* Mood badge if available */}
+                {video.category && (
+                  <MoodBadge mood={video.category} size="md" />
+                )}
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-4 mb-6">
-              <button
-                onClick={handleLike}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-                  isLiked
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-900 text-gray-300 hover:bg-gray-800"
-                }`}
-              >
-                <FiThumbsUp className="w-5 h-5" />
-                <span>{likes}</span>
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-gray-300 rounded-lg hover:bg-gray-800 transition">
+            <div className="flex flex-wrap gap-3 mb-6 pb-6 border-b border-[#EB83EA]/10">
+              <HeartAnimation
+                initialLiked={isLiked}
+                onToggle={handleLike}
+                showCount={true}
+                count={likes}
+              />
+              <button className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all text-white hover:text-[#EB83EA]">
                 <FiMessageCircle className="w-5 h-5" />
                 <span>Comment</span>
               </button>
-              <button
+              <ActionButton
                 onClick={() => setShareModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-gray-300 rounded-lg hover:bg-gray-800 transition"
+                variant="secondary"
+                icon={<FiShare2 className="w-5 h-5" />}
+                size="md"
               >
-                <FiShare2 className="w-5 h-5" />
-                <span>Share</span>
-              </button>
-              <button
+                Share
+              </ActionButton>
+              <ActionButton
                 onClick={() => setTipModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] text-white rounded-lg hover:from-[#E748E6] hover:to-[#6b2fd5] transition font-semibold"
+                variant="primary"
+                icon={<ChocolateBar size={20} filled={true} />}
+                size="md"
               >
-                <ChocolateBar size={20} filled={true} />
-                <span>Tip Creator</span>
-              </button>
+                Tip Creator
+              </ActionButton>
             </div>
 
             {/* Description */}
-            <p className="text-gray-300 mb-4">{video.description}</p>
+            {video.description && (
+              <p className="text-gray-300 mb-4 leading-relaxed">{video.description}</p>
+            )}
 
             {/* Tags */}
-            <div className="flex gap-2 flex-wrap">
-              {video.tags.map((tag) => (
-                <Link
-                  key={tag}
-                  href={`/?search=${tag}`}
-                  className="text-purple-400 hover:text-purple-300 text-sm"
-                >
-                  #{tag}
-                </Link>
-              ))}
-            </div>
+            {video.tags.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                {video.tags.map((tag) => (
+                  <Link
+                    key={tag}
+                    href={`/?search=${tag}`}
+                    className="px-3 py-1 bg-[#EB83EA]/10 hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-full text-[#EB83EA] text-sm font-semibold transition-all"
+                  >
+                    #{tag}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Creator Info */}
-          <div className="border-t border-gray-800 pt-6">
-            <div className="flex items-start justify-between">
-              <div className="flex gap-4">
-                <Image
-                  src={video.creator.avatar}
-                  alt={video.creator.displayName}
-                  width={60}
-                  height={60}
-                  className="w-14 h-14 rounded-full"
-                />
+          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10">
+            <div className="flex items-start justify-between gap-4">
+              <Link href={`/profile/${video.creator.handle}`} className="flex gap-4 flex-1 group">
+                <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-[#EB83EA]/30 group-hover:border-[#EB83EA] transition-all flex-shrink-0">
+                  <Image
+                    src={video.creator.avatar}
+                    alt={video.creator.displayName}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg">
+                  <h3 className="font-bold text-lg mb-1 group-hover:text-[#EB83EA] transition-colors">
                     {video.creator.displayName}
                   </h3>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-400 text-sm mb-1">
                     @{video.creator.handle}
                   </p>
-                  <p className="text-gray-500 text-sm mt-1">
-                    {(video.creator.followerCount / 1000).toFixed(0)}K followers
+                  <p className="text-[#EB83EA] text-sm font-semibold">
+                    {(video.creator.followerCount / 1000).toFixed(1)}K followers
                   </p>
-                  <p className="text-gray-400 text-sm mt-2 max-w-lg">
-                    {video.creator.description}
-                  </p>
+                  {video.creator.description && (
+                    <p className="text-gray-400 text-sm mt-2 line-clamp-2">
+                      {video.creator.description}
+                    </p>
+                  )}
                 </div>
-              </div>
-              <button
+              </Link>
+              <ActionButton
                 onClick={() => setIsFollowing(!isFollowing)}
-                className={`px-6 py-2 rounded-lg font-medium transition flex items-center gap-2 ${
-                  isFollowing
-                    ? "bg-gray-900 text-white"
-                    : "bg-purple-600 text-white hover:bg-purple-700"
-                }`}
+                variant={isFollowing ? "secondary" : "primary"}
+                icon={<FiUserPlus className="w-5 h-5" />}
+                size="md"
               >
-                <FiUserPlus className="w-5 h-5" />
                 {isFollowing ? "Following" : "Follow"}
-              </button>
+              </ActionButton>
             </div>
           </div>
         </div>
 
         {/* Sidebar - Recommended Videos */}
-        <div className="lg:col-span-1">
-          <h3 className="font-bold text-lg mb-4">Up Next</h3>
-          <div className="space-y-4">
-            {relatedVideos.length > 0 ? (
-              relatedVideos.map((v) => (
-                <Link
-                  key={v.id}
-                  href={`/watch/${v.id}`}
-                  className="flex gap-3 hover:bg-gray-900/50 p-2 rounded transition"
-                >
-                  <div className="relative w-28 h-16 flex-shrink-0 rounded bg-gray-800">
-                    <Image
-                      src={v.thumbnail || `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`}
-                      alt={v.title}
-                      fill
-                      className="object-cover rounded"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-sm line-clamp-2 hover:text-purple-400">
-                      {v.title}
-                    </h4>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {v.creator.displayName}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {(v.views / 1000).toFixed(0)}K views
-                    </p>
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <div className="text-center py-8 text-gray-400 text-sm">
-                <p>No related videos available</p>
-                <Link href="/videos" className="text-purple-400 hover:underline mt-2 block">
-                  Browse all videos
-                </Link>
+        {!theaterMode && (
+          <div className="lg:col-span-1">
+            <div className="sticky top-8">
+              <h3 className="font-bold text-xl uppercase tracking-wide mb-4 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+                Up Next
+              </h3>
+              <div className="space-y-3">
+                {relatedVideos.length > 0 ? (
+                  relatedVideos.map((v) => (
+                    <Link
+                      key={v.id}
+                      href={`/watch/${v.id}`}
+                      className="flex gap-3 p-3 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] hover:from-[#2f2942] hover:to-[#18122D] rounded-2xl border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all shadow-lg hover:shadow-xl hover:shadow-[#EB83EA]/10 group"
+                    >
+                      <div className="relative w-32 h-20 flex-shrink-0 rounded-xl overflow-hidden border border-[#EB83EA]/20">
+                        <Image
+                          src={v.thumbnail || `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`}
+                          alt={v.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm line-clamp-2 mb-1 group-hover:text-[#EB83EA] transition-colors">
+                          {v.title}
+                        </h4>
+                        <p className="text-xs text-gray-400 mb-1">
+                          {v.creator?.displayName || "Unknown"}
+                        </p>
+                        <p className="text-xs text-[#EB83EA] font-semibold">
+                          {(v.views / 1000).toFixed(1)}K views
+                        </p>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <EmptyState
+                    icon="🎬"
+                    title="No More Videos"
+                    description="Check out more amazing content"
+                    actionLabel="Browse All Videos"
+                    onAction={() => window.location.href = "/videos"}
+                  />
+                )}
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Tip Modal */}
