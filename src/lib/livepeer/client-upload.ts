@@ -26,14 +26,22 @@ interface LivepeerAsset {
  */
 export async function uploadVideoToLivepeer(
   file: File,
-  onProgress?: (progress: UploadProgress) => void
+  onProgress?: (progress: UploadProgress) => void,
+  authToken?: string | null
 ): Promise<LivepeerAsset> {
   // Step 1: Request upload URL from our backend
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  // Add authorization header if token is provided
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+
   const uploadUrlResponse = await fetch("/api/upload/request", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       name: file.name,
     }),

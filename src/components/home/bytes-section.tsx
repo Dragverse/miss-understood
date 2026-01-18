@@ -70,12 +70,18 @@ export function BytesSection({ shorts }: BytesSectionProps) {
             className="flex-shrink-0 snap-start"
           >
             <div className="relative w-[160px] aspect-[9/16] rounded-3xl overflow-hidden group cursor-pointer shadow-lg">
-              <Image
-                src={video.thumbnail}
-                alt={video.title}
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-700"
-              />
+              {video.thumbnail ? (
+                <Image
+                  src={video.thumbnail}
+                  alt={video.title}
+                  fill
+                  className="object-cover group-hover:scale-110 transition-transform duration-700"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
+                  <span className="text-white/50 text-xs">No thumbnail</span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-white mb-2">

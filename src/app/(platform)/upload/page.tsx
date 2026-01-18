@@ -5,12 +5,14 @@ import { FiUploadCloud, FiCheck, FiFilm, FiZap } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { uploadVideoToLivepeer, waitForAssetReady } from "@/lib/livepeer/client-upload";
 import { useAuthUser } from "@/lib/privy/hooks";
+import { usePrivy } from "@privy-io/react-auth";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { saveLocalVideo } from "@/lib/utils/local-storage";
 
 export default function UploadPage() {
   const { isAuthenticated, signIn } = useAuthUser();
+  const { getAccessToken } = usePrivy();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -215,9 +217,16 @@ export default function UploadPage() {
       setUploading(true);
       setUploadStage("uploading");
 
-      const asset = await uploadVideoToLivepeer(formData.video, (progress) => {
-        setUploadProgress(progress.percentage);
-      });
+      // Get Privy auth token for authenticated API calls
+      const authToken = await getAccessToken();
+
+      const asset = await uploadVideoToLivepeer(
+        formData.video,
+        (progress) => {
+          setUploadProgress(progress.percentage);
+        },
+        authToken
+      );
 
       toast.success("Upload complete! Processing video...");
       setUploadStage("processing");
