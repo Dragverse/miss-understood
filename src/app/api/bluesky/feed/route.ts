@@ -3,12 +3,19 @@ import {
   searchDragContent,
   getDragAccountsPosts,
   blueskyPostToVideo,
+  blueskyPostToContent,
   sortPostsByEngagement,
 } from "@/lib/bluesky/client";
 
 /**
  * API route to fetch drag-related content from Bluesky
- * GET /api/bluesky/feed?limit=50
+ * GET /api/bluesky/feed?limit=50&contentType=all|videos
+ *
+ * Query params:
+ * - limit: number of items to return (default: 50)
+ * - contentType: "all" (videos, images, text) or "videos" (default: "videos")
+ * - source: "search" or "accounts" (default: "search")
+ * - sortBy: "engagement" or "recent" (default: "engagement")
  */
 export async function GET(request: NextRequest) {
   try {
@@ -16,6 +23,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const source = searchParams.get("source") || "search"; // "search" or "accounts"
     const sortBy = searchParams.get("sortBy") as "engagement" | "recent" || "engagement";
+    const contentType = searchParams.get("contentType") || "videos"; // "all" or "videos"
 
     let posts;
 
@@ -38,10 +46,19 @@ export async function GET(request: NextRequest) {
     // Sort posts by engagement or recency
     posts = sortPostsByEngagement(posts, sortBy);
 
-    // Convert posts to video format (filter out non-video posts)
-    const videos = posts
-      .map(blueskyPostToVideo)
-      .filter((video) => video !== null);
+    // Convert posts based on content type
+    let videos;
+    if (contentType === "all") {
+      // Include videos, images, and text posts
+      videos = posts
+        .map(blueskyPostToContent)
+        .filter((video) => video !== null);
+    } else {
+      // Only videos (default behavior)
+      videos = posts
+        .map(blueskyPostToVideo)
+        .filter((video) => video !== null);
+    }
 
     return NextResponse.json({
       success: true,

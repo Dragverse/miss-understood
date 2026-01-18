@@ -80,14 +80,14 @@ export default function HomePage() {
         );
       }
 
-      // Bluesky content (reduced to 15 limit for faster loading)
+      // Bluesky content (fetch ALL content types: videos, images, text)
       fetchPromises.push(
-        fetch("/api/bluesky/feed?limit=15")
+        fetch("/api/bluesky/feed?limit=30&contentType=all")
           .then((response) => response.json())
           .then((data) => {
             const blueskyContent = data.posts || data.videos || [];
             if (data.success && blueskyContent.length > 0) {
-              console.log(`Loaded ${blueskyContent.length} posts from Bluesky`);
+              console.log(`Loaded ${blueskyContent.length} posts from Bluesky (videos, images, text)`);
 
               // Extract photo posts
               const photos = blueskyContent.filter((post: any) =>

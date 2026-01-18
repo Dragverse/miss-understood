@@ -288,6 +288,104 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
 }
 
 /**
+ * Convert Bluesky post to content format (videos, images, text)
+ * This is more permissive than blueskyPostToVideo and includes all content types
+ */
+export function blueskyPostToContent(post: BlueskyPost): any | null {
+  const hasNativeVideo = !!post.embed?.video;
+  const hasExternalVideo =
+    post.embed?.external &&
+    (post.embed.external.uri.includes("youtube") ||
+      post.embed.external.uri.includes("youtu.be") ||
+      post.embed.external.uri.includes("vimeo") ||
+      post.embed.external.uri.includes("tiktok"));
+
+  const hasVideo = hasNativeVideo || hasExternalVideo;
+  const hasImages = post.embed?.images && post.embed.images.length > 0;
+  const hasText = post.text && post.text.length > 0;
+
+  // Accept posts with video, images, or substantial text (at least 10 chars)
+  if (!hasVideo && !hasImages && (!hasText || post.text.length < 10)) {
+    return null;
+  }
+
+  // Extract media URL
+  let playbackUrl = "";
+  let thumbnail = "";
+
+  if (post.embed?.video) {
+    // Native Bluesky video
+    playbackUrl = post.embed.video.playlist;
+    thumbnail = post.embed.video.thumbnail || "";
+  } else if (hasExternalVideo && post.embed?.external) {
+    // External video link
+    playbackUrl = post.embed.external.uri;
+    thumbnail = post.embed.external.thumb || "";
+  } else if (hasImages && post.embed?.images) {
+    // Image post - use first image
+    thumbnail = post.embed.images[0].fullsize || post.embed.images[0].thumb;
+    playbackUrl = ""; // No video playback for images
+  } else {
+    // Text-only post
+    playbackUrl = "";
+    thumbnail = "";
+  }
+
+  // Generate a unique ID from the post URI
+  const videoId = `bluesky-${post.uri.split("/").pop()}`;
+
+  // Extract title (first 100 chars of text)
+  const title = post.text.substring(0, 100).trim() || "Untitled";
+
+  // Extract description (full text)
+  const description = post.text;
+
+  // Determine content type
+  let contentType: "short" | "long" | "podcast" = "short";
+  if (hasVideo) {
+    contentType =
+      post.embed?.video?.aspectRatio &&
+      post.embed.video.aspectRatio.width > post.embed.video.aspectRatio.height
+        ? "long"
+        : "short";
+  }
+
+  return {
+    id: videoId,
+    title,
+    description,
+    thumbnail,
+    duration: 0,
+    views: (post.likeCount || 0) * 10,
+    likes: post.likeCount || 0,
+    createdAt: new Date(post.createdAt),
+    playbackUrl,
+    livepeerAssetId: "",
+    contentType,
+    creator: {
+      did: post.author.did,
+      handle: post.author.handle,
+      displayName: post.author.displayName || post.author.handle,
+      avatar:
+        post.author.avatar ||
+        `https://api.dicebear.com/9.x/avataaars/svg?seed=${post.author.did}`,
+      description: "",
+      followerCount: 0,
+      followingCount: 0,
+      createdAt: new Date(),
+      verified: false,
+    },
+    category: "Performance",
+    tags: ["drag", "bluesky"],
+    source: "bluesky",
+    externalUrl: `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split("/").pop()}`,
+    internalUrl: `/profile/${post.author.handle}`,
+    uri: post.uri,
+    cid: post.cid,
+  };
+}
+
+/**
  * Calculate engagement score for a post
  * Formula: (likes * 3 + reposts * 2 + replies * 1) * time_decay
  */
