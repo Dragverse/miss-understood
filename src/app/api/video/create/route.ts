@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createVideo } from "@/lib/supabase/videos";
+import { getCreatorByDID, createCreator } from "@/lib/supabase/creators";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 import { validateBody, createVideoSchema } from "@/lib/validation/schemas";
 
@@ -44,6 +45,29 @@ export async function POST(request: NextRequest) {
 
     // Tags in Supabase is an array, no conversion needed
     const tagsArray = Array.isArray(tags) ? tags : (tags ? [tags] : []);
+
+    // Ensure creator exists in database before creating video
+    try {
+      let creator = await getCreatorByDID(userDID);
+
+      if (!creator) {
+        console.log("[Video Create] Creator not found, creating new creator record for:", userDID);
+        // Create a basic creator profile
+        creator = await createCreator({
+          did: userDID,
+          handle: `user-${userDID.substring(0, 8)}`,
+          display_name: "Dragverse User",
+          avatar: "",
+          description: "",
+        });
+        console.log("[Video Create] ✅ Creator created:", creator.id);
+      } else {
+        console.log("[Video Create] ✅ Creator exists:", creator.id);
+      }
+    } catch (creatorError) {
+      console.error("[Video Create] Failed to ensure creator exists:", creatorError);
+      // Continue anyway - creator_id is nullable
+    }
 
     const videoInput = {
       creator_did: userDID,
