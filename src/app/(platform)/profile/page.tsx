@@ -2,24 +2,30 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import Image from "next/image";
-import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar } from "react-icons/fi";
+import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
-import { VerificationBadge } from "@/components/ui/verification-badge";
 import { getCreatorByDID } from "@/lib/supabase/creators";
 import { transformSupabaseCreator } from "@/lib/supabase/transformers";
+import { getVideosByCreator } from "@/lib/supabase/videos";
 import { Creator, Video } from "@/types";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 import { StatsCard, LoadingShimmer } from "@/components/shared";
+import { usePrivy } from "@privy-io/react-auth";
+import { isVerified } from "@/config/verified-creators";
+import { FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
+import { SiBluesky } from "react-icons/si";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle } = useAuthUser();
+  const { getAccessToken } = usePrivy();
   const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "photos" | "posts" | "about">("videos");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [userVideos, setUserVideos] = useState<Video[]>([]);
   const [userPhotos, setUserPhotos] = useState<any[]>([]);
   const [userPosts, setUserPosts] = useState<any[]>([]);
@@ -67,7 +73,7 @@ export default function ProfilePage() {
             followerCount: 0,
             followingCount: 0,
             createdAt: new Date(user.createdAt || Date.now()),
-            verified: false,
+            verified: isVerified(user.id),
           } as Creator);
           setIsLoadingProfile(false);
           return;
@@ -86,7 +92,7 @@ export default function ProfilePage() {
         followerCount: 0,
         followingCount: 0,
         createdAt: new Date(user.createdAt || Date.now()),
-        verified: false,
+        verified: isVerified(user.id),
         instagramHandle: instagramHandle || undefined,
         tiktokHandle: tiktokHandle || undefined,
       });
@@ -98,21 +104,103 @@ export default function ProfilePage() {
     }
   }, [isAuthenticated, user?.id]);
 
-  // Load videos
+  // Load videos from Supabase using verified user ID
   useEffect(() => {
-    const localVideos = getLocalVideos();
-    setUserVideos(localVideos);
+    async function loadVideos() {
+      if (!user?.id) return;
 
-    // Calculate stats
-    const totalViews = localVideos.reduce((sum, v) => sum + (v.views || 0), 0);
-    const totalLikes = localVideos.reduce((sum, v) => sum + (v.likes || 0), 0);
-    setStats(prev => ({
-      ...prev,
-      totalViews,
-      totalLikes,
-      videoCount: localVideos.length,
-    }));
-  }, []);
+      setLoading(true);
+      try {
+        // CRITICAL FIX: Get the verified user ID from the backend
+        const authToken = await getAccessToken();
+        let verifiedUserId = user.id; // Fallback to client ID
+
+        try {
+          const meResponse = await fetch("/api/user/me", {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
+
+          if (meResponse.ok) {
+            const meData = await meResponse.json();
+            verifiedUserId = meData.userId; // Use the verified ID from JWT
+            console.log("✅ Using verified user ID for profile:", verifiedUserId);
+          }
+        } catch (error) {
+          console.error("Failed to get verified user ID:", error);
+        }
+
+        // Fetch user's videos from Supabase using the verified DID
+        const supabaseVideos = await getVideosByCreator(verifiedUserId);
+        console.log(`📹 Loaded ${supabaseVideos.length} videos from Supabase for profile`);
+
+        // Transform Supabase videos to Video type
+        const transformedVideos: Video[] = supabaseVideos.map((sv) => ({
+          id: sv.id,
+          title: sv.title,
+          description: sv.description || "",
+          thumbnail: sv.thumbnail || "",
+          playbackUrl: sv.playback_url || "",
+          duration: sv.duration || 0,
+          views: sv.views || 0,
+          likes: sv.likes || 0,
+          comments: 0, // Not in SupabaseVideo type
+          shares: 0, // Not in SupabaseVideo type
+          createdAt: new Date(sv.created_at),
+          creator: {
+            did: sv.creator_did,
+            displayName: creator?.displayName || userHandle || "Creator",
+            handle: creator?.handle || userHandle || "creator",
+            avatar: creator?.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
+            verified: creator?.verified || false,
+            description: creator?.description || "",
+            followerCount: creator?.followerCount || 0,
+            followingCount: creator?.followingCount || 0,
+            createdAt: creator?.createdAt || new Date(sv.created_at),
+          },
+          contentType: sv.content_type || ((sv.duration || 0) <= 60 ? "short" : "long"),
+          livepeerAssetId: sv.livepeer_asset_id || sv.id,
+          category: sv.category || "drag",
+          tags: sv.tags || [],
+        }));
+
+        setUserVideos(transformedVideos);
+
+        // Calculate stats from loaded videos
+        const totalViews = transformedVideos.reduce((sum, v) => sum + (v.views || 0), 0);
+        const totalLikes = transformedVideos.reduce((sum, v) => sum + (v.likes || 0), 0);
+
+        setStats((prev) => ({
+          ...prev,
+          totalViews,
+          totalLikes,
+          videoCount: transformedVideos.length,
+        }));
+      } catch (error) {
+        console.error("Failed to load videos from Supabase:", error);
+        // Fallback to localStorage
+        const localVideos = getLocalVideos();
+        setUserVideos(localVideos);
+
+        const totalViews = localVideos.reduce((sum, v) => sum + (v.views || 0), 0);
+        const totalLikes = localVideos.reduce((sum, v) => sum + (v.likes || 0), 0);
+
+        setStats(prev => ({
+          ...prev,
+          totalViews,
+          totalLikes,
+          videoCount: localVideos.length,
+        }));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (isAuthenticated && user?.id) {
+      loadVideos();
+    }
+  }, [isAuthenticated, user?.id, getAccessToken]);
 
   // Load Bluesky data
   useEffect(() => {
@@ -285,34 +373,129 @@ export default function ProfilePage() {
               </p>
             </div>
           )}
+
+          {/* Social Links & Connection Status */}
+          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Connect</h3>
+              {/* Connection Indicators */}
+              <div className="flex items-center gap-2">
+                {creator.blueskyHandle && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0085ff]/20 border border-[#0085ff]/30 rounded-full">
+                    <SiBluesky className="w-3 h-3 text-[#0085ff]" />
+                    <span className="text-[#0085ff] text-xs font-bold">BLUESKY</span>
+                  </div>
+                )}
+                {userVideos.some(v => v.source === 'youtube') && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-full">
+                    <FaYoutube className="w-3 h-3 text-red-500" />
+                    <span className="text-red-500 text-xs font-bold">YOUTUBE</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle) ? (
+              <div className="flex flex-wrap gap-3">
+                {creator.instagramHandle && (
+                  <a
+                    href={`https://instagram.com/${creator.instagramHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-[#E1306C] to-[#C13584] hover:from-[#D12963] hover:to-[#B02575] text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
+                  >
+                    <FaInstagram className="w-5 h-5" />
+                    <span>@{creator.instagramHandle}</span>
+                  </a>
+                )}
+                {creator.tiktokHandle && (
+                  <a
+                    href={`https://tiktok.com/@${creator.tiktokHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-[#000000] to-[#00f2ea] hover:from-[#111111] hover:to-[#00d9d1] text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
+                  >
+                    <FaTiktok className="w-5 h-5" />
+                    <span>@{creator.tiktokHandle}</span>
+                  </a>
+                )}
+                {creator.blueskyHandle && (
+                  <a
+                    href={`https://bsky.app/profile/${creator.blueskyHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-[#0085ff] to-[#0066cc] hover:from-[#0077ee] hover:to-[#0055bb] text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
+                  >
+                    <SiBluesky className="w-5 h-5" />
+                    <span>@{creator.blueskyHandle}</span>
+                  </a>
+                )}
+                {creator.website && (
+                  <a
+                    href={creator.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
+                  >
+                    <FiGlobe className="w-5 h-5" />
+                    <span>Website</span>
+                  </a>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-400 mb-4">Connect your social accounts to share your content</p>
+                <button
+                  onClick={() => router.push("/settings")}
+                  className="px-6 py-2 bg-[#EB83EA] hover:bg-[#E748E6] text-white font-bold rounded-xl transition-all"
+                >
+                  Add Social Links
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
-          <StatsCard
-            icon={<FiUsers className="w-6 h-6 text-white" />}
-            label="Followers"
-            value={creator.followerCount.toLocaleString()}
-            gradient="from-purple-500/10 via-indigo-500/10 to-blue-500/10"
-          />
-          <StatsCard
-            icon={<FiVideo className="w-6 h-6 text-white" />}
-            label="Videos"
-            value={stats.videoCount.toLocaleString()}
-            gradient="from-green-500/10 via-emerald-500/10 to-teal-500/10"
-          />
-          <StatsCard
-            icon={<FiEye className="w-6 h-6 text-white" />}
-            label="Total Views"
-            value={stats.totalViews.toLocaleString()}
-            gradient="from-blue-500/10 via-purple-500/10 to-pink-500/10"
-          />
-          <StatsCard
-            icon={<FiHeart className="w-6 h-6 text-white" />}
-            label="Total Hearts"
-            value={stats.totalLikes.toLocaleString()}
-            gradient="from-pink-500/10 via-rose-500/10 to-red-500/10"
-          />
+        {/* Stats - Compact Display */}
+        <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#2f2942]/40 flex items-center justify-center flex-shrink-0">
+                <FiUsers className="w-5 h-5 text-[#EB83EA]" />
+              </div>
+              <div>
+                <p className="text-gray-400 text-xs">Followers</p>
+                <p className="text-white font-bold text-lg">{creator.followerCount.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#2f2942]/40 flex items-center justify-center flex-shrink-0">
+                <FiVideo className="w-5 h-5 text-[#EB83EA]" />
+              </div>
+              <div>
+                <p className="text-gray-400 text-xs">Videos</p>
+                <p className="text-white font-bold text-lg">{stats.videoCount.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#2f2942]/40 flex items-center justify-center flex-shrink-0">
+                <FiEye className="w-5 h-5 text-[#EB83EA]" />
+              </div>
+              <div>
+                <p className="text-gray-400 text-xs">Views</p>
+                <p className="text-white font-bold text-lg">{stats.totalViews.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#2f2942]/40 flex items-center justify-center flex-shrink-0">
+                <FiHeart className="w-5 h-5 text-[#EB83EA]" />
+              </div>
+              <div>
+                <p className="text-gray-400 text-xs">Hearts</p>
+                <p className="text-white font-bold text-lg">{stats.totalLikes.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Content Section */}

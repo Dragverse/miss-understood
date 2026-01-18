@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FiUsers, FiVideo, FiEye, FiHeart, FiCheck, FiSearch, FiFilter, FiStar } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
+import { isVerified } from "@/config/verified-creators";
 
 interface CreatorStats {
   followers: number;
@@ -227,9 +228,9 @@ export default function CreatorsDirectory() {
                     <h3 className="text-xl font-bold text-white group-hover:text-[#EB83EA] transition-colors truncate">
                       {creator.displayName}
                     </h3>
-                    {creator.verified && (
+                    {(creator.verified || isVerified(creator.did)) && (
                       <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#CDB531] flex items-center justify-center" title="Verified Creator">
-                        <FiCheck className="w-3 h-3 text-black font-bold" />
+                        <FiStar className="w-3 h-3 text-black font-bold" />
                       </div>
                     )}
                   </div>
