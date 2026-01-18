@@ -85,6 +85,10 @@ export async function uploadVideoToLivepeer(
         filetype: file.type,
       },
       uploadSize: file.size,
+      chunkSize: 50 * 1024 * 1024, // 50MB chunks for faster upload
+      retryDelays: [0, 1000, 3000, 5000], // Retry delays in ms
+      parallelUploads: 1, // Sequential for stability
+      removeFingerprintOnSuccess: true, // Clean up after success
       onError: (error) => {
         console.error("TUS upload error:", error);
         reject(error);
