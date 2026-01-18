@@ -174,8 +174,8 @@ export function applyContentFilter<T extends Video | any>(
   if (filter.excludeCreators && filter.excludeCreators.length > 0) {
     filtered = filtered.filter(
       (item) =>
-        !filter.excludeCreators!.includes(item.creator?.did || "") &&
-        !filter.excludeCreators!.includes(item.creator?.handle || "")
+        !filter.excludeCreators!.includes((item as any).creator?.did || "") &&
+        !filter.excludeCreators!.includes((item as any).creator?.handle || "")
     );
   }
 
@@ -304,8 +304,8 @@ export function passesFilter(content: Video | any, filter: ContentFilter): boole
   // Blocked creator check
   if (filter.excludeCreators && filter.excludeCreators.length > 0) {
     if (
-      filter.excludeCreators.includes(content.creator?.did || "") ||
-      filter.excludeCreators.includes(content.creator?.handle || "")
+      filter.excludeCreators.includes((content as any).creator?.did || "") ||
+      filter.excludeCreators.includes((content as any).creator?.handle || "")
     ) {
       return false;
     }
