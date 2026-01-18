@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.LIVEPEER_API_KEY;
 
     if (!apiKey) {
+      console.error("LIVEPEER_API_KEY is not configured");
       return NextResponse.json(
-        { error: "Service unavailable" },
+        { error: "Livepeer API key not configured. Please set LIVEPEER_API_KEY environment variable." },
         { status: 503 }
       );
     }
@@ -50,9 +51,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      console.error("Livepeer API error:", await response.text());
+      const errorText = await response.text();
+      console.error("Livepeer API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+        url: `${LIVEPEER_API_URL}/asset/request-upload`
+      });
       return NextResponse.json(
-        { error: "Failed to get upload URL" },
+        {
+          error: "Failed to get upload URL from Livepeer",
+          details: response.status === 401 ? "Invalid API key" : errorText.substring(0, 100)
+        },
         { status: response.status }
       );
     }
