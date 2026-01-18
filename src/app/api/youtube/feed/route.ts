@@ -36,6 +36,20 @@ export async function GET(request: NextRequest) {
         source: "youtube",
         warning: "No videos returned - check server logs for [YouTube] messages",
         apiKeyConfigured: !!process.env.YOUTUBE_API_KEY,
+        diagnostics: {
+          message: "YouTube API returned 0 videos",
+          possibleCauses: [
+            "API quota exceeded (10,000 units/day)",
+            "Search queries returning no results",
+            "API key restrictions blocking requests",
+            "Network/timeout errors",
+          ],
+          nextSteps: [
+            "Check /api/youtube/test for detailed diagnostics",
+            "Check Google Cloud Console quota: https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas",
+            "Check server logs for [YouTube] error messages",
+          ],
+        },
       });
     }
 
