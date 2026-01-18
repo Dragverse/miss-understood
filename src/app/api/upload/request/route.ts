@@ -6,32 +6,41 @@ const LIVEPEER_API_URL = "https://livepeer.studio/api";
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("📤 Upload request received");
+
     // Verify authentication
     if (isPrivyConfigured()) {
+      console.log("🔐 Verifying Privy authentication...");
       const auth = await verifyAuth(request);
       if (!auth.authenticated) {
+        console.error("❌ Authentication failed:", auth.error);
         return NextResponse.json(
-          { error: "Unauthorized" },
+          { error: "Unauthorized", details: auth.error },
           { status: 401 }
         );
       }
+      console.log("✓ User authenticated:", auth.userId);
+    } else {
+      console.log("⚠ Privy not configured - skipping auth");
     }
 
     const apiKey = process.env.LIVEPEER_API_KEY;
 
     if (!apiKey) {
-      console.error("LIVEPEER_API_KEY is not configured");
+      console.error("❌ LIVEPEER_API_KEY is not configured");
       return NextResponse.json(
         { error: "Livepeer API key not configured. Please set LIVEPEER_API_KEY environment variable." },
         { status: 503 }
       );
     }
+    console.log("✓ Livepeer API key found");
 
     // Parse and validate request body
     const body = await request.json();
     const validation = validateBody(uploadRequestSchema, body);
 
     if (!validation.success) {
+      console.error("❌ Validation failed:", validation.error);
       return NextResponse.json(
         { error: validation.error },
         { status: 400 }
@@ -39,6 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { name } = validation.data;
+    console.log("📁 Requesting upload URL for file:", name);
 
     // Request upload URL from Livepeer
     const response = await fetch(`${LIVEPEER_API_URL}/asset/request-upload`, {
@@ -52,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Livepeer API error:", {
+      console.error("❌ Livepeer API error:", {
         status: response.status,
         statusText: response.statusText,
         body: errorText,
@@ -61,13 +71,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Failed to get upload URL from Livepeer",
-          details: response.status === 401 ? "Invalid API key" : errorText.substring(0, 100)
+          details: response.status === 401 ? "Invalid API key - check Livepeer dashboard" : errorText.substring(0, 100)
         },
         { status: response.status }
       );
     }
 
     const data = await response.json();
+    console.log("✓ Upload URL received from Livepeer");
 
     return NextResponse.json({
       tusEndpoint: data.tusEndpoint,

@@ -37,7 +37,12 @@ export async function uploadVideoToLivepeer(
   // Add authorization header if token is provided
   if (authToken) {
     headers["Authorization"] = `Bearer ${authToken}`;
+    console.log("✓ Auth token added to upload request");
+  } else {
+    console.warn("⚠ No auth token provided - upload may fail if authentication is required");
   }
+
+  console.log("Requesting upload URL for:", file.name);
 
   const uploadUrlResponse = await fetch("/api/upload/request", {
     method: "POST",
@@ -47,8 +52,24 @@ export async function uploadVideoToLivepeer(
     }),
   });
 
+  console.log("Upload URL response status:", uploadUrlResponse.status);
+
   if (!uploadUrlResponse.ok) {
-    throw new Error("Failed to get upload URL");
+    // Try to get detailed error message from response
+    let errorMessage = "Failed to get upload URL";
+    try {
+      const errorData = await uploadUrlResponse.json();
+      if (errorData.error) {
+        errorMessage = errorData.error;
+        if (errorData.details) {
+          errorMessage += `: ${errorData.details}`;
+        }
+      }
+    } catch {
+      // If JSON parsing fails, use the generic error
+      errorMessage = `Failed to get upload URL (${uploadUrlResponse.status})`;
+    }
+    throw new Error(errorMessage);
   }
 
   const { tusEndpoint, asset } = await uploadUrlResponse.json();
