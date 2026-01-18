@@ -14,6 +14,7 @@ export interface SupabaseVideo {
   content_type?: 'short' | 'long' | 'podcast' | 'music' | 'live';
   category?: string;
   tags?: string[];
+  visibility?: 'public' | 'unlisted' | 'private';
   views: number;
   likes: number;
   tip_count: number;
@@ -42,6 +43,7 @@ export async function createVideo(input: Partial<CreateVideoInput>) {
       content_type: input.content_type,
       category: input.category,
       tags: input.tags,
+      visibility: input.visibility || 'public',
       published_at: input.published_at,
     })
     .select()
