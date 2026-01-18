@@ -12,10 +12,10 @@ export default function AdminPage() {
   const [copied, setCopied] = useState(false);
 
   // Cleanup state
-  const [cleanupPreview, setCleanupPreview] = useState<any>(null);
+  const [cleanupPreview, setCleanupPreview] = useState<Record<string, unknown> | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [cleanupResult, setCleanupResult] = useState<any>(null);
+  const [cleanupResult, setCleanupResult] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     async function loadVerifiedId() {
@@ -149,7 +149,7 @@ export default function AdminPage() {
 
           <div className="mt-6 p-4 bg-[#EB83EA]/10 border border-[#EB83EA]/20 rounded-xl">
             <p className="text-sm text-gray-300">
-              <strong className="text-[#EB83EA]">To get verified:</strong> Copy the "Verified User ID (DID)" above and add it to{" "}
+              <strong className="text-[#EB83EA]">To get verified:</strong> Copy the &ldquo;Verified User ID (DID)&rdquo; above and add it to{" "}
               <code className="bg-[#2f2942]/60 px-2 py-1 rounded">src/config/verified-creators.ts</code>
             </p>
           </div>
@@ -160,7 +160,7 @@ export default function AdminPage() {
           <h2 className="text-xl font-bold mb-4 text-white">Database Cleanup</h2>
 
           <p className="text-gray-400 text-sm mb-4">
-            Remove test users from the database. Only keeps real Privy users (DIDs starting with "did:privy:").
+            Remove test users from the database. Only keeps real Privy users (DIDs starting with &ldquo;did:privy:&rdquo;).
           </p>
 
           <button
@@ -193,15 +193,15 @@ export default function AdminPage() {
               </div>
 
               {/* Test Users to Delete */}
-              {cleanupPreview.testUsers && cleanupPreview.testUsers.length > 0 && (
+              {cleanupPreview.testUsers && Array.isArray(cleanupPreview.testUsers) && cleanupPreview.testUsers.length > 0 && (
                 <div className="bg-[#2f2942]/40 rounded-xl p-4">
                   <h3 className="text-white font-semibold mb-3">Test Users to Delete</h3>
                   <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {cleanupPreview.testUsers.map((user: any) => (
-                      <div key={user.id} className="text-xs bg-[#18122D]/60 rounded p-2">
-                        <div className="text-red-400 font-mono">{user.handle}</div>
-                        <div className="text-gray-500">{user.displayName}</div>
-                        <div className="text-gray-600 text-[10px] truncate">{user.did}</div>
+                    {cleanupPreview.testUsers.map((user: Record<string, unknown>) => (
+                      <div key={String(user.id)} className="text-xs bg-[#18122D]/60 rounded p-2">
+                        <div className="text-red-400 font-mono">{String(user.handle)}</div>
+                        <div className="text-gray-500">{String(user.displayName)}</div>
+                        <div className="text-gray-600 text-[10px] truncate">{String(user.did)}</div>
                       </div>
                     ))}
                   </div>
@@ -209,15 +209,15 @@ export default function AdminPage() {
               )}
 
               {/* Real Users to Keep */}
-              {cleanupPreview.realUsers && cleanupPreview.realUsers.length > 0 && (
+              {cleanupPreview.realUsers && Array.isArray(cleanupPreview.realUsers) && cleanupPreview.realUsers.length > 0 && (
                 <div className="bg-[#2f2942]/40 rounded-xl p-4">
                   <h3 className="text-white font-semibold mb-3">Real Users (Will Keep)</h3>
                   <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {cleanupPreview.realUsers.map((user: any) => (
-                      <div key={user.did} className="text-xs bg-[#18122D]/60 rounded p-2">
-                        <div className="text-green-400 font-mono">{user.handle}</div>
-                        <div className="text-gray-400">{user.displayName}</div>
-                        <div className="text-gray-600 text-[10px] truncate">{user.did}</div>
+                    {cleanupPreview.realUsers.map((user: Record<string, unknown>) => (
+                      <div key={String(user.did)} className="text-xs bg-[#18122D]/60 rounded p-2">
+                        <div className="text-green-400 font-mono">{String(user.handle)}</div>
+                        <div className="text-gray-400">{String(user.displayName)}</div>
+                        <div className="text-gray-600 text-[10px] truncate">{String(user.did)}</div>
                       </div>
                     ))}
                   </div>
@@ -225,17 +225,21 @@ export default function AdminPage() {
               )}
 
               {/* Delete Button */}
-              {cleanupPreview.summary.testUsersToDelete > 0 && (
+              {cleanupPreview.summary && typeof cleanupPreview.summary === 'object' &&
+               'testUsersToDelete' in cleanupPreview.summary &&
+               Number(cleanupPreview.summary.testUsersToDelete) > 0 && (
                 <button
                   onClick={executeCleanup}
                   disabled={isDeleting}
                   className="w-full px-4 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold rounded-xl transition-colors"
                 >
-                  {isDeleting ? "Deleting..." : `Delete ${cleanupPreview.summary.testUsersToDelete} Test Users`}
+                  {isDeleting ? "Deleting..." : `Delete ${Number(cleanupPreview.summary.testUsersToDelete)} Test Users`}
                 </button>
               )}
 
-              {cleanupPreview.summary.testUsersToDelete === 0 && (
+              {cleanupPreview.summary && typeof cleanupPreview.summary === 'object' &&
+               'testUsersToDelete' in cleanupPreview.summary &&
+               Number(cleanupPreview.summary.testUsersToDelete) === 0 && (
                 <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
                   <p className="text-green-400 font-semibold">✓ No test users found!</p>
                 </div>
