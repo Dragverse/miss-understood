@@ -110,6 +110,31 @@
   }
 }
 
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Animation delay utilities for sparkle effects */
+.animation-delay-100 {
+  animation-delay: 100ms;
+}
+
+.animation-delay-150 {
+  animation-delay: 150ms;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-300 {
+  animation-delay: 300ms;
+}
+
+.animation-delay-400 {
+  animation-delay: 400ms;
+}
+
 @media (min-width: 1921px) {
   .ultrawide\:w-\[650px\] {
     width: 650px;

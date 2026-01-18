@@ -2,7 +2,7 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import { useRouter } from "next/navigation";
-import { FiVideo, FiHeart, FiUsers, FiEye, FiCopy, FiEdit, FiTrash2 } from "react-icons/fi";
+import { FiVideo, FiHeart, FiUsers, FiEye, FiCopy, FiEdit, FiTrash2, FiTrendingUp, FiZap } from "react-icons/fi";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { getVideosByCreator, type SupabaseVideo } from "@/lib/supabase/videos";
@@ -10,6 +10,7 @@ import { getCreatorByDID } from "@/lib/supabase/creators";
 import { Video } from "@/types";
 import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
+import { StatsCard, ActionButton, EmptyState, LoadingShimmer } from "@/components/shared";
 
 export default function DashboardPage() {
   const { isAuthenticated, signIn, user } = useAuthUser();
@@ -138,8 +139,17 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+      <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto">
+          <LoadingShimmer className="h-12 w-64 mb-8" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <LoadingShimmer aspectRatio="square" />
+            <LoadingShimmer aspectRatio="square" />
+            <LoadingShimmer aspectRatio="square" />
+            <LoadingShimmer aspectRatio="square" />
+          </div>
+          <LoadingShimmer aspectRatio="video" className="h-96" />
+        </div>
       </div>
     );
   }
@@ -154,147 +164,159 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl lg:text-4xl font-bold uppercase tracking-tight mb-2">
-            Creator <span className="text-[#EB83EA] italic">Dashboard</span>
-          </h1>
-          <p className="text-gray-400">Manage your content and track your performance</p>
-        </div>
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {/* Total Views */}
-          <div className="bg-gradient-to-br from-[#1a0b2e] to-[#0f071a] rounded-[24px] p-6 border border-[#2f2942]">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
-                <FiEye className="w-6 h-6 text-blue-400" />
-              </div>
+        {/* Header with sparkles */}
+        <div className="mb-8 relative">
+          <div className="flex items-center gap-4 mb-3">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center shadow-lg shadow-[#EB83EA]/30">
+              <FiZap className="w-7 h-7 text-white" />
             </div>
-            <div className="text-3xl font-bold mb-1">
-              {stats.totalViews.toLocaleString()}
-            </div>
-            <div className="text-sm text-gray-400">Total Views</div>
-          </div>
-
-          {/* Total Likes */}
-          <div className="bg-gradient-to-br from-[#1a0b2e] to-[#0f071a] rounded-[24px] p-6 border border-[#2f2942]">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-full bg-pink-500/20 flex items-center justify-center">
-                <FiHeart className="w-6 h-6 text-pink-400" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold mb-1">
-              {stats.totalLikes.toLocaleString()}
-            </div>
-            <div className="text-sm text-gray-400">Total Likes</div>
-          </div>
-
-          {/* Followers */}
-          <div className="bg-gradient-to-br from-[#1a0b2e] to-[#0f071a] rounded-[24px] p-6 border border-[#2f2942]">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-                <FiUsers className="w-6 h-6 text-purple-400" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold mb-1">
-              {stats.totalFollowers.toLocaleString()}
-            </div>
-            <div className="text-sm text-gray-400">Followers</div>
-          </div>
-        </div>
-
-        {/* Video Management */}
-        <div className="bg-gradient-to-br from-[#1a0b2e] to-[#0f071a] rounded-[24px] p-6 border border-[#2f2942]">
-          <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Your Videos</h2>
-              <p className="text-gray-400 text-sm">Manage and track your uploaded content</p>
+              <h1 className="text-3xl lg:text-4xl font-bold uppercase tracking-widest bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+                Your Kingdom
+              </h1>
+              <p className="text-gray-400 text-sm">Where your magic comes to life</p>
             </div>
-            <button
+          </div>
+          <div className="absolute -top-2 right-0 text-yellow-300/40 text-3xl animate-pulse">✨</div>
+        </div>
+
+        {/* Hero Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatsCard
+            icon={<FiEye className="w-6 h-6 text-white" />}
+            label="Total Views"
+            value={stats.totalViews.toLocaleString()}
+            gradient="from-blue-500/10 via-purple-500/10 to-pink-500/10"
+          />
+          <StatsCard
+            icon={<FiHeart className="w-6 h-6 text-white" />}
+            label="Hearts Received"
+            value={stats.totalLikes.toLocaleString()}
+            gradient="from-pink-500/10 via-rose-500/10 to-red-500/10"
+          />
+          <StatsCard
+            icon={<FiUsers className="w-6 h-6 text-white" />}
+            label="Loyal Subjects"
+            value={stats.totalFollowers.toLocaleString()}
+            gradient="from-purple-500/10 via-indigo-500/10 to-blue-500/10"
+          />
+          <StatsCard
+            icon={<FiVideo className="w-6 h-6 text-white" />}
+            label="Content Pieces"
+            value={videos.length.toLocaleString()}
+            gradient="from-green-500/10 via-emerald-500/10 to-teal-500/10"
+          />
+        </div>
+
+        {/* Video Management Section */}
+        <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/10 shadow-xl">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+            <div>
+              <h2 className="text-2xl lg:text-3xl font-bold uppercase tracking-wide mb-2">
+                Your Performances
+              </h2>
+              <p className="text-gray-400">All your fabulous content in one place</p>
+            </div>
+            <ActionButton
               onClick={() => router.push('/upload')}
-              className="px-6 py-2.5 bg-[#EB83EA] hover:bg-[#E748E6] text-white font-bold rounded-full transition flex items-center gap-2"
+              icon={<FiVideo className="w-5 h-5" />}
+              size="lg"
             >
-              <FiVideo className="w-4 h-4" />
               Upload New
-            </button>
+            </ActionButton>
           </div>
 
-          {/* Videos Table */}
+          {/* Videos Grid */}
           <div className="space-y-4">
             {videos.length === 0 ? (
-              <div className="text-center py-12">
-                <FiVideo className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                <h3 className="text-xl font-bold text-gray-300 mb-2">No videos yet</h3>
-                <p className="text-gray-500 mb-6">Upload your first video to get started!</p>
-                <button
-                  onClick={() => router.push('/upload')}
-                  className="px-6 py-3 bg-[#EB83EA] hover:bg-[#E748E6] text-white font-bold rounded-full transition"
-                >
-                  Upload Now
-                </button>
-              </div>
+              <EmptyState
+                icon="🎬"
+                title="No Looks Yet"
+                description="Ready for your close-up? Upload your first video and start building your empire!"
+                actionLabel="Upload Your First Look"
+                onAction={() => router.push('/upload')}
+              />
             ) : (
               videos.map((video) => (
-              <div
-                key={video.id}
-                className="bg-white/5 rounded-2xl p-4 hover:bg-white/10 transition group"
-              >
-                <div className="flex gap-4">
-                  {/* Thumbnail */}
-                  <div className="relative w-32 h-20 rounded-xl overflow-hidden flex-shrink-0">
-                    <Image
-                      src={video.thumbnail || '/placeholder-video.jpg'}
-                      alt={video.title}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute top-2 right-2 px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded">
-                      READY
-                    </div>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-lg mb-1 truncate">{video.title}</h3>
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-2">
-                      <span className="flex items-center gap-1">
-                        <FiEye className="w-4 h-4" />
-                        {(video.views || 0).toLocaleString()} views
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <FiHeart className="w-4 h-4" />
-                        {(video.likes || 0).toLocaleString()} likes
-                      </span>
-                      <span>Uploaded: {new Date(video.createdAt).toLocaleDateString()}</span>
+                <div
+                  key={video.id}
+                  className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-5 border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all hover:shadow-lg hover:shadow-[#EB83EA]/10 group"
+                >
+                  <div className="flex flex-col sm:flex-row gap-5">
+                    {/* Thumbnail */}
+                    <div className="relative w-full sm:w-48 h-28 rounded-xl overflow-hidden flex-shrink-0 border-2 border-[#EB83EA]/20 group-hover:border-[#EB83EA]/40 transition-all">
+                      <Image
+                        src={video.thumbnail || '/placeholder-video.jpg'}
+                        alt={video.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute top-2 right-2 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full shadow-lg">
+                        LIVE ✨
+                      </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => copyShareLink(video.id)}
-                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition flex items-center gap-1"
-                      >
-                        <FiCopy className="w-3 h-3" />
-                        {copiedId === video.id ? 'Copied!' : 'Copy Link'}
-                      </button>
-                      <button className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition flex items-center gap-1">
-                        <FiEdit className="w-3 h-3" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteVideo(video.id)}
-                        disabled={deleting === video.id}
-                        className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-semibold transition flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <FiTrash2 className="w-3 h-3" />
-                        {deleting === video.id ? 'Deleting...' : 'Delete'}
-                      </button>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-xl mb-3 text-white group-hover:text-[#EB83EA] transition-colors">
+                        {video.title}
+                      </h3>
+
+                      {/* Stats */}
+                      <div className="flex flex-wrap gap-4 text-sm mb-4">
+                        <span className="flex items-center gap-1.5 text-gray-400">
+                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                            <FiEye className="w-4 h-4 text-blue-400" />
+                          </div>
+                          <span className="font-semibold">{(video.views || 0).toLocaleString()}</span>
+                          <span className="text-xs">views</span>
+                        </span>
+                        <span className="flex items-center gap-1.5 text-gray-400">
+                          <div className="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center">
+                            <FiHeart className="w-4 h-4 text-pink-400" />
+                          </div>
+                          <span className="font-semibold">{(video.likes || 0).toLocaleString()}</span>
+                          <span className="text-xs">hearts</span>
+                        </span>
+                        <span className="flex items-center gap-1.5 text-gray-400">
+                          <span className="text-xs">Uploaded {new Date(video.createdAt).toLocaleDateString()}</span>
+                        </span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => copyShareLink(video.id)}
+                          className="px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-white hover:text-[#EB83EA]"
+                        >
+                          <FiCopy className="w-4 h-4" />
+                          {copiedId === video.id ? '✓ Copied!' : 'Share'}
+                        </button>
+                        <button
+                          onClick={() => router.push(`/watch/${video.id}`)}
+                          className="px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-white hover:text-[#EB83EA]"
+                        >
+                          <FiEye className="w-4 h-4" />
+                          View
+                        </button>
+                        <button className="px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-white hover:text-[#EB83EA]">
+                          <FiEdit className="w-4 h-4" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVideo(video.id)}
+                          disabled={deleting === video.id}
+                          className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                          {deleting === video.id ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))
             )}
           </div>
         </div>
