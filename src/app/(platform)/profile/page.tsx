@@ -2,11 +2,16 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import Image from "next/image";
-import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe } from "react-icons/fi";
+import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe, FiChevronUp, FiChevronDown, FiX } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
+import { useKeenSlider } from "keen-slider/react";
+import "keen-slider/keen-slider.min.css";
+import { ShortVideo } from "@/components/shorts/short-video";
+import { ShortOverlayTop } from "@/components/shorts/short-overlay-top";
+import { ShortOverlayBottom } from "@/components/shorts/short-overlay-bottom";
 import { getCreatorByDID } from "@/lib/supabase/creators";
 import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { getVideosByCreator } from "@/lib/supabase/videos";
@@ -30,6 +35,8 @@ export default function ProfilePage() {
   const [userPhotos, setUserPhotos] = useState<any[]>([]);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [blueskyProfile, setBlueskyProfile] = useState<any>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [sliderReady, setSliderReady] = useState(false);
   const [stats, setStats] = useState({
     totalViews: 0,
     totalLikes: 0,
@@ -357,6 +364,42 @@ export default function ProfilePage() {
   const videosList = userVideos.filter(v => v.contentType !== 'short');
   const bytesList = userVideos.filter(v => v.contentType === 'short');
 
+  // Keen Slider for vertical video player (BYTES tab)
+  const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
+    initial: 0,
+    vertical: true,
+    slides: {
+      perView: 1,
+      spacing: 0,
+    },
+    slideChanged(slider) {
+      setCurrentSlide(slider.track.details.rel);
+    },
+    created() {
+      setSliderReady(true);
+    },
+  });
+
+  // Keyboard navigation for BYTES player
+  useEffect(() => {
+    if (activeTab !== "bytes" || bytesList.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        instanceRef.current?.prev();
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        instanceRef.current?.next();
+      } else if (e.key === "Escape") {
+        setActiveTab("videos");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTab, bytesList.length, instanceRef]);
+
   return (
     <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-7xl mx-auto">
@@ -653,25 +696,68 @@ export default function ProfilePage() {
           )}
 
           {activeTab === "bytes" && (
-            <div>
+            <>
               {bytesList.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {bytesList.map((video) => (
-                    <Link key={video.id} href={`/shorts?v=${video.id}`} className="group">
-                      <div className="relative aspect-[9/16] rounded-2xl overflow-hidden bg-[#0f071a] border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all">
-                        <Image
-                          src={video.thumbnail}
-                          alt={video.title}
-                          fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-300"
+                <div className="fixed inset-0 bg-black z-50">
+                  {/* Close button */}
+                  <button
+                    onClick={() => setActiveTab("videos")}
+                    className="fixed top-4 right-4 z-50 w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition"
+                  >
+                    <FiX className="w-6 h-6 text-white" />
+                  </button>
+
+                  {/* Vertical Slider */}
+                  <div
+                    ref={sliderRef}
+                    className="keen-slider h-full snap-y snap-mandatory overflow-y-hidden"
+                  >
+                    {bytesList.map((video, idx) => (
+                      <div key={video.id} className="keen-slider__slide relative">
+                        <ShortVideo
+                          video={video}
+                          isActive={currentSlide === idx}
+                          onNext={() => instanceRef.current?.next()}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
-                        <div className="absolute bottom-3 left-3 right-3">
-                          <p className="text-white text-sm font-bold line-clamp-2">{video.title}</p>
-                        </div>
+                        <ShortOverlayTop video={video} />
+                        <ShortOverlayBottom video={video} />
                       </div>
-                    </Link>
-                  ))}
+                    ))}
+                  </div>
+
+                  {/* Navigation Buttons - Desktop Only */}
+                  {sliderReady && (
+                    <div className="hidden md:flex flex-col gap-4 fixed right-8 top-1/2 -translate-y-1/2 z-20">
+                      <button
+                        onClick={() => instanceRef.current?.prev()}
+                        disabled={currentSlide === 0}
+                        className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <FiChevronUp className="w-6 h-6 text-white" />
+                      </button>
+                      <button
+                        onClick={() => instanceRef.current?.next()}
+                        disabled={currentSlide === bytesList.length - 1}
+                        className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <FiChevronDown className="w-6 h-6 text-white" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Slide Indicator */}
+                  <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-20">
+                    {bytesList.map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={`h-1 rounded-full transition-all ${
+                          currentSlide === idx
+                            ? "w-8 bg-[#EB83EA]"
+                            : "w-1 bg-gray-600"
+                        }`}
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-16">
@@ -682,7 +768,7 @@ export default function ProfilePage() {
                   <p className="text-gray-400">Upload short-form content to get started</p>
                 </div>
               )}
-            </div>
+            </>
           )}
 
           {activeTab === "photos" && (
