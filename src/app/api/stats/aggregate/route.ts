@@ -79,17 +79,27 @@ export async function GET(request: NextRequest) {
     });
 
     // Update cached counts in database (async, don't wait)
-    supabase
-      .from("creators")
-      .update({
-        bluesky_follower_count: stats.blueskyFollowers,
-        youtube_follower_count: stats.youtubeSubscribers,
-        follower_count: stats.totalFollowers, // Update total in main column
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", creator.id)
-      .then(() => console.log(`[Aggregate API] Updated cached stats for creator ${creator.id}`))
-      .catch((err) => console.error(`[Aggregate API] Failed to update cached stats:`, err));
+    void (async () => {
+      try {
+        const { error } = await supabase
+          .from("creators")
+          .update({
+            bluesky_follower_count: stats.blueskyFollowers,
+            youtube_follower_count: stats.youtubeSubscribers,
+            follower_count: stats.totalFollowers, // Update total in main column
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", creator.id);
+
+        if (error) {
+          console.error(`[Aggregate API] Failed to update cached stats:`, error);
+        } else {
+          console.log(`[Aggregate API] Updated cached stats for creator ${creator.id}`);
+        }
+      } catch (err) {
+        console.error(`[Aggregate API] Exception updating cached stats:`, err);
+      }
+    })();
 
     return NextResponse.json({
       success: true,
