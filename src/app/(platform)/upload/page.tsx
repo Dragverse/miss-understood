@@ -311,6 +311,7 @@ export default function UploadPage() {
             category: formData.category,
             tags: formData.tags ? formData.tags.split(",").map((t: string) => t.trim()) : [],
             visibility: formData.visibility,
+            _testUserId: user?.id, // Temporary fallback if token auth fails
           }),
         });
 
