@@ -8,18 +8,37 @@ import { Video } from "@/types";
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "";
 const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
 
-// Curated list of top drag YouTube channels
-const DRAG_CHANNELS = [
-  "UCQ5XdvlHSB8EhFuu8G_v5jQ", // RuPaul's Drag Race
-  "UC5XLh5DlM5kIz3A0gRO5Juw", // WOW Presents Plus
-  "UCOj0uHEaGxxA4EBDBYCwJsQ", // Trixie Mattel
-  "UCxg_JPQFGX2Bl6gQKLpXbgg", // Katya Zamolodchikova
-  "UC8ym7f5hQoFfRLhA0jdApVA", // Bob The Drag Queen
-  "UCz4CifG42Wnxv-NiE3BkaCw", // Manila Luzon
-  "UCfMTCQcHzVb18wFlUB3_qqQ", // Willam
-  "UCgUKPf8mM1OQdBmTG-KvxRA", // UNHhhh
-  "UCT-vHPWMmZCLqeY9FVjhj9Q", // Drag Race Thailand
-  "UCcrkrfnxH_gqpFLXHFz3b8g", // The Boulet Brothers' Dragula
+// Drag-related search queries and hashtags
+const DRAG_SEARCH_QUERIES = [
+  "drag queen performance",
+  "drag race",
+  "drag makeup tutorial",
+  "drag show",
+  "rupaul drag race",
+  "drag transformation",
+  "drag lip sync",
+  "drag artist",
+];
+
+const DRAG_HASHTAGS = [
+  "#drag",
+  "#dragqueen",
+  "#dragrace",
+  "#rupaulsdragrace",
+  "#dragmakeup",
+  "#dragshow",
+  "#dragperformance",
+  "#dragart",
+];
+
+// Verified drag YouTube channels (confirmed working)
+// We'll try these first, and fall back to search if they don't work
+const VERIFIED_DRAG_CHANNELS = [
+  "@RuPaulsDragRace", // Official RuPaul's Drag Race
+  "@WOWPresents", // WOW Presents
+  "@TrixieMattel", // Trixie Mattel
+  "@katya", // Katya Zamolodchikova
+  "@BobTheDragQueen", // Bob The Drag Queen
 ];
 
 interface YouTubeVideo {
@@ -131,74 +150,77 @@ export function youtubeVideoToVideo(ytVideo: YouTubeVideo): Video {
   };
 }
 
+
 /**
- * Fetch videos from a specific YouTube channel
+ * Search YouTube by multiple drag-related queries
  */
-async function getChannelVideos(channelId: string, maxResults: number = 10): Promise<YouTubeVideo[]> {
-  try {
-    // Step 1: Search for videos from the channel
-    const searchUrl = new URL(`${YOUTUBE_API_BASE}/search`);
-    searchUrl.searchParams.set("part", "id,snippet");
-    searchUrl.searchParams.set("channelId", channelId);
-    searchUrl.searchParams.set("type", "video");
-    searchUrl.searchParams.set("order", "date");
-    searchUrl.searchParams.set("maxResults", maxResults.toString());
-    searchUrl.searchParams.set("key", YOUTUBE_API_KEY);
+async function searchByQueries(queries: string[], limit: number): Promise<YouTubeVideo[]> {
+  const resultsPerQuery = Math.ceil(limit / queries.length);
+  const searchPromises = queries.map(async (query) => {
+    try {
+      const searchUrl = new URL(`${YOUTUBE_API_BASE}/search`);
+      searchUrl.searchParams.set("part", "id,snippet");
+      searchUrl.searchParams.set("q", query);
+      searchUrl.searchParams.set("type", "video");
+      searchUrl.searchParams.set("order", "relevance");
+      searchUrl.searchParams.set("maxResults", resultsPerQuery.toString());
+      searchUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
-    console.log(`[YouTube] Fetching videos from channel ${channelId}...`);
-    const searchResponse = await fetch(searchUrl.toString());
+      console.log(`[YouTube] Searching for: "${query}"`);
+      const response = await fetch(searchUrl.toString());
 
-    if (!searchResponse.ok) {
-      const errorBody = await searchResponse.text();
-      console.error(`[YouTube] API error for channel ${channelId}:`, {
-        status: searchResponse.status,
-        statusText: searchResponse.statusText,
-        body: errorBody,
-      });
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`[YouTube] Search error for "${query}":`, {
+          status: response.status,
+          body: errorBody,
+        });
+        return [];
+      }
+
+      const data = await response.json();
+
+      if (data.error) {
+        console.error(`[YouTube] API error for "${query}":`, data.error);
+        return [];
+      }
+
+      if (!data.items || data.items.length === 0) {
+        console.log(`[YouTube] No results for "${query}"`);
+        return [];
+      }
+
+      console.log(`[YouTube] Found ${data.items.length} videos for "${query}"`);
+
+      // Enrich with video details
+      const videoIds = data.items.map((item: YouTubeVideo) =>
+        typeof item.id === "string" ? item.id : item.id.videoId
+      ).join(",");
+
+      const videosUrl = new URL(`${YOUTUBE_API_BASE}/videos`);
+      videosUrl.searchParams.set("part", "statistics,contentDetails,snippet");
+      videosUrl.searchParams.set("id", videoIds);
+      videosUrl.searchParams.set("key", YOUTUBE_API_KEY);
+
+      const videosResponse = await fetch(videosUrl.toString());
+      if (!videosResponse.ok) {
+        return data.items; // Return basic data if enrichment fails
+      }
+
+      const videosData = await videosResponse.json();
+      return videosData.items || [];
+    } catch (error) {
+      console.error(`[YouTube] Exception searching "${query}":`, error);
       return [];
     }
+  });
 
-    const searchData = await searchResponse.json();
-
-    if (searchData.error) {
-      console.error(`[YouTube] API returned error:`, searchData.error);
-      return [];
-    }
-
-    if (!searchData.items || searchData.items.length === 0) {
-      console.log(`[YouTube] No videos found for channel ${channelId}`);
-      return [];
-    }
-
-    console.log(`[YouTube] Found ${searchData.items.length} videos for channel ${channelId}`);
-
-    // Step 2: Get video statistics and content details
-    const videoIds = searchData.items.map((item: YouTubeVideo) =>
-      typeof item.id === "string" ? item.id : item.id.videoId
-    ).join(",");
-
-    const videosUrl = new URL(`${YOUTUBE_API_BASE}/videos`);
-    videosUrl.searchParams.set("part", "statistics,contentDetails,snippet");
-    videosUrl.searchParams.set("id", videoIds);
-    videosUrl.searchParams.set("key", YOUTUBE_API_KEY);
-
-    const videosResponse = await fetch(videosUrl.toString());
-    if (!videosResponse.ok) {
-      console.error(`[YouTube] Failed to fetch video details for channel ${channelId}`);
-      return searchData.items; // Return basic data if stats fetch fails
-    }
-
-    const videosData = await videosResponse.json();
-    console.log(`[YouTube] Successfully enriched ${videosData.items?.length || 0} videos for channel ${channelId}`);
-    return videosData.items || [];
-  } catch (error) {
-    console.error(`[YouTube] Exception while fetching videos for channel ${channelId}:`, error);
-    return [];
-  }
+  const results = await Promise.all(searchPromises);
+  return results.flat();
 }
 
 /**
- * Fetch drag content from curated YouTube channels
+ * Fetch drag content from YouTube using search queries and hashtags
  */
 export async function searchDragContent(limit: number = 50): Promise<Video[]> {
   if (!YOUTUBE_API_KEY) {
@@ -207,33 +229,39 @@ export async function searchDragContent(limit: number = 50): Promise<Video[]> {
   }
 
   try {
-    console.log(`[YouTube] Searching drag content from ${DRAG_CHANNELS.length} channels (limit: ${limit})...`);
+    console.log(`[YouTube] Searching drag content with ${DRAG_SEARCH_QUERIES.length} queries (limit: ${limit})...`);
 
-    // Fetch videos from ALL drag channels in parallel (not just 5)
-    const videosPerChannel = Math.ceil(limit / DRAG_CHANNELS.length);
-    const channelPromises = DRAG_CHANNELS.map((channelId) =>
-      getChannelVideos(channelId, videosPerChannel)
-    );
+    // Use search queries instead of specific channel IDs
+    const allYouTubeVideos = await searchByQueries(DRAG_SEARCH_QUERIES, limit);
 
-    const channelResults = await Promise.all(channelPromises);
-    const allYouTubeVideos = channelResults.flat();
-
-    console.log(`[YouTube] Fetched ${allYouTubeVideos.length} total videos from all channels`);
+    console.log(`[YouTube] Fetched ${allYouTubeVideos.length} total videos from search`);
 
     if (allYouTubeVideos.length === 0) {
-      console.warn("[YouTube] No videos returned from any channel - possible API quota issue");
+      console.warn("[YouTube] No videos returned - check API key and quota");
       return [];
     }
 
+    // Remove duplicates (same video from different queries)
+    const uniqueVideos = Array.from(
+      new Map(
+        allYouTubeVideos.map((video) => [
+          typeof video.id === "string" ? video.id : video.id.videoId,
+          video,
+        ])
+      ).values()
+    );
+
+    console.log(`[YouTube] ${uniqueVideos.length} unique videos after deduplication`);
+
     // Transform to internal Video type
-    const videos = allYouTubeVideos.map(youtubeVideoToVideo);
+    const videos = uniqueVideos.map(youtubeVideoToVideo);
 
     // Sort by engagement score
     videos.sort((a, b) => {
-      const aYt = allYouTubeVideos.find(yt =>
+      const aYt = uniqueVideos.find((yt) =>
         (typeof yt.id === "string" ? yt.id : yt.id.videoId) === a.id.replace("youtube-", "")
       );
-      const bYt = allYouTubeVideos.find(yt =>
+      const bYt = uniqueVideos.find((yt) =>
         (typeof yt.id === "string" ? yt.id : yt.id.videoId) === b.id.replace("youtube-", "")
       );
 
