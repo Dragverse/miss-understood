@@ -5,7 +5,9 @@ import { FiZap, FiPlus } from "react-icons/fi";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuthUser } from "@/lib/privy/hooks";
-import { PostCard } from "@/components/feed/post-card";
+import { PostCard as BlueskyPostCard } from "@/components/feed/post-card";
+import { PostCard } from "@/components/posts/post-card";
+import { PostComposer } from "@/components/posts/post-composer";
 import { FeedRightSidebar } from "@/components/feed/feed-right-sidebar";
 
 function FeedContent() {
@@ -16,9 +18,11 @@ function FeedContent() {
   const showBookmarks = filter === "bookmarks";
 
   const [posts, setPosts] = useState<any[]>([]);
+  const [dragversePosts, setDragversePosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasBluesky, setHasBluesky] = useState(false);
   const [sortBy, setSortBy] = useState<"engagement" | "recent">("engagement");
+  const [showComposer, setShowComposer] = useState(false);
 
   // Check Bluesky session status
   useEffect(() => {
@@ -41,6 +45,11 @@ function FeedContent() {
     async function loadFeed() {
       setLoading(true);
       try {
+        // Load native Dragverse posts
+        const dragverseResponse = await fetch("/api/posts/feed?limit=50");
+        const dragverseData = await dragverseResponse.json();
+        setDragversePosts(dragverseData.posts || []);
+
         // If searching by hashtag, use search endpoint
         const url = hashtag
           ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30`
@@ -50,8 +59,6 @@ function FeedContent() {
         const data = await response.json();
 
         // Filter for text/photo posts only (exclude videos)
-        // Videos have playbackUrl with .m3u8 or are from external video platforms
-        // Include text-only posts (no media at all)
         const feedPosts = (data.posts || []).filter((post: any) => {
           const hasVideoPlayback = post.playbackUrl?.includes("m3u8");
           const hasExternalVideo =
@@ -60,7 +67,6 @@ function FeedContent() {
             post.playbackUrl?.includes("vimeo") ||
             post.playbackUrl?.includes("tiktok");
 
-          // Exclude videos, but include photos and text-only posts
           return !hasVideoPlayback && !hasExternalVideo;
         });
 
@@ -83,6 +89,16 @@ function FeedContent() {
     loadFeed();
   }, [sortBy, showBookmarks, hashtag]);
 
+  const handlePostCreated = () => {
+    // Reload Dragverse posts
+    fetch("/api/posts/feed?limit=50")
+      .then((res) => res.json())
+      .then((data) => setDragversePosts(data.posts || []))
+      .catch((error) => console.error("Failed to reload posts:", error));
+
+    setShowComposer(false);
+  };
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
       <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-8">
@@ -101,14 +117,14 @@ function FeedContent() {
                     : "What's Happening Backstage"}
                 </h1>
               </div>
-              {hasBluesky && !showBookmarks && (
-                <Link
-                  href="/feed/create"
-                  className="flex items-center gap-2 px-6 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-full font-semibold transition-colors"
+              {isAuthenticated && !showBookmarks && (
+                <button
+                  onClick={() => setShowComposer(!showComposer)}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30"
                 >
                   <FiPlus className="w-5 h-5" />
-                  Create Post
-                </Link>
+                  {showComposer ? "Cancel" : "Share Your Story"}
+                </button>
               )}
             </div>
             <p className="text-gray-400 text-sm ml-14">
@@ -120,18 +136,10 @@ function FeedContent() {
             </p>
           </div>
 
-          {/* Bluesky Connection Warning */}
-          {isAuthenticated && !hasBluesky && !showBookmarks && (
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
-              <p className="text-sm text-blue-300">
-                <Link
-                  href="/settings"
-                  className="font-semibold underline hover:text-blue-200 transition"
-                >
-                  Connect your Bluesky account
-                </Link>{" "}
-                in Settings to create posts and interact with the community.
-              </p>
+          {/* Post Composer */}
+          {showComposer && isAuthenticated && (
+            <div className="mb-8">
+              <PostComposer onPostCreated={handlePostCreated} />
             </div>
           )}
 
@@ -170,11 +178,18 @@ function FeedContent() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#EB83EA]"></div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} />
+            <div className="space-y-6">
+              {/* Dragverse Native Posts */}
+              {dragversePosts.map((post) => (
+                <PostCard key={`dragverse-${post.id}`} post={post} />
               ))}
-              {posts.length === 0 && (
+
+              {/* Bluesky Posts */}
+              {posts.map((post) => (
+                <BlueskyPostCard key={`bluesky-${post.id}`} post={post} />
+              ))}
+
+              {dragversePosts.length === 0 && posts.length === 0 && (
                 <div className="text-center py-20">
                   <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
                     <FiZap className="w-10 h-10 text-[#EB83EA]" />
