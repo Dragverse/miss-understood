@@ -91,7 +91,21 @@ export async function uploadVideoToLivepeer(
       removeFingerprintOnSuccess: true, // Clean up after success
       onError: (error) => {
         console.error("TUS upload error:", error);
-        reject(error);
+
+        // Handle specific error codes
+        const errorMessage = error?.message || String(error);
+
+        if (errorMessage.includes('409')) {
+          // Conflict error - upload session already exists
+          console.error('❌ Upload conflict (409): Session already exists. This may be a stale upload.');
+          reject(new Error('Upload conflict detected. Please try again with a new file or refresh the page.'));
+        } else if (errorMessage.includes('500')) {
+          // Server error - likely Livepeer storage issue
+          console.error('❌ Server error (500): Livepeer storage issue');
+          reject(new Error('Server error during upload. Please try again later or contact support if this persists.'));
+        } else {
+          reject(error);
+        }
       },
       onProgress: (bytesUploaded, bytesTotal) => {
         if (onProgress) {
@@ -103,7 +117,7 @@ export async function uploadVideoToLivepeer(
         }
       },
       onSuccess: () => {
-        console.log("TUS upload completed successfully");
+        console.log("✅ TUS upload completed successfully");
         resolve(asset);
       },
     });

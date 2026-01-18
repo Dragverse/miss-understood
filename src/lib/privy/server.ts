@@ -16,7 +16,10 @@ function getPrivyClient(): PrivyClient {
       throw new Error("Privy not configured. Set NEXT_PUBLIC_PRIVY_APP_ID and PRIVY_APP_SECRET");
     }
 
-    privyClient = new PrivyClient(appId, appSecret);
+    privyClient = new PrivyClient({
+      appId,
+      appSecret,
+    });
   }
 
   return privyClient;
@@ -29,7 +32,7 @@ function getPrivyClient(): PrivyClient {
 export async function getPrivyUserProfile(userId: string) {
   try {
     const client = getPrivyClient();
-    const user = await client.getUser(userId);
+    const user = await client.users()._get(userId);
     return user;
   } catch (error) {
     console.error("[Privy] Failed to fetch user profile:", error);

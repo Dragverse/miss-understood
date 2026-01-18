@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FiThumbsUp, FiMessageCircle, FiShare2 } from "react-icons/fi";
+import { FiHeart, FiMessageCircle, FiShare2 } from "react-icons/fi";
 import type { Video } from "@/types";
 
 interface ShortOverlayBottomProps {
@@ -64,7 +64,7 @@ export function ShortOverlayBottom({ video }: ShortOverlayBottomProps) {
             }`}
           >
             <div className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80">
-              <FiThumbsUp className="w-6 h-6" />
+              <FiHeart className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} />
             </div>
             <span className="text-xs font-medium">{formatCount(likes)}</span>
           </button>

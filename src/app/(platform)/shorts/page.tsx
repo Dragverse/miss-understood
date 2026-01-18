@@ -100,13 +100,9 @@ function ShortsContent() {
           source: v.source
         })));
 
-        // Filter only shorts that are not external (YouTube/Bluesky)
-        // External videos should only appear in card views that can open them in new tabs
-        const shortsOnly = allVideos.filter((v) =>
-          v.contentType === "short" &&
-          v.source !== "youtube" &&
-          v.source !== "bluesky"
-        );
+        // Filter only shorts (include all sources: Dragverse, YouTube, Bluesky)
+        // Focus on drag-specific content
+        const shortsOnly = allVideos.filter((v) => v.contentType === "short");
 
         // Sort by date (newest first)
         shortsOnly.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -177,7 +173,7 @@ function ShortsContent() {
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+      <div className="h-[100dvh] md:h-[calc(100vh-4rem)] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
       </div>
     );
@@ -185,7 +181,7 @@ function ShortsContent() {
 
   if (shorts.length === 0) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+      <div className="h-[100dvh] md:h-[calc(100vh-4rem)] flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-400 text-lg mb-4">No shorts available yet</p>
           <p className="text-gray-500 text-sm">
@@ -196,8 +192,15 @@ function ShortsContent() {
     );
   }
 
+  // Handle auto-rotation to next video
+  const handleVideoEnded = () => {
+    if (currentSlide < shorts.length - 1) {
+      instanceRef.current?.next();
+    }
+  };
+
   return (
-    <div className="relative h-[calc(100vh-4rem)] overflow-hidden bg-black">
+    <div className="relative h-[100dvh] md:h-[calc(100vh-4rem)] overflow-hidden bg-black">
       {/* Vertical Slider */}
       <div
         ref={sliderRef}
@@ -209,6 +212,7 @@ function ShortsContent() {
               video={video}
               isActive={currentSlide === idx}
               onNext={() => instanceRef.current?.next()}
+              onEnded={handleVideoEnded}
             />
             <ShortOverlayTop video={video} />
             <ShortOverlayBottom video={video} />
@@ -257,7 +261,7 @@ export default function ShortsPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="h-[100dvh] md:h-[calc(100vh-4rem)] flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
         </div>
       }

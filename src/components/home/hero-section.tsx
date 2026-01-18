@@ -16,6 +16,7 @@ export function HeroSection() {
   });
   const [checkingStream, setCheckingStream] = useState(true);
   const [playerError, setPlayerError] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
     // Check if stream is live using backend API
@@ -37,9 +38,10 @@ export function HeroSection() {
           playbackUrl: data.playbackUrl,
         });
 
-        // Clear error when stream status changes
+        // Clear error and loaded state when stream status changes
         if (wasLive !== nowLive) {
           setPlayerError(null);
+          setHasLoaded(false);
           console.log(`Stream status changed: ${wasLive ? 'LIVE' : 'OFFLINE'} → ${nowLive ? 'LIVE' : 'OFFLINE'}`);
         }
 
@@ -95,13 +97,25 @@ export function HeroSection() {
             <Player.Root
               src={getSrc(streamInfo.playbackUrl || `https://livepeercdn.studio/hls/${streamInfo.playbackId}/index.m3u8`)}
               autoPlay
-              onError={(error) => {
-                console.error('Livepeer player error:', error);
-                setPlayerError('Unable to load stream. Please try again.');
-              }}
             >
               <Player.Container className="h-full">
-                <Player.Video className="w-full h-full object-cover" />
+                <Player.Video
+                  className="w-full h-full object-cover"
+                  onLoadedData={() => {
+                    setHasLoaded(true);
+                    setPlayerError(null);
+                    console.log('✅ Stream loaded successfully');
+                  }}
+                  onError={(e) => {
+                    // Only show error if player hasn't loaded successfully
+                    if (!hasLoaded) {
+                      console.error('❌ Video element error:', e);
+                      setPlayerError('Unable to load stream. Please try again.');
+                    } else {
+                      console.warn('⚠️ Video error after successful load (ignoring):', e);
+                    }
+                  }}
+                />
                 <Player.Controls autoHide={3000} className="p-4">
                   <div className="flex items-center gap-2">
                     <Player.PlayPauseTrigger className="w-10 h-10 flex items-center justify-center bg-white/20 rounded-full hover:bg-white/30 transition" />
@@ -113,7 +127,7 @@ export function HeroSection() {
             </Player.Root>
 
             {/* Error Display */}
-            {playerError && (
+            {playerError && !hasLoaded && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <div className="bg-red-500/20 border border-red-500/40 rounded-lg p-4 max-w-sm mx-4">
                   <p className="text-red-300 text-sm text-center">{playerError}</p>

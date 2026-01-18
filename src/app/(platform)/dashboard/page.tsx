@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { getVideosByCreator, type SupabaseVideo } from "@/lib/supabase/videos";
 import { getCreatorByDID } from "@/lib/supabase/creators";
 import { Video } from "@/types";
+import { transformVideosWithCreators } from "@/lib/supabase/transform-video";
 import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
 import { StatsCard, ActionButton, EmptyState, LoadingShimmer } from "@/components/shared";
@@ -61,24 +62,8 @@ export default function DashboardPage() {
         // This matches the creator_did that was stored during upload
         const supabaseVideos = await getVideosByCreator(verifiedUserId);
 
-        // Transform Supabase videos to match Video type (without creator for now)
-        const transformedVideos = supabaseVideos.map((v: SupabaseVideo) => ({
-          id: v.id,
-          title: v.title,
-          description: v.description || '',
-          thumbnail: v.thumbnail || '',
-          duration: v.duration || 0,
-          views: v.views,
-          likes: v.likes,
-          createdAt: new Date(v.created_at),
-          playbackUrl: v.playback_url || '',
-          livepeerAssetId: v.livepeer_asset_id || '',
-          contentType: v.content_type as any || 'long',
-          creator: {} as any, // Will be populated if needed
-          category: v.category || '',
-          tags: v.tags || [],
-          source: 'ceramic' as const,
-        })) as Video[];
+        // Transform Supabase videos with proper creator data and placeholder thumbnails
+        const transformedVideos = await transformVideosWithCreators(supabaseVideos);
 
         setVideos(transformedVideos);
 

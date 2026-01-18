@@ -1,9 +1,14 @@
+"use client";
+
 import type { Video } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FiThumbsUp, FiExternalLink } from "react-icons/fi";
+import { useState } from "react";
+import { FiHeart, FiExternalLink } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
+import { VideoOptionsMenu } from "./video-options-menu";
+import { useAuthUser } from "@/lib/privy/hooks";
 
 interface VideoCardProps {
   video: Video;
@@ -12,10 +17,12 @@ interface VideoCardProps {
 
 export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
   const router = useRouter();
+  const { userId } = useAuthUser();
 
   // Check if this is external content (from Bluesky, etc.)
   const isExternal = (video as any).source === "bluesky";
   const externalUrl = (video as any).externalUrl;
+  const isOwner = userId && video.creator.did === userId;
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
@@ -38,6 +45,44 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
       window.open(externalUrl, "_blank");
     } else {
       router.push(`/watch/${video.id}`);
+    }
+  };
+
+  const handleEdit = () => {
+    router.push(`/upload?edit=${video.id}`);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this video? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/video/delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId: video.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete video");
+      }
+
+      // Reload page to reflect deletion
+      window.location.reload();
+    } catch (error) {
+      console.error("Error deleting video:", error);
+      alert("Failed to delete video. Please try again.");
+    }
+  };
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/watch/${video.id}`;
+    if (navigator.share) {
+      navigator.share({ title: video.title, url });
+    } else {
+      navigator.clipboard.writeText(url);
+      alert("Link copied to clipboard!");
     }
   };
 
@@ -65,7 +110,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
           </h3>
           <div className="text-xs text-gray-400 mt-1">
             <Link
-              href={`/creator/${video.creator.handle}`}
+              href={`/profile/${video.creator.handle}`}
               className="hover:text-white"
               onClick={(e) => e.stopPropagation()}
             >
@@ -108,6 +153,18 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
               {video.contentType}
             </div>
           )}
+          {/* Three-dot menu (only show for owner or non-external content) */}
+          {!isExternal && (
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <VideoOptionsMenu
+                video={video}
+                isOwner={isOwner || false}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onShare={handleShare}
+              />
+            </div>
+          )}
           {/* External content indicator */}
           {isExternal && (
             <div className="absolute top-2 right-2 bg-blue-500/90 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm flex items-center gap-1">
@@ -136,7 +193,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
               {video.title}
             </h3>
             <Link
-              href={`/creator/${video.creator.handle}`}
+              href={`/profile/${video.creator.handle}`}
               className="text-xs text-gray-400 hover:text-white transition mt-1 flex items-center gap-1"
               onClick={(e) => e.stopPropagation()}
             >
@@ -151,7 +208,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
               <span>{formatNumber(video.views)} views</span>
               <span className="text-gray-700">•</span>
               <span className="flex items-center gap-1">
-                <FiThumbsUp className="w-3 h-3" /> {formatNumber(video.likes)}
+                <FiHeart className="w-3 h-3" /> {formatNumber(video.likes)}
               </span>
             </div>
           </div>

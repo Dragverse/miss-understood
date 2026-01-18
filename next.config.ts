@@ -61,7 +61,7 @@ const nextConfig: NextConfig = {
             "img-src 'self' data: https: blob:",
             "media-src 'self' blob: data: https://livepeercdn.studio https://*.livepeer.studio https://*.lp-playback.studio",
             "frame-src 'self' https://auth.privy.io https://*.privy.io https://verify.walletconnect.com https://verify.walletconnect.org https://challenges.cloudflare.com",
-            "connect-src 'self' https://auth.privy.io https://*.privy.io https://*.walletconnect.com https://*.walletconnect.org https://*.infura.io https://*.alchemy.com wss://*.walletconnect.com wss://*.walletconnect.org https://livepeercdn.studio https://livepeer.studio https://*.livepeer.studio https://*.lp-playback.studio https://playback.livepeer.studio https://origin.livepeer.com https://storage.googleapis.com https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com",
+            "connect-src 'self' https://auth.privy.io https://*.privy.io https://*.walletconnect.com https://*.walletconnect.org https://*.infura.io https://*.alchemy.com wss://*.walletconnect.com wss://*.walletconnect.org https://livepeercdn.studio https://livepeer.studio https://*.livepeer.studio https://*.lp-playback.studio wss://*.lp-playback.studio https://playback.livepeer.studio https://origin.livepeer.com https://storage.googleapis.com https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com",
             "worker-src 'self' blob:",
           ].join("; "),
         },

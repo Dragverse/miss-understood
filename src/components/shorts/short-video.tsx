@@ -10,9 +10,10 @@ interface ShortVideoProps {
   video: Video;
   isActive: boolean;
   onNext?: () => void;
+  onEnded?: () => void;
 }
 
-export function ShortVideo({ video, isActive, onNext }: ShortVideoProps) {
+export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps) {
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const playerRef = useRef<HTMLVideoElement>(null);
@@ -25,8 +26,8 @@ export function ShortVideo({ video, isActive, onNext }: ShortVideoProps) {
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
     const handleEnded = () => {
-      if (onNext) {
-        onNext();
+      if (onEnded) {
+        onEnded();
       }
     };
 
@@ -39,7 +40,7 @@ export function ShortVideo({ video, isActive, onNext }: ShortVideoProps) {
       player.removeEventListener("pause", handlePause);
       player.removeEventListener("ended", handleEnded);
     };
-  }, [onNext]);
+  }, [onEnded]);
 
   // Control play/pause based on isActive prop
   useEffect(() => {

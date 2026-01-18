@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiHeart, FiMessageCircle, FiShare2, FiMoreHorizontal } from "react-icons/fi";
+import { FiHeart, FiMessageCircle, FiShare2, FiMoreHorizontal, FiZap, FiActivity, FiFilm, FiSmile, FiAward, FiStar } from "react-icons/fi";
 
 interface PostCardProps {
   post: {
@@ -38,15 +38,15 @@ const MOOD_GRADIENTS: Record<string, string> = {
   magical: "from-indigo-500/10 via-purple-500/10 to-pink-500/10",
 };
 
-const MOOD_EMOJIS: Record<string, string> = {
-  sparkling: "✨",
-  soft: "💖",
-  fierce: "🔥",
-  dramatic: "🎭",
-  playful: "🌈",
-  regal: "👑",
-  slay: "💅",
-  magical: "🦄",
+const MOOD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  sparkling: FiZap,
+  soft: FiHeart,
+  fierce: FiActivity,
+  dramatic: FiFilm,
+  playful: FiSmile,
+  regal: FiAward,
+  slay: FiStar,
+  magical: FiStar,
 };
 
 export function PostCard({ post }: PostCardProps) {
@@ -72,7 +72,7 @@ export function PostCard({ post }: PostCardProps) {
   };
 
   const moodGradient = post.mood ? MOOD_GRADIENTS[post.mood] : "";
-  const moodEmoji = post.mood ? MOOD_EMOJIS[post.mood] : null;
+  const MoodIcon = post.mood ? MOOD_ICONS[post.mood] : null;
 
   return (
     <article
@@ -119,9 +119,9 @@ export function PostCard({ post }: PostCardProps) {
       </div>
 
       {/* Mood indicator */}
-      {moodEmoji && (
+      {MoodIcon && (
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#EB83EA]/10 rounded-full border border-[#EB83EA]/20 mb-3">
-          <span className="text-lg">{moodEmoji}</span>
+          <MoodIcon className="text-[#EB83EA] w-4 h-4" />
           <span className="text-[#EB83EA] text-xs font-semibold capitalize">
             {post.mood}
           </span>

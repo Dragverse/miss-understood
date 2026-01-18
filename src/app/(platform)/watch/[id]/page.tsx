@@ -10,14 +10,16 @@ import { getSrc } from "@livepeer/react/external";
 import { TipModal } from "@/components/video/tip-modal";
 import { ShareModal } from "@/components/video/share-modal";
 import { ChocolateBar } from "@/components/ui/chocolate-bar";
-import { getVideo, getVideos } from "@/lib/supabase/videos";
+import { getVideo, getVideos, type SupabaseVideo } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
 import { getLocalVideos } from "@/lib/utils/local-storage";
+import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 import { usePrivy } from "@privy-io/react-auth";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { HeartAnimation, ActionButton, EmptyState, LoadingShimmer, MoodBadge } from "@/components/shared";
+import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
 
 export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
@@ -85,35 +87,9 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           return;
         }
 
-        // Access granted - format video data
-        const ceramicVideo = accessData.video;
-        const formattedVideo: Video = {
-          id: ceramicVideo.id,
-          title: ceramicVideo.title,
-          description: ceramicVideo.description || "",
-          thumbnail: ceramicVideo.thumbnail || "",
-          duration: ceramicVideo.duration || 0,
-          views: ceramicVideo.views || 0,
-          likes: ceramicVideo.likes || 0,
-          createdAt: new Date(ceramicVideo.created_at),
-          playbackUrl: ceramicVideo.playback_url || "",
-          livepeerAssetId: ceramicVideo.livepeer_asset_id || "",
-          contentType: ceramicVideo.content_type || "long" as any,
-          visibility: ceramicVideo.visibility as any,
-          creator: {
-            did: ceramicVideo.creator_did,
-            handle: "creator",
-            displayName: "Creator",
-            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${ceramicVideo.creator_did}`,
-            description: "",
-            followerCount: 0,
-            followingCount: 0,
-            createdAt: new Date(),
-            verified: false,
-          },
-          category: ceramicVideo.category || "Other",
-          tags: ceramicVideo.tags || [],
-        };
+        // Access granted - transform video data with proper creator info
+        const ceramicVideo = accessData.video as SupabaseVideo;
+        const formattedVideo = await transformVideoWithCreator(ceramicVideo);
 
         setVideo(formattedVideo);
         setLikes(formattedVideo.likes);
@@ -289,36 +265,50 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
             </button>
 
             {video.playbackUrl ? (
-              <Player.Root
-                src={getSrc(video.playbackUrl)}
-                aspectRatio={video.contentType === "short" ? 9 / 16 : 16 / 9}
-              >
-                <Player.Container>
-                  <Player.Video
-                    className={video.contentType === "short" ? "max-h-[80vh] mx-auto" : ""}
-                    style={{ objectFit: "contain" }}
+              isYouTubeUrl(video.playbackUrl) ? (
+                // YouTube iframe embed for external content
+                <div className={`w-full ${video.contentType === "short" ? "aspect-[9/16] max-h-[80vh] mx-auto" : "aspect-video"} bg-black rounded-lg overflow-hidden`}>
+                  <iframe
+                    src={getYouTubeEmbedUrl(video.playbackUrl) || undefined}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={video.title}
                   />
-                  <Player.Controls autoHide={3000}>
-                    <Player.PlayPauseTrigger />
-                    <Player.Seek>
-                      <Player.Track>
-                        <Player.SeekBuffer />
-                        <Player.Range />
-                      </Player.Track>
-                      <Player.Thumb />
-                    </Player.Seek>
-                    <Player.Time />
-                    <Player.MuteTrigger />
-                    <Player.Volume>
-                      <Player.Track>
-                        <Player.Range />
-                      </Player.Track>
-                      <Player.Thumb />
-                    </Player.Volume>
-                    <Player.FullscreenTrigger />
-                  </Player.Controls>
-                </Player.Container>
-              </Player.Root>
+                </div>
+              ) : (
+                // Livepeer Player for uploaded videos
+                <Player.Root
+                  src={getSrc(video.playbackUrl)}
+                  aspectRatio={video.contentType === "short" ? 9 / 16 : 16 / 9}
+                >
+                  <Player.Container>
+                    <Player.Video
+                      className={video.contentType === "short" ? "max-h-[80vh] mx-auto" : ""}
+                      style={{ objectFit: "contain" }}
+                    />
+                    <Player.Controls autoHide={3000}>
+                      <Player.PlayPauseTrigger />
+                      <Player.Seek>
+                        <Player.Track>
+                          <Player.SeekBuffer />
+                          <Player.Range />
+                        </Player.Track>
+                        <Player.Thumb />
+                      </Player.Seek>
+                      <Player.Time />
+                      <Player.MuteTrigger />
+                      <Player.Volume>
+                        <Player.Track>
+                          <Player.Range />
+                        </Player.Track>
+                        <Player.Thumb />
+                      </Player.Volume>
+                      <Player.FullscreenTrigger />
+                    </Player.Controls>
+                  </Player.Container>
+                </Player.Root>
+              )
             ) : (
               <div className="w-full aspect-video bg-black rounded-lg flex items-center justify-center relative">
                 <Image

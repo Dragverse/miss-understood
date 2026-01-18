@@ -40,14 +40,7 @@ export function HeartAnimation({
       {/* Heart burst animation */}
       {isAnimating && liked && (
         <>
-          <span className="absolute inset-0 text-[#EB83EA] animate-ping opacity-75">💖</span>
-          <span className="absolute -top-2 -left-2 text-yellow-300 text-xs animate-bounce">✨</span>
-          <span className="absolute -top-2 -right-2 text-yellow-300 text-xs animate-bounce animation-delay-100">
-            ✨
-          </span>
-          <span className="absolute -bottom-2 left-1/2 text-yellow-300 text-xs animate-bounce animation-delay-200">
-            ✨
-          </span>
+          <FiHeart className="absolute inset-0 text-[#EB83EA] animate-ping opacity-75 w-full h-full" />
         </>
       )}
 
