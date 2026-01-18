@@ -109,6 +109,23 @@ export default function HomePage() {
           })
       );
 
+      // YouTube drag content (15 videos from curated channels)
+      fetchPromises.push(
+        fetch("/api/youtube/feed?limit=15")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success && data.videos.length > 0) {
+              console.log(`Loaded ${data.videos.length} videos from YouTube`);
+              return data.videos;
+            }
+            return [];
+          })
+          .catch((error) => {
+            console.warn("Failed to load videos from YouTube:", error);
+            return [];
+          })
+      );
+
       // Wait for all fetches to complete in parallel
       const results = await Promise.all(fetchPromises);
       const allVideos = [...localVideos, ...results.flat()];

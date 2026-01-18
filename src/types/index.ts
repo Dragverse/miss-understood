@@ -52,10 +52,15 @@ export interface Video {
   category: string;
   tags: string[];
   visibility?: VideoVisibility; // Privacy setting
-  // External content fields (for Bluesky, etc.)
-  source?: "ceramic" | "bluesky" | "farcaster";
+  // External content fields (for Bluesky, YouTube, etc.)
+  source?: "ceramic" | "bluesky" | "farcaster" | "youtube";
   externalUrl?: string; // Original post URL for external content
   internalUrl?: string; // Internal Dragverse route (e.g., /profile/handle)
+  // Platform-specific metadata
+  uri?: string; // Bluesky URI for actions
+  cid?: string; // Bluesky CID for actions
+  youtubeId?: string; // YouTube video ID
+  youtubeChannelId?: string; // YouTube channel ID
 }
 
 export interface ShareToken {
