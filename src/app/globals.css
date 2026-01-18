@@ -193,9 +193,17 @@
     @apply bg-background text-foreground;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-heading);
+    font-family: var(--font-heading) !important;
   }
   h1, h3 {
     text-transform: uppercase;
+  }
+
+  /* Utility classes for explicit font control */
+  .font-heading {
+    font-family: var(--font-heading) !important;
+  }
+  .font-donut {
+    font-family: var(--font-donut-hole) !important;
   }
 }
