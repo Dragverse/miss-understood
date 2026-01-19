@@ -5,10 +5,7 @@ import { supabase, getSupabaseServerClient } from './client';
 // ============================================
 
 export async function followUser(followerDID: string, followingDID: string) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return null;
-  }
+  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('follows')
@@ -25,10 +22,7 @@ export async function followUser(followerDID: string, followingDID: string) {
 }
 
 export async function unfollowUser(followerDID: string, followingDID: string) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return null;
-  }
+  if (!supabase) return null;
 
   const { error } = await supabase
     .from('follows')
@@ -41,10 +35,7 @@ export async function unfollowUser(followerDID: string, followingDID: string) {
 }
 
 export async function isFollowing(followerDID: string, followingDID: string): Promise<boolean> {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return false;
-  }
+  if (!supabase) return false;
 
   const { data } = await supabase
     .from('follows')
@@ -57,10 +48,7 @@ export async function isFollowing(followerDID: string, followingDID: string): Pr
 }
 
 export async function getFollowers(userDID: string, limit = 50) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return null;
-  }
+  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('follows')
@@ -74,10 +62,7 @@ export async function getFollowers(userDID: string, limit = 50) {
 }
 
 export async function getFollowing(userDID: string, limit = 50) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return null;
-  }
+  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('follows')
@@ -95,10 +80,7 @@ export async function getFollowing(userDID: string, limit = 50) {
 // ============================================
 
 export async function likeVideo(userDID: string, videoId: string) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return null;
-  }
+  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('likes')
@@ -115,10 +97,7 @@ export async function likeVideo(userDID: string, videoId: string) {
 }
 
 export async function unlikeVideo(userDID: string, videoId: string) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return null;
-  }
+  if (!supabase) return null;
 
   const { error } = await supabase
     .from('likes')
@@ -130,10 +109,7 @@ export async function unlikeVideo(userDID: string, videoId: string) {
 }
 
 export async function hasLikedVideo(userDID: string, videoId: string): Promise<boolean> {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return false;
-  }
+  if (!supabase) return false;
 
   const { data } = await supabase
     .from('likes')
@@ -146,10 +122,7 @@ export async function hasLikedVideo(userDID: string, videoId: string): Promise<b
 }
 
 export async function getVideoLikes(videoId: string, limit = 50) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return null;
-  }
+  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('likes')
@@ -184,10 +157,7 @@ export async function createComment(input: {
   content: string;
   parentCommentId?: string;
 }) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return null;
-  }
+  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('comments')
@@ -241,10 +211,7 @@ export async function getReplies(parentCommentId: string, limit = 50): Promise<C
 }
 
 export async function deleteComment(commentId: string, authorDID: string) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return null;
-  }
+  if (!supabase) return null;
 
   const { error } = await supabase
     .from('comments')

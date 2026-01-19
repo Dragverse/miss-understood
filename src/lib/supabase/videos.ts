@@ -75,10 +75,7 @@ export async function createVideo(input: Partial<CreateVideoInput>) {
 }
 
 export async function getVideo(id: string): Promise<SupabaseVideo | null> {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return null;
-  }
+  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('videos')

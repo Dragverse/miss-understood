@@ -13,13 +13,11 @@ function getJWKS() {
     }
     // Privy's JWKS endpoint
     const jwksUrl = `https://auth.privy.io/api/v1/apps/${appId}/.well-known/jwks.json`;
-    console.log("🔐 Creating JWKS fetcher for URL:", jwksUrl);
 
     try {
       jwksCache = createRemoteJWKSet(new URL(jwksUrl));
-      console.log("✅ JWKS fetcher created successfully");
     } catch (error) {
-      console.error("❌ Failed to create JWKS fetcher:", error);
+      console.error("[Auth] Failed to create JWKS fetcher:", error);
       throw error;
     }
   }
@@ -65,32 +63,18 @@ export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
     }
 
     // Verify the access token with Privy
-    console.log("🔐 Verifying token with Privy...");
-    console.log("🔐 Token prefix:", token.substring(0, 20) + "...");
-    console.log("🔐 App ID:", appId);
-
     const verifiedClaims = await verifyAccessToken({
       access_token: token,
       app_id: appId,
       verification_key: getJWKS(),
     });
 
-    console.log("✅ Token verified successfully, user:", verifiedClaims.user_id);
-
     return {
       authenticated: true,
       userId: verifiedClaims.user_id,
     };
   } catch (error) {
-    console.error("❌ Auth verification failed");
-    console.error("Error type:", error instanceof Error ? error.constructor.name : typeof error);
-    console.error("Error message:", error instanceof Error ? error.message : String(error));
-    console.error("Full error object:", JSON.stringify(error, null, 2));
-
-    // Check if it's a specific Privy error
-    if (error && typeof error === 'object' && 'code' in error) {
-      console.error("Error code:", (error as any).code);
-    }
+    console.error("[Auth] Verification failed:", error instanceof Error ? error.message : String(error));
 
     // Return more specific error message
     const errorMessage = error instanceof Error ? error.message : "Invalid or expired token";

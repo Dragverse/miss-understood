@@ -19,20 +19,9 @@ export async function getBlueskyAgent(): Promise<BskyAgent> {
   if (identifier && password) {
     try {
       await agent.login({ identifier, password });
-      console.log(`✓ Authenticated with Bluesky as ${identifier}`);
     } catch (error) {
-      console.error("❌ Bluesky authentication failed");
-      console.error("Error:", error instanceof Error ? error.message : error);
-      console.log("Identifier:", identifier);
-      console.log("Password:", password.substring(0, 4) + "..." + password.substring(password.length - 4));
-      console.log("\nTo fix:");
-      console.log("1. Go to https://bsky.app/settings/app-passwords");
-      console.log("2. Create a new app password (or verify the existing one)");
-      console.log("3. Update BLUESKY_APP_PASSWORD in .env.local");
-      console.log("4. Restart the dev server");
+      console.error("[Bluesky] Authentication failed:", error instanceof Error ? error.message : error);
     }
-  } else {
-    console.warn("Bluesky credentials not configured. Set BLUESKY_IDENTIFIER and BLUESKY_APP_PASSWORD in .env.local");
   }
 
   return agent;

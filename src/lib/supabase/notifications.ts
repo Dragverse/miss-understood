@@ -22,10 +22,7 @@ export async function createNotification(input: {
   message: string;
   link?: string;
 }) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return null;
-  }
+  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('notifications')
@@ -46,10 +43,7 @@ export async function createNotification(input: {
 }
 
 export async function getNotifications(userDID: string, limit = 50): Promise<Notification[]> {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return [];
-  }
+  if (!supabase) return [];
 
   const { data, error } = await supabase
     .from('notifications')
