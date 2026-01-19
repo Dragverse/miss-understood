@@ -36,59 +36,63 @@ export default function AudioPage() {
   async function loadAudioContent() {
     setLoading(true);
     try {
-      // Search for drag podcasts and music on YouTube
-      const [podcastsResponse, musicResponse] = await Promise.all([
-        fetch("/api/youtube/search?q=drag+race+podcast&limit=20"),
-        fetch("/api/youtube/search?q=drag+queen+music&limit=20"),
-      ]);
-
-      const [podcastsData, musicData] = await Promise.all([
-        podcastsResponse.json(),
-        musicResponse.json(),
-      ]);
+      // Fetch YouTube videos from RSS feeds (no API quota!)
+      // Get enough videos to filter for podcasts and music
+      const response = await fetch("/api/youtube/feed?limit=50&rssOnly=true");
+      const data = await response.json();
 
       const allContent: AudioContent[] = [];
 
-      // Add podcasts (videos longer than 30 minutes)
-      if (podcastsData.success && podcastsData.videos) {
-        const podcasts = podcastsData.videos
+      if (data.success && data.videos) {
+        // Categorize by duration:
+        // - Podcasts: 30+ minutes (1800+ seconds)
+        // - Music: 2-10 minutes (120-600 seconds)
+
+        const podcasts = data.videos
           .filter((v: any) => v.duration > 1800) // 30 minutes+
           .map((v: any) => ({
             id: v.id,
             title: v.title,
-            description: v.description,
-            thumbnail: v.thumbnail,
-            duration: v.duration,
-            views: v.views,
-            createdAt: v.createdAt,
-            creator: v.creator,
-            youtubeUrl: v.playbackUrl,
+            description: v.description || "",
+            thumbnail: v.thumbnail || "/default-thumnail.jpg",
+            duration: v.duration || 0,
+            views: v.views || 0,
+            createdAt: v.createdAt ? new Date(v.createdAt) : new Date(),
+            creator: v.creator || {
+              displayName: "YouTube Creator",
+              handle: "youtube",
+              avatar: "/default-thumnail.jpg",
+            },
+            youtubeUrl: v.externalUrl || v.playbackUrl || "",
             type: "podcast" as const,
           }));
-        allContent.push(...podcasts);
-      }
 
-      // Add music (videos 2-10 minutes)
-      if (musicData.success && musicData.videos) {
-        const music = musicData.videos
+        const music = data.videos
           .filter((v: any) => v.duration >= 120 && v.duration <= 600) // 2-10 minutes
           .map((v: any) => ({
             id: v.id,
             title: v.title,
-            description: v.description,
-            thumbnail: v.thumbnail,
-            duration: v.duration,
-            views: v.views,
-            createdAt: v.createdAt,
-            creator: v.creator,
-            youtubeUrl: v.playbackUrl,
+            description: v.description || "",
+            thumbnail: v.thumbnail || "/default-thumnail.jpg",
+            duration: v.duration || 0,
+            views: v.views || 0,
+            createdAt: v.createdAt ? new Date(v.createdAt) : new Date(),
+            creator: v.creator || {
+              displayName: "YouTube Creator",
+              handle: "youtube",
+              avatar: "/default-thumnail.jpg",
+            },
+            youtubeUrl: v.externalUrl || v.playbackUrl || "",
             type: "music" as const,
           }));
-        allContent.push(...music);
+
+        allContent.push(...podcasts, ...music);
       }
 
       // Sort by views (most popular first)
       allContent.sort((a, b) => b.views - a.views);
+
+      console.log(`[Audio] Loaded ${allContent.length} audio items from YouTube RSS (${allContent.filter(c => c.type === 'podcast').length} podcasts, ${allContent.filter(c => c.type === 'music').length} music)`);
 
       setAudioContent(allContent);
     } catch (error) {

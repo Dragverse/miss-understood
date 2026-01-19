@@ -2,11 +2,12 @@
 
 ## Current Status
 
-### RSS Feeds (Currently Not Working ❌)
-YouTube RSS feeds are returning 404 errors for all tested channels:
-- Format tested: `https://www.youtube.com/feeds/videos.xml?channel_id={channelId}`
-- All 10 curated drag channels return 404
-- Likely YouTube has deprecated or restricted RSS access
+### RSS Feeds (NOW WORKING ✅)
+YouTube RSS feeds are working with correct channel IDs!
+- Format: `https://www.youtube.com/feeds/videos.xml?channel_id={channelId}`
+- **Fixed 2026-01-18**: Updated channel IDs in `channels.ts`
+- Previously failed because channel IDs were outdated
+- Currently verified: RuPaul's Drag Race, WOW Presents (more to be added)
 
 ### YouTube Data API (Working ✅)
 The YouTube Data API v3 integration works but has quota limits:

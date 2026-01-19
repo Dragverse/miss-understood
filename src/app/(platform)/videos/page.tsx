@@ -36,12 +36,12 @@ export default function VideosPage() {
               console.warn("[Videos] Bluesky fetch failed:", err);
               return [];
             }),
-          // YouTube videos
-          fetch("/api/youtube/feed?limit=30")
+          // YouTube videos (RSS-only, no API)
+          fetch("/api/youtube/feed?limit=30&rssOnly=true")
             .then((res) => (res.ok ? res.json() : { videos: [] }))
             .then((data) => data.videos || [])
             .catch((err) => {
-              console.warn("[Videos] YouTube fetch failed:", err);
+              console.warn("[Videos] YouTube RSS fetch failed:", err);
               return [];
             }),
         ]);

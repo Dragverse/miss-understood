@@ -8,13 +8,14 @@ import type { Video } from "@/types";
  * GET /api/youtube/feed
  * Fetch drag content from YouTube with aggressive caching
  * - Cache duration: 1 hour (reduces API quota usage by ~10x)
- * - Tries YouTube Data API first (if YOUTUBE_API_KEY is set)
- * - Falls back to RSS feeds if API fails
+ * - Tries YouTube Data API first (if YOUTUBE_API_KEY is set AND rssOnly is not true)
+ * - Falls back to RSS feeds if API fails or if rssOnly is true
  *
  * Query params:
  * - limit: number of videos to return (default: 20)
  * - sortBy: "engagement" | "recent" (default: "recent")
  * - shortsOnly: "true" | "false" (default: "false") - only return YouTube Shorts
+ * - rssOnly: "true" | "false" (default: "false") - force RSS-only, skip API
  */
 export async function GET(request: NextRequest) {
   try {
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20", 10);
     const sortBy = searchParams.get("sortBy") || "recent";
     const shortsOnly = searchParams.get("shortsOnly") === "true";
+    const rssOnly = searchParams.get("rssOnly") === "true";
 
     console.log(`[YouTube Feed API] Fetching ${limit} ${shortsOnly ? 'shorts' : 'videos'}...`);
 
@@ -54,7 +56,8 @@ export async function GET(request: NextRequest) {
       console.log(`[YouTube Feed API] ${videos.length > 0 ? '✅' : '⚠️'} Got ${videos.length} shorts from RSS`);
     } else {
       // Try YouTube Data API first (more reliable, has engagement data)
-      if (process.env.YOUTUBE_API_KEY) {
+      // BUT skip API if rssOnly is true
+      if (process.env.YOUTUBE_API_KEY && !rssOnly) {
         console.log("[YouTube Feed API] Attempting YouTube Data API...");
         try {
           videos = await searchDragContent(limit);
@@ -66,9 +69,9 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Fallback to RSS if API didn't work
-      if (videos.length === 0) {
-        console.log("[YouTube Feed API] Trying RSS feeds as fallback...");
+      // Fallback to RSS if API didn't work OR if rssOnly is true
+      if (videos.length === 0 || rssOnly) {
+        console.log(`[YouTube Feed API] ${rssOnly ? 'RSS-only mode requested,' : ''} Trying RSS feeds${rssOnly ? '' : ' as fallback'}...`);
         videos = await fetchCuratedDragContent(limit);
         source = "youtube-rss";
         console.log(`[YouTube Feed API] ${videos.length > 0 ? '✅' : '⚠️'} Got ${videos.length} videos from RSS`);

@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "i.ytimg.com", // YouTube thumbnails
+        hostname: "*.ytimg.com", // YouTube thumbnails (all subdomains: i.ytimg.com, i1.ytimg.com, i2.ytimg.com, etc.)
       },
       {
         protocol: "https",

@@ -3,11 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
-import { FiVolume2, FiVolumeX, FiHeart, FiMessageCircle, FiShare2, FiDollarSign, FiEdit2, FiTrash2, FiMoreVertical } from "react-icons/fi";
+import { FiVolume2, FiVolumeX, FiHeart, FiMessageCircle, FiShare2, FiDollarSign, FiEdit2, FiTrash2, FiMoreVertical, FiAlertCircle } from "react-icons/fi";
 import type { Video } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
+import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
 
 interface ShortVideoProps {
   video: Video;
@@ -23,10 +24,20 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(video.likes || 0);
   const [showMenu, setShowMenu] = useState(false);
+  const [playbackError, setPlaybackError] = useState(false);
   const playerRef = useRef<HTMLVideoElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Check if current user is the creator
   const isCreator = user?.id === video.creator?.did;
+
+  // Check if video is from YouTube (external)
+  const isYouTubeVideo = video.playbackUrl ? isYouTubeUrl(video.playbackUrl) : false;
+
+  // Reset error state when video changes
+  useEffect(() => {
+    setPlaybackError(false);
+  }, [video.id]);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -85,7 +96,11 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
     const player = playerRef.current;
     if (!player) return;
 
-    const handlePlay = () => setIsPlaying(true);
+    const handlePlay = () => {
+      setIsPlaying(true);
+      // Clear error state when video successfully plays
+      setPlaybackError(false);
+    };
     const handlePause = () => setIsPlaying(false);
     const handleEnded = () => {
       if (onEnded) {
@@ -137,36 +152,96 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
   // Validate playback URL before rendering
   const hasValidPlaybackUrl = video.playbackUrl && video.playbackUrl.trim() !== '';
 
+  // Check if URL is HLS/MP4 (Livepeer compatible)
+  const isHLSUrl = video.playbackUrl && (
+    video.playbackUrl.includes('.m3u8') ||
+    video.playbackUrl.includes('livepeer') ||
+    video.playbackUrl.includes('av.bsky.social') || // Bluesky native video CDN
+    video.playbackUrl.includes('.mp4') ||
+    video.playbackUrl.startsWith('ipfs://') // IPFS URLs
+  );
+
+  // Determine which player to use
+  // Only use Livepeer for confirmed HLS URLs, not YouTube, and not generic HTTP URLs
+  const canPlayWithLivepeer = hasValidPlaybackUrl && isHLSUrl && !isYouTubeVideo;
+
+  // Log for debugging
+  if (hasValidPlaybackUrl && !isYouTubeVideo && !canPlayWithLivepeer) {
+    console.log('[ShortVideo] Video will use fallback UI:', {
+      id: video.id,
+      title: video.title?.substring(0, 50),
+      playbackUrl: video.playbackUrl?.substring(0, 100),
+      isHLSUrl,
+      isYouTubeVideo,
+      source: video.source
+    });
+  }
+
   return (
     <div className="keen-slider__slide flex snap-center justify-center focus-visible:outline-none md:ml-16 md:pb-2">
       <div className="rounded-large ultrawide:w-[650px] bg-gray-950 flex h-full w-[calc(100vw-80px)] items-center overflow-hidden md:w-[450px] relative">
         {hasValidPlaybackUrl ? (
-          <div className="w-full h-full relative" onClick={handleVideoClick}>
-            <Player.Root
-              src={getSrc(video.playbackUrl)}
-              aspectRatio={9 / 16}
-              volume={isMuted ? 0 : 1}
-              onError={(error) => {
-                console.error("Video playback error:", error);
-                console.log("Video URL:", video.playbackUrl);
-                console.log("Video data:", {
-                  id: video.id,
-                  title: video.title,
-                  source: video.source,
-                  externalUrl: video.externalUrl,
-                });
-              }}
-            >
-              <Player.Container className="h-full w-full">
-                <Player.Video
-                  ref={playerRef}
-                  className="h-full w-full object-contain"
-                  loop
-                  playsInline
-                  muted={isMuted}
-                />
-              </Player.Container>
-            </Player.Root>
+          <div className="w-full h-full relative" onClick={!isYouTubeVideo ? handleVideoClick : undefined}>
+            {isYouTubeVideo ? (
+              // YouTube iframe embed for external content
+              <iframe
+                ref={iframeRef}
+                src={getYouTubeEmbedUrl(video.playbackUrl) || video.playbackUrl}
+                className="h-full w-full object-contain"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={video.title}
+              />
+            ) : canPlayWithLivepeer ? (
+              // Livepeer Player for HLS streams (Dragverse, Bluesky native)
+              <Player.Root
+                src={getSrc(video.playbackUrl)}
+                aspectRatio={9 / 16}
+                volume={isMuted ? 0 : 1}
+                onError={(error) => {
+                  // Log error but don't show overlay for Livepeer playback issues
+                  // These are often transient (still processing, CORS, etc)
+                  console.warn("[ShortVideo] Livepeer playback error (non-blocking):", {
+                    error,
+                    videoId: video.id,
+                    title: video.title?.substring(0, 50),
+                    playbackUrl: video.playbackUrl?.substring(0, 100),
+                    source: video.source
+                  });
+                  // Only show error overlay for persistent issues
+                  // Don't block playback for transient Livepeer errors
+                }}
+              >
+                <Player.Container className="h-full w-full">
+                  <Player.Video
+                    ref={playerRef}
+                    className="h-full w-full object-contain"
+                    loop
+                    playsInline
+                    muted={isMuted}
+                  />
+                </Player.Container>
+              </Player.Root>
+            ) : (
+              // Unsupported format - show error UI
+              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-[#EB83EA]/20 flex items-center justify-center mb-4">
+                  <FiAlertCircle className="w-8 h-8 text-[#EB83EA]" />
+                </div>
+                <p className="text-gray-300 font-semibold mb-2">{video.title || "Video Unavailable"}</p>
+                <p className="text-gray-400 text-sm mb-4">This video format is not supported</p>
+                {video.externalUrl && (
+                  <a
+                    href={video.externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-[#EB83EA] hover:bg-[#E748E6] text-white text-sm font-medium rounded-full transition"
+                  >
+                    View on {video.source === 'bluesky' ? 'Bluesky' : video.source === 'youtube' ? 'YouTube' : 'Original Platform'}
+                  </a>
+                )}
+              </div>
+            )}
 
             {/* Top Right Controls */}
             <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
@@ -202,24 +277,33 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 </div>
               )}
 
-              {/* Mute/Unmute Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleMute();
-                }}
-                className="p-3 bg-black/50 rounded-full hover:bg-black/70 transition"
-              >
-                {isMuted ? (
-                  <FiVolumeX className="w-5 h-5 text-white" />
-                ) : (
-                  <FiVolume2 className="w-5 h-5 text-white" />
-                )}
-              </button>
+              {/* Mute/Unmute Button - Only show for non-YouTube videos */}
+              {!isYouTubeVideo && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleMute();
+                  }}
+                  className="p-3 bg-black/50 rounded-full hover:bg-black/70 transition"
+                >
+                  {isMuted ? (
+                    <FiVolumeX className="w-5 h-5 text-white" />
+                  ) : (
+                    <FiVolume2 className="w-5 h-5 text-white" />
+                  )}
+                </button>
+              )}
+
+              {/* YouTube indicator */}
+              {isYouTubeVideo && (
+                <div className="px-3 py-2 bg-black/50 rounded-full text-white/70 text-xs font-medium">
+                  YouTube
+                </div>
+              )}
             </div>
 
-            {/* Play/Pause Indicator */}
-            {!isPlaying && (
+            {/* Play/Pause Indicator - Only show for non-YouTube videos */}
+            {!isPlaying && !isYouTubeVideo && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-20 h-20 bg-black/50 rounded-full flex items-center justify-center">
                   <div className="w-0 h-0 border-t-[15px] border-t-transparent border-l-[25px] border-l-white border-b-[15px] border-b-transparent ml-2" />
@@ -311,6 +395,30 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 <p className="text-xs text-gray-300 line-clamp-2">{video.description}</p>
               )}
             </div>
+
+            {/* Error Overlay */}
+            {playbackError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-30">
+                <div className="text-center text-white p-6 max-w-sm">
+                  <FiAlertCircle className="w-12 h-12 mx-auto mb-4 text-red-400" />
+                  <p className="text-lg font-semibold mb-2">Unable to play video</p>
+                  <p className="text-sm text-white/70 mb-4">
+                    This video may be unavailable or restricted
+                  </p>
+                  {video.externalUrl && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(video.externalUrl || video.playbackUrl, "_blank");
+                      }}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition"
+                    >
+                      Watch on {video.source === "youtube" ? "YouTube" : video.source === "bluesky" ? "Bluesky" : "Original Site"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">

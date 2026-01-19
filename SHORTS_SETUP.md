@@ -25,10 +25,10 @@ The Miss-Understood shorts feed is fully functional and ready for content. It co
    - Few video posts (most are text/images)
    - Not a major content source
 
-3. **YouTube** 🔧 (Optional)
-   - Requires API key for best results
-   - RSS feeds currently unavailable (404 errors)
-   - See setup instructions below
+3. **YouTube** ✅ (Working via RSS!)
+   - RSS feeds now working with updated channel IDs
+   - No API key required for basic functionality
+   - API key optional for enhanced features (see below)
 
 ## YouTube Data API Setup (Optional)
 

@@ -19,8 +19,8 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
   const router = useRouter();
   const { userId } = useAuthUser();
 
-  // Check if this is external content (from Bluesky, etc.)
-  const isExternal = (video as any).source === "bluesky";
+  // Check if this is external content (from Bluesky, YouTube, etc.)
+  const isExternal = (video as any).source === "bluesky" || (video as any).source === "youtube";
   const externalUrl = (video as any).externalUrl;
   const isOwner = userId && video.creator.did === userId;
 
