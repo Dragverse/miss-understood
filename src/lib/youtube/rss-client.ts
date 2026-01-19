@@ -127,6 +127,8 @@ function rssVideoToVideo(rssVideo: RSSVideo): Video {
       description: channel?.description || "",
       followerCount: 0,
       followingCount: 0,
+      youtubeChannelId: channelId, // YouTube channel ID for follow button
+      youtubeChannelName: channel?.displayName || rssVideo.author?.name || "YouTube Channel",
       createdAt: publishedAt,
       verified: true,
     },

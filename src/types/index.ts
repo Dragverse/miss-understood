@@ -25,6 +25,8 @@ export interface Creator {
   blueskyHandle?: string; // User's Bluesky handle (if connected)
   blueskyDID?: string; // Bluesky DID (if connected)
   blueskyAppPassword?: string; // Encrypted Bluesky app password
+  youtubeChannelId?: string; // YouTube channel ID (if connected)
+  youtubeChannelName?: string; // YouTube channel name
   website?: string;
   // Monetization (for future use)
   totalEarningsUSD?: number;
