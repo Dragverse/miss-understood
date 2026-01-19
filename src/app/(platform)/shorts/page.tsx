@@ -101,18 +101,25 @@ function ShortsContent() {
           ...getLocalVideos(),
         ];
 
-        console.log(`[Shorts] Loaded ${transformedSupabase.length} Supabase, ${blueskyVideos?.length || 0} Bluesky, ${youtubeVideos?.length || 0} YouTube videos`);
+        console.log(`[Shorts] Loaded ${transformedSupabase.length} Dragverse, ${blueskyVideos?.length || 0} Bluesky, ${youtubeVideos?.length || 0} YouTube videos`);
 
-        // Debug Bluesky videos
+        // Debug external sources
         if (blueskyVideos && blueskyVideos.length > 0) {
-          console.log("[Shorts] Bluesky videos sample:", blueskyVideos.slice(0, 2).map((v: any) => ({
-            id: v.id?.substring(0, 10),
+          console.log("[Shorts] Bluesky sample:", blueskyVideos.slice(0, 2).map((v: any) => ({
             title: v.title?.substring(0, 30),
-            contentType: v.contentType,
-            playbackUrl: v.playbackUrl?.substring(0, 50)
+            hasPlayback: !!v.playbackUrl
           })));
         } else {
-          console.warn("[Shorts] No Bluesky videos returned from API");
+          console.log("[Shorts] ℹ️  No Bluesky videos (most drag posts are text/images, not videos)");
+        }
+
+        if (youtubeVideos && youtubeVideos.length > 0) {
+          console.log("[Shorts] YouTube sample:", youtubeVideos.slice(0, 2).map((v: any) => ({
+            title: v.title?.substring(0, 30),
+            hasPlayback: !!v.playbackUrl
+          })));
+        } else {
+          console.log("[Shorts] ℹ️  No YouTube videos (RSS feeds currently unavailable)");
         }
 
         // Debug: Log all video contentTypes
@@ -220,16 +227,24 @@ function ShortsContent() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
           </div>
-          <h2 className="text-white text-2xl font-bold mb-3">No Shorts Yet</h2>
-          <p className="text-gray-400 mb-6">
-            Share your drag performances, quick tips, or behind-the-scenes moments in vertical video format!
+          <h2 className="text-white text-2xl font-bold mb-3">No Shorts Available</h2>
+          <p className="text-gray-400 mb-6 leading-relaxed">
+            Be the first to share your drag artistry! Upload your performances, tutorials, makeup transformations, or behind-the-scenes moments in vertical video format.
           </p>
-          <Link
-            href="/upload"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30"
-          >
-            Upload Your First Short
-          </Link>
+          <div className="space-y-3">
+            <Link
+              href="/upload"
+              className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30 text-white"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Upload Your First Short
+            </Link>
+            <p className="text-xs text-gray-500">
+              Tip: Shorts work best in 9:16 vertical format (1080x1920)
+            </p>
+          </div>
         </div>
       </div>
     );
