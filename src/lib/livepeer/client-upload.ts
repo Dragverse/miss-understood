@@ -50,6 +50,9 @@ export async function uploadVideoToLivepeer(
   const controller = new AbortController();
   const fetchTimeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout for request
 
+  let tusEndpoint: string;
+  let asset: LivepeerAsset;
+
   try {
     const uploadUrlResponse = await fetch("/api/upload/request", {
       method: "POST",
@@ -81,7 +84,9 @@ export async function uploadVideoToLivepeer(
       throw new Error(errorMessage);
     }
 
-    const { tusEndpoint, asset } = await uploadUrlResponse.json();
+    const response = await uploadUrlResponse.json();
+    tusEndpoint = response.tusEndpoint;
+    asset = response.asset;
   } catch (error: any) {
     clearTimeout(fetchTimeout);
     if (error.name === 'AbortError') {
