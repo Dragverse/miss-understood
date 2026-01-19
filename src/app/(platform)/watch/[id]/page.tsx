@@ -58,22 +58,39 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
       try {
         // Check if this is a YouTube video (ID starts with "youtube-")
         if (resolvedParams.id.startsWith("youtube-")) {
-          console.log("[Watch] Loading YouTube video:", resolvedParams.id);
+          console.log("[Watch] Loading YouTube video from RSS feed:", resolvedParams.id);
 
           try {
-            // Create minimal video object with automatic Short detection
-            // This checks thumbnail dimensions to determine contentType
+            // Fetch from YouTube RSS feed to get full video details
+            const response = await fetch("/api/youtube/feed?limit=100");
+            const data = await response.json();
+
+            if (data.success && data.videos) {
+              const youtubeVideo = data.videos.find((v: Video) => v.id === resolvedParams.id);
+
+              if (youtubeVideo) {
+                console.log("[Watch] Found YouTube video in feed:", youtubeVideo.title);
+                setVideo(youtubeVideo);
+                setLikes(0); // YouTube videos don't have Dragverse likes
+                setAccessDenied(false);
+                setIsLoading(false);
+                return;
+              }
+            }
+
+            // Fallback: Create minimal video if not found in feed
+            console.log("[Watch] YouTube video not in feed, creating minimal video");
             const youtubeVideo = await createMinimalYouTubeVideoWithDetection(resolvedParams.id);
 
             setVideo(youtubeVideo);
-            setLikes(0); // YouTube videos don't have Dragverse likes
+            setLikes(0);
             setAccessDenied(false);
             setIsLoading(false);
             return;
           } catch (error) {
-            console.error("[Watch] Failed to create YouTube video:", error);
+            console.error("[Watch] Failed to load YouTube video:", error);
             setAccessDenied(true);
-            setAccessDeniedReason("Invalid YouTube video ID");
+            setAccessDeniedReason("Unable to load YouTube video");
             setIsLoading(false);
             return;
           }
