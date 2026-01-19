@@ -87,14 +87,119 @@ export const CURATED_DRAG_ACCOUNTS: CuratedBlueskyAccount[] = [
     description: "Winner of All Stars 2",
   },
   {
+    handle: "willam.bsky.social",
+    displayName: "Willam",
+    description: "Season 4 queen, actor, YouTuber",
+  },
+  {
+    handle: "adore.bsky.social",
+    displayName: "Adore Delano",
+    description: "Season 6 and All Stars 2, singer",
+  },
+  {
+    handle: "bendelacreme.bsky.social",
+    displayName: "BenDeLaCreme",
+    description: "Season 6 and All Stars 3, Seattle legend",
+  },
+  {
+    handle: "manila.bsky.social",
+    displayName: "Manila Luzon",
+    description: "All Stars 1 and 4, fashion icon",
+  },
+  {
+    handle: "latrice.bsky.social",
+    displayName: "Latrice Royale",
+    description: "Season 4 and All Stars, large and in charge",
+  },
+  {
+    handle: "alyssa.bsky.social",
+    displayName: "Alyssa Edwards",
+    description: "Season 5 and All Stars 2, dance teacher extraordinaire",
+  },
+  {
+    handle: "vanjie.bsky.social",
+    displayName: "Vanessa Vanjie Mateo",
+    description: "Season 10 and 11, Miss Vanjie herself",
+  },
+  {
+    handle: "naomi.bsky.social",
+    displayName: "Naomi Smalls",
+    description: "Season 8 and All Stars 4, legs for days",
+  },
+  {
+    handle: "monique.bsky.social",
+    displayName: "Monique Heart",
+    description: "Season 10 and All Stars 4, stunning queen",
+  },
+  {
+    handle: "shea.bsky.social",
+    displayName: "Shea Couleé",
+    description: "Winner of All Stars 5, Chicago excellence",
+  },
+  {
+    handle: "monet.bsky.social",
+    displayName: "Monét X Change",
+    description: "Winner of All Stars 4, sponge queen",
+  },
+  {
+    handle: "peppermint.bsky.social",
+    displayName: "Peppermint",
+    description: "Season 9 finalist, trans icon",
+  },
+  {
+    handle: "sasha.bsky.social",
+    displayName: "Sasha Velour",
+    description: "Winner of Season 9, brainy queen",
+  },
+  {
+    handle: "yvie.bsky.social",
+    displayName: "Yvie Oddly",
+    description: "Winner of Season 11, oddball icon",
+  },
+  {
+    handle: "priyanka.bsky.social",
+    displayName: "Priyanka",
+    description: "Winner of Canada's Drag Race Season 1",
+  },
+  {
+    handle: "lawrence.bsky.social",
+    displayName: "Lawrence Chaney",
+    description: "Winner of UK Season 2, Scottish queen",
+  },
+  {
+    handle: "bimini.bsky.social",
+    displayName: "Bimini Bon Boulash",
+    description: "UK Season 2 finalist, non-binary icon",
+  },
+  {
+    handle: "tayce.bsky.social",
+    displayName: "Tayce",
+    description: "UK Season 2 finalist, Welsh goddess",
+  },
+  {
+    handle: "thedivina.bsky.social",
+    displayName: "The Vivienne",
+    description: "Winner of UK Season 1 and All Stars",
+  },
+  {
+    handle: "envy.bsky.social",
+    displayName: "Envy Peru",
+    description: "Winner of Holland Season 1",
+  },
+  {
+    handle: "nicky.bsky.social",
+    displayName: "Nicky Doll",
+    description: "Season 12, French fashion queen",
+  },
+  {
+    handle: "plastique.bsky.social",
+    displayName: "Plastique Tiara",
+    description: "Season 11, Vietnamese-American beauty",
+  },
+  {
     handle: "drag.bsky.social",
     displayName: "Drag Community",
     description: "General drag community account",
-  },
-  {
-    handle: "dragrace.bsky.social",
-    displayName: "Drag Race Fans",
-    description: "Drag Race fan community",
   },
   {
     handle: "queendom.bsky.social",

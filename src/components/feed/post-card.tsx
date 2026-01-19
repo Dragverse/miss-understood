@@ -6,6 +6,9 @@ import Link from "next/link";
 import { FiHeart, FiMessageCircle, FiExternalLink, FiBookmark, FiUserPlus, FiUserCheck } from "react-icons/fi";
 import { parseTextWithLinks } from "@/lib/text-parser";
 import { CommentModal } from "./comment-modal";
+import * as Player from "@livepeer/react/player";
+import { getSrc } from "@livepeer/react/external";
+import { getSafeThumbnail, isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
 
 interface PostCardProps {
   post: {
@@ -23,6 +26,9 @@ interface PostCardProps {
     externalUrl?: string;
     uri?: string; // Bluesky post URI
     cid?: string; // Bluesky post CID
+    playbackUrl?: string; // Video playback URL
+    contentType?: string; // "short" or "long"
+    type?: string; // "youtube-video" for YouTube posts
   };
 }
 
@@ -230,18 +236,59 @@ export function PostCard({ post }: PostCardProps) {
         {parseTextWithLinks(post.description)}
       </div>
 
-      {/* Images */}
-      {post.thumbnail && (
+      {/* Video Player or Thumbnail */}
+      {post.playbackUrl && isValidPlaybackUrl(post.playbackUrl) ? (
+        <div className="relative w-full rounded-xl overflow-hidden mb-4 bg-[#0f071a]">
+          {post.type === "youtube-video" || post.playbackUrl.includes("youtube.com") || post.playbackUrl.includes("youtu.be") ? (
+            // YouTube video - use iframe embed
+            <div className="relative w-full" style={{ aspectRatio: post.contentType === "short" ? "9/16" : "16/9" }}>
+              <iframe
+                src={post.playbackUrl.replace("watch?v=", "embed/").replace("youtu.be/", "youtube.com/embed/")}
+                className="absolute inset-0 w-full h-full rounded-xl"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : (
+            // Livepeer video (Dragverse/Bluesky)
+            <div className="relative w-full" style={{ aspectRatio: post.contentType === "short" ? "9/16" : "16/9" }}>
+              <Player.Root src={getSrc(post.playbackUrl)}>
+                <Player.Container>
+                  <Player.Video
+                    title={post.description.substring(0, 100)}
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  />
+                  <Player.Controls className="flex items-center justify-center">
+                    <Player.PlayPauseTrigger className="w-16 h-16 flex items-center justify-center rounded-full bg-[#EB83EA]/90 hover:bg-[#E748E6] transition-all">
+                      <Player.PlayingIndicator asChild matcher={false}>
+                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </Player.PlayingIndicator>
+                      <Player.PlayingIndicator asChild matcher={true}>
+                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                        </svg>
+                      </Player.PlayingIndicator>
+                    </Player.PlayPauseTrigger>
+                  </Player.Controls>
+                </Player.Container>
+              </Player.Root>
+            </div>
+          )}
+        </div>
+      ) : post.thumbnail ? (
+        // Fallback to thumbnail image if no valid playback URL
         <div className="relative w-full rounded-xl overflow-hidden mb-4 bg-[#0f071a] group cursor-pointer">
           <Image
-            src={post.thumbnail}
+            src={getSafeThumbnail(post.thumbnail)}
             alt="Post image"
             width={800}
             height={600}
             className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
           />
         </div>
-      )}
+      ) : null}
 
       {/* Actions */}
       <div className="flex items-center gap-6 text-gray-400 text-sm pt-3 border-t border-[#2f2942]">

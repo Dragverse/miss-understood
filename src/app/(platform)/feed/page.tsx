@@ -52,11 +52,11 @@ function FeedContent() {
           // Native Dragverse posts
           fetch("/api/posts/feed?limit=50").catch(() => null),
 
-          // Bluesky content (or search if hashtag)
+          // Bluesky content (or search if hashtag) - fetch ALL content types
           fetch(
             hashtag
-              ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30`
-              : `/api/bluesky/feed?limit=30&sortBy=${sortBy}`
+              ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30&contentType=all`
+              : `/api/bluesky/feed?limit=30&sortBy=${sortBy}&contentType=all`
           ).catch(() => null),
 
           // YouTube drag content from curated channels (RSS feeds - no quota!)
@@ -77,6 +77,7 @@ function FeedContent() {
           if (blueskyData.error) {
             setSearchError(blueskyData.error);
           } else {
+            // Bluesky posts already have the correct structure from blueskyPostToContent/blueskyPostToVideo
             allPosts = [...allPosts, ...(blueskyData.posts || [])];
           }
         }
@@ -93,6 +94,8 @@ function FeedContent() {
               author: video.creator,
               uri: video.externalUrl,
               indexedAt: video.createdAt,
+              // Ensure playbackUrl is set correctly
+              playbackUrl: video.playbackUrl || video.externalUrl,
             }));
             allPosts = [...allPosts, ...youtubePosts];
           }
