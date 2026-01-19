@@ -54,7 +54,61 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
       }
 
       try {
-        // Check access via API (includes privacy check)
+        // Check if this is a YouTube video (ID starts with "youtube-")
+        if (resolvedParams.id.startsWith("youtube-")) {
+          console.log("[Watch] Loading YouTube video:", resolvedParams.id);
+
+          // Fetch from YouTube feed API
+          const response = await fetch("/api/youtube/feed?limit=50&rssOnly=true");
+          const data = await response.json();
+
+          if (data.success && data.videos) {
+            const youtubeVideo = data.videos.find((v: Video) => v.id === resolvedParams.id);
+
+            if (youtubeVideo) {
+              setVideo(youtubeVideo);
+              setLikes(youtubeVideo.likes || 0);
+              setAccessDenied(false);
+              setIsLoading(false);
+              return;
+            }
+          }
+
+          // Video not found in YouTube feed
+          setAccessDenied(true);
+          setAccessDeniedReason("YouTube video not found");
+          setIsLoading(false);
+          return;
+        }
+
+        // Check if this is a Bluesky video (ID starts with "bluesky-")
+        if (resolvedParams.id.startsWith("bluesky-")) {
+          console.log("[Watch] Loading Bluesky video:", resolvedParams.id);
+
+          // Fetch from Bluesky feed API
+          const response = await fetch("/api/bluesky/feed?limit=50");
+          const data = await response.json();
+
+          if (data.posts) {
+            const blueskyVideo = data.posts.find((v: Video) => v.id === resolvedParams.id);
+
+            if (blueskyVideo) {
+              setVideo(blueskyVideo);
+              setLikes(blueskyVideo.likes || 0);
+              setAccessDenied(false);
+              setIsLoading(false);
+              return;
+            }
+          }
+
+          // Video not found in Bluesky feed
+          setAccessDenied(true);
+          setAccessDeniedReason("Bluesky video not found");
+          setIsLoading(false);
+          return;
+        }
+
+        // For Dragverse videos, check access via API (includes privacy check)
         const authToken = await getAccessToken().catch(() => null);
 
         const accessUrl = new URL(`/api/video/access/${resolvedParams.id}`, window.location.origin);
