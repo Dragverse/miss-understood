@@ -2,7 +2,7 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import Image from "next/image";
-import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe } from "react-icons/fi";
+import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe, FiShare2, FiCheck } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -49,6 +49,27 @@ export default function ProfilePage() {
       youtube: boolean;
     };
   } | null>(null);
+  const [profileLinkCopied, setProfileLinkCopied] = useState(false);
+
+  // Copy profile link to clipboard
+  const handleShareProfile = async () => {
+    if (!creator) return;
+
+    // Generate profile URL using handle
+    const profileUrl = `${window.location.origin}/creator/${creator.handle}`;
+
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setProfileLinkCopied(true);
+
+      // Reset after 2 seconds
+      setTimeout(() => {
+        setProfileLinkCopied(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to copy profile link:", error);
+    }
+  };
 
   // Fetch creator profile
   useEffect(() => {
@@ -417,13 +438,32 @@ export default function ProfilePage() {
                   </div>
                   <p className="text-[#EB83EA] text-lg font-semibold">@{creator.handle}</p>
                 </div>
-                <button
-                  onClick={() => router.push("/settings")}
-                  className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg"
-                >
-                  <FiEdit2 className="w-5 h-5" />
-                  Edit Profile
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleShareProfile}
+                    className="px-6 py-3 bg-gradient-to-r from-[#2f2942] to-[#1a0b2e] hover:from-[#3f3952] hover:to-[#2a1b3e] text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg border-2 border-[#EB83EA]/30"
+                    title="Copy profile link"
+                  >
+                    {profileLinkCopied ? (
+                      <>
+                        <FiCheck className="w-5 h-5" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <FiShare2 className="w-5 h-5" />
+                        Share
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => router.push("/settings")}
+                    className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg"
+                  >
+                    <FiEdit2 className="w-5 h-5" />
+                    Edit Profile
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -789,6 +829,34 @@ export default function ProfilePage() {
           {activeTab === "about" && (
             <div className="max-w-3xl mx-auto">
               <div className="space-y-6">
+                {/* Profile Link Section */}
+                <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
+                  <h3 className="text-lg font-bold text-[#EB83EA] mb-3 uppercase tracking-wide">Profile Link</h3>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 bg-[#0f071a] rounded-xl px-4 py-3 border border-[#EB83EA]/20">
+                      <p className="text-gray-300 font-mono text-sm break-all">
+                        {typeof window !== 'undefined' ? `${window.location.origin}/creator/${creator.handle}` : `/creator/${creator.handle}`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleShareProfile}
+                      className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap"
+                    >
+                      {profileLinkCopied ? (
+                        <>
+                          <FiCheck className="w-5 h-5" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <FiShare2 className="w-5 h-5" />
+                          Copy Link
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
                 {/* Bio Section */}
                 <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
                   <h3 className="text-lg font-bold text-[#EB83EA] mb-3 uppercase tracking-wide">About</h3>
