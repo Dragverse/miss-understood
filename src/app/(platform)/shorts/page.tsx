@@ -55,11 +55,11 @@ function ShortsContent() {
         ]);
 
         // Transform Supabase videos to Video type
-        const transformedSupabase = (supabaseVideos || []).map((v) => ({
+        const transformedSupabase = (supabaseVideos || []).map((v: any) => ({
           id: v.id,
           title: v.title,
           description: v.description || "",
-          thumbnail: v.thumbnail || "",
+          thumbnail: v.thumbnail || "/default-thumnail.jpg",
           duration: v.duration || 0,
           views: v.views,
           likes: v.likes,
@@ -67,7 +67,17 @@ function ShortsContent() {
           playbackUrl: v.playback_url || "",
           livepeerAssetId: v.livepeer_asset_id || "",
           contentType: (v.content_type as any) || "short",
-          creator: {
+          creator: v.creator ? {
+            did: v.creator.did,
+            handle: v.creator.handle,
+            displayName: v.creator.display_name,
+            avatar: v.creator.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${v.creator.handle}`,
+            description: "",
+            followerCount: 0,
+            followingCount: 0,
+            createdAt: new Date(v.created_at),
+            verified: v.creator.verified || false,
+          } : {
             did: v.creator_did || "unknown",
             handle: v.creator_did?.split(":").pop()?.substring(0, 8) || "creator",
             displayName: "Dragverse Creator",
@@ -77,7 +87,7 @@ function ShortsContent() {
             followingCount: 0,
             createdAt: new Date(v.created_at),
             verified: false,
-          } as any,
+          },
           category: v.category || "",
           tags: v.tags || [],
           source: "ceramic" as const,
