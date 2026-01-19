@@ -212,6 +212,19 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         console.warn("Supabase unavailable for related videos");
       }
 
+      // Fetch from YouTube (horizontal videos only if watching horizontal)
+      try {
+        const youtubeResponse = await fetch("/api/youtube/feed?limit=20");
+        if (youtubeResponse.ok) {
+          const youtubeData = await youtubeResponse.json();
+          if (youtubeData.videos) {
+            allVideos.push(...youtubeData.videos);
+          }
+        }
+      } catch (error) {
+        console.warn("YouTube unavailable for related videos");
+      }
+
       // Fetch from Bluesky
       try {
         const blueskyResponse = await fetch("/api/bluesky/feed?limit=10");
@@ -229,18 +242,38 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
       const localVideos = getLocalVideos();
       allVideos.push(...localVideos);
 
-      // Filter out current video and same content type
-      const related = allVideos
-        .filter((v) => v.id !== resolvedParams.id && v.contentType === video?.contentType)
-        .slice(0, 5);
+      console.log(`[Watch] Loaded ${allVideos.length} total videos for recommendations`);
+      console.log(`[Watch] Current video content type:`, video?.contentType);
 
-      // If not enough related videos, use any videos
-      if (related.length < 5) {
-        const additional = allVideos
-          .filter((v) => v.id !== resolvedParams.id && !related.includes(v))
-          .slice(0, 5 - related.length);
+      // Filter by matching content type (critical: shorts should recommend shorts, horizontal should recommend horizontal)
+      const matchingContentType = allVideos.filter((v) => {
+        return v.id !== resolvedParams.id && v.contentType === video?.contentType;
+      });
+
+      console.log(`[Watch] Found ${matchingContentType.length} videos matching content type`);
+
+      // Further filter by category/tags for better relevance
+      const related = matchingContentType
+        .filter((v) => {
+          // Prefer videos in same category
+          if (video?.category && v.category === video.category) return true;
+          // Or videos with overlapping tags
+          if (video?.tags && v.tags) {
+            return video.tags.some((tag) => v.tags.includes(tag));
+          }
+          return true; // Include all matching content type if no category/tag match
+        })
+        .slice(0, 10);
+
+      // If not enough related videos with same category/tags, add more with matching content type
+      if (related.length < 10) {
+        const additional = matchingContentType
+          .filter((v) => !related.includes(v))
+          .slice(0, 10 - related.length);
         related.push(...additional);
       }
+
+      console.log(`[Watch] Showing ${related.length} related ${video?.contentType} videos`);
 
       setRelatedVideos(related);
     }

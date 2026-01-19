@@ -70,17 +70,32 @@ export function extractDisplayName(user: any): string {
     return user.github.username;
   }
 
-  // Email username
+  // Email username - capitalize and format nicely
   if (user.email?.address) {
-    return user.email.address.split("@")[0];
+    const emailName = user.email.address.split("@")[0];
+    // Capitalize and clean up email username (e.g., "john.doe" -> "John Doe")
+    return emailName
+      .split(/[._-]/)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
   }
 
-  // Google email username
+  // Google email username - capitalize and format nicely
   if (user.google?.email) {
-    return user.google.email.split("@")[0];
+    const emailName = user.google.email.split("@")[0];
+    return emailName
+      .split(/[._-]/)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
   }
 
-  return "Dragverse User";
+  // Wallet-based fallback
+  if (user.wallet?.address) {
+    return `Artist ${user.wallet.address.substring(0, 6)}`;
+  }
+
+  // Last resort - more friendly than "Dragverse User"
+  return "Drag Artist";
 }
 
 /**
@@ -118,18 +133,29 @@ export function extractHandle(user: any, userId: string): string {
     return user.github.username;
   }
 
-  // Google email username
+  // Google email username - clean for handle format
   if (user.google?.email) {
-    return user.google.email.split("@")[0];
+    const emailUsername = user.google.email.split("@")[0];
+    return emailUsername.toLowerCase().replace(/[^a-z0-9]/g, "");
   }
 
-  // Email username
+  // Email username - clean for handle format
   if (user.email?.address) {
-    return user.email.address.split("@")[0];
+    const emailUsername = user.email.address.split("@")[0];
+    return emailUsername.toLowerCase().replace(/[^a-z0-9]/g, "");
   }
 
-  // Fallback to shortened DID
-  return `user-${userId.substring(0, 8)}`;
+  // Wallet-based fallback
+  if (user.wallet?.address) {
+    return `artist-${user.wallet.address.substring(2, 10).toLowerCase()}`;
+  }
+
+  // Last resort: make it more user-friendly
+  const shortId = userId.includes("did:privy:")
+    ? userId.replace("did:privy:", "").substring(0, 8)
+    : userId.substring(0, 8);
+
+  return `user-${shortId}`;
 }
 
 /**

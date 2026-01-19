@@ -28,20 +28,33 @@ export async function POST(request: NextRequest) {
 
       if (!auth.authenticated) {
         console.error("[Video Create] ❌ Authentication failed:", auth.error);
-        console.log("[Video Create] ⚠️  Continuing in test mode with fallback user ID");
 
-        // TEMPORARY: Use Privy user ID from client if available in request body
-        // This allows video upload to work while we fix token verification
-        const body = await request.json();
-        userDID = body._testUserId || `test-user-${Date.now()}`;
-        console.log("[Video Create] Using fallback user ID:", userDID);
+        // In development, allow test users for debugging
+        if (process.env.NODE_ENV === "development") {
+          const body = await request.json();
+          if (body._testUserId) {
+            userDID = body._testUserId;
+            console.log("[Video Create] Using test user ID (dev mode):", userDID);
 
-        // Re-create request with body for later parsing
-        request = new NextRequest(request.url, {
-          method: request.method,
-          headers: request.headers,
-          body: JSON.stringify(body),
-        });
+            // Re-create request with body for later parsing
+            request = new NextRequest(request.url, {
+              method: request.method,
+              headers: request.headers,
+              body: JSON.stringify(body),
+            });
+          } else {
+            return NextResponse.json(
+              { error: "Authentication required. Please log in to upload videos." },
+              { status: 401 }
+            );
+          }
+        } else {
+          // Production: authentication is required
+          return NextResponse.json(
+            { error: "Authentication required. Please log in to upload videos." },
+            { status: 401 }
+          );
+        }
       } else {
         userDID = auth.userId || "anonymous";
         console.log("[Video Create] ✅ Authenticated as:", userDID);
@@ -80,14 +93,15 @@ export async function POST(request: NextRequest) {
     let creator = await getCreatorByDID(userDID);
 
     if (!creator) {
-      console.log("[Video Create] Creator not found, creating new creator record for:", userDID);
+      console.log(`[VideoCreate] Creator not found for DID: ${userDID}, creating new creator`);
+
       try {
         // Fetch full user profile from Privy to get actual display name, handle, avatar
         const privyUser = await getPrivyUserProfile(userDID);
 
         let creatorData;
         if (privyUser) {
-          console.log("[Video Create] ✅ Fetched Privy user profile");
+          console.log("[VideoCreate] ✅ Fetched Privy user profile");
           creatorData = {
             did: userDID,
             handle: extractHandle(privyUser, userDID),
@@ -96,33 +110,39 @@ export async function POST(request: NextRequest) {
             description: "",
             ...extractSocialHandles(privyUser),
           };
-          console.log("[Video Create] Using profile data:", {
+          console.log("[VideoCreate] Using profile data:", {
             handle: creatorData.handle,
             display_name: creatorData.display_name,
             avatar: creatorData.avatar,
           });
         } else {
-          console.warn("[Video Create] ⚠️ Failed to fetch Privy profile, using fallback");
-          creatorData = {
-            did: userDID,
-            handle: `user-${userDID.substring(0, 8)}`,
-            display_name: "Dragverse User",
-            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${userDID}`,
-            description: "",
-          };
+          console.warn("[VideoCreate] ⚠️ Failed to fetch Privy profile, cannot create creator");
+          return NextResponse.json(
+            { error: "Failed to create user profile. Please ensure you're logged in correctly." },
+            { status: 500 }
+          );
         }
 
         creator = await createOrUpdateCreator(creatorData);
-        console.log("[Video Create] ✅ Creator created:", creator.id);
+        console.log(`[VideoCreate] ✅ Creator created successfully:`, creator.id);
       } catch (creatorError) {
-        console.error("[Video Create] ❌ Failed to create creator:", creatorError);
+        console.error(`[VideoCreate] ❌ Failed to create creator:`, creatorError);
         return NextResponse.json(
-          { error: "Failed to create creator profile", details: creatorError instanceof Error ? creatorError.message : String(creatorError) },
+          { error: "Failed to create user profile. Please try syncing your profile in settings.", details: creatorError instanceof Error ? creatorError.message : String(creatorError) },
           { status: 500 }
         );
       }
     } else {
-      console.log("[Video Create] ✅ Creator exists:", creator.id);
+      console.log("[VideoCreate] ✅ Creator exists:", creator.id);
+    }
+
+    // Verify creator exists before proceeding
+    if (!creator || !creator.id) {
+      console.error("[VideoCreate] ❌ Creator validation failed");
+      return NextResponse.json(
+        { error: "User profile not found. Please try syncing your profile in settings." },
+        { status: 400 }
+      );
     }
 
     const videoInput = {

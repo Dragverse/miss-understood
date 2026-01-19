@@ -71,6 +71,28 @@ export async function createVideo(input: Partial<CreateVideoInput>) {
     console.error('[createVideo] Insert failed:', error);
     throw error;
   }
+
+  console.log(`[CreateVideo] Video created successfully:`, {
+    video_id: data.id,
+    creator_id: data.creator_id,
+    content_type: data.content_type,
+    visibility: data.visibility,
+    title: data.title,
+  });
+
+  // Verify video can be queried back
+  const { data: verification } = await client
+    .from('videos')
+    .select('id, title, content_type')
+    .eq('id', data.id)
+    .single();
+
+  if (!verification) {
+    console.error(`[CreateVideo] Warning: Video insert succeeded but cannot query back video ${data.id}`);
+  } else {
+    console.log(`[CreateVideo] ✅ Verification successful: Video ${data.id} is queryable`);
+  }
+
   return data as SupabaseVideo;
 }
 
