@@ -6,6 +6,7 @@ import {
   blueskyPostToContent,
   sortPostsByEngagement,
 } from "@/lib/bluesky/client";
+import { getDragAccountHandles } from "@/lib/bluesky/drag-accounts";
 
 /**
  * API route to fetch drag-related content from Bluesky
@@ -21,25 +22,20 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "50", 10);
-    const source = searchParams.get("source") || "search"; // "search" or "accounts"
+    const source = searchParams.get("source") || "accounts"; // Default to "accounts" for curated drag creators
     const sortBy = searchParams.get("sortBy") as "engagement" | "recent" || "engagement";
     const contentType = searchParams.get("contentType") || "videos"; // "all" or "videos"
 
     let posts;
 
     if (source === "accounts") {
-      // Fetch from specific drag-related accounts (you can customize this list)
-      const dragAccounts = [
-        "rupaulsdragrace.bsky.social",
-        "drag.bsky.social",
-        "dragqueen.bsky.social",
-        "queendom.bsky.social",
-        "lgbtq.bsky.social",
-        // Add more known drag-related Bluesky handles here
-      ];
+      // Fetch from curated drag-related accounts (18 top drag creators)
+      const dragAccounts = getDragAccountHandles();
+      console.log(`[Bluesky API] Fetching from ${dragAccounts.length} curated drag accounts`);
       posts = await getDragAccountsPosts(dragAccounts, limit);
     } else {
-      // Search by hashtags
+      // Search by hashtags (fallback)
+      console.log("[Bluesky API] Searching by hashtags");
       posts = await searchDragContent(limit);
     }
 
