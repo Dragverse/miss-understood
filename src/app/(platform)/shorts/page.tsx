@@ -36,7 +36,7 @@ function ShortsContent() {
             console.warn("[Shorts] Supabase fetch failed:", err);
             return [];
           }),
-          // Bluesky videos
+          // Bluesky videos (only posts with actual video embeds - may be sparse)
           fetch("/api/bluesky/feed?limit=30")
             .then((res) => (res.ok ? res.json() : { posts: [] }))
             .then((data) => data.posts || [])

@@ -60,11 +60,25 @@ export async function GET(request: NextRequest) {
         .filter((video) => video !== null);
     }
 
+    // Debug logging
+    console.log(`[Bluesky API] Found ${posts.length} posts, converted to ${videos.length} videos (contentType: ${contentType})`);
+    if (posts.length > 0 && videos.length === 0) {
+      console.log("[Bluesky API] Sample post embeds:", posts.slice(0, 3).map(p => ({
+        text: p.text.substring(0, 50),
+        hasEmbed: !!p.embed,
+        embedType: p.embed?.type,
+        hasVideo: !!p.embed?.video,
+        hasExternal: !!p.embed?.external,
+        hasImages: !!p.embed?.images
+      })));
+    }
+
     return NextResponse.json({
       success: true,
       posts: videos, // Pages expect "posts" field
       videos, // Keep both for compatibility
       count: videos.length,
+      totalPosts: posts.length, // For debugging
       source: "bluesky",
       sortedBy: sortBy,
     });
