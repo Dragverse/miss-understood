@@ -23,7 +23,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle, blueskyProfile: blueskyProfileFromHook } = useAuthUser();
   const { getAccessToken } = usePrivy();
-  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "photos" | "posts" | "about">("bytes");
+  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "photos" | "posts" | "about">("videos");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -589,16 +589,19 @@ export default function ProfilePage() {
         <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/10 shadow-xl">
           {/* Tabs */}
           <div className="flex gap-4 border-b border-[#EB83EA]/20 mb-8 overflow-x-auto pb-px">
-            <button
-              onClick={() => setActiveTab("bytes")}
-              className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
-                activeTab === "bytes"
-                  ? "border-b-2 border-[#EB83EA] text-[#EB83EA]"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              BYTES ({bytesList.length})
-            </button>
+            {/* Only show Bytes tab if user has bytes */}
+            {bytesList.length > 0 && (
+              <button
+                onClick={() => setActiveTab("bytes")}
+                className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
+                  activeTab === "bytes"
+                    ? "border-b-2 border-[#EB83EA] text-[#EB83EA]"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                BYTES ({bytesList.length})
+              </button>
+            )}
             <button
               onClick={() => setActiveTab("videos")}
               className={`pb-4 px-4 font-bold transition whitespace-nowrap ${

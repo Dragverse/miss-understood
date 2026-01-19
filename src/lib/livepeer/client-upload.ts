@@ -119,6 +119,38 @@ export async function uploadVideoToLivepeer(
       retryDelays: [0, 2000, 5000, 10000, 30000], // More retries with longer delays
       parallelUploads: 1, // Sequential for stability
       removeFingerprintOnSuccess: true, // Clean up after success
+      // CRITICAL: Also remove fingerprint on error to prevent 409 conflicts on retry
+      onShouldRetry: (err, retryAttempt, options) => {
+        const errorMessage = err?.message || String(err);
+
+        // Don't retry on 409 conflicts - these are unrecoverable without clearing state
+        if (errorMessage.includes('409')) {
+          console.error('❌ 409 Conflict detected - clearing fingerprint to allow fresh retry');
+          // Remove the stored fingerprint to force a fresh upload session
+          if (upload.url) {
+            const fingerprint = upload.options.fingerprint;
+            if (fingerprint) {
+              // Clear the fingerprint from storage
+              try {
+                localStorage.removeItem(`tus::${fingerprint}::${upload.url}`);
+              } catch (e) {
+                console.warn('Failed to clear fingerprint:', e);
+              }
+            }
+          }
+          return false; // Don't retry, let it fail and user can try again fresh
+        }
+
+        // Retry on 500 errors but only up to the configured retry attempts
+        if (errorMessage.includes('500')) {
+          console.warn(`⚠️ 500 Server error - retry attempt ${retryAttempt}`);
+          const maxRetries = options?.retryDelays?.length || 5;
+          return retryAttempt < maxRetries;
+        }
+
+        // Default retry behavior for other errors
+        return true;
+      },
       onError: (error) => {
         clearTimeout(timeoutId); // Clear timeout on error
         console.error("TUS upload error:", error);
@@ -128,12 +160,12 @@ export async function uploadVideoToLivepeer(
 
         if (errorMessage.includes('409')) {
           // Conflict error - upload session already exists
-          console.error('❌ Upload conflict (409): Session already exists. This may be a stale upload.');
-          reject(new Error('Upload conflict detected. Please try again with a new file or refresh the page.'));
+          console.error('❌ Upload conflict (409): Stale session detected.');
+          reject(new Error('Upload session conflict. Please refresh the page and try uploading again.'));
         } else if (errorMessage.includes('500')) {
           // Server error - likely Livepeer storage issue
           console.error('❌ Server error (500): Livepeer storage issue');
-          reject(new Error('Server error during upload. Please try again later or contact support if this persists.'));
+          reject(new Error('Upload failed due to server error. Please try again in a few moments.'));
         } else if (errorMessage.includes('timeout') || errorMessage.includes('network')) {
           // Network timeout or connection error
           console.error('❌ Network error: Connection timed out or network issue');
