@@ -169,25 +169,28 @@ export default function SettingsPage() {
 
       setIsLoadingProfile(true);
       try {
-        // Try to load from Ceramic first
-        const ceramicProfile = await getCreatorByDID(user.id);
+        // Try to load from Supabase first
+        const supabaseProfile = await getCreatorByDID(user.id);
 
-        if (ceramicProfile) {
-          setCreator(transformSupabaseCreator(ceramicProfile));
+        if (supabaseProfile) {
+          setCreator(transformSupabaseCreator(supabaseProfile));
           setFormData({
-            displayName: ceramicProfile.display_name,
-            handle: ceramicProfile.handle,
-            description: ceramicProfile.description || "",
-            website: ceramicProfile.website || "",
-            instagramHandle: ceramicProfile.instagram_handle || user?.instagram?.username || "",
-            tiktokHandle: ceramicProfile.tiktok_handle || user?.tiktok?.username || "",
+            displayName: supabaseProfile.display_name,
+            handle: supabaseProfile.handle,
+            description: supabaseProfile.description || "",
+            website: supabaseProfile.website || "",
+            instagramHandle: supabaseProfile.instagram_handle || user?.instagram?.username || "",
+            tiktokHandle: supabaseProfile.tiktok_handle || user?.tiktok?.username || "",
           });
-          setBannerPreview(ceramicProfile.banner || null);
-          setAvatarPreview(ceramicProfile.avatar || "");
+          setBannerPreview(supabaseProfile.banner || null);
+          setAvatarPreview(supabaseProfile.avatar || "");
           return;
         }
       } catch (error) {
-        console.warn("Could not load from Ceramic, checking fallback:", error);
+        console.warn("Could not load from Supabase, checking fallback:", error);
+      } finally {
+        // CRITICAL FIX: Always clear loading state, even on success
+        setIsLoadingProfile(false);
       }
 
       // Fallback: Load from localStorage if Ceramic unavailable
@@ -206,7 +209,6 @@ export default function SettingsPage() {
           setBannerPreview(profileData.banner || null);
           setAvatarPreview(profileData.avatar || user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`);
           console.log("Loaded profile from fallback storage");
-          setIsLoadingProfile(false);
           return;
         } catch (e) {
           console.error("Failed to parse fallback profile:", e);
@@ -235,7 +237,6 @@ export default function SettingsPage() {
         tiktokHandle: user?.tiktok?.username || "",
       });
       setAvatarPreview(defaultCreator.avatar);
-      setIsLoadingProfile(false);
     }
 
     if (isAuthenticated) {
@@ -253,12 +254,27 @@ export default function SettingsPage() {
         if (data.connected) {
           setBlueskyHandle(data.handle);
 
-          // Fetch full profile data
-          const profileResponse = await fetch("/api/bluesky/profile");
-          const profileData = await profileResponse.json();
+          // FIX: Add timeout and error handling to prevent infinite loading
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-          if (profileData.success && profileData.profile) {
-            setBlueskyProfile(profileData.profile);
+            const profileResponse = await fetch("/api/bluesky/profile", {
+              signal: controller.signal
+            });
+            clearTimeout(timeout);
+
+            if (profileResponse.ok) {
+              const profileData = await profileResponse.json();
+              if (profileData.success && profileData.profile) {
+                setBlueskyProfile(profileData.profile);
+              }
+            } else {
+              console.warn("Bluesky profile fetch failed with status:", profileResponse.status);
+            }
+          } catch (profileError) {
+            console.warn("Bluesky profile fetch failed (non-critical):", profileError);
+            // Continue without Bluesky profile - don't block settings page
           }
         }
       } catch (error) {
@@ -270,6 +286,20 @@ export default function SettingsPage() {
       checkBlueskySession();
     }
   }, [isAuthenticated]);
+
+  // Safety timeout: ensure loading state always clears within 10 seconds
+  useEffect(() => {
+    if (!isLoadingProfile) return;
+
+    const timeout = setTimeout(() => {
+      if (isLoadingProfile) {
+        console.warn("Profile loading timed out after 10 seconds, clearing spinner");
+        setIsLoadingProfile(false);
+      }
+    }, 10000); // 10 second max wait
+
+    return () => clearTimeout(timeout);
+  }, [isLoadingProfile]);
 
   const handleBannerChange = async (file: File | null) => {
     if (file) {
