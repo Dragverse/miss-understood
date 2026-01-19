@@ -365,11 +365,14 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
 
             {isValidPlaybackUrl(video.playbackUrl) ? (
               isYouTubeUrl(video.playbackUrl) ? (
-                // YouTube iframe embed for external content
-                <div className={`w-full ${video.contentType === "short" ? "aspect-[9/16] max-h-[80vh] mx-auto" : "aspect-video"} bg-black rounded-lg overflow-hidden`}>
+                // YouTube iframe embed - using feed page styling pattern
+                <div
+                  className="relative w-full rounded-xl overflow-hidden bg-[#0f071a]"
+                  style={{ aspectRatio: video.contentType === "short" ? "9/16" : "16/9" }}
+                >
                   <iframe
                     src={getYouTubeEmbedUrl(video.playbackUrl) || undefined}
-                    className="w-full h-full"
+                    className="absolute inset-0 w-full h-full rounded-xl"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     title={video.title}
