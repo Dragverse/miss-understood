@@ -153,7 +153,11 @@ export default function HomePage() {
   }, []);
 
   // Separate shorts and regular videos
-  const shorts = videos.filter((v) => v.contentType === "short");
+  // Only show Dragverse native shorts (filter out external YouTube/Bluesky shorts)
+  const shorts = videos.filter((v) =>
+    v.contentType === "short" &&
+    !(v as any).source // No external source means it's a Dragverse native video
+  );
   const horizontalVideos = videos.filter((v) => v.contentType !== "short");
 
   const filteredVideos = videos.filter((video) => {

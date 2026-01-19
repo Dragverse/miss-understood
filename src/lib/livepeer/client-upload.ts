@@ -46,38 +46,62 @@ export async function uploadVideoToLivepeer(
 
   console.log("Requesting upload URL for:", file.name);
 
-  const uploadUrlResponse = await fetch("/api/upload/request", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      name: file.name,
-    }),
-  });
+  // Create AbortController for fetch timeout
+  const controller = new AbortController();
+  const fetchTimeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout for request
 
-  console.log("Upload URL response status:", uploadUrlResponse.status);
+  try {
+    const uploadUrlResponse = await fetch("/api/upload/request", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        name: file.name,
+      }),
+      signal: controller.signal,
+    });
 
-  if (!uploadUrlResponse.ok) {
-    // Try to get detailed error message from response
-    let errorMessage = "Failed to get upload URL";
-    try {
-      const errorData = await uploadUrlResponse.json();
-      if (errorData.error) {
-        errorMessage = errorData.error;
-        if (errorData.details) {
-          errorMessage += `: ${errorData.details}`;
+    clearTimeout(fetchTimeout);
+    console.log("Upload URL response status:", uploadUrlResponse.status);
+
+    if (!uploadUrlResponse.ok) {
+      // Try to get detailed error message from response
+      let errorMessage = "Failed to get upload URL";
+      try {
+        const errorData = await uploadUrlResponse.json();
+        if (errorData.error) {
+          errorMessage = errorData.error;
+          if (errorData.details) {
+            errorMessage += `: ${errorData.details}`;
+          }
         }
+      } catch {
+        // If JSON parsing fails, use the generic error
+        errorMessage = `Failed to get upload URL (${uploadUrlResponse.status})`;
       }
-    } catch {
-      // If JSON parsing fails, use the generic error
-      errorMessage = `Failed to get upload URL (${uploadUrlResponse.status})`;
+      throw new Error(errorMessage);
     }
-    throw new Error(errorMessage);
-  }
 
-  const { tusEndpoint, asset } = await uploadUrlResponse.json();
+    const { tusEndpoint, asset } = await uploadUrlResponse.json();
+  } catch (error: any) {
+    clearTimeout(fetchTimeout);
+    if (error.name === 'AbortError') {
+      throw new Error('Upload request timed out. Please check your connection and try again.');
+    }
+    throw error;
+  }
 
   // Step 2: Upload file using TUS protocol (direct to Livepeer)
   return new Promise((resolve, reject) => {
+    // Create AbortController for timeout handling
+    const abortController = new AbortController();
+    const uploadTimeout = 30 * 60 * 1000; // 30 minutes max for entire upload
+
+    // Set overall upload timeout
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+      reject(new Error('Upload timed out after 30 minutes. Please check your connection and try again.'));
+    }, uploadTimeout);
+
     const upload = new tus.Upload(file, {
       endpoint: tusEndpoint,
       metadata: {
@@ -86,10 +110,12 @@ export async function uploadVideoToLivepeer(
       },
       uploadSize: file.size,
       chunkSize: 50 * 1024 * 1024, // 50MB chunks for faster upload
-      retryDelays: [0, 1000, 3000, 5000], // Retry delays in ms
+      // Improved retry strategy with exponential backoff for better reliability
+      retryDelays: [0, 2000, 5000, 10000, 30000], // More retries with longer delays
       parallelUploads: 1, // Sequential for stability
       removeFingerprintOnSuccess: true, // Clean up after success
       onError: (error) => {
+        clearTimeout(timeoutId); // Clear timeout on error
         console.error("TUS upload error:", error);
 
         // Handle specific error codes
@@ -103,6 +129,10 @@ export async function uploadVideoToLivepeer(
           // Server error - likely Livepeer storage issue
           console.error('❌ Server error (500): Livepeer storage issue');
           reject(new Error('Server error during upload. Please try again later or contact support if this persists.'));
+        } else if (errorMessage.includes('timeout') || errorMessage.includes('network')) {
+          // Network timeout or connection error
+          console.error('❌ Network error: Connection timed out or network issue');
+          reject(new Error('Network error during upload. Please check your connection and try again.'));
         } else {
           reject(error);
         }
@@ -117,9 +147,15 @@ export async function uploadVideoToLivepeer(
         }
       },
       onSuccess: () => {
+        clearTimeout(timeoutId); // Clear timeout on success
         console.log("✅ TUS upload completed successfully");
         resolve(asset);
       },
+    });
+
+    // Handle abort signal
+    abortController.signal.addEventListener('abort', () => {
+      upload.abort(true); // Abort the upload
     });
 
     // Start the upload
@@ -134,36 +170,64 @@ export async function waitForAssetReady(
   assetId: string,
   onProgress?: (progress: number) => void
 ): Promise<LivepeerAsset> {
-  const maxAttempts = 120; // 10 minutes (5s intervals)
+  const maxAttempts = 180; // 15 minutes (5s intervals) - increased for large videos
   let attempts = 0;
 
   while (attempts < maxAttempts) {
-    const response = await fetch(`/api/upload/status/${assetId}`);
+    try {
+      // Add timeout to status fetch to prevent hanging
+      const controller = new AbortController();
+      const statusTimeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout per request
 
-    if (!response.ok) {
-      throw new Error("Failed to get asset status");
+      const response = await fetch(`/api/upload/status/${assetId}`, {
+        signal: controller.signal,
+      });
+
+      clearTimeout(statusTimeout);
+
+      if (!response.ok) {
+        // Don't fail immediately on status check errors - retry
+        console.warn(`Status check failed (attempt ${attempts + 1}/${maxAttempts}):`, response.status);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        attempts++;
+        continue;
+      }
+
+      const asset: LivepeerAsset = await response.json();
+
+      if (onProgress && asset.status.progress) {
+        onProgress(asset.status.progress);
+      }
+
+      if (asset.status.phase === "ready") {
+        console.log("✅ Asset processing completed");
+        return asset;
+      }
+
+      if (asset.status.phase === "failed") {
+        throw new Error("Asset processing failed. The video may be corrupted or in an unsupported format.");
+      }
+
+      // Log progress for debugging
+      console.log(`Processing... Phase: ${asset.status.phase}, Progress: ${asset.status.progress || 0}%`);
+
+      // Wait 5 seconds before polling again
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      attempts++;
+    } catch (error: any) {
+      // Handle timeout errors
+      if (error.name === 'AbortError') {
+        console.warn(`Status check timed out (attempt ${attempts + 1}/${maxAttempts})`);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        attempts++;
+        continue;
+      }
+      // Re-throw other errors
+      throw error;
     }
-
-    const asset: LivepeerAsset = await response.json();
-
-    if (onProgress && asset.status.progress) {
-      onProgress(asset.status.progress);
-    }
-
-    if (asset.status.phase === "ready") {
-      return asset;
-    }
-
-    if (asset.status.phase === "failed") {
-      throw new Error("Asset processing failed");
-    }
-
-    // Wait 5 seconds before polling again
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    attempts++;
   }
 
-  throw new Error("Asset processing timeout");
+  throw new Error("Asset processing timeout after 15 minutes. The video may be very large or there may be a processing issue.");
 }
 
 /**

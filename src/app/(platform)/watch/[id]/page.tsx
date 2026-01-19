@@ -61,8 +61,9 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           console.log("[Watch] Loading YouTube video from RSS feed:", resolvedParams.id);
 
           try {
-            // Fetch from YouTube RSS feed to get full video details
-            const response = await fetch("/api/youtube/feed?limit=100");
+            // Try to fetch from YouTube RSS feed (no limit to get all videos)
+            // This ensures we find videos even if they're not in the most recent 100
+            const response = await fetch("/api/youtube/feed");
             const data = await response.json();
 
             if (data.success && data.videos) {
@@ -78,8 +79,9 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
               }
             }
 
-            // Fallback: Create minimal video if not found in feed
-            console.log("[Watch] YouTube video not in feed, creating minimal video");
+            // Fallback: Create minimal video with detection for immediate playback
+            // This allows playing any valid YouTube video even if not in our curated feed
+            console.log("[Watch] YouTube video not in feed, creating minimal video for playback");
             const youtubeVideo = await createMinimalYouTubeVideoWithDetection(resolvedParams.id);
 
             setVideo(youtubeVideo);
@@ -90,7 +92,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           } catch (error) {
             console.error("[Watch] Failed to load YouTube video:", error);
             setAccessDenied(true);
-            setAccessDeniedReason("Unable to load YouTube video");
+            setAccessDeniedReason("This YouTube video could not be loaded. It may be private or removed.");
             setIsLoading(false);
             return;
           }
