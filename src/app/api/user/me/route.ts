@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth/verify";
 import { getCreatorByDID } from "@/lib/supabase/creators";
 import { getPrivyUserProfile, extractDisplayName, extractHandle, extractAvatar, extractSocialHandles } from "@/lib/privy/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSupabaseServerClient } from "@/lib/supabase/client";
 
 /**
  * Get the authenticated user's verified DID/user_id from their JWT token
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         const socialHandles = extractSocialHandles(privyUser);
 
         // Create creator in Supabase
-        const supabase = await createClient();
+        const supabase = getSupabaseServerClient();
         const { data: newCreator, error: createError } = await supabase
           .from("creators")
           .insert({
