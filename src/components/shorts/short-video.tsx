@@ -283,16 +283,18 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 <span className="text-white text-xs font-semibold">Share</span>
               </button>
 
-              {/* Tip Button */}
-              <button
-                onClick={handleTip}
-                className="flex flex-col items-center gap-1"
-              >
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-[#EB83EA]/50">
-                  <FiDollarSign className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-white text-xs font-semibold">Tip</span>
-              </button>
+              {/* Tip Button - Only for Dragverse creators */}
+              {video.source === "ceramic" && (
+                <button
+                  onClick={handleTip}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-[#EB83EA]/50">
+                    <FiDollarSign className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-white text-xs font-semibold">Tip</span>
+                </button>
+              )}
             </div>
 
             {/* Video Info - Bottom Left */}

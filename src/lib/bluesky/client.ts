@@ -255,13 +255,21 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
   let thumbnail = "";
 
   if (post.embed?.video) {
-    // Native Bluesky video
+    // Native Bluesky video (HLS playlist)
     playbackUrl = post.embed.video.playlist;
     thumbnail = post.embed.video.thumbnail || "";
+    console.log("[Bluesky] Native video found:", {
+      playlist: playbackUrl?.substring(0, 60),
+      hasThumbnail: !!thumbnail
+    });
   } else if (post.embed?.external) {
     // External video link (YouTube, Vimeo, TikTok)
     playbackUrl = post.embed.external.uri;
     thumbnail = post.embed.external.thumb || "";
+    console.log("[Bluesky] External video found:", {
+      url: playbackUrl?.substring(0, 50),
+      platform: playbackUrl.includes('youtube') ? 'YouTube' : playbackUrl.includes('tiktok') ? 'TikTok' : 'Other'
+    });
   } else {
     // No valid video playback URL - skip this post
     return null;
