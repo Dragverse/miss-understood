@@ -11,6 +11,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
 import { TipModal } from "@/components/video/tip-modal";
 import { VideoCommentModal } from "@/components/video/video-comment-modal";
+import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 
 interface ShortVideoProps {
   video: Video;
@@ -355,7 +356,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 >
                   <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-lg">
                     <Image
-                      src={video.creator.avatar}
+                      src={getSafeThumbnail(video.creator.avatar, `https://api.dicebear.com/9.x/avataaars/svg?seed=${video.creator.handle || video.creator.did}`)}
                       alt={video.creator.displayName || "Creator"}
                       width={48}
                       height={48}

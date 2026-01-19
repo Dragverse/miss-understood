@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 import { HeartAnimation, ActionButton, EmptyState, LoadingShimmer, MoodBadge } from "@/components/shared";
 import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
 import { createMinimalYouTubeVideoWithDetection } from "@/lib/youtube/video-helpers";
+import { getSafeThumbnail, isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
 
 export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
@@ -345,7 +346,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
               )}
             </button>
 
-            {video.playbackUrl ? (
+            {isValidPlaybackUrl(video.playbackUrl) ? (
               isYouTubeUrl(video.playbackUrl) ? (
                 // YouTube iframe embed for external content
                 <div className={`w-full ${video.contentType === "short" ? "aspect-[9/16] max-h-[80vh] mx-auto" : "aspect-video"} bg-black rounded-lg overflow-hidden`}>
@@ -391,16 +392,22 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 </Player.Root>
               )
             ) : (
-              <div className="w-full aspect-video bg-black rounded-lg flex items-center justify-center relative">
-                <Image
-                  src={video.thumbnail}
-                  alt={video.title}
-                  fill
-                  className="object-cover rounded-lg"
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                  <p className="text-gray-400">Video not available</p>
+              <div className="w-full aspect-video bg-black rounded-lg flex flex-col items-center justify-center p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-[#EB83EA]/20 flex items-center justify-center mb-4">
+                  <FiPlay className="w-8 h-8 text-[#EB83EA]" />
                 </div>
+                <p className="text-white font-semibold mb-2">Video playback unavailable</p>
+                <p className="text-gray-400 text-sm mb-4">This video cannot be played at this time</p>
+                {video.externalUrl && (
+                  <a
+                    href={video.externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-6 py-3 bg-[#EB83EA] hover:bg-[#E748E6] text-white rounded-full font-semibold transition"
+                  >
+                    Watch on {video.source === 'youtube' ? 'YouTube' : video.source === 'bluesky' ? 'Bluesky' : 'Original Platform'}
+                  </a>
+                )}
               </div>
             )}
           </div>
@@ -566,7 +573,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                     >
                       <div className="relative w-32 h-20 flex-shrink-0 rounded-xl overflow-hidden border border-[#EB83EA]/20">
                         <Image
-                          src={v.thumbnail || `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`}
+                          src={getSafeThumbnail(v.thumbnail, `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`)}
                           alt={v.title}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-300"

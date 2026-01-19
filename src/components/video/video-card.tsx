@@ -9,6 +9,7 @@ import { FiHeart, FiExternalLink } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import { VideoOptionsMenu } from "./video-options-menu";
 import { useAuthUser } from "@/lib/privy/hooks";
+import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 
 interface VideoCardProps {
   video: Video;
@@ -90,7 +91,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
       >
         <div className="relative w-48 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-gray-800">
           <Image
-            src={video.thumbnail || '/default-thumbnail.jpg'}
+            src={getSafeThumbnail(video.thumbnail)}
             alt={video.title}
             fill
             className="object-cover"
@@ -132,7 +133,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
     >
         <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-3 shadow-lg">
           <Image
-            src={video.thumbnail || '/default-thumbnail.jpg'}
+            src={getSafeThumbnail(video.thumbnail)}
             alt={video.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
