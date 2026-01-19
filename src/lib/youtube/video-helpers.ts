@@ -61,7 +61,7 @@ export function createMinimalYouTubeVideo(
     id: internalId,
     title: "YouTube Video", // Placeholder
     description: "",
-    thumbnail: `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`,
+    thumbnail: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`,
     duration: 0,
     views: 0,
     likes: 0,
