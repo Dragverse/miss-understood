@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchDragContent } from "@/lib/youtube/client";
 import { fetchCuratedDragContent } from "@/lib/youtube/rss-client";
+import type { Video } from "@/types";
 
 /**
  * GET /api/youtube/feed
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`[YouTube Feed API] Fetching ${limit} videos...`);
 
-    let videos = [];
+    let videos: Video[] = [];
     let source = "unknown";
 
     // Try YouTube Data API first (more reliable, has engagement data)
