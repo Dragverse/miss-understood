@@ -35,18 +35,26 @@ interface RSSVideo {
 async function fetchChannelRSS(channelId: string): Promise<RSSVideo[]> {
   try {
     const url = getChannelRSSUrl(channelId);
-    console.log(`[YouTube RSS] Fetching feed for channel ${channelId}...`);
+    console.log(`[YouTube RSS] Fetching feed: ${url}`);
 
     const response = await fetch(url, {
       next: { revalidate: 3600 }, // Cache for 1 hour
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; DragverseBot/1.0)',
+      }
     });
 
     if (!response.ok) {
-      console.error(`[YouTube RSS] Failed to fetch ${channelId}: ${response.status}`);
+      console.error(`[YouTube RSS] Failed to fetch ${channelId}: ${response.status} ${response.statusText}`);
       return [];
     }
 
     const xmlText = await response.text();
+    if (xmlText.length < 100) {
+      console.error(`[YouTube RSS] Suspiciously short response (${xmlText.length} bytes):`, xmlText);
+      return [];
+    }
+    console.log(`[YouTube RSS] Received ${xmlText.length} bytes of XML`);
 
     // Parse XML
     const parser = new XMLParser({

@@ -44,8 +44,8 @@ function ShortsContent() {
               console.warn("[Shorts] Bluesky fetch failed:", err);
               return [];
             }),
-          // YouTube videos
-          fetch("/api/youtube/feed?limit=30")
+          // YouTube Shorts (via RSS from curated drag channels)
+          fetch("/api/youtube/feed?limit=30&shortsOnly=true")
             .then((res) => (res.ok ? res.json() : { videos: [] }))
             .then((data) => data.videos || [])
             .catch((err) => {

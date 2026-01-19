@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchDragContent } from "@/lib/youtube/client";
-import { fetchCuratedDragContent } from "@/lib/youtube/rss-client";
+import { fetchCuratedDragContent, fetchCuratedShorts } from "@/lib/youtube/rss-client";
 import { getCachedVideos, setCachedVideos } from "@/lib/youtube/cache";
 import type { Video } from "@/types";
 
@@ -14,22 +14,24 @@ import type { Video } from "@/types";
  * Query params:
  * - limit: number of videos to return (default: 20)
  * - sortBy: "engagement" | "recent" (default: "recent")
+ * - shortsOnly: "true" | "false" (default: "false") - only return YouTube Shorts
  */
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "20", 10);
     const sortBy = searchParams.get("sortBy") || "recent";
+    const shortsOnly = searchParams.get("shortsOnly") === "true";
 
-    console.log(`[YouTube Feed API] Fetching ${limit} videos...`);
+    console.log(`[YouTube Feed API] Fetching ${limit} ${shortsOnly ? 'shorts' : 'videos'}...`);
 
-    // Create cache key based on limit (different limits = different cache entries)
-    const cacheKey = `youtube-feed-${limit}`;
+    // Create cache key based on limit and shorts filter
+    const cacheKey = shortsOnly ? `youtube-shorts-${limit}` : `youtube-feed-${limit}`;
 
     // Check cache first (saves API quota!)
     const cachedVideos = getCachedVideos(cacheKey);
     if (cachedVideos) {
-      console.log(`[YouTube Feed API] ✅ Returning ${cachedVideos.length} cached videos (saved API quota!)`);
+      console.log(`[YouTube Feed API] ✅ Returning ${cachedVideos.length} cached ${shortsOnly ? 'shorts' : 'videos'} (saved API quota!)`);
       return NextResponse.json({
         success: true,
         videos: sortBy === "recent"
@@ -44,25 +46,33 @@ export async function GET(request: NextRequest) {
     let videos: Video[] = [];
     let source = "unknown";
 
-    // Try YouTube Data API first (more reliable, has engagement data)
-    if (process.env.YOUTUBE_API_KEY) {
-      console.log("[YouTube Feed API] Attempting YouTube Data API...");
-      try {
-        videos = await searchDragContent(limit);
-        source = "youtube-api";
-        console.log(`[YouTube Feed API] ✅ Got ${videos.length} videos from YouTube Data API`);
-      } catch (apiError) {
-        console.warn("[YouTube Feed API] API failed, falling back to RSS:", apiError);
-        videos = [];
+    // If shortsOnly, use RSS-only approach (no API needed for shorts detection)
+    if (shortsOnly) {
+      console.log("[YouTube Feed API] Fetching YouTube Shorts via RSS feeds...");
+      videos = await fetchCuratedShorts(limit);
+      source = "youtube-rss-shorts";
+      console.log(`[YouTube Feed API] ${videos.length > 0 ? '✅' : '⚠️'} Got ${videos.length} shorts from RSS`);
+    } else {
+      // Try YouTube Data API first (more reliable, has engagement data)
+      if (process.env.YOUTUBE_API_KEY) {
+        console.log("[YouTube Feed API] Attempting YouTube Data API...");
+        try {
+          videos = await searchDragContent(limit);
+          source = "youtube-api";
+          console.log(`[YouTube Feed API] ✅ Got ${videos.length} videos from YouTube Data API`);
+        } catch (apiError) {
+          console.warn("[YouTube Feed API] API failed, falling back to RSS:", apiError);
+          videos = [];
+        }
       }
-    }
 
-    // Fallback to RSS if API didn't work
-    if (videos.length === 0) {
-      console.log("[YouTube Feed API] Trying RSS feeds as fallback...");
-      videos = await fetchCuratedDragContent(limit);
-      source = "youtube-rss";
-      console.log(`[YouTube Feed API] ${videos.length > 0 ? '✅' : '⚠️'} Got ${videos.length} videos from RSS`);
+      // Fallback to RSS if API didn't work
+      if (videos.length === 0) {
+        console.log("[YouTube Feed API] Trying RSS feeds as fallback...");
+        videos = await fetchCuratedDragContent(limit);
+        source = "youtube-rss";
+        console.log(`[YouTube Feed API] ${videos.length > 0 ? '✅' : '⚠️'} Got ${videos.length} videos from RSS`);
+      }
     }
 
     // Cache successful results (even empty arrays, to avoid repeated failed API calls)
