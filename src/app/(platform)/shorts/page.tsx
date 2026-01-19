@@ -12,6 +12,7 @@ import { ShortVideo } from "@/components/shorts/short-video";
 import { ShortOverlayTop } from "@/components/shorts/short-overlay-top";
 import { ShortOverlayBottom } from "@/components/shorts/short-overlay-bottom";
 import { FiChevronUp, FiChevronDown } from "react-icons/fi";
+import { isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
 
 function ShortsContent() {
   const searchParams = useSearchParams();
@@ -94,13 +95,7 @@ function ShortsContent() {
         // Focus on drag-specific content
         // Also filter out videos without valid playback URLs
         const shortsOnly = allVideos.filter((v) => {
-          const hasValidPlaybackUrl = v.playbackUrl &&
-                                     typeof v.playbackUrl === 'string' &&
-                                     v.playbackUrl.trim().length > 0 &&
-                                     v.playbackUrl !== 'null' &&
-                                     v.playbackUrl !== 'undefined';
-
-          return v.contentType === "short" && hasValidPlaybackUrl;
+          return v.contentType === "short" && isValidPlaybackUrl(v.playbackUrl);
         });
 
         // Sort by date (newest first)

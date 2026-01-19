@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Video } from "@/types";
+import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 
 interface CommunitySectionProps {
   videos: Video[];
@@ -44,7 +45,7 @@ export function CommunitySection({ videos }: CommunitySectionProps) {
             {/* Thumbnail */}
             <div className="relative aspect-video rounded-2xl overflow-hidden mb-3 shadow-md">
               <Image
-                src={video.thumbnail}
+                src={getSafeThumbnail(video.thumbnail)}
                 alt={video.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"

@@ -162,11 +162,15 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
               />
             </div>
           )}
-          {/* External content indicator */}
-          {isExternal && (
+          {/* Source indicator badge */}
+          {(video as any).source === "youtube" && (
+            <div className="absolute top-2 right-2 bg-red-600/90 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm flex items-center gap-1">
+              <span>YouTube</span>
+            </div>
+          )}
+          {(video as any).source === "bluesky" && (
             <div className="absolute top-2 right-2 bg-blue-500/90 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm flex items-center gap-1">
               <SiBluesky className="w-3 h-3" />
-              <FiExternalLink className="w-3 h-3" />
             </div>
           )}
           {/* Gradient overlay on hover */}

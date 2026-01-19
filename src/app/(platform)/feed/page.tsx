@@ -47,42 +47,71 @@ function FeedContent() {
       setLoading(true);
       setSearchError(null);
       try {
-        // Load native Dragverse posts
-        const dragverseResponse = await fetch("/api/posts/feed?limit=50");
-        const dragverseData = await dragverseResponse.json();
-        setDragversePosts(dragverseData.posts || []);
+        // Fetch from all sources in parallel for maximum content diversity
+        const [dragverseRes, blueskyRes, youtubeRes] = await Promise.all([
+          // Native Dragverse posts
+          fetch("/api/posts/feed?limit=50").catch(() => null),
 
-        // If searching by hashtag, use search endpoint
-        const url = hashtag
-          ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30`
-          : `/api/bluesky/feed?limit=30&sortBy=${sortBy}`;
+          // Bluesky content (or search if hashtag)
+          fetch(
+            hashtag
+              ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30`
+              : `/api/bluesky/feed?limit=30&sortBy=${sortBy}`
+          ).catch(() => null),
 
-        console.log(`[Feed] Fetching from: ${url}`);
+          // YouTube drag content from curated channels (RSS feeds - no quota!)
+          fetch("/api/youtube/feed?limit=20").catch(() => null)
+        ]);
 
-        const response = await fetch(url);
-        const data = await response.json();
+        // Parse Dragverse posts
+        if (dragverseRes?.ok) {
+          const dragverseData = await dragverseRes.json();
+          setDragversePosts(dragverseData.posts || []);
+        }
 
-        console.log(`[Feed] Response:`, data);
+        // Parse Bluesky and YouTube content
+        let allPosts: any[] = [];
 
-        // Check for errors
-        if (data.error) {
-          setSearchError(data.error);
-          setPosts([]);
-        } else {
-          // Include all posts (videos, photos, text)
-          const feedPosts = (data.posts || []);
-
-          // Filter by bookmarks if needed
-          if (showBookmarks) {
-            const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
-            const bookmarkedPosts = feedPosts.filter((post: any) =>
-              bookmarks.includes(post.id)
-            );
-            setPosts(bookmarkedPosts);
+        if (blueskyRes?.ok) {
+          const blueskyData = await blueskyRes.json();
+          if (blueskyData.error) {
+            setSearchError(blueskyData.error);
           } else {
-            setPosts(feedPosts);
+            allPosts = [...allPosts, ...(blueskyData.posts || [])];
           }
         }
+
+        if (youtubeRes?.ok) {
+          const youtubeData = await youtubeRes.json();
+          if (youtubeData.success && youtubeData.videos) {
+            // Convert YouTube videos to post format for unified feed display
+            const youtubePosts = youtubeData.videos.map((video: any) => ({
+              ...video,
+              type: "youtube-video",
+              text: video.description,
+              // Add post-like properties for BlueskyPostCard compatibility
+              author: video.creator,
+              uri: video.externalUrl,
+              indexedAt: video.createdAt,
+            }));
+            allPosts = [...allPosts, ...youtubePosts];
+          }
+        }
+
+        // Sort combined posts by date (newest first)
+        allPosts.sort((a, b) => {
+          const aDate = new Date(a.createdAt || a.indexedAt).getTime();
+          const bDate = new Date(b.createdAt || b.indexedAt).getTime();
+          return bDate - aDate;
+        });
+
+        // Filter by bookmarks if needed
+        if (showBookmarks) {
+          const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
+          allPosts = allPosts.filter((post: any) => bookmarks.includes(post.id));
+        }
+
+        setPosts(allPosts);
       } catch (error) {
         console.error("Failed to load feed:", error);
         setSearchError(error instanceof Error ? error.message : "Failed to load feed");
