@@ -103,6 +103,18 @@ function ShortsContent() {
 
         console.log(`[Shorts] Loaded ${transformedSupabase.length} Supabase, ${blueskyVideos?.length || 0} Bluesky, ${youtubeVideos?.length || 0} YouTube videos`);
 
+        // Debug Bluesky videos
+        if (blueskyVideos && blueskyVideos.length > 0) {
+          console.log("[Shorts] Bluesky videos sample:", blueskyVideos.slice(0, 2).map((v: any) => ({
+            id: v.id?.substring(0, 10),
+            title: v.title?.substring(0, 30),
+            contentType: v.contentType,
+            playbackUrl: v.playbackUrl?.substring(0, 50)
+          })));
+        } else {
+          console.warn("[Shorts] No Bluesky videos returned from API");
+        }
+
         // Debug: Log all video contentTypes
         console.log("[Shorts] All videos with contentType:", allVideos.map(v => ({
           id: v.id.substring(0, 8),
@@ -114,11 +126,15 @@ function ShortsContent() {
         // Filter only shorts (include all sources: Dragverse, YouTube, Bluesky)
         // Focus on drag-specific content
         // Also filter out videos without valid playback URLs
-        const shortsOnly = allVideos.filter((v) =>
-          v.contentType === "short" &&
-          v.playbackUrl &&
-          v.playbackUrl.trim() !== ''
-        );
+        const shortsOnly = allVideos.filter((v) => {
+          const hasValidPlaybackUrl = v.playbackUrl &&
+                                     typeof v.playbackUrl === 'string' &&
+                                     v.playbackUrl.trim().length > 0 &&
+                                     v.playbackUrl !== 'null' &&
+                                     v.playbackUrl !== 'undefined';
+
+          return v.contentType === "short" && hasValidPlaybackUrl;
+        });
 
         // Sort by date (newest first)
         shortsOnly.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

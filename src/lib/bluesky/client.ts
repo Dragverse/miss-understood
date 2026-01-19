@@ -78,46 +78,83 @@ export interface BlueskyPost {
 
 /**
  * Get posts from the "What's Hot" feed (popular posts)
- * Expanded to include more drag creators and performers for comprehensive coverage
+ * Uses search API to find drag-related content with videos
  */
 export async function searchDragContent(
   limit: number = 50
 ): Promise<BlueskyPost[]> {
   try {
-    // Comprehensive drag-related accounts on Bluesky
-    // Expanded from 10 to cover major performers, shows, and communities
-    const dragAccounts = [
-      // Official Dragverse & Major Shows
-      "dragverse.app", // Dragverse official
-      "rupaulsdragrace.bsky.social", // RuPaul's Drag Race
-      "wowpresentsplus.bsky.social", // WOW Presents Plus
-      "bbdragula.bsky.social", // Dragula
-      "bouletbrothers.bsky.social", // Boulet Brothers
+    const agent = await getBlueskyAgent();
+    const allPosts: BlueskyPost[] = [];
 
-      // Drag Race Winners & All Stars
-      "thesashacolby.bsky.social", // Sasha Colby
-      "sheacoulee.com", // Shea Couleé
-      "jaidaehall.bsky.social", // Jaida Essence Hall
-      "aquaria.bsky.social", // Aquaria
-
-      // Popular Performers
-      "trixiemattel.bsky.social", // Trixie Mattel
-      "katya.bsky.social", // Katya Zamolodchikova
-      "maddymorphosis.bsky.social", // Maddy Morphosis
-      "gottmik.bsky.social", // Gottmik
-      "kimchi.bsky.social", // Kim Chi
-      "violet.bsky.social", // Violet Chachki
-      "biqtchpuddin.bsky.social", // Biqtch Puddin
-
-      // Community & Industry
-      "drag.bsky.social", // General drag community
-      "dragrace.bsky.social", // Drag Race community
-      "dragula.bsky.social", // Dragula community
-      "queer.bsky.social", // Queer community (may include drag)
+    // Search for drag-related posts using multiple keywords
+    const searchTerms = [
+      "drag queen",
+      "drag race",
+      "drag performance",
+      "drag show",
+      "dragula",
+      "#drag",
+      "#dragrace",
+      "#dragqueen"
     ];
 
-    console.log(`[Bluesky] Fetching drag content from ${dragAccounts.length} accounts (limit: ${limit})...`);
-    return await getDragAccountsPosts(dragAccounts, limit);
+    console.log(`[Bluesky] Searching for drag content with ${searchTerms.length} search terms (limit: ${limit})...`);
+
+    // Search with each term and collect results
+    for (const term of searchTerms) {
+      try {
+        const searchResults = await agent.app.bsky.feed.searchPosts({
+          q: term,
+          limit: Math.ceil(limit / searchTerms.length),
+        });
+
+        if (searchResults.data.posts && searchResults.data.posts.length > 0) {
+          const posts = searchResults.data.posts.map((post: any) => ({
+            uri: post.uri,
+            cid: post.cid,
+            author: {
+              did: post.author.did,
+              handle: post.author.handle,
+              displayName: post.author.displayName,
+              avatar: post.author.avatar,
+            },
+            text: post.record.text || "",
+            createdAt: post.record.createdAt || post.indexedAt,
+            embed: post.embed
+              ? {
+                  type: post.embed.$type,
+                  video: post.embed.video,
+                  external: post.embed.external,
+                  images: post.embed.images,
+                }
+              : undefined,
+            likeCount: post.likeCount || 0,
+            replyCount: post.replyCount || 0,
+            repostCount: post.repostCount || 0,
+          }));
+
+          allPosts.push(...posts);
+          console.log(`[Bluesky] Found ${posts.length} posts for "${term}"`);
+        }
+      } catch (error) {
+        console.warn(`[Bluesky] Search failed for "${term}":`, error);
+        continue;
+      }
+    }
+
+    // Remove duplicates by URI
+    const uniquePosts = Array.from(
+      new Map(allPosts.map(post => [post.uri, post])).values()
+    );
+
+    // Calculate engagement scores and sort by engagement
+    uniquePosts.forEach(post => {
+      (post as any).engagementScore = calculateEngagementScore(post);
+    });
+
+    console.log(`[Bluesky] Total unique posts found: ${uniquePosts.length}`);
+    return sortPostsByEngagement(uniquePosts).slice(0, limit);
   } catch (error) {
     console.error("[Bluesky] Failed to fetch content:", error);
     return [];
