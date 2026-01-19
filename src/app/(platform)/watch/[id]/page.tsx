@@ -21,6 +21,7 @@ import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { HeartAnimation, ActionButton, EmptyState, LoadingShimmer, MoodBadge } from "@/components/shared";
 import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
+import { createMinimalYouTubeVideo } from "@/lib/youtube/video-helpers";
 
 export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
@@ -58,27 +59,22 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         if (resolvedParams.id.startsWith("youtube-")) {
           console.log("[Watch] Loading YouTube video:", resolvedParams.id);
 
-          // Fetch from YouTube feed API
-          const response = await fetch("/api/youtube/feed?limit=50&rssOnly=true");
-          const data = await response.json();
+          try {
+            // Create minimal video object instantly - no API call needed!
+            const youtubeVideo = createMinimalYouTubeVideo(resolvedParams.id);
 
-          if (data.success && data.videos) {
-            const youtubeVideo = data.videos.find((v: Video) => v.id === resolvedParams.id);
-
-            if (youtubeVideo) {
-              setVideo(youtubeVideo);
-              setLikes(youtubeVideo.likes || 0);
-              setAccessDenied(false);
-              setIsLoading(false);
-              return;
-            }
+            setVideo(youtubeVideo);
+            setLikes(0); // YouTube videos don't have Dragverse likes
+            setAccessDenied(false);
+            setIsLoading(false);
+            return;
+          } catch (error) {
+            console.error("[Watch] Failed to create YouTube video:", error);
+            setAccessDenied(true);
+            setAccessDeniedReason("Invalid YouTube video ID");
+            setIsLoading(false);
+            return;
           }
-
-          // Video not found in YouTube feed
-          setAccessDenied(true);
-          setAccessDeniedReason("YouTube video not found");
-          setIsLoading(false);
-          return;
         }
 
         // Check if this is a Bluesky video (ID starts with "bluesky-")
