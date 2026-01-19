@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchDragContent } from "@/lib/youtube/client";
 import { fetchCuratedDragContent } from "@/lib/youtube/rss-client";
+import { getCachedVideos, setCachedVideos } from "@/lib/youtube/cache";
 import type { Video } from "@/types";
 
 /**
  * GET /api/youtube/feed
- * Fetch drag content from YouTube
+ * Fetch drag content from YouTube with aggressive caching
+ * - Cache duration: 1 hour (reduces API quota usage by ~10x)
  * - Tries YouTube Data API first (if YOUTUBE_API_KEY is set)
  * - Falls back to RSS feeds if API fails
  *
@@ -20,6 +22,24 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get("sortBy") || "recent";
 
     console.log(`[YouTube Feed API] Fetching ${limit} videos...`);
+
+    // Create cache key based on limit (different limits = different cache entries)
+    const cacheKey = `youtube-feed-${limit}`;
+
+    // Check cache first (saves API quota!)
+    const cachedVideos = getCachedVideos(cacheKey);
+    if (cachedVideos) {
+      console.log(`[YouTube Feed API] ✅ Returning ${cachedVideos.length} cached videos (saved API quota!)`);
+      return NextResponse.json({
+        success: true,
+        videos: sortBy === "recent"
+          ? cachedVideos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          : cachedVideos,
+        count: cachedVideos.length,
+        source: "cache",
+        message: "Videos served from cache (1 hour TTL)",
+      });
+    }
 
     let videos: Video[] = [];
     let source = "unknown";
@@ -43,6 +63,11 @@ export async function GET(request: NextRequest) {
       videos = await fetchCuratedDragContent(limit);
       source = "youtube-rss";
       console.log(`[YouTube Feed API] ${videos.length > 0 ? '✅' : '⚠️'} Got ${videos.length} videos from RSS`);
+    }
+
+    // Cache successful results (even empty arrays, to avoid repeated failed API calls)
+    if (videos.length > 0) {
+      setCachedVideos(cacheKey, videos);
     }
 
     // Sort by recent if requested
