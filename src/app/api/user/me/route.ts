@@ -23,6 +23,13 @@ export async function GET(request: NextRequest) {
 
     const userId = auth.userId;
 
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User ID not found in token" },
+        { status: 401 }
+      );
+    }
+
     // Check if creator profile exists
     let creator = await getCreatorByDID(userId);
 
