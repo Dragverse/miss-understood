@@ -76,7 +76,7 @@ export function extractDisplayName(user: any): string {
     // Capitalize and clean up email username (e.g., "john.doe" -> "John Doe")
     return emailName
       .split(/[._-]/)
-      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" ");
   }
 
@@ -85,7 +85,7 @@ export function extractDisplayName(user: any): string {
     const emailName = user.google.email.split("@")[0];
     return emailName
       .split(/[._-]/)
-      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" ");
   }
 
