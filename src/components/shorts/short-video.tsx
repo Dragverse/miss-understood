@@ -3,12 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
-import { FiVolume2, FiVolumeX, FiHeart, FiMessageCircle, FiShare2, FiDollarSign, FiEdit2, FiTrash2, FiMoreVertical, FiAlertCircle } from "react-icons/fi";
+import { FiVolume2, FiVolumeX, FiHeart, FiMessageCircle, FiShare2, FiDollarSign, FiEdit2, FiTrash2, FiMoreVertical, FiAlertCircle, FiPlay } from "react-icons/fi";
 import type { Video } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
 import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
+import { TipModal } from "@/components/video/tip-modal";
+import { VideoCommentModal } from "@/components/video/video-comment-modal";
 
 interface ShortVideoProps {
   video: Video;
@@ -25,6 +27,8 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
   const [likeCount, setLikeCount] = useState(video.likes || 0);
   const [showMenu, setShowMenu] = useState(false);
   const [playbackError, setPlaybackError] = useState(false);
+  const [commentModalOpen, setCommentModalOpen] = useState(false);
+  const [tipModalOpen, setTipModalOpen] = useState(false);
   const playerRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -41,20 +45,50 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsLiked(!isLiked);
-    setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
-    // TODO: Call API to update like status
+
+    if (!user?.id) {
+      alert("Please sign in to like videos");
+      return;
+    }
+
+    const newLiked = !isLiked;
+    const newCount = newLiked ? likeCount + 1 : likeCount - 1;
+
+    // Optimistic update
+    setIsLiked(newLiked);
+    setLikeCount(newCount);
+
+    try {
+      const response = await fetch("/api/social/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userDID: user.id,
+          videoId: video.id,
+          action: newLiked ? "like" : "unlike",
+        }),
+      });
+
+      if (!response.ok) {
+        // Revert on error
+        setIsLiked(!newLiked);
+        setLikeCount(likeCount);
+      }
+    } catch (error) {
+      // Revert on error
+      setIsLiked(!newLiked);
+      setLikeCount(likeCount);
+      console.error("[ShortVideo] Like error:", error);
+    }
   };
 
   const handleComment = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // TODO: Open comment modal or navigate to post page
-    console.log("Comment clicked");
+    setCommentModalOpen(true);
   };
 
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // TODO: Open share modal
     if (navigator.share) {
       navigator.share({
         title: video.title,
@@ -66,8 +100,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
 
   const handleTip = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // TODO: Open tip modal
-    console.log("Tip clicked");
+    setTipModalOpen(true);
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -332,29 +365,43 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 </Link>
               )}
 
-              {/* Like Button */}
-              <button
-                onClick={handleLike}
-                className="flex flex-col items-center gap-1"
-              >
-                <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
-                  <FiHeart
-                    className={`w-6 h-6 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`}
-                  />
-                </div>
-                <span className="text-white text-xs font-semibold">{likeCount > 0 ? likeCount : ''}</span>
-              </button>
+              {/* Like Button - Only for Dragverse videos */}
+              {video.source === "ceramic" && (
+                <button
+                  onClick={handleLike}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
+                    <FiHeart
+                      className={`w-6 h-6 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`}
+                    />
+                  </div>
+                  <span className="text-white text-xs font-semibold">{likeCount > 0 ? likeCount : ''}</span>
+                </button>
+              )}
 
-              {/* Comment Button */}
-              <button
-                onClick={handleComment}
-                className="flex flex-col items-center gap-1"
-              >
-                <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
-                  <FiMessageCircle className="w-6 h-6 text-white" />
+              {/* Comment Button - Only for Dragverse videos */}
+              {video.source === "ceramic" && (
+                <button
+                  onClick={handleComment}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
+                    <FiMessageCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-white text-xs font-semibold">{video.creator?.followerCount || 0}</span>
+                </button>
+              )}
+
+              {/* View Count - For external videos */}
+              {video.source !== "ceramic" && (
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center">
+                    <FiPlay className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-white text-xs font-semibold">{video.views > 0 ? `${(video.views / 1000).toFixed(1)}K` : ''}</span>
                 </div>
-                <span className="text-white text-xs font-semibold">{video.creator?.followerCount || 0}</span>
-              </button>
+              )}
 
               {/* Share Button */}
               <button
@@ -442,6 +489,23 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
           </div>
         )}
       </div>
+
+      {/* Comment Modal */}
+      <VideoCommentModal
+        isOpen={commentModalOpen}
+        onClose={() => setCommentModalOpen(false)}
+        videoId={video.id}
+        videoTitle={video.title}
+      />
+
+      {/* Tip Modal */}
+      <TipModal
+        isOpen={tipModalOpen}
+        onClose={() => setTipModalOpen(false)}
+        creatorName={video.creator?.displayName || "Creator"}
+        creatorDID={video.creator?.did || ""}
+        videoId={video.id}
+      />
     </div>
   );
 }

@@ -4,11 +4,12 @@ import React, { useState, useEffect } from "react";
 import { mockVideos } from "@/lib/utils/mock-data";
 import Image from "next/image";
 import Link from "next/link";
-import { FiMessageCircle, FiShare2, FiUserPlus, FiLock, FiMaximize2, FiMinimize2 } from "react-icons/fi";
+import { FiMessageCircle, FiShare2, FiUserPlus, FiLock, FiMaximize2, FiMinimize2, FiPlay } from "react-icons/fi";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { TipModal } from "@/components/video/tip-modal";
 import { ShareModal } from "@/components/video/share-modal";
+import { VideoCommentModal } from "@/components/video/video-comment-modal";
 import { ChocolateBar } from "@/components/ui/chocolate-bar";
 import { getVideo, getVideos, type SupabaseVideo } from "@/lib/supabase/videos";
 import { Video } from "@/types";
@@ -25,7 +26,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   const resolvedParams = React.use(params);
   const searchParams = useSearchParams();
   const shareToken = searchParams.get("token");
-  const { getAccessToken, login } = usePrivy();
+  const { getAccessToken, login, user } = usePrivy();
 
   const [video, setVideo] = useState<Video | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +36,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   const [isLiked, setIsLiked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [tipModalOpen, setTipModalOpen] = useState(false);
+  const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
   const [theaterMode, setTheaterMode] = useState(false);
@@ -235,13 +237,41 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
     );
   }
 
-  const handleLike = () => {
-    if (isLiked) {
-      setLikes(likes - 1);
-    } else {
-      setLikes(likes + 1);
+  const handleLike = async () => {
+    if (!user?.id) {
+      alert("Please sign in to like videos");
+      return;
     }
-    setIsLiked(!isLiked);
+
+    const newLiked = !isLiked;
+    const newCount = newLiked ? likes + 1 : likes - 1;
+
+    // Optimistic update
+    setIsLiked(newLiked);
+    setLikes(newCount);
+
+    try {
+      const response = await fetch("/api/social/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userDID: user.id,
+          videoId: video.id,
+          action: newLiked ? "like" : "unlike",
+        }),
+      });
+
+      if (!response.ok) {
+        // Revert on error
+        setIsLiked(!newLiked);
+        setLikes(likes);
+      }
+    } catch (error) {
+      // Revert on error
+      setIsLiked(!newLiked);
+      setLikes(likes);
+      console.error("[Watch] Like error:", error);
+    }
   };
 
   return (
@@ -353,16 +383,37 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
 
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3 mb-6 pb-6 border-b border-[#EB83EA]/10">
-              <HeartAnimation
-                initialLiked={isLiked}
-                onToggle={handleLike}
-                showCount={true}
-                count={likes}
-              />
-              <button className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all text-white hover:text-[#EB83EA]">
-                <FiMessageCircle className="w-5 h-5" />
-                <span>Comment</span>
-              </button>
+              {/* Like Button - Only for Dragverse videos */}
+              {video.source === "ceramic" && (
+                <HeartAnimation
+                  initialLiked={isLiked}
+                  onToggle={handleLike}
+                  showCount={true}
+                  count={likes}
+                />
+              )}
+
+              {/* View Count - For external videos */}
+              {video.source !== "ceramic" && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] border border-[#EB83EA]/20 rounded-xl">
+                  <FiPlay className="w-5 h-5 text-[#EB83EA]" />
+                  <span className="text-sm font-semibold text-white">
+                    {(video.views / 1000).toFixed(1)}K views
+                  </span>
+                </div>
+              )}
+
+              {/* Comment Button - Only for Dragverse videos */}
+              {video.source === "ceramic" && (
+                <button
+                  onClick={() => setCommentModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all text-white hover:text-[#EB83EA]"
+                >
+                  <FiMessageCircle className="w-5 h-5" />
+                  <span>Comment</span>
+                </button>
+              )}
+
               <ActionButton
                 onClick={() => setShareModalOpen(true)}
                 variant="secondary"
@@ -371,14 +422,18 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
               >
                 Share
               </ActionButton>
-              <ActionButton
-                onClick={() => setTipModalOpen(true)}
-                variant="primary"
-                icon={<ChocolateBar size={20} filled={true} />}
-                size="md"
-              >
-                Tip Creator
-              </ActionButton>
+
+              {/* Tip Button - Only for Dragverse videos */}
+              {video.source === "ceramic" && (
+                <ActionButton
+                  onClick={() => setTipModalOpen(true)}
+                  variant="primary"
+                  icon={<ChocolateBar size={20} filled={true} />}
+                  size="md"
+                >
+                  Tip Creator
+                </ActionButton>
+              )}
             </div>
 
             {/* Description */}
@@ -501,6 +556,14 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         creatorName={video.creator.displayName}
         creatorDID={video.creator.did}
         videoId={video.id}
+      />
+
+      {/* Comment Modal */}
+      <VideoCommentModal
+        isOpen={commentModalOpen}
+        onClose={() => setCommentModalOpen(false)}
+        videoId={video.id}
+        videoTitle={video.title}
       />
 
       {/* Share Modal */}

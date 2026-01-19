@@ -40,12 +40,8 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
   };
 
   const handleClick = () => {
-    // For external content, open in new tab
-    if (isExternal && externalUrl) {
-      window.open(externalUrl, "_blank");
-    } else {
-      router.push(`/watch/${video.id}`);
-    }
+    // Always navigate to Dragverse watch page (embedded players will show external content)
+    router.push(`/watch/${video.id}`);
   };
 
   const handleEdit = () => {
