@@ -102,12 +102,17 @@ function ShortsContent() {
 
         // Filter only shorts (include all sources: Dragverse, YouTube, Bluesky)
         // Focus on drag-specific content
-        const shortsOnly = allVideos.filter((v) => v.contentType === "short");
+        // Also filter out videos without valid playback URLs
+        const shortsOnly = allVideos.filter((v) =>
+          v.contentType === "short" &&
+          v.playbackUrl &&
+          v.playbackUrl.trim() !== ''
+        );
 
         // Sort by date (newest first)
         shortsOnly.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-        console.log(`[Shorts] Displaying ${shortsOnly.length} shorts after filtering`);
+        console.log(`[Shorts] Displaying ${shortsOnly.length} shorts after filtering (with valid playback URLs)`);
         console.log("[Shorts] Filtered shorts:", shortsOnly.map(v => ({
           id: v.id.substring(0, 8),
           title: v.title,

@@ -105,7 +105,7 @@ export default function ProfilePage() {
         handle: handle,
         displayName: displayName,
         avatar: avatar,
-        description: blueskyProfileFromHook?.description || "Welcome to my Dragverse profile! 🎭✨",
+        description: blueskyProfileFromHook?.description || "Welcome to my Dragverse profile!",
         followerCount: 0,
         followingCount: 0,
         createdAt: new Date(user.createdAt || Date.now()),
@@ -153,34 +153,43 @@ export default function ProfilePage() {
         console.log(`📹 Loaded ${supabaseVideos.length} videos from Supabase for profile`);
 
         // Transform Supabase videos to Video type
-        const transformedVideos: Video[] = supabaseVideos.map((sv) => ({
-          id: sv.id,
-          title: sv.title,
-          description: sv.description || "",
-          thumbnail: sv.thumbnail || "",
-          playbackUrl: sv.playback_url || "",
-          duration: sv.duration || 0,
-          views: sv.views || 0,
-          likes: sv.likes || 0,
-          comments: 0, // Not in SupabaseVideo type
-          shares: 0, // Not in SupabaseVideo type
-          createdAt: new Date(sv.created_at),
-          creator: {
-            did: sv.creator_did,
-            displayName: creator?.displayName || userHandle || "Creator",
-            handle: creator?.handle || userHandle || "creator",
-            avatar: creator?.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
-            verified: creator?.verified || false,
-            description: creator?.description || "",
-            followerCount: creator?.followerCount || 0,
-            followingCount: creator?.followingCount || 0,
-            createdAt: creator?.createdAt || new Date(sv.created_at),
-          },
-          contentType: sv.content_type || ((sv.duration || 0) <= 60 ? "short" : "long"),
-          livepeerAssetId: sv.livepeer_asset_id || sv.id,
-          category: sv.category || "drag",
-          tags: sv.tags || [],
-        }));
+        // Use the actual creator data from the join, not the current user's profile
+        const transformedVideos: Video[] = supabaseVideos.map((sv) => {
+          // Get creator data from the joined result
+          const videoCreator = sv.creator;
+
+          // Fallback avatar if needed
+          const avatarFallback = `https://api.dicebear.com/9.x/avataaars/svg?seed=${sv.creator_did}&backgroundColor=EB83EA`;
+
+          return {
+            id: sv.id,
+            title: sv.title,
+            description: sv.description || "",
+            thumbnail: sv.thumbnail || "",
+            playbackUrl: sv.playback_url || "",
+            duration: sv.duration || 0,
+            views: sv.views || 0,
+            likes: sv.likes || 0,
+            comments: 0, // Not in SupabaseVideo type
+            shares: 0, // Not in SupabaseVideo type
+            createdAt: new Date(sv.created_at),
+            creator: {
+              did: sv.creator_did,
+              displayName: videoCreator?.display_name || "Creator",
+              handle: videoCreator?.handle || "creator",
+              avatar: videoCreator?.avatar || avatarFallback,
+              verified: videoCreator?.verified || false,
+              description: "",
+              followerCount: 0,
+              followingCount: 0,
+              createdAt: new Date(sv.created_at),
+            },
+            contentType: sv.content_type || ((sv.duration || 0) <= 60 ? "short" : "long"),
+            livepeerAssetId: sv.livepeer_asset_id || sv.id,
+            category: sv.category || "drag",
+            tags: sv.tags || [],
+          };
+        });
 
         setUserVideos(transformedVideos);
 

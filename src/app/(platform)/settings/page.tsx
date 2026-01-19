@@ -219,7 +219,7 @@ export default function SettingsPage() {
         handle: userHandle || userEmail?.split('@')[0] || "user",
         displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
         avatar: user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
-        description: "Welcome to my Dragverse profile! 🎭✨",
+        description: "Welcome to my Dragverse profile!",
         followerCount: 0,
         followingCount: 0,
         createdAt: new Date(user.createdAt || Date.now()),
@@ -302,12 +302,17 @@ export default function SettingsPage() {
     }
 
     if (!formData.handle.trim()) {
-      toast.error("Handle is required");
+      toast.error("Dragverse username is required");
       return;
     }
 
-    if (/\s/.test(formData.handle)) {
-      toast.error("Handle cannot contain spaces");
+    if (!/^[a-z0-9_]+$/.test(formData.handle)) {
+      toast.error("Username can only contain lowercase letters, numbers, and underscores");
+      return;
+    }
+
+    if (formData.handle.length < 3) {
+      toast.error("Username must be at least 3 characters long");
       return;
     }
 
@@ -762,11 +767,14 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                {/* Handle */}
+                {/* Dragverse Username */}
                 <div className="mb-4">
                   <label className="block text-sm font-semibold mb-2 text-gray-300">
-                    Handle *
+                    Dragverse Username *
                   </label>
+                  <p className="text-xs text-gray-400 mb-2">
+                    This is your unique username across the Dragverse platform
+                  </p>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
                       @
@@ -778,7 +786,7 @@ export default function SettingsPage() {
                       onChange={(e) =>
                         setFormData((prev) => ({
                           ...prev,
-                          handle: e.target.value.replace(/\s/g, ""),
+                          handle: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
                         }))
                       }
                       disabled={isSaving}
@@ -786,8 +794,8 @@ export default function SettingsPage() {
                       placeholder="yourhandle"
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1 text-right">
-                    {formData.handle.length}/50
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formData.handle.length}/50 characters (letters, numbers, and underscores only)
                   </p>
                 </div>
 

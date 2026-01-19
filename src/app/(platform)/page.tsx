@@ -46,7 +46,7 @@ export default function HomePage() {
                   id: v.id,
                   title: v.title,
                   description: v.description || "",
-                  thumbnail: v.thumbnail || "",
+                  thumbnail: v.thumbnail || "/default-thumnail.jpg",
                   duration: v.duration || 0,
                   views: v.views || 0,
                   likes: v.likes || 0,
@@ -54,7 +54,17 @@ export default function HomePage() {
                   playbackUrl: v.playback_url || "",
                   livepeerAssetId: v.livepeer_asset_id,
                   contentType: v.content_type,
-                  creator: v.creator || {
+                  creator: v.creator ? {
+                    did: v.creator.did,
+                    handle: v.creator.handle,
+                    displayName: v.creator.display_name,
+                    avatar: v.creator.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${v.creator.handle}`,
+                    description: "",
+                    followerCount: 0,
+                    followingCount: 0,
+                    createdAt: new Date(),
+                    verified: v.creator.verified || false,
+                  } : {
                     did: v.creator_did,
                     handle: "creator",
                     displayName: "Creator",

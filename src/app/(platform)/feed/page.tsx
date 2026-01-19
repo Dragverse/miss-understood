@@ -23,6 +23,7 @@ function FeedContent() {
   const [hasBluesky, setHasBluesky] = useState(false);
   const [sortBy, setSortBy] = useState<"engagement" | "recent">("engagement");
   const [showComposer, setShowComposer] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // Check Bluesky session status
   useEffect(() => {
@@ -44,6 +45,7 @@ function FeedContent() {
   useEffect(() => {
     async function loadFeed() {
       setLoading(true);
+      setSearchError(null);
       try {
         // Load native Dragverse posts
         const dragverseResponse = await fetch("/api/posts/feed?limit=50");
@@ -55,24 +57,35 @@ function FeedContent() {
           ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30`
           : `/api/bluesky/feed?limit=30&sortBy=${sortBy}`;
 
+        console.log(`[Feed] Fetching from: ${url}`);
+
         const response = await fetch(url);
         const data = await response.json();
 
-        // Include all posts (videos, photos, text)
-        const feedPosts = (data.posts || []);
+        console.log(`[Feed] Response:`, data);
 
-        // Filter by bookmarks if needed
-        if (showBookmarks) {
-          const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
-          const bookmarkedPosts = feedPosts.filter((post: any) =>
-            bookmarks.includes(post.id)
-          );
-          setPosts(bookmarkedPosts);
+        // Check for errors
+        if (data.error) {
+          setSearchError(data.error);
+          setPosts([]);
         } else {
-          setPosts(feedPosts);
+          // Include all posts (videos, photos, text)
+          const feedPosts = (data.posts || []);
+
+          // Filter by bookmarks if needed
+          if (showBookmarks) {
+            const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
+            const bookmarkedPosts = feedPosts.filter((post: any) =>
+              bookmarks.includes(post.id)
+            );
+            setPosts(bookmarkedPosts);
+          } else {
+            setPosts(feedPosts);
+          }
         }
       } catch (error) {
         console.error("Failed to load feed:", error);
+        setSearchError(error instanceof Error ? error.message : "Failed to load feed");
       } finally {
         setLoading(false);
       }
@@ -163,6 +176,28 @@ function FeedContent() {
             </div>
           )}
 
+          {/* Search Error Alert */}
+          {searchError && (
+            <div className="bg-red-500/10 border-2 border-red-500/30 rounded-2xl p-6 mb-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-red-300 font-bold mb-2">Search Error</h3>
+                  <p className="text-red-200 text-sm mb-3">{searchError}</p>
+                  {searchError.includes("authentication") && (
+                    <p className="text-red-300 text-xs">
+                      Bluesky authentication is required for search. Please configure BLUESKY_IDENTIFIER and BLUESKY_APP_PASSWORD in your environment variables.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Posts Feed */}
           {loading ? (
             <div className="flex items-center justify-center py-20">
@@ -180,7 +215,7 @@ function FeedContent() {
                 <BlueskyPostCard key={`bluesky-${post.id}`} post={post} />
               ))}
 
-              {dragversePosts.length === 0 && posts.length === 0 && (
+              {dragversePosts.length === 0 && posts.length === 0 && !searchError && (
                 <div className="text-center py-20">
                   <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
                     <FiZap className="w-10 h-10 text-[#EB83EA]" />

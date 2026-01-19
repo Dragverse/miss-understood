@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get("q") || "";
     const limit = parseInt(searchParams.get("limit") || "30", 10);
 
+    console.log(`[Bluesky Search] Query: "${query}", Limit: ${limit}`);
+
     if (!query) {
       return NextResponse.json(
         { error: "Query parameter 'q' is required" },
@@ -20,11 +22,28 @@ export async function GET(request: NextRequest) {
 
     const agent = await getBlueskyAgent();
 
+    // Check if agent is authenticated
+    if (!agent.session) {
+      console.error("[Bluesky Search] Agent not authenticated");
+      return NextResponse.json(
+        {
+          error: "Bluesky authentication required. Please configure BLUESKY_IDENTIFIER and BLUESKY_APP_PASSWORD.",
+          posts: [],
+          count: 0,
+        },
+        { status: 503 }
+      );
+    }
+
+    console.log(`[Bluesky Search] Searching for: "${query}"`);
+
     // Search for posts
     const searchResults = await agent.app.bsky.feed.searchPosts({
       q: query,
       limit: Math.min(limit, 100), // Bluesky API limit
     });
+
+    console.log(`[Bluesky Search] Found ${searchResults.data.posts?.length || 0} posts`);
 
     if (!searchResults.data.posts || searchResults.data.posts.length === 0) {
       return NextResponse.json({

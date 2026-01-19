@@ -90,7 +90,7 @@ export async function getVideo(id: string): Promise<SupabaseVideo | null> {
   return data as SupabaseVideo | null;
 }
 
-export async function getVideos(limit = 50): Promise<SupabaseVideo[]> {
+export async function getVideos(limit = 50): Promise<SupabaseVideoWithCreator[]> {
   if (!supabase) {
     console.warn('Supabase not configured');
     return [];
@@ -98,16 +98,55 @@ export async function getVideos(limit = 50): Promise<SupabaseVideo[]> {
 
   const { data, error } = await supabase
     .from('videos')
-    .select('*')
+    .select(`
+      *,
+      creator:creators!creator_id (
+        id,
+        did,
+        handle,
+        display_name,
+        avatar,
+        verified,
+        bluesky_handle,
+        bluesky_did,
+        youtube_channel_id,
+        youtube_channel_name
+      )
+    `)
     .eq('visibility', 'public') // Only show public videos on homepage
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (error) throw error;
-  return (data as SupabaseVideo[]) || [];
+  if (error) {
+    console.error('[getVideos] Error:', error);
+    throw error;
+  }
+
+  // Transform the data to handle nested creator object
+  const videos = (data || []).map((video: any) => ({
+    ...video,
+    creator: Array.isArray(video.creator) ? video.creator[0] : video.creator
+  }));
+
+  return videos as SupabaseVideoWithCreator[];
 }
 
-export async function getVideosByCreator(creatorDID: string, limit = 50): Promise<SupabaseVideo[]> {
+export interface SupabaseVideoWithCreator extends SupabaseVideo {
+  creator?: {
+    id: string;
+    did: string;
+    handle: string;
+    display_name: string;
+    avatar?: string;
+    verified: boolean;
+    bluesky_handle?: string;
+    bluesky_did?: string;
+    youtube_channel_id?: string;
+    youtube_channel_name?: string;
+  };
+}
+
+export async function getVideosByCreator(creatorDID: string, limit = 50): Promise<SupabaseVideoWithCreator[]> {
   if (!supabase) {
     console.warn('Supabase not configured');
     return [];
@@ -115,13 +154,37 @@ export async function getVideosByCreator(creatorDID: string, limit = 50): Promis
 
   const { data, error } = await supabase
     .from('videos')
-    .select('*')
+    .select(`
+      *,
+      creator:creators!creator_id (
+        id,
+        did,
+        handle,
+        display_name,
+        avatar,
+        verified,
+        bluesky_handle,
+        bluesky_did,
+        youtube_channel_id,
+        youtube_channel_name
+      )
+    `)
     .eq('creator_did', creatorDID)
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (error) throw error;
-  return (data as SupabaseVideo[]) || [];
+  if (error) {
+    console.error('[getVideosByCreator] Error:', error);
+    throw error;
+  }
+
+  // Transform the data to handle nested creator object
+  const videos = (data || []).map((video: any) => ({
+    ...video,
+    creator: Array.isArray(video.creator) ? video.creator[0] : video.creator
+  }));
+
+  return videos as SupabaseVideoWithCreator[];
 }
 
 export async function getVideosByContentType(contentType: string, limit = 50): Promise<SupabaseVideo[]> {

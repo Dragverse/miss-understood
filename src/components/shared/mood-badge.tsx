@@ -1,5 +1,7 @@
 "use client";
 
+import { FiZap, FiHeart, FiActivity, FiFilm, FiSmile, FiAward, FiStar } from "react-icons/fi";
+
 interface MoodBadgeProps {
   mood: string;
   emoji?: string;
@@ -7,19 +9,19 @@ interface MoodBadgeProps {
   onClick?: () => void;
 }
 
-const MOOD_EMOJIS: Record<string, string> = {
-  sparkling: "✨",
-  soft: "💖",
-  fierce: "🔥",
-  dramatic: "🎭",
-  playful: "🌈",
-  regal: "👑",
-  slay: "💅",
-  magical: "🦄",
+const MOOD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  sparkling: FiZap,
+  soft: FiHeart,
+  fierce: FiActivity,
+  dramatic: FiFilm,
+  playful: FiSmile,
+  regal: FiAward,
+  slay: FiStar,
+  magical: FiZap, // Using FiZap for magical (lightning/sparkle effect)
 };
 
 export function MoodBadge({ mood, emoji, size = "md", onClick }: MoodBadgeProps) {
-  const displayEmoji = emoji || MOOD_EMOJIS[mood.toLowerCase()] || "✨";
+  const MoodIcon = MOOD_ICONS[mood.toLowerCase()] || FiZap;
 
   const sizeStyles = {
     sm: "px-2 py-1 text-xs gap-1",
@@ -27,10 +29,10 @@ export function MoodBadge({ mood, emoji, size = "md", onClick }: MoodBadgeProps)
     lg: "px-4 py-2 text-base gap-2",
   };
 
-  const emojiSizes = {
-    sm: "text-sm",
-    md: "text-lg",
-    lg: "text-xl",
+  const iconSizes = {
+    sm: "w-3 h-3",
+    md: "w-4 h-4",
+    lg: "w-5 h-5",
   };
 
   return (
@@ -40,7 +42,7 @@ export function MoodBadge({ mood, emoji, size = "md", onClick }: MoodBadgeProps)
         onClick ? "cursor-pointer hover:bg-[#EB83EA]/20" : ""
       }`}
     >
-      <span className={emojiSizes[size]}>{displayEmoji}</span>
+      <MoodIcon className={`${iconSizes[size]} text-[#EB83EA]`} />
       <span className="text-[#EB83EA] font-semibold capitalize">{mood}</span>
     </div>
   );

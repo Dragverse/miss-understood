@@ -16,8 +16,9 @@ import {
   FiBell,
   FiGlobe,
   FiPlus,
+  FiPlay,
+  FiZap,
 } from "react-icons/fi";
-import { BsPlayFill, BsLightningFill } from "react-icons/bs";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
 import { useCanLivestream } from "@/lib/livestream";
@@ -241,14 +242,14 @@ export function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
             >
-              <BsPlayFill className="w-5 h-5" /> Videos
+              <FiPlay className="w-5 h-5" /> Videos
             </Link>
             <Link
               href="/shorts"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
             >
-              <BsLightningFill className="w-5 h-5" /> Bytes
+              <FiZap className="w-5 h-5" /> Bytes
             </Link>
             <Link
               href="/hall-of-fame"

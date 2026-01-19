@@ -7,12 +7,19 @@ import {
   extractHandle,
   extractAvatar,
   extractSocialHandles,
+  extractBlueskyFromSession,
 } from "@/lib/privy/server";
 
 /**
  * POST /api/creator/sync-profile
- * Sync creator profile with latest data from Privy
- * Updates existing creator record with real Twitter/Google/etc profile data
+ * Sync creator profile with latest data from Privy + Bluesky + YouTube
+ * Updates existing creator record with real social profile data
+ *
+ * Priority for handle/display_name:
+ * 1. Bluesky (if connected)
+ * 2. YouTube (if connected)
+ * 3. Twitter/Google from Privy
+ * 4. Generic fallback
  */
 export async function POST(request: NextRequest) {
   try {
@@ -46,20 +53,42 @@ export async function POST(request: NextRequest) {
 
     console.log("[Sync Profile] Fetched Privy user profile");
 
-    // Extract profile data
+    // Extract Bluesky session data (if user has connected Bluesky)
+    const blueskyData = await extractBlueskyFromSession(request);
+
+    // Extract profile data with priority system
+    const socialHandles = extractSocialHandles(privyUser);
+
+    // Priority: Bluesky > Twitter > Others
+    let finalHandle = extractHandle(privyUser, userDID);
+    let finalDisplayName = extractDisplayName(privyUser);
+    let finalAvatar = extractAvatar(privyUser, userDID);
+
+    if (blueskyData) {
+      console.log("[Sync Profile] Using Bluesky profile data (priority #1)");
+      finalHandle = blueskyData.handle;
+      finalDisplayName = blueskyData.displayName || finalDisplayName;
+      finalAvatar = blueskyData.avatar || finalAvatar;
+    }
+
     const creatorData = {
       did: userDID,
-      handle: extractHandle(privyUser, userDID),
-      display_name: extractDisplayName(privyUser),
-      avatar: extractAvatar(privyUser, userDID),
+      handle: finalHandle,
+      display_name: finalDisplayName,
+      avatar: finalAvatar,
       description: "", // Keep existing description
-      ...extractSocialHandles(privyUser),
+      ...socialHandles,
+      ...(blueskyData && {
+        bluesky_handle: blueskyData.handle,
+        bluesky_did: blueskyData.did || "",
+      }),
     };
 
     console.log("[Sync Profile] Updating creator with data:", {
       handle: creatorData.handle,
       display_name: creatorData.display_name,
       avatar: creatorData.avatar,
+      bluesky_handle: creatorData.bluesky_handle,
     });
 
     // Update or create creator (upsert will update if exists)

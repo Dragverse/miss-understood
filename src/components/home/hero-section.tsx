@@ -128,9 +128,35 @@ export function HeroSection() {
 
             {/* Error Display */}
             {playerError && !hasLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <div className="bg-red-500/20 border border-red-500/40 rounded-lg p-4 max-w-sm mx-4">
-                  <p className="text-red-300 text-sm text-center">{playerError}</p>
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                <div className="bg-red-500/20 border-2 border-red-500/40 rounded-2xl p-6 max-w-md mx-4 text-center">
+                  <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-red-300 font-semibold mb-2">Stream Error</p>
+                  <p className="text-red-200 text-sm mb-4">{playerError}</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setPlayerError(null);
+                        setHasLoaded(false);
+                      }}
+                      className="flex-1 px-4 py-2 bg-red-500/30 hover:bg-red-500/40 text-red-200 rounded-lg font-medium text-sm transition"
+                    >
+                      Try Again
+                    </button>
+                    <button
+                      onClick={() => {
+                        setStreamInfo({ isLive: false });
+                        setPlayerError(null);
+                      }}
+                      className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-gray-300 rounded-lg font-medium text-sm transition"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

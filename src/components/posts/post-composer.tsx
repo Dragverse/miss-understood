@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import { FiImage, FiX, FiSmile, FiMapPin, FiSend, FiLoader } from "react-icons/fi";
+import { FiImage, FiX, FiSmile, FiMapPin, FiSend, FiLoader, FiZap, FiHeart, FiActivity, FiFilm, FiAward, FiStar } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 
 interface PostComposerProps {
@@ -11,14 +11,14 @@ interface PostComposerProps {
 }
 
 const MOODS = [
-  { emoji: "✨", label: "Sparkling", value: "sparkling" },
-  { emoji: "💖", label: "Soft", value: "soft" },
-  { emoji: "🔥", label: "Fierce", value: "fierce" },
-  { emoji: "🎭", label: "Dramatic", value: "dramatic" },
-  { emoji: "🌈", label: "Playful", value: "playful" },
-  { emoji: "👑", label: "Regal", value: "regal" },
-  { emoji: "💅", label: "Slay", value: "slay" },
-  { emoji: "🦄", label: "Magical", value: "magical" },
+  { icon: FiZap, label: "Sparkling", value: "sparkling" },
+  { icon: FiHeart, label: "Soft", value: "soft" },
+  { icon: FiActivity, label: "Fierce", value: "fierce" },
+  { icon: FiFilm, label: "Dramatic", value: "dramatic" },
+  { icon: FiSmile, label: "Playful", value: "playful" },
+  { icon: FiAward, label: "Regal", value: "regal" },
+  { icon: FiStar, label: "Slay", value: "slay" },
+  { icon: FiZap, label: "Magical", value: "magical" },
 ];
 
 export function PostComposer({ onPostCreated, placeholder = "Share your story..." }: PostComposerProps) {
@@ -121,10 +121,10 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
 
   return (
     <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/20 shadow-xl shadow-[#EB83EA]/10">
-      {/* Header with sparkles */}
+      {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center overflow-hidden">
-          <span className="text-2xl">✨</span>
+          <FiZap className="w-6 h-6 text-white" />
         </div>
         <div>
           <p className="text-white font-bold">What's your story, babe?</p>
@@ -175,20 +175,23 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
             What's the vibe?
           </p>
           <div className="grid grid-cols-4 gap-2">
-            {MOODS.map((mood) => (
-              <button
-                key={mood.value}
-                onClick={() => setSelectedMood(mood.value === selectedMood ? null : mood.value)}
-                className={`p-3 rounded-xl transition-all ${
-                  selectedMood === mood.value
-                    ? "bg-[#EB83EA] text-white scale-105"
-                    : "bg-[#2f2942] text-gray-300 hover:bg-[#2f2942]/80"
-                }`}
-              >
-                <span className="text-2xl block mb-1">{mood.emoji}</span>
-                <span className="text-xs font-semibold">{mood.label}</span>
-              </button>
-            ))}
+            {MOODS.map((mood) => {
+              const MoodIcon = mood.icon;
+              return (
+                <button
+                  key={mood.value}
+                  onClick={() => setSelectedMood(mood.value === selectedMood ? null : mood.value)}
+                  className={`p-3 rounded-xl transition-all ${
+                    selectedMood === mood.value
+                      ? "bg-[#EB83EA] text-white scale-105"
+                      : "bg-[#2f2942] text-gray-300 hover:bg-[#2f2942]/80"
+                  }`}
+                >
+                  <MoodIcon className="w-6 h-6 mx-auto mb-1" />
+                  <span className="text-xs font-semibold block">{mood.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -196,9 +199,10 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
       {/* Selected mood display */}
       {selectedMood && !showMoodPicker && (
         <div className="mb-4 inline-flex items-center gap-2 px-4 py-2 bg-[#EB83EA]/20 rounded-full border border-[#EB83EA]/30">
-          <span className="text-xl">
-            {MOODS.find((m) => m.value === selectedMood)?.emoji}
-          </span>
+          {(() => {
+            const MoodIcon = MOODS.find((m) => m.value === selectedMood)?.icon;
+            return MoodIcon ? <MoodIcon className="w-5 h-5 text-white" /> : null;
+          })()}
           <span className="text-white text-sm font-semibold">
             {MOODS.find((m) => m.value === selectedMood)?.label}
           </span>

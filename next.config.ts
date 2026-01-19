@@ -34,6 +34,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "image.lp-playback.studio",
       },
+      {
+        protocol: "https",
+        hostname: "i.ytimg.com", // YouTube thumbnails
+      },
+      {
+        protocol: "https",
+        hostname: "yt3.ggpht.com", // YouTube channel avatars
+      },
     ],
   },
   // Security headers (moved from deprecated middleware.ts)

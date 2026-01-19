@@ -371,7 +371,12 @@ export default function DynamicProfilePage() {
                     <p className="text-[#FCF1FC] text-base mb-3 leading-relaxed">{post.description}</p>
                     <div className="flex items-center gap-4 text-sm text-gray-400">
                       <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                      {post.likes > 0 && <span>❤️ {post.likes}</span>}
+                      {post.likes > 0 && (
+                        <span className="flex items-center gap-1">
+                          <FiHeart className="w-4 h-4 text-red-400" />
+                          {post.likes}
+                        </span>
+                      )}
                     </div>
                   </a>
                 ))

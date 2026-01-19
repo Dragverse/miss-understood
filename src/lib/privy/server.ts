@@ -175,7 +175,40 @@ export function extractSocialHandles(user: any) {
     instagram_handle: user.instagram?.username || "",
     tiktok_handle: user.tiktok?.username || "",
     farcaster_handle: user.farcaster?.username || "",
-    bluesky_handle: "", // Bluesky is handled separately via our own integration
-    bluesky_did: "",
+    // Bluesky is handled separately via our own integration (see extractBlueskyFromSession)
   };
+}
+
+/**
+ * Extract Bluesky profile data from user session
+ * Returns null if no Bluesky connection found
+ */
+export async function extractBlueskyFromSession(request: any): Promise<{
+  handle: string;
+  displayName?: string;
+  avatar?: string;
+  did?: string;
+} | null> {
+  try {
+    // Dynamic import to avoid circular dependencies
+    const { getIronSession } = await import("iron-session");
+    const { sessionOptions } = await import("@/lib/session/config");
+
+    const response = { headers: new Headers() };
+    const session = await getIronSession(request, response, sessionOptions);
+
+    if (!session.bluesky) {
+      return null;
+    }
+
+    return {
+      handle: session.bluesky.handle,
+      displayName: session.bluesky.displayName,
+      avatar: session.bluesky.avatar,
+      did: session.bluesky.did,
+    };
+  } catch (error) {
+    console.error("[extractBlueskyFromSession] Error:", error);
+    return null;
+  }
 }

@@ -28,8 +28,8 @@ const slides: Slide[] = [
     title: "LIFE IS SALTY AFTER ALL",
     description: "Meet saltï and her experiments",
     image: "/Famers/SALT.jpg",
-    link: "https://salti.studio",
-    cta: "Visit Studio",
+    link: "/profile",
+    cta: "View Profile",
   },
 ];
 

@@ -94,7 +94,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
       >
         <div className="relative w-48 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-gray-800">
           <Image
-            src={video.thumbnail || '/placeholder-video.svg'}
+            src={video.thumbnail || '/default-thumnail.jpg'}
             alt={video.title}
             fill
             className="object-cover"

@@ -46,11 +46,11 @@ export default function VideosPage() {
         ]);
 
         // Transform Supabase videos to Video type
-        const transformedSupabase = (supabaseVideos || []).map((v) => ({
+        const transformedSupabase = (supabaseVideos || []).map((v: any) => ({
           id: v.id,
           title: v.title,
           description: v.description || "",
-          thumbnail: v.thumbnail || "",
+          thumbnail: v.thumbnail || "/default-thumnail.jpg",
           duration: v.duration || 0,
           views: v.views,
           likes: v.likes,
@@ -58,7 +58,27 @@ export default function VideosPage() {
           playbackUrl: v.playback_url || "",
           livepeerAssetId: v.livepeer_asset_id || "",
           contentType: (v.content_type as any) || "long",
-          creator: {} as any,
+          creator: v.creator ? {
+            did: v.creator.did,
+            handle: v.creator.handle,
+            displayName: v.creator.display_name,
+            avatar: v.creator.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${v.creator.handle}`,
+            description: "",
+            followerCount: 0,
+            followingCount: 0,
+            createdAt: new Date(),
+            verified: v.creator.verified || false,
+          } : {
+            did: v.creator_did,
+            handle: "creator",
+            displayName: "Creator",
+            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${v.creator_did}`,
+            description: "",
+            followerCount: 0,
+            followingCount: 0,
+            createdAt: new Date(),
+            verified: false,
+          },
           category: v.category || "",
           tags: v.tags || [],
           source: "ceramic" as const,
