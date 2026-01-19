@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft, FiHeart } from "react-icons/fi";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
 import { SocialLinks } from "@/components/profile/social-links";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";

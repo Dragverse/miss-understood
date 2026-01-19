@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
 import { categories } from "@/lib/utils/mock-data";
 import { getLocalVideos } from "@/lib/utils/local-storage";
@@ -199,17 +200,25 @@ export default function VideosPage() {
 
       {filteredVideos.length === 0 && (
         <div className="text-center py-20">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#18122D] mb-4">
-            <FiSearch className="text-2xl text-gray-500" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#EB83EA]/10 to-[#7c3aed]/10 mb-6">
+            <FiSearch className="text-3xl text-[#EB83EA]" />
           </div>
-          <p className="text-gray-400 text-lg font-medium">
-            No videos found
-          </p>
-          <p className="text-gray-500 text-sm mt-1">
+          <h3 className="text-white text-xl font-bold mb-2">
+            {videos.length === 0 ? "No Videos Yet" : "No videos found"}
+          </h3>
+          <p className="text-gray-400 text-sm max-w-md mx-auto mb-6">
             {videos.length === 0
-              ? "Upload your first video or check back later for content from Bluesky"
-              : "Try adjusting your search or filters"}
+              ? "Be the first to share your creativity! Upload your drag performances, tutorials, or behind-the-scenes content."
+              : `No videos match your search "${searchQuery}" in ${activeCategory}. Try different keywords or browse all categories.`}
           </p>
+          {videos.length === 0 && (
+            <Link
+              href="/upload"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30"
+            >
+              Upload Video
+            </Link>
+          )}
         </div>
       )}
     </div>

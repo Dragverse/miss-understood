@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
 import { useSearchParams } from "next/navigation";
@@ -186,12 +187,23 @@ function ShortsContent() {
 
   if (shorts.length === 0) {
     return (
-      <div className="h-[100dvh] md:h-[calc(100vh-4rem)] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-400 text-lg mb-4">No shorts available yet</p>
-          <p className="text-gray-500 text-sm">
-            Upload a short video or check back for content from Bluesky
+      <div className="h-[100dvh] md:h-[calc(100vh-4rem)] flex items-center justify-center bg-black">
+        <div className="text-center px-6 max-w-md">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-[#EB83EA]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h2 className="text-white text-2xl font-bold mb-3">No Shorts Yet</h2>
+          <p className="text-gray-400 mb-6">
+            Share your drag performances, quick tips, or behind-the-scenes moments in vertical video format!
           </p>
+          <Link
+            href="/upload"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30"
+          >
+            Upload Your First Short
+          </Link>
         </div>
       </div>
     );
