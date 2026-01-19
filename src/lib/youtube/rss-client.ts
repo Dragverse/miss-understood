@@ -92,7 +92,12 @@ function rssVideoToVideo(rssVideo: RSSVideo): Video {
 
   const title = rssVideo["media:group"]["media:title"] || rssVideo.title;
   const description = rssVideo["media:group"]["media:description"] || "";
-  const thumbnail = rssVideo["media:group"]["media:thumbnail"]?.["@_url"] || "";
+
+  // Extract thumbnail URL from RSS, or fallback to YouTube's CDN pattern
+  // YouTube provides guaranteed thumbnail URLs for all videos (Shorts and regular)
+  const rssThumbnail = rssVideo["media:group"]["media:thumbnail"]?.["@_url"] || "";
+  const thumbnail = rssThumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
   const views = parseInt(rssVideo["media:group"]["media:community"]?.["media:statistics"]?.["@_views"] || "0", 10);
   const publishedAt = new Date(rssVideo.published);
 

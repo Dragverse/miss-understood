@@ -21,7 +21,7 @@ import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { HeartAnimation, ActionButton, EmptyState, LoadingShimmer, MoodBadge } from "@/components/shared";
 import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
-import { createMinimalYouTubeVideo } from "@/lib/youtube/video-helpers";
+import { createMinimalYouTubeVideoWithDetection } from "@/lib/youtube/video-helpers";
 
 export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
@@ -60,8 +60,9 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           console.log("[Watch] Loading YouTube video:", resolvedParams.id);
 
           try {
-            // Create minimal video object instantly - no API call needed!
-            const youtubeVideo = createMinimalYouTubeVideo(resolvedParams.id);
+            // Create minimal video object with automatic Short detection
+            // This checks thumbnail dimensions to determine contentType
+            const youtubeVideo = await createMinimalYouTubeVideoWithDetection(resolvedParams.id);
 
             setVideo(youtubeVideo);
             setLikes(0); // YouTube videos don't have Dragverse likes
