@@ -193,9 +193,27 @@ export async function extractBlueskyFromSession(request: any): Promise<{
     // Dynamic import to avoid circular dependencies
     const { getIronSession } = await import("iron-session");
     const { sessionOptions } = await import("@/lib/session/config");
+    type SessionData = import("@/lib/session/config").SessionData;
 
-    const response = { headers: new Headers() };
-    const session = await getIronSession(request, response, sessionOptions);
+    const response = {
+      headers: new Headers(),
+      // Provide minimal Response interface for iron-session compatibility
+      ok: true,
+      redirected: false,
+      status: 200,
+      statusText: "OK",
+      type: "default" as ResponseType,
+      url: "",
+      clone: () => response as any,
+      body: null,
+      bodyUsed: false,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      blob: () => Promise.resolve(new Blob()),
+      formData: () => Promise.resolve(new FormData()),
+      json: () => Promise.resolve({}),
+      text: () => Promise.resolve(""),
+    } as Response;
+    const session = await getIronSession<SessionData>(request, response, sessionOptions);
 
     if (!session.bluesky) {
       return null;

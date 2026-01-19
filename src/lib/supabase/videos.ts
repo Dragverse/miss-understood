@@ -118,7 +118,7 @@ export async function getVideos(limit = 50): Promise<SupabaseVideoWithCreator[]>
     data.map(async (video: any) => {
       let creator = null;
 
-      if (video.creator_id) {
+      if (video.creator_id && supabase) {
         const { data: creatorData, error: creatorError } = await supabase
           .from('creators')
           .select('id, did, handle, display_name, avatar, verified, bluesky_handle, bluesky_did, youtube_channel_id, youtube_channel_name')
