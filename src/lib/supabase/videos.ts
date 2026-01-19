@@ -118,8 +118,20 @@ export async function getVideos(limit = 50): Promise<SupabaseVideoWithCreator[]>
     .limit(limit);
 
   if (error) {
-    console.error('[getVideos] Error:', error);
-    throw error;
+    console.error('[getVideos] Query error:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    });
+    // Don't throw - return empty array to prevent page crash
+    console.warn('[getVideos] Returning empty array due to error');
+    return [];
+  }
+
+  if (!data || data.length === 0) {
+    console.log('[getVideos] No videos found in database');
+    return [];
   }
 
   // Transform the data to handle nested creator object
@@ -128,6 +140,7 @@ export async function getVideos(limit = 50): Promise<SupabaseVideoWithCreator[]>
     creator: Array.isArray(video.creator) ? video.creator[0] : video.creator
   }));
 
+  console.log(`[getVideos] Successfully loaded ${videos.length} videos`);
   return videos as SupabaseVideoWithCreator[];
 }
 
