@@ -231,17 +231,12 @@ export default function UploadPage() {
       const authToken = await getAccessToken();
 
       if (!authToken) {
-        console.error("❌ Failed to get access token from Privy");
+        console.error("[Upload] Failed to get access token");
         toast.error("Authentication failed. Please try signing in again.");
         setUploading(false);
         setUploadStage("idle");
         return;
       }
-
-      console.log("✓ Got auth token, starting upload...");
-      console.log("🔍 Token type:", typeof authToken);
-      console.log("🔍 Token length:", authToken.length);
-      console.log("🔍 Token prefix:", authToken.substring(0, 30) + "...");
 
       let startTime = Date.now();
       let lastUpdate = startTime;
@@ -287,12 +282,8 @@ export default function UploadPage() {
         setProcessingProgress(Math.round(progress * 100));
       });
 
-      console.log("Video ready:", readyAsset);
-
       // Save video metadata to Supabase via backend API
       try {
-        console.log("🔐 Auth token available:", !!authToken);
-        console.log("📤 Sending video metadata to /api/video/create");
 
         const metadataResponse = await fetch("/api/video/create", {
           method: "POST",
@@ -315,20 +306,15 @@ export default function UploadPage() {
           }),
         });
 
-        console.log("📥 Response status:", metadataResponse.status, metadataResponse.statusText);
         const metadataResult = await metadataResponse.json();
-        console.log("📦 Response data:", metadataResult);
 
         if (!metadataResponse.ok) {
-          console.error("❌ Video metadata save failed:", metadataResult);
+          console.error("[Upload] Metadata save failed:", metadataResult.error);
           throw new Error(metadataResult.error || "Failed to save video metadata");
         }
 
-        console.log("✅ Video metadata saved successfully:", metadataResult);
-
         // If in fallback mode, store video data in localStorage
         if (metadataResult.fallbackMode && metadataResult.videoData) {
-          console.log("Storing video in localStorage fallback mode");
           saveLocalVideo(metadataResult.videoData);
         }
 
@@ -341,8 +327,7 @@ export default function UploadPage() {
           toast.success("Video uploaded successfully!");
         }
       } catch (metadataError) {
-        console.error("Failed to save metadata:", metadataError);
-        // Don't fail the entire upload if metadata save fails
+        console.error("[Upload] Metadata save error:", metadataError);
         toast.error("Video uploaded but metadata save failed");
         setUploadStage("complete");
       }
@@ -367,7 +352,7 @@ export default function UploadPage() {
         router.push("/dashboard");
       }, 2000);
     } catch (error) {
-      console.error("Upload error:", error);
+      console.error("[Upload] Error:", error);
       toast.error(error instanceof Error ? error.message : "Upload failed");
       setUploading(false);
       setUploadStage("idle");

@@ -27,31 +27,20 @@ function ShortsContent() {
       setLoading(true);
 
       try {
-        console.log("[Shorts] Fetching from all sources in parallel...");
-
         // Fetch from ALL sources in parallel (faster!)
         const [supabaseVideos, blueskyVideos, youtubeVideos] = await Promise.all([
           // Supabase/Dragverse videos
-          getVideos(50).catch((err) => {
-            console.warn("[Shorts] Supabase fetch failed:", err);
-            return [];
-          }),
+          getVideos(50).catch(() => []),
           // Bluesky videos (only posts with actual video embeds - may be sparse)
           fetch("/api/bluesky/feed?limit=30")
             .then((res) => (res.ok ? res.json() : { posts: [] }))
             .then((data) => data.posts || [])
-            .catch((err) => {
-              console.warn("[Shorts] Bluesky fetch failed:", err);
-              return [];
-            }),
+            .catch(() => []),
           // YouTube Shorts (via RSS from curated drag channels)
           fetch("/api/youtube/feed?limit=30&shortsOnly=true")
             .then((res) => (res.ok ? res.json() : { videos: [] }))
             .then((data) => data.videos || [])
-            .catch((err) => {
-              console.warn("[Shorts] YouTube fetch failed:", err);
-              return [];
-            }),
+            .catch(() => []),
         ]);
 
         // Transform Supabase videos to Video type
@@ -101,35 +90,6 @@ function ShortsContent() {
           ...getLocalVideos(),
         ];
 
-        console.log(`[Shorts] Loaded ${transformedSupabase.length} Dragverse, ${blueskyVideos?.length || 0} Bluesky, ${youtubeVideos?.length || 0} YouTube videos`);
-
-        // Debug external sources
-        if (blueskyVideos && blueskyVideos.length > 0) {
-          console.log("[Shorts] Bluesky sample:", blueskyVideos.slice(0, 2).map((v: any) => ({
-            title: v.title?.substring(0, 30),
-            hasPlayback: !!v.playbackUrl
-          })));
-        } else {
-          console.log("[Shorts] ℹ️  No Bluesky videos (most drag posts are text/images, not videos)");
-        }
-
-        if (youtubeVideos && youtubeVideos.length > 0) {
-          console.log("[Shorts] YouTube sample:", youtubeVideos.slice(0, 2).map((v: any) => ({
-            title: v.title?.substring(0, 30),
-            hasPlayback: !!v.playbackUrl
-          })));
-        } else {
-          console.log("[Shorts] ℹ️  No YouTube videos (RSS feeds currently unavailable)");
-        }
-
-        // Debug: Log all video contentTypes
-        console.log("[Shorts] All videos with contentType:", allVideos.map(v => ({
-          id: v.id.substring(0, 8),
-          title: v.title,
-          contentType: v.contentType,
-          source: v.source
-        })));
-
         // Filter only shorts (include all sources: Dragverse, YouTube, Bluesky)
         // Focus on drag-specific content
         // Also filter out videos without valid playback URLs
@@ -146,12 +106,6 @@ function ShortsContent() {
         // Sort by date (newest first)
         shortsOnly.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-        console.log(`[Shorts] Displaying ${shortsOnly.length} shorts after filtering (with valid playback URLs)`);
-        console.log("[Shorts] Filtered shorts:", shortsOnly.map(v => ({
-          id: v.id.substring(0, 8),
-          title: v.title,
-          playbackUrl: v.playbackUrl ? "✅" : "❌"
-        })));
         setShorts(shortsOnly);
       } catch (error) {
         console.error("[Shorts] Failed to load shorts:", error);
@@ -186,10 +140,7 @@ function ShortsContent() {
     if (videoId && shorts.length > 0 && sliderReady) {
       const index = shorts.findIndex((s) => s.id === videoId);
       if (index >= 0) {
-        console.log(`[Shorts] Jumping to video ${videoId} at index ${index}`);
         instanceRef.current?.moveToIdx(index);
-      } else {
-        console.warn(`[Shorts] Video ${videoId} not found in shorts list`);
       }
     }
   }, [videoId, shorts, sliderReady, instanceRef]);
