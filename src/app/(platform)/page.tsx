@@ -46,7 +46,7 @@ export default function HomePage() {
                   id: v.id,
                   title: v.title,
                   description: v.description || "",
-                  thumbnail: v.thumbnail || "/default-thumnail.jpg",
+                  thumbnail: v.thumbnail || "/default-thumbnail.jpg",
                   duration: v.duration || 0,
                   views: v.views || 0,
                   likes: v.likes || 0,

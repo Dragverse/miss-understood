@@ -48,7 +48,7 @@ function ShortsContent() {
           id: v.id,
           title: v.title,
           description: v.description || "",
-          thumbnail: v.thumbnail || "/default-thumnail.jpg",
+          thumbnail: v.thumbnail || "/default-thumbnail.jpg",
           duration: v.duration || 0,
           views: v.views,
           likes: v.likes,

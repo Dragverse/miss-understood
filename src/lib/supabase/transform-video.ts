@@ -6,7 +6,7 @@ import { SupabaseVideo } from './videos';
 import { getCreatorByDID } from './creators';
 import type { Video } from '@/types';
 
-const PLACEHOLDER_IMAGE = '/placeholder-video.svg';
+const PLACEHOLDER_IMAGE = '/default-thumbnail.jpg';
 
 /**
  * Transform a single Supabase video to Video type with creator data

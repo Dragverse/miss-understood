@@ -256,7 +256,7 @@ export default function DashboardPage() {
                     {/* Thumbnail */}
                     <div className="relative w-full sm:w-48 h-28 rounded-xl overflow-hidden flex-shrink-0 border-2 border-[#EB83EA]/20 group-hover:border-[#EB83EA]/40 transition-all">
                       <Image
-                        src={video.thumbnail || '/placeholder-video.jpg'}
+                        src={video.thumbnail || '/default-thumbnail.jpg'}
                         alt={video.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
