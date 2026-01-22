@@ -354,24 +354,7 @@ export default function SettingsPage() {
       let bannerUrl = creator?.banner;
       let avatarUrl = creator?.avatar || avatarPreview;
 
-      // Upload banner if changed
-      if (bannerFile) {
-        toast.loading("Uploading banner...");
-        bannerUrl = await uploadBanner(bannerFile);
-        toast.dismiss();
-      }
-
-      // Upload avatar if changed
-      if (avatarFile) {
-        toast.loading("Uploading avatar...");
-        avatarUrl = await uploadAvatar(avatarFile);
-        toast.dismiss();
-      }
-
-      // Save profile via API route (with fallback support)
-      toast.loading("Saving profile...");
-
-      // Get authentication token from Privy
+      // Get authentication token from Privy (needed for image uploads)
       if (!user?.id) {
         throw new Error("User not found. Please log in again.");
       }
@@ -383,6 +366,22 @@ export default function SettingsPage() {
         throw new Error("Authentication required. Please log in again.");
       }
 
+      // Upload banner if changed
+      if (bannerFile) {
+        toast.loading("Uploading banner...");
+        bannerUrl = await uploadBanner(bannerFile, token);
+        toast.dismiss();
+      }
+
+      // Upload avatar if changed
+      if (avatarFile) {
+        toast.loading("Uploading avatar...");
+        avatarUrl = await uploadAvatar(avatarFile, token);
+        toast.dismiss();
+      }
+
+      // Save profile via API route (with fallback support)
+      toast.loading("Saving profile...");
       console.log("[Settings] Saving profile for user:", user.id);
 
       const response = await fetch("/api/profile/update", {

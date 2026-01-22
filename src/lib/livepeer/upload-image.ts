@@ -106,7 +106,8 @@ async function compressImage(
  */
 export async function uploadImageToIPFS(
   file: File,
-  options: ImageUploadOptions = {}
+  options: ImageUploadOptions = {},
+  authToken?: string
 ): Promise<string> {
   const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
 
@@ -127,8 +128,14 @@ export async function uploadImageToIPFS(
   formData.append("file", compressedFile);
 
   try {
+    const headers: HeadersInit = {};
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
     const response = await fetch("/api/upload/image", {
       method: "POST",
+      headers,
       body: formData,
     });
 
@@ -142,7 +149,13 @@ export async function uploadImageToIPFS(
       let errorMessage = `Failed to upload image (${response.status})`;
       try {
         const error = await response.json();
-        errorMessage = error.error || error.message || errorMessage;
+
+        // Handle authentication errors
+        if (error.errorType === "UNAUTHORIZED" || response.status === 401) {
+          errorMessage = "Please log in to upload images";
+        } else {
+          errorMessage = error.error || error.message || errorMessage;
+        }
       } catch (e) {
         // Response might not be JSON
         errorMessage = `${errorMessage}: ${response.statusText}`;
@@ -167,25 +180,25 @@ export async function uploadImageToIPFS(
 /**
  * Upload profile banner (1920x480 recommended)
  */
-export async function uploadBanner(file: File): Promise<string> {
+export async function uploadBanner(file: File, authToken?: string): Promise<string> {
   return uploadImageToIPFS(file, {
     maxWidth: 1920,
     maxHeight: 480,
     maxSizeBytes: 5 * 1024 * 1024, // 5MB
     quality: 0.9,
-  });
+  }, authToken);
 }
 
 /**
  * Upload profile avatar (400x400 recommended)
  */
-export async function uploadAvatar(file: File): Promise<string> {
+export async function uploadAvatar(file: File, authToken?: string): Promise<string> {
   return uploadImageToIPFS(file, {
     maxWidth: 400,
     maxHeight: 400,
     maxSizeBytes: 2 * 1024 * 1024, // 2MB
     quality: 0.9,
-  });
+  }, authToken);
 }
 
 /**

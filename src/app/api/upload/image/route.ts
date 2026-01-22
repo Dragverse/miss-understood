@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 
 const LIVEPEER_API_KEY = process.env.LIVEPEER_API_KEY;
 
 export async function POST(request: NextRequest) {
-  // Check API key first
+  // Verify authentication
+  if (isPrivyConfigured()) {
+    const auth = await verifyAuth(request);
+    if (!auth.authenticated) {
+      return NextResponse.json(
+        {
+          error: "Authentication required to upload images.",
+          errorType: "UNAUTHORIZED"
+        },
+        { status: 401 }
+      );
+    }
+    console.log("[Upload] Image upload by user:", auth.userId);
+  } else {
+    console.log("[Upload] Privy not configured - skipping auth check");
+  }
+
+  // Check API key
   if (!LIVEPEER_API_KEY) {
     return NextResponse.json(
       {
