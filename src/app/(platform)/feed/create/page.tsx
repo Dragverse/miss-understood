@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { FiImage, FiX, FiArrowLeft } from "react-icons/fi";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { usePrivy } from "@privy-io/react-auth";
 import { useAuthUser } from "@/lib/privy/hooks";
 
 export default function CreatePostPage() {
   const router = useRouter();
+  const { getAccessToken } = usePrivy();
   const { isAuthenticated } = useAuthUser();
   const [text, setText] = useState("");
   const [images, setImages] = useState<File[]>([]);
@@ -81,6 +83,12 @@ export default function CreatePostPage() {
     setPosting(true);
 
     try {
+      // Get authentication token for image uploads
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error("Authentication required. Please log in again.");
+      }
+
       const imageUrls: string[] = [];
 
       if (images.length > 0) {
@@ -97,6 +105,9 @@ export default function CreatePostPage() {
           try {
             const uploadResponse = await fetch("/api/upload/image", {
               method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
               body: formData,
             });
 

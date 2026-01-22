@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { FiX, FiUpload, FiCheck } from "react-icons/fi";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import { usePrivy } from "@privy-io/react-auth";
 import { Creator } from "@/types";
 import { uploadBanner, uploadAvatar, getImageDataURL } from "@/lib/livepeer/upload-image";
 
@@ -20,6 +21,8 @@ export function ProfileEditModal({
   creator,
   onSuccess,
 }: ProfileEditModalProps) {
+  const { getAccessToken } = usePrivy();
+
   const [formData, setFormData] = useState({
     displayName: creator.displayName,
     handle: creator.handle,
@@ -81,20 +84,26 @@ export function ProfileEditModal({
     setIsSubmitting(true);
 
     try {
+      // Get authentication token
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error("Authentication required. Please log in again.");
+      }
+
       let bannerUrl = creator.banner;
       let avatarUrl = creator.avatar;
 
       // Upload banner if changed
       if (bannerFile) {
         toast.loading("Uploading banner...");
-        bannerUrl = await uploadBanner(bannerFile);
+        bannerUrl = await uploadBanner(bannerFile, token);
         toast.dismiss();
       }
 
       // Upload avatar if changed
       if (avatarFile) {
         toast.loading("Uploading avatar...");
-        avatarUrl = await uploadAvatar(avatarFile);
+        avatarUrl = await uploadAvatar(avatarFile, token);
         toast.dismiss();
       }
 
