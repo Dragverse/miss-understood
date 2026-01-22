@@ -10,7 +10,7 @@ export function transformSupabaseCreator(creator: SupabaseCreator): Creator {
     did: creator.did,
     handle: creator.handle,
     displayName: creator.display_name,
-    avatar: creator.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${creator.did}`,
+    avatar: creator.avatar || "/defaultpfp.png",
     banner: creator.banner,
     description: creator.description || '',
     website: creator.website,

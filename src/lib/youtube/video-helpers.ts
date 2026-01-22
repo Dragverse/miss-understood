@@ -73,7 +73,7 @@ export function createMinimalYouTubeVideo(
       did: "youtube",
       handle: "youtube",
       displayName: "YouTube Creator",
-      avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=youtube",
+      avatar: "/defaultpfp.png",
       description: "YouTube video",
       followerCount: 0,
       followingCount: 0,

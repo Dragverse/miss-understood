@@ -147,7 +147,7 @@ export function Navbar() {
                   src={
                     blueskyProfile?.avatar ||
                     user?.twitter?.profilePictureUrl ||
-                    `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.id}&backgroundColor=EB83EA`
+                    "/defaultpfp.png"
                   }
                 />
               </div>

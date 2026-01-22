@@ -105,7 +105,7 @@ export default function DynamicProfilePage() {
               did: blueskyProfile.did,
               handle: blueskyProfile.handle,
               displayName: blueskyProfile.displayName,
-              avatar: blueskyProfile.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${blueskyProfile.handle}`,
+              avatar: blueskyProfile.avatar || "/defaultpfp.png",
               banner: blueskyProfile.banner || undefined,
               description: blueskyProfile.description || "",
               followerCount: blueskyProfile.followersCount,

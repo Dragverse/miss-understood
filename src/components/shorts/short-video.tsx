@@ -356,7 +356,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 >
                   <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-lg">
                     <Image
-                      src={getSafeThumbnail(video.creator.avatar, `https://api.dicebear.com/9.x/avataaars/svg?seed=${video.creator.handle || video.creator.did}`)}
+                      src={getSafeThumbnail(video.creator.avatar, "/defaultpfp.png")}
                       alt={video.creator.displayName || "Creator"}
                       width={48}
                       height={48}

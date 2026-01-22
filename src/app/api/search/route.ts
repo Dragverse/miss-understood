@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
           did: actor.did,
           handle: actor.handle,
           displayName: actor.displayName || actor.handle,
-          avatar: actor.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${actor.handle}`,
+          avatar: actor.avatar || "/defaultpfp.png",
           description: actor.description || "",
           followerCount: actor.followersCount || 0,
           source: "bluesky",
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
           did: creator.id,
           handle: creator.handle,
           displayName: creator.displayName || creator.handle,
-          avatar: creator.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${creator.handle}`,
+          avatar: creator.avatar || "/defaultpfp.png",
           description: creator.description || "",
           followerCount: creator.followerCount || 0,
           source: "dragverse",
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
             existing.blueskyFollowerCount = user.followerCount;
             existing.followerCount = (existing.dragverseFollowerCount || 0) + user.followerCount;
             // Keep Dragverse data as primary, but update if Bluesky has better info
-            if (!existing.avatar || existing.avatar.includes("dicebear")) {
+            if (!existing.avatar || existing.avatar.includes("defaultpfp")) {
               existing.avatar = user.avatar;
             }
           } else {

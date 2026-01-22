@@ -132,7 +132,7 @@ export function youtubeVideoToVideo(ytVideo: YouTubeVideo): Video {
       did: ytVideo.snippet.channelId,
       handle: ytVideo.snippet.channelTitle.toLowerCase().replace(/[^a-z0-9]/g, ""),
       displayName: ytVideo.snippet.channelTitle,
-      avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${ytVideo.snippet.channelId}`,
+      avatar: "/defaultpfp.png",
       description: "",
       followerCount: 0,
       followingCount: 0,

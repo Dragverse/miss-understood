@@ -99,7 +99,7 @@ export default function ProfilePage() {
             handle: profileData.handle || userHandle || user.id.slice(0, 8),
             displayName: profileData.displayName || "Unnamed Creator",
             description: profileData.description || "",
-            avatar: profileData.avatar || user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
+            avatar: profileData.avatar || user?.twitter?.profilePictureUrl || "/defaultpfp.png",
             banner: profileData.banner,
             website: profileData.website,
             instagramHandle: profileData.instagramHandle || instagramHandle,
@@ -119,7 +119,7 @@ export default function ProfilePage() {
       // Use Privy data as initial state
       const displayName = blueskyProfileFromHook?.displayName || user?.twitter?.name || userHandle || userEmail?.split('@')[0] || "Drag Artist";
       const handle = userHandle;
-      const avatar = blueskyProfileFromHook?.avatar || user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`;
+      const avatar = blueskyProfileFromHook?.avatar || user?.twitter?.profilePictureUrl || "/defaultpfp.png";
 
       setCreator({
         did: user.id,
@@ -180,7 +180,7 @@ export default function ProfilePage() {
           const videoCreator = sv.creator;
 
           // Fallback avatar if needed
-          const avatarFallback = `https://api.dicebear.com/9.x/avataaars/svg?seed=${sv.creator_did}&backgroundColor=EB83EA`;
+          const avatarFallback = "/defaultpfp.png";
 
           return {
             id: sv.id,

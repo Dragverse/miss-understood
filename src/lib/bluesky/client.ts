@@ -298,7 +298,7 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
       displayName: post.author.displayName || post.author.handle,
       avatar:
         post.author.avatar ||
-        `https://api.dicebear.com/9.x/avataaars/svg?seed=${post.author.did}`,
+        "/defaultpfp.png",
       description: "",
       followerCount: 0,
       followingCount: 0,
@@ -424,7 +424,7 @@ export function blueskyPostToContent(post: BlueskyPost): any | null {
       displayName: post.author.displayName || post.author.handle,
       avatar:
         post.author.avatar ||
-        `https://api.dicebear.com/9.x/avataaars/svg?seed=${post.author.did}`,
+        "/defaultpfp.png",
       description: "",
       followerCount: 0,
       followingCount: 0,

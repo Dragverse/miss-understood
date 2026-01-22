@@ -123,7 +123,7 @@ function rssVideoToVideo(rssVideo: RSSVideo): Video {
       did: channelId,
       handle: channel?.handle || "youtube",
       displayName: channel?.displayName || rssVideo.author?.name || "YouTube Channel",
-      avatar: channel?.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${channelId}`,
+      avatar: channel?.avatar || "/defaultpfp.png",
       description: channel?.description || "",
       followerCount: 0,
       followingCount: 0,
