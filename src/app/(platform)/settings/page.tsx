@@ -7,6 +7,7 @@ import { SiBluesky } from "react-icons/si";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAuthUser } from "@/lib/privy/hooks";
+import { usePrivy } from "@privy-io/react-auth";
 import { Creator } from "@/types";
 import { uploadBanner, uploadAvatar, getImageDataURL } from "@/lib/livepeer/upload-image";
 import { getCreatorByDID } from "@/lib/supabase/creators";
@@ -16,6 +17,7 @@ import { clearBlueskyCache } from "@/lib/bluesky/hooks";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { getAccessToken } = usePrivy();
   const {
     isAuthenticated,
     isReady,
@@ -369,9 +371,13 @@ export default function SettingsPage() {
       // Save profile via API route (with fallback support)
       toast.loading("Saving profile...");
 
-      // Get authentication token
-      const token = localStorage.getItem("privy:token");
-      if (!token || !user?.id) {
+      // Get authentication token from Privy
+      if (!user?.id) {
+        throw new Error("User not found. Please log in again.");
+      }
+
+      const token = await getAccessToken();
+      if (!token) {
         throw new Error("Authentication required. Please log in again.");
       }
 
@@ -453,7 +459,7 @@ export default function SettingsPage() {
 
     try {
       // Get Privy access token
-      const token = localStorage.getItem("privy:token");
+      const token = await getAccessToken();
       if (!token) {
         throw new Error("No authentication token found. Please log in again.");
       }
