@@ -318,6 +318,7 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
 /**
  * Convert Bluesky post to content format (videos, images, text)
  * This is more permissive than blueskyPostToVideo and includes all content types
+ * Filters for drag-relevant content to keep the feed focused
  */
 export function blueskyPostToContent(post: BlueskyPost): any | null {
   const hasNativeVideo = !!post.embed?.video;
@@ -332,10 +333,37 @@ export function blueskyPostToContent(post: BlueskyPost): any | null {
   const hasImages = post.embed?.images && post.embed.images.length > 0;
   const hasText = post.text && post.text.length > 0;
 
-  // Accept posts with video, images, or substantial text (at least 10 chars)
-  if (!hasVideo && !hasImages && (!hasText || post.text.length < 10)) {
-    return null;
+  // Drag-focused content filtering keywords
+  const dragKeywords = [
+    'drag', 'queen', 'performance', 'runway', 'look', 'makeup', 'wig',
+    'lipsync', 'lip sync', 'realness', 'sickening', 'slay', 'fierce',
+    'beat', 'face', 'gown', 'lewk', 'serve', 'serving', 'werk', 'work',
+    'show', 'gig', 'tonight', 'performing', 'rehearsal', 'costume',
+    'glamour', 'fabulous', 'stunning', 'gorgeous', 'outfit', 'transformation',
+    'charisma', 'uniqueness', 'nerve', 'talent', 'eleganza', 'extravaganza'
+  ];
+
+  const postTextLower = post.text.toLowerCase();
+  const hasDragKeyword = dragKeywords.some(keyword => postTextLower.includes(keyword));
+
+  // ENHANCED FILTERING:
+  // 1. Always accept posts with video or images (visual content is valuable)
+  // 2. For text-only posts, require drag keywords OR high engagement
+  // 3. Require meaningful content length for text-only posts (50+ chars)
+  if (!hasVideo && !hasImages) {
+    // Text-only posts need to be substantial AND drag-related
+    if (!hasText || post.text.length < 50) {
+      return null; // Too short
+    }
+
+    // Require drag keywords OR high engagement (10+ likes)
+    if (!hasDragKeyword && (post.likeCount || 0) < 10) {
+      return null; // Not drag-focused and low engagement
+    }
   }
+
+  // Accept all posts with media (video/images) from curated drag accounts
+  // These are pre-filtered by account selection, so trust the content
 
   // Extract media URL
   let playbackUrl = "";

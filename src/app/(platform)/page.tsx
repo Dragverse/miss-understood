@@ -119,9 +119,9 @@ export default function HomePage() {
           })
       );
 
-      // YouTube drag content (15 videos from curated channels)
+      // YouTube drag content (30 videos from curated channels - includes shorts)
       fetchPromises.push(
-        fetch("/api/youtube/feed?limit=15")
+        fetch("/api/youtube/feed?limit=30")
           .then((response) => response.json())
           .then((data) => {
             if (data.success && data.videos.length > 0) {
@@ -153,10 +153,13 @@ export default function HomePage() {
   }, []);
 
   // Separate shorts and regular videos
-  // Only show Dragverse native shorts (filter out external YouTube/Bluesky shorts)
+  // Include YouTube vertical videos alongside Dragverse native shorts
+  // This populates the bytes feed while we build up native content
   const shorts = videos.filter((v) =>
     v.contentType === "short" &&
-    !(v as any).source // No external source means it's a Dragverse native video
+    // Allow YouTube shorts (they're drag-focused from curated channels)
+    // Exclude Bluesky shorts as they may not be optimized for vertical player
+    (!(v as any).source || (v as any).source === "youtube")
   );
   const horizontalVideos = videos.filter((v) => v.contentType !== "short");
 

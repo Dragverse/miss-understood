@@ -134,7 +134,8 @@ export async function uploadImageToIPFS(
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || "Failed to upload image");
+      // FIX: API returns { error: "..." } not { message: "..." }
+      throw new Error(error.error || error.message || "Failed to upload image");
     }
 
     const data = await response.json();

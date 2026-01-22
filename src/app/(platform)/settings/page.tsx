@@ -368,12 +368,21 @@ export default function SettingsPage() {
 
       // Save profile via API route (with fallback support)
       toast.loading("Saving profile...");
+
+      // Get authentication token
+      const token = localStorage.getItem("privy:token");
+      if (!token || !user?.id) {
+        throw new Error("Authentication required. Please log in again.");
+      }
+
       const response = await fetch("/api/profile/update", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
+          did: user.id, // CRITICAL: Include user DID for upsert to work
           handle: formData.handle,
           displayName: formData.displayName,
           description: formData.description,

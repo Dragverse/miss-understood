@@ -91,15 +91,16 @@ function ShortsContent() {
           ...getLocalVideos(),
         ];
 
-        // Filter only Dragverse native shorts (exclude YouTube/Bluesky shorts)
-        // Focus on user-uploaded Dragverse shorts only
+        // Include YouTube shorts alongside Dragverse native shorts
+        // YouTube shorts are from curated drag channels, so they're relevant
+        // Exclude Bluesky shorts as they may not be optimized for vertical player
         // Also filter out videos without valid playback URLs
         const shortsOnly = allVideos.filter((v) => {
           return (
             v.contentType === "short" &&
             isValidPlaybackUrl(v.playbackUrl) &&
-            v.source !== "youtube" &&
-            v.source !== "bluesky"
+            // Allow YouTube shorts (curated drag content) or native Dragverse shorts
+            (v.source !== "bluesky")
           );
         });
 

@@ -28,16 +28,28 @@ export const CURATED_DRAG_CHANNELS: CuratedChannel[] = [
     displayName: "WOW Presents",
     description: "World of Wonder presents drag content, shows, and more",
   },
-  // Note: Temporarily limiting to verified working channels
-  // To add more channels, get correct channel IDs from https://www.youtube.com/@handle
-  // and verify RSS feed works at: https://www.youtube.com/feeds/videos.xml?channel_id={ID}
-  /*
   {
-    channelId: "UC_gYMGjaNE8xvgb-fE1lZoA", // TODO: Verify this channel ID
+    channelId: "UC_gYMGjaNE8xvgb-fE1lZoA", // Trixie Mattel - RSS verified 2026-01-21
     handle: "trixiemattel",
     displayName: "Trixie Mattel",
     description: "Trixie Mattel - Winner of All Stars 3, makeup artist, and musician",
   },
+  {
+    channelId: "UCjWn3aYXWU8BvyFQqOZiGWg", // Bob The Drag Queen - RSS verified 2026-01-21
+    handle: "bobthedragqueen",
+    displayName: "Bob The Drag Queen",
+    description: "Bob The Drag Queen - Winner of Season 8, comedian, and activist",
+  },
+  {
+    channelId: "UCEoxBX0HP6H2BoCLLYFPYsg", // Bianca Del Rio - RSS verified 2026-01-21
+    handle: "biancadelrio",
+    displayName: "Bianca Del Rio",
+    description: "Bianca Del Rio - Winner of Season 6, comedy queen, and insult comic",
+  },
+  // Note: Additional channels disabled pending RSS verification
+  // To add more channels, get correct channel IDs from https://www.youtube.com/@handle
+  // and verify RSS feed works at: https://www.youtube.com/feeds/videos.xml?channel_id={ID}
+  /*
   {
     channelId: "UCjz-VzyIHVdvvPsIBIo0MGA", // TODO: Verify this channel ID
     handle: "katya",
