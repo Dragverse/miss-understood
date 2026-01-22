@@ -133,13 +133,29 @@ export async function uploadImageToIPFS(
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      // FIX: API returns { error: "..." } not { message: "..." }
-      throw new Error(error.error || error.message || "Failed to upload image");
+      console.error("Image upload failed:", {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url
+      });
+
+      let errorMessage = `Failed to upload image (${response.status})`;
+      try {
+        const error = await response.json();
+        errorMessage = error.error || error.message || errorMessage;
+      } catch (e) {
+        // Response might not be JSON
+        errorMessage = `${errorMessage}: ${response.statusText}`;
+      }
+
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
-    return data.ipfsUrl;
+    if (!data.ipfsUrl && !data.url) {
+      throw new Error("No URL returned from upload");
+    }
+    return data.ipfsUrl || data.url;
   } catch (error) {
     console.error("Image upload error:", error);
     throw error instanceof Error
