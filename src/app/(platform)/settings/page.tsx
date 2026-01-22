@@ -209,7 +209,7 @@ export default function SettingsPage() {
             tiktokHandle: profileData.tiktokHandle || user?.tiktok?.username || "",
           });
           setBannerPreview(profileData.banner || null);
-          setAvatarPreview(profileData.avatar || user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`);
+          setAvatarPreview(profileData.avatar || user?.twitter?.profilePictureUrl || "/defaultpfp.png");
           console.log("Loaded profile from fallback storage");
           return;
         } catch (e) {
@@ -222,7 +222,7 @@ export default function SettingsPage() {
         did: user.id,
         handle: userHandle || userEmail?.split('@')[0] || "user",
         displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
-        avatar: user?.twitter?.profilePictureUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${userHandle}&backgroundColor=EB83EA`,
+        avatar: user?.twitter?.profilePictureUrl || "/defaultpfp.png",
         description: "Welcome to my Dragverse profile!",
         followerCount: 0,
         followingCount: 0,

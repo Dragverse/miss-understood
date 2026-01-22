@@ -188,8 +188,8 @@ export function extractAvatar(user: any, userId: string): string {
     return user.farcaster.pfp;
   }
 
-  // Generate avatar from DID
-  return `https://api.dicebear.com/9.x/avataaars/svg?seed=${userId}`;
+  // Use default profile picture
+  return "/defaultpfp.png";
 }
 
 /**
