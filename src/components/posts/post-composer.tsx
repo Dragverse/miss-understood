@@ -69,7 +69,8 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
         const formData = new FormData();
         formData.append("file", file);
 
-        const uploadResponse = await fetch("/api/upload/image", {
+        // Use v2 route to bypass aggressive browser caching
+        const uploadResponse = await fetch("/api/upload/image-v2", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${authToken}`,

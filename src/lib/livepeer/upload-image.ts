@@ -133,7 +133,8 @@ export async function uploadImageToIPFS(
       headers['Authorization'] = `Bearer ${authToken}`;
     }
 
-    const response = await fetch("/api/upload/image", {
+    // Use v2 route to bypass aggressive browser caching
+    const response = await fetch("/api/upload/image-v2", {
       method: "POST",
       headers,
       body: formData,

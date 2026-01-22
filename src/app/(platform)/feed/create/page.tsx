@@ -103,7 +103,8 @@ export default function CreatePostPage() {
           const toastId = toast.loading(`Uploading image ${i + 1}/${images.length}...`);
 
           try {
-            const uploadResponse = await fetch("/api/upload/image", {
+            // Use v2 route to bypass aggressive browser caching
+            const uploadResponse = await fetch("/api/upload/image-v2", {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${token}`,
