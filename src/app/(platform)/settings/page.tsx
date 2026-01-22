@@ -935,19 +935,19 @@ export default function SettingsPage() {
 
                 {/* Action Buttons */}
                 <div className="space-y-3">
-                  {/* Sync with Privy Button */}
+                  {/* Import from Connected Accounts Button */}
                   <button
                     onClick={handleSyncProfile}
                     disabled={isSyncing || isSaving}
                     className="w-full px-6 py-3 bg-gradient-to-r from-[#6c2bd9] to-[#EB83EA] hover:from-[#5c1bc9] hover:to-[#E748E6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-full transition-all flex items-center justify-center gap-2 border border-white/10"
-                    title="Sync your profile with connected accounts (Twitter, Google, etc.)"
+                    title="Import your profile info from connected social accounts"
                   >
                     <FiUser className="w-4 h-4" />
-                    {isSyncing ? "Syncing..." : "Sync with Privy Accounts"}
+                    {isSyncing ? "Importing..." : "Import from Connected Accounts"}
                   </button>
 
                   <p className="text-xs text-gray-400 text-center">
-                    Pull your name, handle, and avatar from Twitter, Google, or other connected accounts
+                    Pull your profile info from Twitter, Google, Farcaster, and other connected social accounts
                   </p>
 
                   {/* Save Button */}

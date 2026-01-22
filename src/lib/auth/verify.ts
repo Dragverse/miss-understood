@@ -1,28 +1,5 @@
-import { verifyAccessToken } from "@privy-io/node";
-import { createRemoteJWKSet } from "jose";
 import { NextRequest } from "next/server";
-
-// Cache the JWKS for performance
-let jwksCache: ReturnType<typeof createRemoteJWKSet> | null = null;
-
-function getJWKS() {
-  if (!jwksCache) {
-    const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
-    if (!appId) {
-      throw new Error("NEXT_PUBLIC_PRIVY_APP_ID is not configured");
-    }
-    // Privy's JWKS endpoint
-    const jwksUrl = `https://auth.privy.io/api/v1/apps/${appId}/.well-known/jwks.json`;
-
-    try {
-      jwksCache = createRemoteJWKSet(new URL(jwksUrl));
-    } catch (error) {
-      console.error("[Auth] Failed to create JWKS fetcher:", error);
-      throw error;
-    }
-  }
-  return jwksCache;
-}
+import { getPrivyClient } from "@/lib/privy/server";
 
 export interface AuthResult {
   authenticated: boolean;
@@ -67,12 +44,9 @@ export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
 
     console.log("[Auth] Verifying token for app:", appId);
 
-    // Verify the access token with Privy
-    const verifiedClaims = await verifyAccessToken({
-      access_token: token,
-      app_id: appId,
-      verification_key: getJWKS(),
-    });
+    // Verify the access token using PrivyClient
+    const privyClient = getPrivyClient();
+    const verifiedClaims = await privyClient.utils().auth().verifyAccessToken(token);
 
     console.log("[Auth] ✓ Token verified for user:", verifiedClaims.user_id);
 
