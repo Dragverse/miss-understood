@@ -9,6 +9,32 @@ const LIVEPEER_API_KEY = process.env.LIVEPEER_API_KEY;
  * Requires authentication via Privy access token
  */
 
+// Add OPTIONS handler for CORS preflight
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  });
+}
+
+// Add GET handler for debugging
+export async function GET(request: NextRequest) {
+  return NextResponse.json(
+    {
+      error: "Method not allowed. This endpoint only accepts POST requests with multipart/form-data.",
+      endpoint: "/api/upload/image",
+      method: "POST",
+      contentType: "multipart/form-data",
+      requiredAuth: true,
+    },
+    { status: 405 }
+  );
+}
+
 export async function POST(request: NextRequest) {
   // Verify authentication
   if (isPrivyConfigured()) {
