@@ -947,7 +947,7 @@ export default function SettingsPage() {
                   </button>
 
                   <p className="text-xs text-gray-400 text-center">
-                    Pull your profile info from Twitter, Google, Farcaster, and other connected social accounts
+                    Pull your profile info from Twitter, Google, Farcaster, and other connected social accounts. Your custom uploaded images will be preserved.
                   </p>
 
                   {/* Save Button */}

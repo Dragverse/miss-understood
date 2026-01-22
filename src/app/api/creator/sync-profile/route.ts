@@ -53,6 +53,9 @@ export async function POST(request: NextRequest) {
 
     console.log("[Sync Profile] Fetched Privy user profile");
 
+    // Check if user already has a profile with custom uploads
+    const existingCreator = await getCreatorByDID(userDID);
+
     // Extract Bluesky session data (if user has connected Bluesky)
     const blueskyData = await extractBlueskyFromSession(request);
 
@@ -71,12 +74,23 @@ export async function POST(request: NextRequest) {
       finalAvatar = blueskyData.avatar || finalAvatar;
     }
 
+    // IMPORTANT: Preserve user-uploaded custom content
+    // Only sync avatar/banner if user hasn't uploaded custom ones
+    const hasCustomAvatar = existingCreator?.avatar &&
+      !existingCreator.avatar.includes("defaultpfp") &&
+      !existingCreator.avatar.includes("dicebear") &&
+      existingCreator.avatar.includes("livepeer"); // Custom uploads use Livepeer IPFS
+
+    const hasCustomBanner = existingCreator?.banner &&
+      existingCreator.banner.includes("livepeer"); // Custom uploads use Livepeer IPFS
+
     const creatorData = {
       did: userDID,
       handle: finalHandle,
       display_name: finalDisplayName,
-      avatar: finalAvatar,
-      description: "", // Keep existing description
+      avatar: hasCustomAvatar ? existingCreator.avatar : finalAvatar, // Preserve custom avatar
+      banner: hasCustomBanner ? existingCreator.banner : undefined, // Preserve custom banner
+      description: existingCreator?.description || "", // Keep existing description
       ...socialHandles,
       ...(blueskyData && {
         bluesky_handle: blueskyData.handle,
