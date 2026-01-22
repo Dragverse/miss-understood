@@ -186,39 +186,54 @@ export async function getVideosByCreator(creatorDID: string, limit = 50): Promis
     return [];
   }
 
-  const { data, error } = await supabase
+  // Query videos first
+  const { data: videos, error: videosError } = await supabase
     .from('videos')
-    .select(`
-      *,
-      creator:creators!creator_id (
-        id,
-        did,
-        handle,
-        display_name,
-        avatar,
-        verified,
-        bluesky_handle,
-        bluesky_did,
-        youtube_channel_id,
-        youtube_channel_name
-      )
-    `)
+    .select('*')
     .eq('creator_did', creatorDID)
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (error) {
-    console.error('[getVideosByCreator] Error:', error);
-    throw error;
+  if (videosError) {
+    console.error('[getVideosByCreator] Error fetching videos:', videosError);
+    throw videosError;
   }
 
-  // Transform the data to handle nested creator object
-  const videos = (data || []).map((video: any) => ({
-    ...video,
-    creator: Array.isArray(video.creator) ? video.creator[0] : video.creator
-  }));
+  if (!videos || videos.length === 0) {
+    console.log('[getVideosByCreator] No videos found for creator:', creatorDID);
+    return [];
+  }
 
-  return videos as SupabaseVideoWithCreator[];
+  console.log(`[getVideosByCreator] Found ${videos.length} videos for creator ${creatorDID}`);
+
+  // Fetch creator info separately for each video
+  const videosWithCreators = await Promise.all(
+    videos.map(async (video: any) => {
+      let creator = null;
+
+      if (video.creator_id && supabase) {
+        const { data: creatorData, error: creatorError } = await supabase
+          .from('creators')
+          .select('id, did, handle, display_name, avatar, verified, bluesky_handle, bluesky_did, youtube_channel_id, youtube_channel_name')
+          .eq('id', video.creator_id)
+          .maybeSingle();
+
+        if (!creatorError && creatorData) {
+          creator = creatorData;
+        } else if (creatorError) {
+          console.warn(`[getVideosByCreator] Failed to fetch creator for video ${video.id}:`, creatorError);
+        }
+      }
+
+      return {
+        ...video,
+        creator
+      };
+    })
+  );
+
+  console.log(`[getVideosByCreator] Successfully loaded ${videosWithCreators.length} videos with creator info`);
+  return videosWithCreators as SupabaseVideoWithCreator[];
 }
 
 export async function getVideosByContentType(contentType: string, limit = 50): Promise<SupabaseVideo[]> {
