@@ -10,6 +10,7 @@ const LIVEPEER_API_KEY = process.env.LIVEPEER_API_KEY;
  * Image Upload API Route
  * Handles profile image and banner uploads to Livepeer IPFS
  * Requires authentication via Privy access token
+ * @route POST /api/upload/image
  */
 
 export async function POST(request: NextRequest) {
