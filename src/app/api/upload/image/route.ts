@@ -26,9 +26,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    console.log("[Upload] Image upload by user:", auth.userId);
+    console.log("[ImageUpload] Authenticated user:", auth.userId);
   } else {
-    console.log("[Upload] Privy not configured - skipping auth check");
+    console.log("[ImageUpload] Privy not configured - skipping auth check");
   }
 
   // Check API key
