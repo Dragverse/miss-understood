@@ -39,6 +39,7 @@ export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
     const authHeader = request.headers.get("authorization");
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.error("[Auth] Missing or invalid authorization header");
       return {
         authenticated: false,
         error: "Missing or invalid authorization header",
@@ -48,6 +49,7 @@ export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
     const token = authHeader.replace("Bearer ", "");
 
     if (!token) {
+      console.error("[Auth] No token provided in authorization header");
       return {
         authenticated: false,
         error: "No token provided",
@@ -56,11 +58,14 @@ export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
 
     const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
     if (!appId) {
+      console.error("[Auth] NEXT_PUBLIC_PRIVY_APP_ID not configured");
       return {
         authenticated: false,
         error: "Privy not configured",
       };
     }
+
+    console.log("[Auth] Verifying token for app:", appId);
 
     // Verify the access token with Privy
     const verifiedClaims = await verifyAccessToken({
@@ -69,12 +74,15 @@ export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
       verification_key: getJWKS(),
     });
 
+    console.log("[Auth] ✓ Token verified for user:", verifiedClaims.user_id);
+
     return {
       authenticated: true,
       userId: verifiedClaims.user_id,
     };
   } catch (error) {
     console.error("[Auth] Verification failed:", error instanceof Error ? error.message : String(error));
+    console.error("[Auth] Full error:", error);
 
     // Return more specific error message
     const errorMessage = error instanceof Error ? error.message : "Invalid or expired token";

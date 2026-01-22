@@ -377,9 +377,13 @@ export default function SettingsPage() {
       }
 
       const token = await getAccessToken();
+      console.log("[Settings] Got access token:", token ? "✓ Valid" : "✗ Null");
+
       if (!token) {
         throw new Error("Authentication required. Please log in again.");
       }
+
+      console.log("[Settings] Saving profile for user:", user.id);
 
       const response = await fetch("/api/profile/update", {
         method: "POST",
