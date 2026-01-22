@@ -62,7 +62,15 @@
       "Bash(/Users/salti/Documents/Coding/miss-understood/public/placeholder-video.jpg <<'EOF'\n# This is a placeholder - we'll use SVG instead\nEOF)",
       "Bash(/Users/salti/Documents/Coding/miss-understood/public/placeholder-video.svg <<'EOF'\n<svg width=\"1280\" height=\"720\" xmlns=\"http://www.w3.org/2000/svg\">\n  <defs>\n    <linearGradient id=\"grad1\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\">\n      <stop offset=\"0%\" style=\"stop-color:#7c3aed;stop-opacity:1\" />\n      <stop offset=\"100%\" style=\"stop-color:#EB83EA;stop-opacity:1\" />\n    </linearGradient>\n  </defs>\n  <rect width=\"1280\" height=\"720\" fill=\"url\\(#grad1\\)\"/>\n  <text x=\"640\" y=\"360\" font-family=\"Arial, sans-serif\" font-size=\"48\" fill=\"white\" text-anchor=\"middle\" opacity=\"0.8\">No Thumbnail</text>\n</svg>\nEOF)",
       "Bash(open http://localhost:3000)",
-      "Bash(open \"http://localhost:3000/videos\")"
+      "Bash(open \"http://localhost:3000/videos\")",
+      "Bash(gh api:*)",
+      "Bash(if [ -f .env.local ])",
+      "Bash(then grep -E \"SUPABASE|LIVEPEER|PRIVY\" .env.local)",
+      "Bash(else echo \"No .env.local file found\")",
+      "Bash(fi)",
+      "Bash(pkill:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(Connected Accounts\", their custom uploads were overwritten with \n  Bluesky/Twitter images\n- Users lost their custom artwork after syncing\n\nSolution:\n- Modified sync-profile API to check for existing custom uploads\n- Detects custom images by checking for Livepeer IPFS URLs\n- Only overwrites avatar/banner if user is using default or no image\n- Preserves custom description field\n- Updated UI help text to clarify custom images are preserved\n\nChanges:\n- src/app/api/creator/sync-profile/route.ts:\n  - Fetch existing creator profile before syncing\n  - Check if avatar/banner contain Livepeer URLs \\(custom uploads\\)\n  - Preserve custom content, only sync empty/default fields\n  \n- src/app/\\(platform\\)/settings/page.tsx:\n  - Updated help text to inform users custom uploads are preserved\n\nTesting:\n1. User uploads custom avatar → saves successfully\n2. User clicks \"Import from Connected Accounts\"\n3. Custom avatar is preserved, only empty fields are filled\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
