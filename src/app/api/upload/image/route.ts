@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 
+// Force dynamic route
+export const dynamic = 'force-dynamic';
+
 const LIVEPEER_API_KEY = process.env.LIVEPEER_API_KEY;
 
 /**
