@@ -3,8 +3,9 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiChevronLeft, FiChevronRight, FiImage, FiHeart, FiMessageCircle } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiImage } from "react-icons/fi";
 import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
+import { BlueskyPostActions } from "@/components/bluesky/post-actions";
 
 interface PhotoPost {
   id: string;
@@ -17,9 +18,12 @@ interface PhotoPost {
   };
   likes: number;
   replyCount?: number;
+  reposts?: number;
   externalUrl: string;
   internalUrl?: string; // Internal Dragverse route
   createdAt: Date | string;
+  uri?: string; // Bluesky post URI
+  cid?: string; // Bluesky post CID
 }
 
 export function TrendingPhotosSection({ photos }: { photos: PhotoPost[] }) {
@@ -89,18 +93,22 @@ export function TrendingPhotosSection({ photos }: { photos: PhotoPost[] }) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 text-white text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <FiHeart className="w-4 h-4 text-red-400" />
-                      <span className="font-bold">{formatNumber(photo.likes)}</span>
+                  {/* Bluesky interaction buttons */}
+                  {photo.uri && photo.cid ? (
+                    <BlueskyPostActions
+                      postUri={photo.uri}
+                      postCid={photo.cid}
+                      externalUrl={photo.externalUrl}
+                      initialLikes={photo.likes}
+                      initialReposts={photo.reposts || 0}
+                      initialComments={photo.replyCount || 0}
+                      size="sm"
+                    />
+                  ) : (
+                    <div className="text-white/60 text-xs">
+                      {formatNumber(photo.likes)} likes
                     </div>
-                    {photo.replyCount !== undefined && photo.replyCount > 0 && (
-                      <div className="flex items-center gap-1.5">
-                        <FiMessageCircle className="w-4 h-4 text-blue-400" />
-                        <span className="font-bold">{formatNumber(photo.replyCount)}</span>
-                      </div>
-                    )}
-                  </div>
+                  )}
 
                   {photo.description && (
                     <p className="text-white/90 text-xs mt-2 line-clamp-2 leading-relaxed">{photo.description}</p>

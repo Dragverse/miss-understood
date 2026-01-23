@@ -273,12 +273,23 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
   // Extract description (full text)
   const description = post.text;
 
-  // Determine content type based on aspect ratio or default to short
-  const contentType =
-    post.embed?.video?.aspectRatio &&
-    post.embed.video.aspectRatio.width > post.embed.video.aspectRatio.height
-      ? "long"
-      : "short";
+  // Determine content type based on aspect ratio
+  // Only mark as "short" if we KNOW it's vertical (height > width)
+  // Default to "long" when unknown to avoid polluting Shorts feed
+  let contentType: "short" | "long" = "long"; // Default to long-form
+
+  if (post.embed?.video?.aspectRatio) {
+    const { width, height } = post.embed.video.aspectRatio;
+    // Vertical video (height > width) = short
+    contentType = height > width ? "short" : "long";
+  } else if (post.embed?.external?.uri) {
+    // For external links, check if it's a YouTube Short or TikTok
+    const url = post.embed.external.uri.toLowerCase();
+    if (url.includes("youtube.com/shorts") || url.includes("tiktok.com")) {
+      contentType = "short";
+    }
+  }
+  // If no aspect ratio data and not a known short platform, keep as "long"
 
   return {
     id: videoId,

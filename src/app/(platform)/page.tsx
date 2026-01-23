@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { VideoCard } from "@/components/video/video-card";
 import { FiSearch } from "react-icons/fi";
+import toast from "react-hot-toast";
 import { HeroSection } from "@/components/home/hero-section";
 import { BytesSection } from "@/components/home/bytes-section";
 import { CommunitySection } from "@/components/home/community-section";
@@ -34,12 +35,12 @@ export default function HomePage() {
       }
 
       // Fetch Supabase and Bluesky in parallel (non-blocking)
-      const fetchPromises = [];
+      // Track failed sources to notify user
+      const failedSources: string[] = [];
 
       // Supabase videos
-      if (!USE_MOCK_DATA) {
-        fetchPromises.push(
-          getVideos(50)
+      const supabasePromise = !USE_MOCK_DATA
+        ? getVideos(50)
             .then((result) => {
               if (result && result.length > 0) {
                 const ceramicVideos = result.map((v: any) => ({
@@ -85,59 +86,64 @@ export default function HomePage() {
             })
             .catch((error) => {
               console.warn("Failed to load videos from Supabase:", error);
+              failedSources.push("Dragverse");
               return [];
             })
-        );
-      }
+        : Promise.resolve([]);
 
       // Bluesky content (fetch ALL content types: videos, images, text)
-      fetchPromises.push(
-        fetch("/api/bluesky/feed?limit=30&contentType=all")
-          .then((response) => response.json())
-          .then((data) => {
-            const blueskyContent = data.posts || data.videos || [];
-            if (data.success && blueskyContent.length > 0) {
-              console.log(`Loaded ${blueskyContent.length} posts from Bluesky (videos, images, text)`);
+      const blueskyPromise = fetch("/api/bluesky/feed?limit=30&contentType=all")
+        .then((response) => response.json())
+        .then((data) => {
+          const blueskyContent = data.posts || data.videos || [];
+          if (data.success && blueskyContent.length > 0) {
+            console.log(`Loaded ${blueskyContent.length} posts from Bluesky (videos, images, text)`);
 
-              // Extract photo posts
-              const photos = blueskyContent.filter((post: any) =>
-                post.thumbnail &&
-                !post.playbackUrl?.includes("m3u8") &&
-                !post.playbackUrl?.includes("youtube") &&
-                !post.playbackUrl?.includes("vimeo") &&
-                !post.playbackUrl?.includes("tiktok")
-              ).slice(0, 15);
+            // Extract photo posts
+            const photos = blueskyContent.filter((post: any) =>
+              post.thumbnail &&
+              !post.playbackUrl?.includes("m3u8") &&
+              !post.playbackUrl?.includes("youtube") &&
+              !post.playbackUrl?.includes("vimeo") &&
+              !post.playbackUrl?.includes("tiktok")
+            ).slice(0, 15);
 
-              setPhotoPosts(photos);
-              return blueskyContent;
-            }
-            return [];
-          })
-          .catch((error) => {
-            console.warn("Failed to load videos from Bluesky:", error);
-            return [];
-          })
-      );
+            setPhotoPosts(photos);
+            return blueskyContent;
+          }
+          return [];
+        })
+        .catch((error) => {
+          console.warn("Failed to load videos from Bluesky:", error);
+          failedSources.push("Bluesky");
+          return [];
+        });
 
       // YouTube drag content (30 videos from curated channels - includes shorts)
-      fetchPromises.push(
-        fetch("/api/youtube/feed?limit=30&rssOnly=true")
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success && data.videos.length > 0) {
-              console.log(`Loaded ${data.videos.length} videos from YouTube`);
-              return data.videos;
-            }
-            return [];
-          })
-          .catch((error) => {
-            console.warn("Failed to load videos from YouTube:", error);
-            return [];
-          })
-      );
+      const youtubePromise = fetch("/api/youtube/feed?limit=30&rssOnly=true")
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success && data.videos.length > 0) {
+            console.log(`Loaded ${data.videos.length} videos from YouTube`);
+            return data.videos;
+          }
+          return [];
+        })
+        .catch((error) => {
+          console.warn("Failed to load videos from YouTube:", error);
+          failedSources.push("YouTube");
+          return [];
+        });
 
       // Wait for all fetches to complete in parallel
-      const results = await Promise.all(fetchPromises);
+      const results = await Promise.all([supabasePromise, blueskyPromise, youtubePromise]);
+
+      // Notify user if some sources failed (but not all)
+      if (failedSources.length > 0 && failedSources.length < 3) {
+        toast.error(`Some content sources unavailable: ${failedSources.join(", ")}`, {
+          duration: 4000,
+        });
+      }
       const allVideos = [...localVideos, ...results.flat()];
 
       // Sort by date (newest first)

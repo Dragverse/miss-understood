@@ -277,6 +277,8 @@ export default function SettingsPage() {
           } catch (profileError) {
             console.warn("Bluesky profile fetch failed (non-critical):", profileError);
             // Continue without Bluesky profile - don't block settings page
+            // Show toast so user knows their Bluesky profile data may be stale
+            toast.error("Could not load Bluesky profile details. Some data may be outdated.", { duration: 4000 });
           }
         }
       } catch (error) {

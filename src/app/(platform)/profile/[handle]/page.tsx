@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FiArrowLeft, FiHeart } from "react-icons/fi";
+import { FiArrowLeft } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
+import { BlueskyPostActions } from "@/components/bluesky/post-actions";
 import { SocialLinks } from "@/components/profile/social-links";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
 import { VerificationBadge } from "@/components/ui/verification-badge";
@@ -78,6 +79,7 @@ export default function DynamicProfilePage() {
 
   const [blueskyPosts, setBlueskyPosts] = useState<any[]>([]);
   const [blueskyPhotos, setBlueskyPhotos] = useState<any[]>([]);
+  const [isLoadingBlueskyContent, setIsLoadingBlueskyContent] = useState(false);
 
   // Determine profile type and load data
   useEffect(() => {
@@ -138,6 +140,7 @@ export default function DynamicProfilePage() {
 
   // Fetch Bluesky posts and photos
   async function fetchBlueskyContent() {
+    setIsLoadingBlueskyContent(true);
     try {
       const response = await fetch(`/api/bluesky/feed?limit=50`);
       const data = await response.json();
@@ -157,6 +160,8 @@ export default function DynamicProfilePage() {
       }
     } catch (error) {
       console.error("Failed to fetch Bluesky content:", error);
+    } finally {
+      setIsLoadingBlueskyContent(false);
     }
   }
 
@@ -362,26 +367,32 @@ export default function DynamicProfilePage() {
         <div className="pb-12">
           {activeTab === "feed" && (
             <div className="space-y-4 max-w-4xl">
-              {blueskyPosts.length > 0 ? (
+              {isLoadingBlueskyContent ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EB83EA]"></div>
+                </div>
+              ) : blueskyPosts.length > 0 ? (
                 blueskyPosts.map((post: any) => (
-                  <a
+                  <div
                     key={post.id}
-                    href={post.externalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="block p-6 bg-[#18122D] rounded-xl border-2 border-[#2f2942] hover:border-[#EB83EA] transition-all hover:shadow-lg hover:shadow-[#EB83EA]/20"
                   >
                     <p className="text-[#FCF1FC] text-base mb-3 leading-relaxed">{post.description}</p>
-                    <div className="flex items-center gap-4 text-sm text-gray-400">
-                      <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                      {post.likes > 0 && (
-                        <span className="flex items-center gap-1">
-                          <FiHeart className="w-4 h-4 text-red-400" />
-                          {post.likes}
-                        </span>
-                      )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-400">
+                        {new Date(post.createdAt).toLocaleDateString()}
+                      </span>
+                      <BlueskyPostActions
+                        postUri={post.uri || post.id}
+                        postCid={post.cid || ""}
+                        externalUrl={post.externalUrl}
+                        initialLikes={post.likes || 0}
+                        initialReposts={post.reposts || 0}
+                        initialComments={post.replies || 0}
+                        size="sm"
+                      />
                     </div>
-                  </a>
+                  </div>
                 ))
               ) : (
                 <div className="text-center py-20">
@@ -397,13 +408,14 @@ export default function DynamicProfilePage() {
 
           {activeTab === "looks" && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-              {blueskyPhotos.length > 0 ? (
+              {isLoadingBlueskyContent ? (
+                <div className="col-span-full flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EB83EA]"></div>
+                </div>
+              ) : blueskyPhotos.length > 0 ? (
                 blueskyPhotos.map((photo: any) => (
-                  <a
+                  <div
                     key={photo.id}
-                    href={photo.externalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="relative aspect-square rounded-xl overflow-hidden group cursor-pointer border-2 border-transparent hover:border-[#EB83EA] transition-all"
                   >
                     <Image
@@ -414,10 +426,19 @@ export default function DynamicProfilePage() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                       <div className="absolute bottom-3 left-3 right-3">
-                        <p className="text-white text-sm font-medium line-clamp-2">{photo.title}</p>
+                        <p className="text-white text-sm font-medium line-clamp-1 mb-2">{photo.title}</p>
+                        <BlueskyPostActions
+                          postUri={photo.uri || photo.id}
+                          postCid={photo.cid || ""}
+                          externalUrl={photo.externalUrl}
+                          initialLikes={photo.likes || 0}
+                          initialReposts={photo.reposts || 0}
+                          size="sm"
+                          showCounts={false}
+                        />
                       </div>
                     </div>
-                  </a>
+                  </div>
                 ))
               ) : (
                 <div className="col-span-full text-center py-20">

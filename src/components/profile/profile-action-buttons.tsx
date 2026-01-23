@@ -85,6 +85,7 @@ export function ProfileActionButtons({
         )}
       </button>
 
+      {/* Tip button hidden for MVP - functionality not yet implemented
       {isDragverseUser && (
         <button
           onClick={handleTip}
@@ -94,6 +95,7 @@ export function ProfileActionButtons({
           Tip
         </button>
       )}
+      */}
     </div>
   );
 }

@@ -429,12 +429,14 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         // Revert on error
         setIsLiked(!newLiked);
         setLikes(likes);
+        toast.error("Failed to update like. Please try again.");
       }
     } catch (error) {
       // Revert on error
       setIsLiked(!newLiked);
       setLikes(likes);
       console.error("[Watch] Like error:", error);
+      toast.error("Failed to update like. Please try again.");
     }
   };
 

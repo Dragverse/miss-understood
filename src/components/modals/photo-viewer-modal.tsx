@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { FiX, FiChevronLeft, FiChevronRight, FiHeart, FiMessageCircle, FiExternalLink } from "react-icons/fi";
+import { FiX, FiChevronLeft, FiChevronRight, FiExternalLink } from "react-icons/fi";
+import { BlueskyPostActions } from "@/components/bluesky/post-actions";
 
 interface PhotoPost {
   id: string;
@@ -15,8 +16,11 @@ interface PhotoPost {
   };
   likes: number;
   replyCount?: number;
+  reposts?: number;
   externalUrl: string;
   createdAt: Date | string;
+  uri?: string;
+  cid?: string;
 }
 
 interface PhotoViewerModalProps {
@@ -161,19 +165,27 @@ export function PhotoViewerModal({ photos, initialIndex, onClose }: PhotoViewerM
             </div>
           </div>
 
-          {/* Engagement Stats */}
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <FiHeart className="w-5 h-5 text-red-400" />
-              <span className="text-white font-bold">{formatNumber(currentPhoto.likes)}</span>
+          {/* Engagement Stats / Interaction Buttons */}
+          {currentPhoto.uri && currentPhoto.cid ? (
+            <BlueskyPostActions
+              postUri={currentPhoto.uri}
+              postCid={currentPhoto.cid}
+              externalUrl={currentPhoto.externalUrl}
+              initialLikes={currentPhoto.likes}
+              initialReposts={currentPhoto.reposts || 0}
+              initialComments={currentPhoto.replyCount || 0}
+              size="md"
+            />
+          ) : (
+            <div className="flex items-center gap-6 text-white/60 text-sm">
+              {currentPhoto.likes > 0 && (
+                <span>{formatNumber(currentPhoto.likes)} likes</span>
+              )}
+              {currentPhoto.replyCount !== undefined && currentPhoto.replyCount > 0 && (
+                <span>{formatNumber(currentPhoto.replyCount)} comments</span>
+              )}
             </div>
-            {currentPhoto.replyCount !== undefined && currentPhoto.replyCount > 0 && (
-              <div className="flex items-center gap-2">
-                <FiMessageCircle className="w-5 h-5 text-blue-400" />
-                <span className="text-white font-bold">{formatNumber(currentPhoto.replyCount)}</span>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Description */}
           {currentPhoto.description && (
