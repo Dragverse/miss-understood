@@ -174,6 +174,13 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         const ceramicVideo = accessData.video as SupabaseVideo;
         const formattedVideo = await transformVideoWithCreator(ceramicVideo);
 
+        // Redirect to listen page if this is audio content
+        if (formattedVideo.contentType === 'podcast' || formattedVideo.contentType === 'music') {
+          console.log("[Watch] Redirecting audio content to /listen page");
+          window.location.href = `/listen/${resolvedParams.id}${shareToken ? `?token=${shareToken}` : ''}`;
+          return;
+        }
+
         setVideo(formattedVideo);
         setLikes(formattedVideo.likes);
         setAccessDenied(false);
