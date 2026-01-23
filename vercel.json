@@ -1,14 +1,6 @@
 {
   "functions": {
-    "api/upload/image-v2.ts": {
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "api/video/update.ts": {
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "api/video/create.ts": {
+    "src/app/api/**/*.ts": {
       "maxDuration": 60,
       "memory": 1024
     }
