@@ -48,20 +48,30 @@ export default function AudioPage() {
     setLoading(true);
     try {
       // Fetch YouTube videos from RSS feeds (no API quota!)
-      // Get enough videos to filter for podcasts and music
       const response = await fetch("/api/youtube/feed?limit=50&rssOnly=true");
       const data = await response.json();
 
       const allContent: AudioContent[] = [];
 
       if (data.success && data.videos) {
-        // Categorize by duration:
-        // - Podcasts: 30+ minutes (1800+ seconds)
-        // - Music: 2-10 minutes (120-600 seconds)
+        // Since RSS doesn't provide duration, we'll categorize by keywords in titles
+        // and show all drag music/performance content
 
-        const podcasts = data.videos
-          .filter((v: any) => v.duration > 1800) // 30 minutes+
-          .map((v: any) => ({
+        const musicKeywords = ['music', 'song', 'performance', 'singing', 'cover', 'acoustic', 'live'];
+        const podcastKeywords = ['podcast', 'interview', 'talk', 'discussion', 'episode', 'chat'];
+
+        data.videos.forEach((v: any) => {
+          const titleLower = v.title?.toLowerCase() || "";
+          const descLower = v.description?.toLowerCase() || "";
+
+          // Determine type based on keywords
+          let type: "music" | "podcast" = "music"; // Default to music
+
+          if (podcastKeywords.some(keyword => titleLower.includes(keyword) || descLower.includes(keyword))) {
+            type = "podcast";
+          }
+
+          allContent.push({
             id: v.id,
             title: v.title,
             description: v.description || "",
@@ -75,33 +85,13 @@ export default function AudioPage() {
               avatar: "/default-thumbnail.jpg",
             },
             youtubeUrl: v.externalUrl || v.playbackUrl || "",
-            type: "podcast" as const,
-          }));
-
-        const music = data.videos
-          .filter((v: any) => v.duration >= 120 && v.duration <= 600) // 2-10 minutes
-          .map((v: any) => ({
-            id: v.id,
-            title: v.title,
-            description: v.description || "",
-            thumbnail: v.thumbnail || "/default-thumbnail.jpg",
-            duration: v.duration || 0,
-            views: v.views || 0,
-            createdAt: v.createdAt ? new Date(v.createdAt) : new Date(),
-            creator: v.creator || {
-              displayName: "YouTube Creator",
-              handle: "youtube",
-              avatar: "/default-thumbnail.jpg",
-            },
-            youtubeUrl: v.externalUrl || v.playbackUrl || "",
-            type: "music" as const,
-          }));
-
-        allContent.push(...podcasts, ...music);
+            type,
+          });
+        });
       }
 
-      // Sort by views (most popular first)
-      allContent.sort((a, b) => b.views - a.views);
+      // Sort by date (newest first)
+      allContent.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       console.log(`[Audio] Loaded ${allContent.length} audio items from YouTube RSS (${allContent.filter(c => c.type === 'podcast').length} podcasts, ${allContent.filter(c => c.type === 'music').length} music)`);
 
