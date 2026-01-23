@@ -5,6 +5,10 @@ import { supabase } from "@/lib/supabase/client";
 // Force dynamic route
 export const dynamic = 'force-dynamic';
 
+// Increase body size limit for image uploads
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 /**
  * Image Upload API Route
  * Handles profile image and banner uploads to Livepeer IPFS

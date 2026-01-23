@@ -38,7 +38,17 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "yt3.ggpht.com", // YouTube channel avatars
       },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co", // Supabase Storage
+      },
     ],
+  },
+  // API body size limits
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
   // Security headers (moved from deprecated middleware.ts)
   headers: async () => [
