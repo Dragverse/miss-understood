@@ -4,10 +4,8 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FiMessageCircle, FiShare2, FiPlay, FiPause, FiSkipForward, FiSkipBack, FiVolume2 } from "react-icons/fi";
-import { TipModal } from "@/components/video/tip-modal";
 import { ShareModal } from "@/components/video/share-modal";
 import { VideoCommentModal } from "@/components/video/video-comment-modal";
-import { ChocolateBar } from "@/components/ui/chocolate-bar";
 import { getVideo } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
@@ -25,8 +23,6 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
   const [isLoading, setIsLoading] = useState(true);
   const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [tipModalOpen, setTipModalOpen] = useState(false);
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -273,6 +269,12 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
 
               {/* Action Buttons */}
               <div className="flex items-center gap-4">
+                <HeartAnimation
+                  initialLiked={isLiked}
+                  onToggle={handleLike}
+                  showCount={true}
+                  count={likes}
+                />
                 <button
                   onClick={() => setCommentModalOpen(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] rounded-full transition"
@@ -280,11 +282,6 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
                   <FiMessageCircle className="w-5 h-5 text-[#EB83EA]" />
                   <span className="text-white font-semibold">0</span>
                 </button>
-                <ChocolateBar
-                  initialCount={likes}
-                  onLike={handleLike}
-                  isLiked={isLiked}
-                />
                 <button
                   onClick={() => setShareModalOpen(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] rounded-full transition"
@@ -321,18 +318,13 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
       </div>
 
       {/* Modals */}
-      <TipModal
-        isOpen={tipModalOpen}
-        onClose={() => setTipModalOpen(false)}
-        creatorName={audio.creator?.displayName || "Creator"}
-        creatorDID={audio.creator?.did || ""}
-        videoId={audio.id}
-      />
       <ShareModal
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
         videoId={audio.id}
         videoTitle={audio.title}
+        videoVisibility={audio.visibility || "public"}
+        isOwner={user?.id === audio.creator?.did}
       />
       <VideoCommentModal
         isOpen={commentModalOpen}
