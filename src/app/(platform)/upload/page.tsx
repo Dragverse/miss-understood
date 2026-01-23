@@ -11,6 +11,7 @@ import Image from "next/image";
 import { saveLocalVideo } from "@/lib/utils/local-storage";
 import { getVideo } from "@/lib/supabase/videos";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
+import imageCompression from "browser-image-compression";
 
 function UploadPageContent() {
   const { isAuthenticated, signIn, user } = useAuthUser();
@@ -293,9 +294,31 @@ function UploadPageContent() {
       if (formData.thumbnail) {
         toast("Uploading new thumbnail...");
         try {
+          // Compress image before uploading to avoid 413 errors
+          let thumbnailToUpload = formData.thumbnail;
+
+          // Only compress if file is larger than 1MB
+          if (formData.thumbnail.size > 1024 * 1024) {
+            toast("Compressing image...");
+            const options = {
+              maxSizeMB: 1,
+              maxWidthOrHeight: 1920,
+              useWebWorker: true,
+              fileType: formData.thumbnail.type as any,
+            };
+
+            try {
+              thumbnailToUpload = await imageCompression(formData.thumbnail, options);
+              console.log(`[Upload] Compressed thumbnail from ${(formData.thumbnail.size / 1024 / 1024).toFixed(2)}MB to ${(thumbnailToUpload.size / 1024 / 1024).toFixed(2)}MB`);
+            } catch (compressError) {
+              console.warn("[Upload] Failed to compress image, uploading original:", compressError);
+              // Continue with original file if compression fails
+            }
+          }
+
           // Upload thumbnail as an image using the image upload API
           const thumbnailFormData = new FormData();
-          thumbnailFormData.append("file", formData.thumbnail);
+          thumbnailFormData.append("file", thumbnailToUpload);
 
           const uploadResponse = await fetch("/api/upload/image-v2", {
             method: "POST",
