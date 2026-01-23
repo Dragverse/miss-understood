@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
+import { supabase } from "@/lib/supabase/client";
 
 // Force dynamic route
 export const dynamic = 'force-dynamic';
-
-const LIVEPEER_API_KEY = process.env.LIVEPEER_API_KEY;
 
 /**
  * Image Upload API Route
@@ -31,8 +30,8 @@ export async function POST(request: NextRequest) {
     console.log("[ImageUpload] Privy not configured - skipping auth check");
   }
 
-  // Check API key
-  if (!LIVEPEER_API_KEY) {
+  // Check Supabase
+  if (!supabase) {
     return NextResponse.json(
       {
         error: "Image upload is currently unavailable. Please contact support.",
@@ -51,11 +50,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file type
-    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
     if (!validTypes.includes(file.type)) {
       return NextResponse.json(
         {
-          error: "Invalid file type. Only JPG, PNG, and WebP are supported.",
+          error: "Invalid file type. Only JPG, PNG, WebP, and GIF are supported.",
           errorType: "INVALID_FILE_TYPE"
         },
         { status: 400 }
@@ -75,61 +74,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upload to Livepeer
-    const uploadFormData = new FormData();
-    uploadFormData.append("file", file);
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 15);
+    const extension = file.name.split('.').pop() || 'jpg';
+    const fileName = `${timestamp}-${randomStr}.${extension}`;
+    const filePath = `images/${fileName}`;
 
-    const response = await fetch("https://livepeer.studio/api/asset/upload/direct", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LIVEPEER_API_KEY}` },
-      body: uploadFormData,
-    });
+    // Convert file to arrayBuffer for Supabase upload
+    const arrayBuffer = await file.arrayBuffer();
 
-    if (!response.ok) {
-      let errorMessage = "Failed to upload image.";
-      let errorType = "UPLOAD_FAILED";
-
-      // Get detailed error from Livepeer API
-      let apiError = null;
-      try {
-        apiError = await response.json();
-      } catch (e) {
-        // Response body might not be JSON
-      }
-
-      console.error("Livepeer upload failed:", {
-        status: response.status,
-        statusText: response.statusText,
-        error: apiError,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('media')
+      .upload(filePath, arrayBuffer, {
+        contentType: file.type,
+        cacheControl: '3600',
+        upsert: false
       });
 
-      if (response.status === 401) {
-        errorMessage = "Storage authentication failed. Contact support.";
-        errorType = "AUTH_FAILED";
-      } else if (response.status === 429) {
-        errorMessage = "Upload rate limit exceeded. Try again in a few minutes.";
-        errorType = "RATE_LIMIT";
-      } else if (response.status >= 500) {
-        errorMessage = "Storage service unavailable. Try again later.";
-        errorType = "SERVICE_UNAVAILABLE";
-      }
-
-      return NextResponse.json({ error: errorMessage, errorType, details: apiError }, { status: response.status });
+    if (uploadError) {
+      console.error("Supabase upload error:", uploadError);
+      return NextResponse.json({
+        error: "Failed to upload image to storage",
+        errorType: "UPLOAD_FAILED",
+        details: uploadError.message
+      }, { status: 500 });
     }
 
-    const data = await response.json();
-    const ipfsUrl = data.storage?.ipfs?.cid
-      ? `https://ipfs.livepeer.studio/ipfs/${data.storage.ipfs.cid}`
-      : data.url || data.playbackUrl;
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('media')
+      .getPublicUrl(filePath);
 
-    if (!ipfsUrl) {
+    if (!publicUrl) {
       return NextResponse.json({ error: "Upload succeeded but no URL returned.", errorType: "MISSING_URL" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, url: ipfsUrl, ipfsUrl, asset: data });
+    console.log(`[ImageUpload] ✅ Image uploaded successfully: ${publicUrl}`);
+    return NextResponse.json({ success: true, url: publicUrl, path: filePath });
   } catch (error) {
     console.error("Unexpected error during image upload:", error);
     return NextResponse.json(

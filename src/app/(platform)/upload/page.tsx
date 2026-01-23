@@ -293,13 +293,34 @@ function UploadPageContent() {
       if (formData.thumbnail) {
         toast("Uploading new thumbnail...");
         try {
-          // Create a temporary asset for the thumbnail
-          const asset = await uploadVideoToLivepeer(formData.thumbnail, () => {});
-          const readyAsset = await waitForAssetReady(asset.id, () => {});
-          thumbnailUrl = `https://image.lp-playback.studio/image/${readyAsset.playbackId}/thumbnail.webp`;
+          // Upload thumbnail as an image using the image upload API
+          const thumbnailFormData = new FormData();
+          thumbnailFormData.append("file", formData.thumbnail);
+
+          const uploadResponse = await fetch("/api/upload/image-v2", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: thumbnailFormData,
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to upload thumbnail image");
+          }
+
+          const uploadResult = await uploadResponse.json();
+          if (uploadResult.success && uploadResult.url) {
+            thumbnailUrl = uploadResult.url;
+            toast.success("Thumbnail uploaded successfully");
+          } else {
+            throw new Error("Invalid upload response");
+          }
         } catch (error) {
           console.error("Failed to upload thumbnail:", error);
-          toast.error("Failed to upload new thumbnail");
+          toast.error("Failed to upload new thumbnail. Keeping existing thumbnail.");
+          // Keep the existing thumbnail if upload fails
+          thumbnailUrl = formData.thumbnailPreview;
         }
       }
 
