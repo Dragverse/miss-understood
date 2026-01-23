@@ -6,7 +6,6 @@ import Image from "next/image";
 import { FiHeadphones, FiPlay, FiClock, FiTrendingUp, FiMusic, FiMic } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
-import type { AudioTrack } from "@/contexts/AudioPlayerContext";
 
 interface AudioContent {
   id: string;
