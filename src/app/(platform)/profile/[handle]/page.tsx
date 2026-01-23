@@ -10,7 +10,7 @@ import { BlueskyPostActions } from "@/components/bluesky/post-actions";
 import { SocialLinks } from "@/components/profile/social-links";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
 import { VerificationBadge } from "@/components/ui/verification-badge";
-import { getCreatorByHandle } from "@/lib/supabase/creators";
+import { getCreatorByHandleOrDID } from "@/lib/supabase/creators";
 import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { useBlueskyProfileByHandle } from "@/lib/bluesky/hooks";
 import { Creator } from "@/types";
@@ -86,7 +86,7 @@ export default function DynamicProfilePage() {
     async function loadProfile() {
       // First, try to find in Ceramic (Dragverse user)
       try {
-        const ceramicProfile = await getCreatorByHandle(handle);
+        const ceramicProfile = await getCreatorByHandleOrDID(handle);
         if (ceramicProfile) {
           setCreator(transformSupabaseCreator(ceramicProfile));
           setProfileType("dragverse");

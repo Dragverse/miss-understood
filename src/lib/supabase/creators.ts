@@ -110,6 +110,34 @@ export async function getCreatorByHandle(handle: string): Promise<Creator | null
   return data as Creator | null;
 }
 
+/**
+ * Try to find a creator by handle first, then by DID if not found.
+ * This allows /u/ links to work with both handles and DIDs.
+ */
+export async function getCreatorByHandleOrDID(identifier: string): Promise<Creator | null> {
+  // First try by handle (most common case)
+  const byHandle = await getCreatorByHandle(identifier);
+  if (byHandle) return byHandle;
+
+  // If identifier looks like a DID, try that
+  if (identifier.startsWith('did:')) {
+    return await getCreatorByDID(identifier);
+  }
+
+  // Also try case-insensitive handle search
+  const client = typeof window === 'undefined' ? getSupabaseServerClient() : supabase;
+  if (!client) return null;
+
+  const { data, error } = await client
+    .from('creators')
+    .select('*')
+    .ilike('handle', identifier)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') return null;
+  return data as Creator | null;
+}
+
 export async function searchCreators(searchTerm: string, limit = 20): Promise<Creator[]> {
   if (!supabase) {
     console.warn('Supabase not configured');
