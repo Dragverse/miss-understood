@@ -2,7 +2,7 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import Image from "next/image";
-import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe, FiShare2, FiCheck, FiMusic, FiGrid, FiFilm, FiImage, FiMessageSquare, FiInfo, FiZap, FiHeadphones } from "react-icons/fi";
+import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe, FiShare2, FiCheck, FiMusic } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
