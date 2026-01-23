@@ -304,6 +304,15 @@ export default function UploadPage() {
       // Save video metadata to Supabase via backend API
       try {
 
+        // For audio files or if thumbnail is too large, use Livepeer's auto-generated thumbnail
+        // Base64 thumbnails can exceed API body size limits
+        const useLivepeerThumbnail = formData.mediaType === "audio" ||
+                                     (formData.thumbnailPreview && formData.thumbnailPreview.length > 500000);
+
+        const thumbnailUrl = useLivepeerThumbnail
+          ? `https://image.lp-playback.studio/image/${readyAsset.playbackId}/thumbnail.webp`
+          : formData.thumbnailPreview || `https://image.lp-playback.studio/image/${readyAsset.playbackId}/thumbnail.webp`;
+
         const metadataResponse = await fetch("/api/video/create", {
           method: "POST",
           headers: {
@@ -313,7 +322,7 @@ export default function UploadPage() {
           body: JSON.stringify({
             title: formData.title,
             description: formData.description,
-            thumbnail: formData.thumbnailPreview || `https://image.lp-playback.studio/image/${readyAsset.playbackId}/thumbnail.webp`,
+            thumbnail: thumbnailUrl,
             livepeerAssetId: readyAsset.id,
             playbackId: readyAsset.playbackId,
             playbackUrl: readyAsset.playbackUrl,

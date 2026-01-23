@@ -11,6 +11,10 @@ import {
   extractSocialHandles,
 } from "@/lib/privy/server";
 
+// Configure route to accept larger request bodies (for audio uploads with thumbnails)
+export const maxDuration = 60; // 60 seconds timeout
+export const dynamic = 'force-dynamic'; // Disable static optimization
+
 /**
  * POST /api/video/create
  * Save video metadata to Ceramic after successful Livepeer upload
