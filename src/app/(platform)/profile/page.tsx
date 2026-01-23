@@ -533,81 +533,12 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Story Highlights Row */}
+          {/* Story Highlights Row - Hidden for future feature */}
+          {/* TODO: Implement story highlights feature
           <div className="flex gap-6 px-4 mb-8 overflow-x-auto pb-2">
-            {/* Bytes Highlight */}
-            {bytesList.length > 0 && (
-              <button
-                onClick={() => setActiveTab("bytes")}
-                className="flex flex-col items-center gap-2 flex-shrink-0 group"
-              >
-                <div className={`w-20 h-20 rounded-full border-2 ${activeTab === "bytes" ? "border-[#EB83EA]" : "border-gray-600"} p-1 transition-all`}>
-                  <div className="w-full h-full rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
-                    <FiZap className="w-8 h-8 text-[#EB83EA]" />
-                  </div>
-                </div>
-                <span className="text-xs text-gray-300 group-hover:text-white transition">Bytes</span>
-              </button>
-            )}
-
-            {/* Videos Highlight */}
-            <button
-              onClick={() => setActiveTab("videos")}
-              className="flex flex-col items-center gap-2 flex-shrink-0 group"
-            >
-              <div className={`w-20 h-20 rounded-full border-2 ${activeTab === "videos" ? "border-[#EB83EA]" : "border-gray-600"} p-1 transition-all`}>
-                <div className="w-full h-full rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
-                  <FiFilm className="w-8 h-8 text-[#EB83EA]" />
-                </div>
-              </div>
-              <span className="text-xs text-gray-300 group-hover:text-white transition">Videos</span>
-            </button>
-
-            {/* Audio Highlight */}
-            {audioList.length > 0 && (
-              <button
-                onClick={() => setActiveTab("audio")}
-                className="flex flex-col items-center gap-2 flex-shrink-0 group"
-              >
-                <div className={`w-20 h-20 rounded-full border-2 ${activeTab === "audio" ? "border-[#EB83EA]" : "border-gray-600"} p-1 transition-all`}>
-                  <div className="w-full h-full rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
-                    <FiHeadphones className="w-8 h-8 text-[#EB83EA]" />
-                  </div>
-                </div>
-                <span className="text-xs text-gray-300 group-hover:text-white transition">Audio</span>
-              </button>
-            )}
-
-            {/* Photos Highlight */}
-            {userPhotos.length > 0 && (
-              <button
-                onClick={() => setActiveTab("photos")}
-                className="flex flex-col items-center gap-2 flex-shrink-0 group"
-              >
-                <div className={`w-20 h-20 rounded-full border-2 ${activeTab === "photos" ? "border-[#EB83EA]" : "border-gray-600"} p-1 transition-all`}>
-                  <div className="w-full h-full rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
-                    <FiImage className="w-8 h-8 text-[#EB83EA]" />
-                  </div>
-                </div>
-                <span className="text-xs text-gray-300 group-hover:text-white transition">Photos</span>
-              </button>
-            )}
-
-            {/* Posts Highlight */}
-            {userPosts.length > 0 && (
-              <button
-                onClick={() => setActiveTab("posts")}
-                className="flex flex-col items-center gap-2 flex-shrink-0 group"
-              >
-                <div className={`w-20 h-20 rounded-full border-2 ${activeTab === "posts" ? "border-[#EB83EA]" : "border-gray-600"} p-1 transition-all`}>
-                  <div className="w-full h-full rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
-                    <FiMessageSquare className="w-8 h-8 text-[#EB83EA]" />
-                  </div>
-                </div>
-                <span className="text-xs text-gray-300 group-hover:text-white transition">Posts</span>
-              </button>
-            )}
+            Story highlights will go here
           </div>
+          */}
         </div>
 
         {/* Content Section with Icon Tabs */}
@@ -715,10 +646,10 @@ export default function ProfilePage() {
               {videosList.length > 0 ? (
                 <div className="grid grid-cols-3 gap-1">
                   {videosList.map((video) => (
-                    <Link
+                    <div
                       key={video.id}
-                      href={`/watch/${video.id}`}
-                      className="relative aspect-square group bg-black overflow-hidden"
+                      className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
+                      onClick={() => router.push(`/watch/${video.id}`)}
                     >
                       <Image
                         src={video.thumbnail || "/default-thumbnail.jpg"}
@@ -743,7 +674,7 @@ export default function ProfilePage() {
                       <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-white text-xs font-semibold">
                         {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
                       </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -776,10 +707,10 @@ export default function ProfilePage() {
               {audioList.length > 0 ? (
                 <div className="grid grid-cols-3 gap-1">
                   {audioList.map((audio) => (
-                    <Link
+                    <div
                       key={audio.id}
-                      href={`/listen/${audio.id}`}
-                      className="relative aspect-square group bg-black overflow-hidden"
+                      className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
+                      onClick={() => router.push(`/listen/${audio.id}`)}
                     >
                       <Image
                         src={audio.thumbnail || "/default-thumbnail.jpg"}
@@ -804,7 +735,7 @@ export default function ProfilePage() {
                       <div className="absolute top-2 right-2 bg-black/80 p-2 rounded-full">
                         <FiHeadphones className="w-4 h-4 text-[#EB83EA]" />
                       </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               ) : (
