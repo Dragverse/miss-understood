@@ -1,5 +1,7 @@
 import React from "react";
 import { OwnershipBanner } from "@/components/ui/ownership-banner";
+import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
+import { PersistentAudioPlayer } from "@/components/audio/PersistentAudioPlayer";
 
 export default function PlatformLayout({
   children,
@@ -7,9 +9,10 @@ export default function PlatformLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <AudioPlayerProvider>
       {children}
+      <PersistentAudioPlayer />
       <OwnershipBanner />
-    </>
+    </AudioPlayerProvider>
   );
 }

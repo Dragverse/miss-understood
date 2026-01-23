@@ -96,6 +96,24 @@ export const CURATED_DRAG_CHANNELS: CuratedChannel[] = [
 ];
 
 /**
+ * Music-focused drag channels for the audio page
+ */
+export const DRAG_MUSIC_CHANNELS: CuratedChannel[] = [
+  {
+    channelId: "UC_gYMGjaNE8xvgb-fE1lZoA", // Trixie Mattel (music focus)
+    handle: "trixiemattel",
+    displayName: "Trixie Mattel",
+    description: "Drag queen, comedian, and recording artist",
+  },
+  {
+    channelId: "UCUUUpaMp8DV6KUOfQwoIiLg", // WOW Presents (music performances)
+    handle: "wowpresents",
+    displayName: "WOW Presents",
+    description: "Drag performances, music, and entertainment",
+  },
+];
+
+/**
  * Get RSS feed URL for a YouTube channel
  * Try both channel_id and user formats as fallback
  */

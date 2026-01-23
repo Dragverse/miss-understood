@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FiHeadphones, FiPlay, FiClock, FiTrendingUp, FiMusic, FiMic } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
+import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import type { AudioTrack } from "@/contexts/AudioPlayerContext";
 
 interface AudioContent {
   id: string;
@@ -25,9 +27,18 @@ interface AudioContent {
 
 export default function AudioPage() {
   const router = useRouter();
+  const { playTrack, pause: pauseAudio } = useAudioPlayer();
   const [audioContent, setAudioContent] = useState<AudioContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"all" | "podcasts" | "music">("all");
+  const [selectedVideo, setSelectedVideo] = useState<AudioContent | null>(null);
+
+  // Pause audio when video modal opens
+  useEffect(() => {
+    if (selectedVideo) {
+      pauseAudio();
+    }
+  }, [selectedVideo, pauseAudio]);
 
   useEffect(() => {
     loadAudioContent();
@@ -120,9 +131,66 @@ export default function AudioPage() {
     return true;
   });
 
+  const handlePlayTrack = (content: AudioContent) => {
+    // For YouTube content, we'll play it as a video since RSS doesn't provide audio-only URLs
+    // Extract YouTube video ID from the URL
+    const youtubeIdMatch = content.youtubeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
+    const youtubeId = youtubeIdMatch ? youtubeIdMatch[1] : "";
+
+    if (youtubeId) {
+      setSelectedVideo(content);
+    }
+  };
+
+  const closeVideoPlayer = () => {
+    setSelectedVideo(null);
+  };
+
   return (
-    <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
-      <div className="max-w-7xl mx-auto">
+    <>
+      {/* Video Player Modal */}
+      {selectedVideo && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
+          <div className="w-full max-w-6xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-white text-2xl font-bold">{selectedVideo.title}</h2>
+              <button
+                onClick={closeVideoPlayer}
+                className="text-white text-4xl hover:text-[#EB83EA] transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            <div className="aspect-video w-full bg-black rounded-2xl overflow-hidden">
+              <iframe
+                width="100%"
+                height="100%"
+                src={`https://www.youtube.com/embed/${selectedVideo.youtubeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1]}?autoplay=1`}
+                title={selectedVideo.title}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <div className="mt-4 text-gray-400">
+              <p>{selectedVideo.description}</p>
+              <div className="flex items-center gap-4 mt-3 text-sm">
+                <span className="flex items-center gap-1">
+                  <FiTrendingUp className="w-4 h-4" />
+                  {selectedVideo.views.toLocaleString()} views
+                </span>
+                <span className="flex items-center gap-1">
+                  <FiClock className="w-4 h-4" />
+                  {formatDuration(selectedVideo.duration)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-3">
@@ -197,12 +265,10 @@ export default function AudioPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredContent.map((content) => (
-              <a
+              <button
                 key={content.id}
-                href={content.youtubeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl overflow-hidden border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all cursor-pointer hover:shadow-lg hover:shadow-[#EB83EA]/20"
+                onClick={() => handlePlayTrack(content)}
+                className="group bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl overflow-hidden border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all cursor-pointer hover:shadow-lg hover:shadow-[#EB83EA]/20 text-left w-full"
               >
                 {/* Thumbnail */}
                 <div className="relative aspect-video">
@@ -283,11 +349,12 @@ export default function AudioPage() {
                     </div>
                   </div>
                 </div>
-              </a>
+              </button>
             ))}
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

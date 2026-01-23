@@ -23,12 +23,14 @@ import { HeartAnimation, ActionButton, EmptyState, LoadingShimmer, MoodBadge } f
 import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
 import { createMinimalYouTubeVideoWithDetection } from "@/lib/youtube/video-helpers";
 import { getSafeThumbnail, isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
+import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
 export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
   const searchParams = useSearchParams();
   const shareToken = searchParams.get("token");
   const { getAccessToken, login, user } = usePrivy();
+  const { pause: pauseAudio, isPlaying: isAudioPlaying } = useAudioPlayer();
 
   const [video, setVideo] = useState<Video | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,6 +44,14 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
   const [theaterMode, setTheaterMode] = useState(false);
+
+  // Pause audio when video page loads or when video is playing
+  useEffect(() => {
+    if (video && isAudioPlaying) {
+      console.log("[Watch] Pausing audio player because video is being watched");
+      pauseAudio();
+    }
+  }, [video, isAudioPlaying, pauseAudio]);
 
   // Fetch video with access control
   useEffect(() => {
