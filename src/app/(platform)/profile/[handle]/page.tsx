@@ -3,59 +3,24 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiZap, FiHeadphones, FiImage, FiMessageSquare, FiInfo, FiMusic, FiGrid, FiCalendar, FiGlobe, FiShare2, FiCheck, FiStar, FiUser } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
-import { BlueskyPostActions } from "@/components/bluesky/post-actions";
-import { SocialLinks } from "@/components/profile/social-links";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
 import { VerificationBadge } from "@/components/ui/verification-badge";
+import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
+import { BytesSlider } from "@/components/profile/bytes-slider";
 import { getCreatorByHandleOrDID } from "@/lib/supabase/creators";
 import { transformSupabaseCreator } from "@/lib/supabase/transformers";
+import { getVideosByCreator } from "@/lib/supabase/videos";
 import { useBlueskyProfileByHandle } from "@/lib/bluesky/hooks";
-import { Creator } from "@/types";
+import { Creator, Video } from "@/types";
+import { isVerified } from "@/config/verified-creators";
+import { FaInstagram, FaTiktok } from "react-icons/fa";
+import { SiBluesky } from "react-icons/si";
 
 /**
- * Linkify text by converting URLs to clickable links
- */
-function linkifyText(text: string) {
-  const urlPattern = /(https?:\/\/[^\s]+)|(www\.[^\s]+)/g;
-  const parts = text.split(urlPattern).filter(Boolean);
-
-  return parts.map((part, index) => {
-    if (!part) return null;
-
-    if (part.match(/^https?:\/\//)) {
-      return (
-        <a
-          key={index}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[#EB83EA] hover:text-[#E748E6] underline transition"
-        >
-          {part}
-        </a>
-      );
-    } else if (part.match(/^www\./)) {
-      return (
-        <a
-          key={index}
-          href={`https://${part}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[#EB83EA] hover:text-[#E748E6] underline transition"
-        >
-          {part}
-        </a>
-      );
-    }
-    return <span key={index}>{part}</span>;
-  });
-}
-
-/**
- * Dynamic Profile Page
+ * Dynamic Profile Page - Instagram Style
  * Handles both Dragverse users and external Bluesky accounts
  * Route: /profile/[handle]
  */
@@ -67,9 +32,18 @@ export default function DynamicProfilePage() {
 
   const [profileType, setProfileType] = useState<"loading" | "dragverse" | "bluesky" | "not-found">("loading");
   const [creator, setCreator] = useState<Creator | null>(null);
-  const [activeTab, setActiveTab] = useState<"feed" | "looks" | "profile">("feed");
-  // Initialize currentUserDID from authenticated user
+  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "audio" | "photos" | "posts" | "about">("videos");
   const currentUserDID = user?.id;
+
+  // Content states
+  const [userVideos, setUserVideos] = useState<Video[]>([]);
+  const [userPhotos, setUserPhotos] = useState<any[]>([]);
+  const [userPosts, setUserPosts] = useState<any[]>([]);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
+  const [profileLinkCopied, setProfileLinkCopied] = useState(false);
+  const [showBytePlayer, setShowBytePlayer] = useState(false);
+  const [selectedByteIndex, setSelectedByteIndex] = useState(0);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
   // Try to fetch Bluesky profile if it looks like a Bluesky handle
   const isBlueskyHandle = handle.includes(".bsky.social") || handle.includes(".");
@@ -77,23 +51,35 @@ export default function DynamicProfilePage() {
     isBlueskyHandle ? handle : null
   );
 
-  const [blueskyPosts, setBlueskyPosts] = useState<any[]>([]);
-  const [blueskyPhotos, setBlueskyPhotos] = useState<any[]>([]);
-  const [isLoadingBlueskyContent, setIsLoadingBlueskyContent] = useState(false);
+  // Copy profile link to clipboard
+  const handleShareProfile = async () => {
+    if (!creator) return;
+    const profileUrl = `${window.location.origin}/u/${creator.handle}`;
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setProfileLinkCopied(true);
+      setTimeout(() => setProfileLinkCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy profile link:", error);
+    }
+  };
 
   // Determine profile type and load data
   useEffect(() => {
     async function loadProfile() {
-      // First, try to find in Ceramic (Dragverse user)
+      // First, try to find in Supabase (Dragverse user)
       try {
         const ceramicProfile = await getCreatorByHandleOrDID(handle);
         if (ceramicProfile) {
           setCreator(transformSupabaseCreator(ceramicProfile));
           setProfileType("dragverse");
 
+          // Load content for Dragverse user
+          loadUserContent(ceramicProfile.did);
+
           // If Dragverse user has Bluesky connected, fetch their Bluesky content too
           if (ceramicProfile.bluesky_handle) {
-            fetchBlueskyContent();
+            fetchBlueskyContent(ceramicProfile.bluesky_handle);
           }
           return;
         }
@@ -101,7 +87,7 @@ export default function DynamicProfilePage() {
         console.log("Not found in Supabase, checking Bluesky");
       }
 
-      // If not in Ceramic and looks like Bluesky handle, wait for Bluesky fetch
+      // If not in Supabase and looks like Bluesky handle, wait for Bluesky fetch
       if (isBlueskyHandle) {
         if (!blueskyLoading) {
           if (blueskyProfile) {
@@ -124,13 +110,13 @@ export default function DynamicProfilePage() {
             setProfileType("bluesky");
 
             // Fetch Bluesky posts
-            fetchBlueskyContent();
+            fetchBlueskyContent(blueskyProfile.handle);
           } else if (blueskyError) {
             setProfileType("not-found");
           }
         }
       } else {
-        // Not a Bluesky handle and not in Ceramic
+        // Not a Bluesky handle and not in Supabase
         setProfileType("not-found");
       }
     }
@@ -138,30 +124,65 @@ export default function DynamicProfilePage() {
     loadProfile();
   }, [handle, blueskyProfile, blueskyLoading, blueskyError, isBlueskyHandle]);
 
+  // Load videos and other content from database
+  async function loadUserContent(creatorDID: string) {
+    setIsLoadingContent(true);
+    try {
+      const videos = await getVideosByCreator(creatorDID);
+
+      const transformedVideos: Video[] = videos.map((sv) => ({
+        id: sv.id,
+        title: sv.title,
+        description: sv.description || "",
+        thumbnail: sv.thumbnail || "",
+        playbackUrl: sv.playback_url || "",
+        duration: sv.duration || 0,
+        views: sv.views || 0,
+        likes: sv.likes || 0,
+        comments: 0,
+        shares: 0,
+        createdAt: new Date(sv.created_at),
+        creator: creator!,
+        contentType: sv.content_type || ((sv.duration || 0) <= 60 ? "short" : "long"),
+        livepeerAssetId: sv.livepeer_asset_id || sv.id,
+        category: sv.category || "drag",
+        tags: sv.tags || [],
+        source: (sv as any).source,
+      }));
+
+      setUserVideos(transformedVideos);
+    } catch (error) {
+      console.error("Failed to load videos:", error);
+    } finally {
+      setIsLoadingContent(false);
+    }
+  }
+
   // Fetch Bluesky posts and photos
-  async function fetchBlueskyContent() {
-    setIsLoadingBlueskyContent(true);
+  async function fetchBlueskyContent(blueskyHandle: string) {
     try {
       const response = await fetch(`/api/bluesky/feed?limit=50`);
       const data = await response.json();
 
       if (data.success && data.posts) {
         // Filter posts for this specific user
-        const userPosts = data.posts.filter((post: any) =>
-          post.creator?.handle === handle || post.author?.handle === handle
+        const userBlueskyPosts = data.posts.filter((post: any) =>
+          post.creator?.handle === blueskyHandle || post.author?.handle === blueskyHandle
         );
 
-        // Separate posts and photos
-        const photos = userPosts.filter((post: any) => post.thumbnail);
-        const textPosts = userPosts.filter((post: any) => !post.thumbnail);
+        // Separate into photos (images without video) and text posts
+        const photos = userBlueskyPosts.filter(
+          (post: any) => post.thumbnail && !post.playbackUrl?.includes("m3u8")
+        );
+        const textPosts = userBlueskyPosts.filter(
+          (post: any) => !post.thumbnail && !post.playbackUrl
+        );
 
-        setBlueskyPhotos(photos);
-        setBlueskyPosts(textPosts);
+        setUserPhotos(photos);
+        setUserPosts(textPosts);
       }
     } catch (error) {
       console.error("Failed to fetch Bluesky content:", error);
-    } finally {
-      setIsLoadingBlueskyContent(false);
     }
   }
 
@@ -188,7 +209,7 @@ export default function DynamicProfilePage() {
         <div className="text-center py-12">
           <h1 className="text-3xl font-bold text-[#FCF1FC] mb-4">Profile Not Found</h1>
           <p className="text-gray-400 mb-6">
-            The profile @{handle} doesn't exist or is private.
+            The profile @{handle} doesn&apos;t exist or is private.
           </p>
           <button
             onClick={() => router.push("/")}
@@ -201,7 +222,20 @@ export default function DynamicProfilePage() {
     );
   }
 
-  // Render profile (Dragverse or Bluesky) - Twitch-style layout
+  // Filter content by type
+  const videosList = userVideos.filter(v => v.contentType !== 'short' && v.contentType !== 'podcast' && v.contentType !== 'music');
+  const bytesList = userVideos.filter(v => v.contentType === 'short' && v.source !== 'youtube' && v.source !== 'bluesky');
+  const audioList = userVideos.filter(v => v.contentType === 'podcast' || v.contentType === 'music');
+
+  // Stats
+  const stats = {
+    videoCount: userVideos.length,
+    totalViews: userVideos.reduce((sum, v) => sum + (v.views || 0), 0),
+    totalLikes: userVideos.reduce((sum, v) => sum + (v.likes || 0), 0),
+    photoCount: userPhotos.length,
+  };
+
+  // Render profile - Hybrid Style (Banner + Instagram tabs)
   return (
     <div className="min-h-screen">
       {/* Back Button - Fixed top left */}
@@ -213,8 +247,8 @@ export default function DynamicProfilePage() {
         <span className="hidden sm:inline">Back</span>
       </button>
 
-      {/* Hero Banner - Full width, large and prominent like Twitch */}
-      <div className="relative w-full h-[40vh] md:h-[50vh] lg:h-[60vh] bg-gradient-to-br from-[#EB83EA]/20 via-[#7c3aed]/20 to-[#1a0b2e]">
+      {/* Hero Banner - Full width */}
+      <div className="relative w-full h-[40vh] md:h-[50vh] bg-gradient-to-br from-[#EB83EA]/20 via-[#7c3aed]/20 to-[#1a0b2e]">
         {creator.banner ? (
           <Image
             src={creator.banner}
@@ -224,22 +258,20 @@ export default function DynamicProfilePage() {
             priority
           />
         ) : (
-          // Default gradient banner if no custom banner
           <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA] via-[#7c3aed] to-[#1a0b2e]">
-            {/* Animated gradient overlay */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
           </div>
         )}
 
-        {/* Gradient overlay for text readability */}
+        {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[#0f071a]" />
 
-        {/* Profile content overlaying banner - Twitch style */}
+        {/* Profile content overlaying banner */}
         <div className="absolute bottom-0 left-0 right-0 px-4 md:px-8 pb-6">
-          <div className="max-w-screen-xl mx-auto">
+          <div className="max-w-5xl mx-auto">
             <div className="flex flex-col md:flex-row items-start md:items-end gap-4 md:gap-6">
-              {/* Avatar - Large and prominent */}
-              <div className="relative w-32 h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 rounded-2xl border-4 border-[#0f071a] overflow-hidden bg-[#2f2942] shadow-2xl flex-shrink-0">
+              {/* Avatar - Rounded */}
+              <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#0f071a] overflow-hidden bg-[#2f2942] shadow-2xl flex-shrink-0">
                 <Image
                   src={creator.avatar}
                   alt={creator.displayName}
@@ -253,10 +285,14 @@ export default function DynamicProfilePage() {
               <div className="flex-1 flex flex-col md:flex-row md:items-end md:justify-between gap-4 pb-2">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white drop-shadow-2xl">
+                    <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-2xl">
                       {creator.displayName}
                     </h1>
-                    {creator.verified && <VerificationBadge type="human" size={24} />}
+                    {(creator.verified || isVerified(creator.did)) && (
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#CDB531] flex items-center justify-center" title="Verified Creator">
+                        <FiStar className="w-4 h-4 text-black font-bold" />
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 mb-3">
                     <p className="text-white/90 text-lg md:text-xl drop-shadow-lg">@{creator.handle}</p>
@@ -266,40 +302,42 @@ export default function DynamicProfilePage() {
                   </div>
                   {/* Stats inline */}
                   <div className="flex gap-6 text-sm md:text-base">
-                    <div className="group relative cursor-help">
+                    <div>
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {creator.followerCount >= 1000
-                          ? `${(creator.followerCount / 1000).toFixed(1)}K`
-                          : creator.followerCount}
+                        {stats.videoCount}
                       </span>
-                      <span className="text-white/80 ml-2">Community</span>
-                      {(creator.dragverseFollowerCount || creator.blueskyFollowerCount) && (
-                        <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block bg-[#2f2942] text-xs text-white px-3 py-2 rounded-lg whitespace-nowrap border border-[#EB83EA]/30 z-10 shadow-xl">
-                          {creator.dragverseFollowerCount ? `${creator.dragverseFollowerCount} on Dragverse` : ""}
-                          {creator.dragverseFollowerCount && creator.blueskyFollowerCount ? " + " : ""}
-                          {creator.blueskyFollowerCount ? `${creator.blueskyFollowerCount} on Bluesky` : ""}
-                        </div>
-                      )}
+                      <span className="text-white/80 ml-2">posts</span>
                     </div>
                     <div>
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {creator.followingCount >= 1000
-                          ? `${(creator.followingCount / 1000).toFixed(1)}K`
-                          : creator.followingCount}
+                        {creator.followerCount?.toLocaleString() || 0}
                       </span>
-                      <span className="text-white/80 ml-2">Connections</span>
+                      <span className="text-white/80 ml-2">followers</span>
+                    </div>
+                    <div>
+                      <span className="font-bold text-xl text-white drop-shadow-lg">
+                        {creator.followingCount?.toLocaleString() || 0}
+                      </span>
+                      <span className="text-white/80 ml-2">following</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 flex gap-2">
                   <ProfileActionButtons
                     creator={creator}
-                    isOwnProfile={false}
+                    isOwnProfile={currentUserDID === creator.did}
                     isDragverseUser={profileType === "dragverse"}
                     currentUserDID={currentUserDID}
                   />
+                  <button
+                    onClick={handleShareProfile}
+                    className="px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all"
+                    title="Copy profile link"
+                  >
+                    {profileLinkCopied ? <FiCheck className="w-5 h-5" /> : <FiShare2 className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
             </div>
@@ -307,163 +345,516 @@ export default function DynamicProfilePage() {
         </div>
       </div>
 
-      {/* Content area with cleaner spacing */}
-      <div className="container mx-auto max-w-screen-xl px-4 md:px-8 py-8">
-        {/* Bio/Description */}
-        {creator.description && (
-          <div className="mb-8 max-w-3xl">
-            <p className="text-[#FCF1FC] text-lg leading-relaxed">
-              {linkifyText(creator.description)}
-            </p>
+      {/* Content area */}
+      <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
+        {/* Bio and Social Links */}
+        {(creator.description || creator.instagramHandle || creator.tiktokHandle || creator.blueskyHandle || creator.website) && (
+          <div className="mb-8">
+            {creator.description && (
+              <p className="text-gray-200 text-base leading-relaxed mb-4 max-w-3xl">
+                {creator.description}
+              </p>
+            )}
+            {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle) && (
+              <div className="flex flex-wrap gap-2">
+                {creator.instagramHandle && (
+                  <a
+                    href={`https://instagram.com/${creator.instagramHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#E1306C] to-[#C13584] hover:from-[#D12963] hover:to-[#B02575] text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    <FaInstagram className="w-3.5 h-3.5" />
+                    <span>Instagram</span>
+                  </a>
+                )}
+                {creator.tiktokHandle && (
+                  <a
+                    href={`https://tiktok.com/@${creator.tiktokHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#000000] to-[#00f2ea] hover:from-[#111111] hover:to-[#00d9d1] text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    <FaTiktok className="w-3.5 h-3.5" />
+                    <span>TikTok</span>
+                  </a>
+                )}
+                {creator.blueskyHandle && (
+                  <a
+                    href={`https://bsky.app/profile/${creator.blueskyHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#0085ff] to-[#0066cc] hover:from-[#0077ee] hover:to-[#0055bb] text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    <SiBluesky className="w-3.5 h-3.5" />
+                    <span>Bluesky</span>
+                  </a>
+                )}
+                {creator.website && (
+                  <a
+                    href={creator.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2f2942] hover:bg-[#3f3952] text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    <FiGlobe className="w-3.5 h-3.5" />
+                    <span>Website</span>
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Tabs - Twitch-style */}
-        <div className="border-b-2 border-[#2f2942] mb-8">
-          <div className="flex gap-2">
+        {/* Content Section with Icon Tabs */}
+        <div>
+          {/* Icon-Based Tabs (Instagram Style) */}
+          <div className="flex justify-center gap-12 border-t border-[#2f2942] mb-8">
             <button
-              onClick={() => setActiveTab("feed")}
-              className={`px-6 py-3 font-bold text-base transition-all relative ${
-                activeTab === "feed"
-                  ? "text-white bg-[#2f2942]"
-                  : "text-gray-400 hover:text-white hover:bg-[#2f2942]/50"
+              onClick={() => setActiveTab("videos")}
+              className={`flex items-center gap-2 py-4 px-2 transition relative ${
+                activeTab === "videos"
+                  ? "text-[#EB83EA]"
+                  : "text-gray-500 hover:text-gray-300"
               }`}
             >
-              Feed
-              {activeTab === "feed" && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#EB83EA]" />
+              <FiGrid className="w-6 h-6" />
+              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Videos</span>
+              {activeTab === "videos" && (
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
               )}
             </button>
+
+            {bytesList.length > 0 && (
+              <button
+                onClick={() => setActiveTab("bytes")}
+                className={`flex items-center gap-2 py-4 px-2 transition relative ${
+                  activeTab === "bytes"
+                    ? "text-[#EB83EA]"
+                    : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                <FiZap className="w-6 h-6" />
+                <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Bytes</span>
+                {activeTab === "bytes" && (
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
+                )}
+              </button>
+            )}
+
+            {audioList.length > 0 && (
+              <button
+                onClick={() => setActiveTab("audio")}
+                className={`flex items-center gap-2 py-4 px-2 transition relative ${
+                  activeTab === "audio"
+                    ? "text-[#EB83EA]"
+                    : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                <FiHeadphones className="w-6 h-6" />
+                <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Audio</span>
+                {activeTab === "audio" && (
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
+                )}
+              </button>
+            )}
+
             <button
-              onClick={() => setActiveTab("looks")}
-              className={`px-6 py-3 font-bold text-base transition-all relative ${
-                activeTab === "looks"
-                  ? "text-white bg-[#2f2942]"
-                  : "text-gray-400 hover:text-white hover:bg-[#2f2942]/50"
+              onClick={() => setActiveTab("photos")}
+              className={`flex items-center gap-2 py-4 px-2 transition relative ${
+                activeTab === "photos"
+                  ? "text-[#EB83EA]"
+                  : "text-gray-500 hover:text-gray-300"
               }`}
             >
-              Looks
-              {activeTab === "looks" && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#EB83EA]" />
+              <FiImage className="w-6 h-6" />
+              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Photos</span>
+              {activeTab === "photos" && (
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
               )}
             </button>
+
             <button
-              onClick={() => setActiveTab("profile")}
-              className={`px-6 py-3 font-bold text-base transition-all relative ${
-                activeTab === "profile"
-                  ? "text-white bg-[#2f2942]"
-                  : "text-gray-400 hover:text-white hover:bg-[#2f2942]/50"
+              onClick={() => setActiveTab("posts")}
+              className={`flex items-center gap-2 py-4 px-2 transition relative ${
+                activeTab === "posts"
+                  ? "text-[#EB83EA]"
+                  : "text-gray-500 hover:text-gray-300"
               }`}
             >
-              About
-              {activeTab === "profile" && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#EB83EA]" />
+              <FiMessageSquare className="w-6 h-6" />
+              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Posts</span>
+              {activeTab === "posts" && (
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab("about")}
+              className={`flex items-center gap-2 py-4 px-2 transition relative ${
+                activeTab === "about"
+                  ? "text-[#EB83EA]"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              <FiInfo className="w-6 h-6" />
+              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">About</span>
+              {activeTab === "about" && (
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
               )}
             </button>
           </div>
-        </div>
 
-        {/* Tab Content */}
-        <div className="pb-12">
-          {activeTab === "feed" && (
-            <div className="space-y-4 max-w-4xl">
-              {isLoadingBlueskyContent ? (
+          {/* Tab Content - 3 Column Grid */}
+          {activeTab === "videos" && (
+            <div>
+              {isLoadingContent ? (
                 <div className="flex items-center justify-center py-20">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EB83EA]"></div>
                 </div>
-              ) : blueskyPosts.length > 0 ? (
-                blueskyPosts.map((post: any) => (
-                  <div
-                    key={post.id}
-                    className="block p-6 bg-[#18122D] rounded-xl border-2 border-[#2f2942] hover:border-[#EB83EA] transition-all hover:shadow-lg hover:shadow-[#EB83EA]/20"
-                  >
-                    <p className="text-[#FCF1FC] text-base mb-3 leading-relaxed">{post.description}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">
-                        {new Date(post.createdAt).toLocaleDateString()}
-                      </span>
-                      <BlueskyPostActions
-                        postUri={post.uri || post.id}
-                        postCid={post.cid || ""}
-                        externalUrl={post.externalUrl}
-                        initialLikes={post.likes || 0}
-                        initialReposts={post.reposts || 0}
-                        initialComments={post.replies || 0}
-                        size="sm"
+              ) : videosList.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1">
+                  {videosList.map((video) => (
+                    <div
+                      key={video.id}
+                      className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
+                      onClick={() => router.push(`/watch/${video.id}`)}
+                    >
+                      <Image
+                        src={video.thumbnail || "/default-thumbnail.jpg"}
+                        alt={video.title}
+                        fill
+                        className="object-cover group-hover:opacity-80 transition-opacity"
                       />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-20">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#2f2942] flex items-center justify-center">
-                    <span className="text-3xl">📝</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">No posts yet</h3>
-                  <p className="text-gray-400">When {creator.displayName} posts, they'll show up here</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === "looks" && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-              {isLoadingBlueskyContent ? (
-                <div className="col-span-full flex items-center justify-center py-20">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EB83EA]"></div>
-                </div>
-              ) : blueskyPhotos.length > 0 ? (
-                blueskyPhotos.map((photo: any) => (
-                  <div
-                    key={photo.id}
-                    className="relative aspect-square rounded-xl overflow-hidden group cursor-pointer border-2 border-transparent hover:border-[#EB83EA] transition-all"
-                  >
-                    <Image
-                      src={photo.thumbnail}
-                      alt={photo.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute bottom-3 left-3 right-3">
-                        <p className="text-white text-sm font-medium line-clamp-1 mb-2">{photo.title}</p>
-                        <BlueskyPostActions
-                          postUri={photo.uri || photo.id}
-                          postCid={photo.cid || ""}
-                          externalUrl={photo.externalUrl}
-                          initialLikes={photo.likes || 0}
-                          initialReposts={photo.reposts || 0}
-                          size="sm"
-                          showCounts={false}
-                        />
+                      {/* Hover Overlay */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="flex items-center gap-4 text-white">
+                          <div className="flex items-center gap-1">
+                            <FiEye className="w-5 h-5" />
+                            <span className="font-semibold">{video.views?.toLocaleString() || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <FiHeart className="w-5 h-5" />
+                            <span className="font-semibold">{video.likes?.toLocaleString() || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Duration Badge */}
+                      <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-white text-xs font-semibold">
+                        {Math.floor((video.duration || 0) / 60)}:{((video.duration || 0) % 60).toString().padStart(2, '0')}
                       </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : (
-                <div className="col-span-full text-center py-20">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#2f2942] flex items-center justify-center">
-                    <span className="text-3xl">📸</span>
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
+                    <FiVideo className="w-10 h-10 text-gray-500" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-2">No looks yet</h3>
-                  <p className="text-gray-400">Photos and looks will appear here</p>
+                  <h3 className="text-xl font-bold mb-2">No Videos Yet</h3>
+                  <p className="text-gray-400">When {creator.displayName} uploads videos, they&apos;ll appear here</p>
                 </div>
               )}
             </div>
           )}
 
-          {activeTab === "profile" && (
-            <div className="max-w-3xl space-y-6">
-              <div className="bg-[#18122D] rounded-2xl p-8 border-2 border-[#2f2942]">
-                <h3 className="text-2xl font-bold text-[#FCF1FC] mb-6">About {creator.displayName}</h3>
-                <p className="text-gray-300 text-lg leading-relaxed mb-6">
-                  {creator.description || "No bio available"}
-                </p>
+          {activeTab === "bytes" && (
+            <div>
+              {bytesList.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-3 gap-1">
+                    {bytesList.map((byte, index) => (
+                      <div
+                        key={byte.id}
+                        className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
+                        onClick={() => {
+                          setSelectedByteIndex(index);
+                          setShowBytePlayer(true);
+                        }}
+                      >
+                        <Image
+                          src={byte.thumbnail || "/default-thumbnail.jpg"}
+                          alt={byte.title}
+                          fill
+                          className="object-cover group-hover:opacity-80 transition-opacity"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="flex items-center gap-4 text-white">
+                            <div className="flex items-center gap-1">
+                              <FiEye className="w-5 h-5" />
+                              <span className="font-semibold">{byte.views?.toLocaleString() || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <FiHeart className="w-5 h-5" />
+                              <span className="font-semibold">{byte.likes?.toLocaleString() || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="absolute top-2 right-2 bg-[#EB83EA] p-2 rounded-full">
+                          <FiZap className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-                {profileType === "bluesky" && (
-                  <div className="pt-6 border-t border-[#2f2942]">
-                    <h4 className="text-lg font-semibold text-[#FCF1FC] mb-4">Connect</h4>
-                    <SocialLinks creator={creator} />
+                  {showBytePlayer && (
+                    <BytesSlider
+                      bytesList={bytesList}
+                      initialIndex={selectedByteIndex}
+                      onClose={() => setShowBytePlayer(false)}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
+                    <FiZap className="w-10 h-10 text-gray-500" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">No Bytes Yet</h3>
+                  <p className="text-gray-400">Short-form content will appear here</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "audio" && (
+            <div>
+              {audioList.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1">
+                  {audioList.map((audio) => (
+                    <div
+                      key={audio.id}
+                      className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
+                      onClick={() => router.push(`/listen/${audio.id}`)}
+                    >
+                      <Image
+                        src={audio.thumbnail || "/default-thumbnail.jpg"}
+                        alt={audio.title}
+                        fill
+                        className="object-cover group-hover:opacity-80 transition-opacity"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="flex items-center gap-4 text-white">
+                          <div className="flex items-center gap-1">
+                            <FiEye className="w-5 h-5" />
+                            <span className="font-semibold">{audio.views?.toLocaleString() || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <FiHeart className="w-5 h-5" />
+                            <span className="font-semibold">{audio.likes?.toLocaleString() || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="absolute top-2 right-2 bg-black/80 p-2 rounded-full">
+                        <FiHeadphones className="w-4 h-4 text-[#EB83EA]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
+                    <FiMusic className="w-10 h-10 text-gray-500" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">No Audio Yet</h3>
+                  <p className="text-gray-400">Podcasts and music will appear here</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "photos" && (
+            <div>
+              {userPhotos.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-3 gap-1">
+                    {userPhotos.map((photo, index) => (
+                      <div
+                        key={photo.id}
+                        onClick={() => setSelectedPhotoIndex(index)}
+                        className="group relative aspect-square bg-black overflow-hidden cursor-pointer"
+                      >
+                        <Image
+                          src={photo.thumbnail}
+                          alt={photo.description || "Photo"}
+                          fill
+                          className="object-cover group-hover:opacity-80 transition-opacity"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {selectedPhotoIndex !== null && (
+                    <PhotoViewerModal
+                      photos={userPhotos}
+                      initialIndex={selectedPhotoIndex}
+                      onClose={() => setSelectedPhotoIndex(null)}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
+                    <FiImage className="w-10 h-10 text-gray-500" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">No Photos Yet</h3>
+                  <p className="text-gray-400">Photos will appear here</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "posts" && (
+            <div>
+              {userPosts.length > 0 ? (
+                <div className="max-w-3xl mx-auto space-y-4">
+                  {userPosts.map((post) => (
+                    <div
+                      key={post.id}
+                      className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/20 transition-all"
+                    >
+                      <p className="text-gray-200 mb-4 whitespace-pre-wrap leading-relaxed">
+                        {post.description}
+                      </p>
+                      <div className="flex items-center justify-between text-sm text-gray-400">
+                        <span className="flex items-center gap-2">
+                          <FiCalendar className="w-4 h-4" />
+                          {new Date(post.createdAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                        {post.externalUrl && (
+                          <a
+                            href={post.externalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#EB83EA] hover:text-[#E748E6] transition font-semibold"
+                          >
+                            View on Bluesky →
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
+                    <FiMessageSquare className="w-10 h-10 text-gray-500" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">No Posts Yet</h3>
+                  <p className="text-gray-400">Text posts will appear here</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "about" && (
+            <div className="max-w-3xl mx-auto">
+              <div className="space-y-6">
+                {/* Profile Link Section */}
+                <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
+                  <h3 className="text-lg font-bold text-[#EB83EA] mb-3 uppercase tracking-wide">Profile Link</h3>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 bg-[#0f071a] rounded-xl px-4 py-3 border border-[#EB83EA]/20">
+                      <p className="text-gray-300 font-mono text-sm break-all">
+                        {typeof window !== 'undefined' ? `${window.location.origin}/u/${creator.handle}` : `/u/${creator.handle}`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleShareProfile}
+                      className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap"
+                    >
+                      {profileLinkCopied ? (
+                        <>
+                          <FiCheck className="w-5 h-5" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <FiShare2 className="w-5 h-5" />
+                          Copy Link
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bio Section */}
+                <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
+                  <h3 className="text-lg font-bold text-[#EB83EA] mb-3 uppercase tracking-wide">About</h3>
+                  <p className="text-gray-200 leading-relaxed">
+                    {creator.description || "No bio added yet"}
+                  </p>
+                </div>
+
+                {/* Social Links */}
+                {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle) && (
+                  <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
+                    <h3 className="text-lg font-bold text-[#EB83EA] mb-4 uppercase tracking-wide">Social Links</h3>
+                    <div className="space-y-3">
+                      {creator.instagramHandle && (
+                        <a
+                          href={`https://instagram.com/${creator.instagramHandle}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
+                        >
+                          <span className="font-semibold">Instagram:</span>
+                          <span>@{creator.instagramHandle}</span>
+                        </a>
+                      )}
+                      {creator.tiktokHandle && (
+                        <a
+                          href={`https://tiktok.com/@${creator.tiktokHandle}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
+                        >
+                          <span className="font-semibold">TikTok:</span>
+                          <span>@{creator.tiktokHandle}</span>
+                        </a>
+                      )}
+                      {creator.blueskyHandle && (
+                        <a
+                          href={`https://bsky.app/profile/${creator.blueskyHandle}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
+                        >
+                          <span className="font-semibold">Bluesky:</span>
+                          <span>@{creator.blueskyHandle}</span>
+                        </a>
+                      )}
+                      {creator.website && (
+                        <a
+                          href={creator.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
+                        >
+                          <span className="font-semibold">Website:</span>
+                          <span>{creator.website}</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Join Date */}
+                {creator.createdAt && (
+                  <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
+                    <h3 className="text-lg font-bold text-[#EB83EA] mb-3 uppercase tracking-wide">Member Since</h3>
+                    <p className="text-gray-200 flex items-center gap-2">
+                      <FiCalendar className="w-5 h-5" />
+                      {creator.createdAt.toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
                   </div>
                 )}
               </div>
