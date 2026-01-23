@@ -17,7 +17,7 @@ export const maxDuration = 60;
  */
 
 export async function POST(request: NextRequest) {
-  // Verify authentication
+  // Verify authentication - FAIL-CLOSED: require auth even if Privy not configured in production
   if (isPrivyConfigured()) {
     const auth = await verifyAuth(request);
     if (!auth.authenticated) {
@@ -30,8 +30,18 @@ export async function POST(request: NextRequest) {
       );
     }
     console.log("[ImageUpload] Authenticated user:", auth.userId);
+  } else if (process.env.NODE_ENV === "production") {
+    // In production, reject uploads if auth system is not configured
+    console.error("[ImageUpload] CRITICAL: Privy not configured in production - rejecting upload");
+    return NextResponse.json(
+      {
+        error: "Authentication system unavailable. Please try again later.",
+        errorType: "AUTH_UNAVAILABLE"
+      },
+      { status: 503 }
+    );
   } else {
-    console.log("[ImageUpload] Privy not configured - skipping auth check");
+    console.warn("[ImageUpload] Privy not configured - allowing unauthenticated upload in development only");
   }
 
   try {

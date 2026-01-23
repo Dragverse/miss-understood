@@ -1,17 +1,41 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createComment, getComments, getReplies } from '@/lib/supabase/social';
 import { createNotification } from '@/lib/supabase/notifications';
 import { getVideo } from '@/lib/supabase/videos';
 import { getCreatorByDID } from '@/lib/supabase/creators';
+import { verifyAuth, isPrivyConfigured } from '@/lib/auth/verify';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    let authenticatedUserDID: string | null = null;
+
+    if (isPrivyConfigured()) {
+      const auth = await verifyAuth(request);
+      if (!auth.authenticated || !auth.userId) {
+        return NextResponse.json(
+          { error: 'Authentication required to comment' },
+          { status: 401 }
+        );
+      }
+      authenticatedUserDID = auth.userId;
+    }
+
     const { videoId, authorDID, content, parentCommentId } = await request.json();
 
     if (!videoId || !authorDID || !content) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
+      );
+    }
+
+    // Security: Verify authorDID matches authenticated user (prevent spoofing)
+    if (authenticatedUserDID && authorDID !== authenticatedUserDID) {
+      console.error('[Comment] Author spoofing attempt:', { claimed: authorDID, actual: authenticatedUserDID });
+      return NextResponse.json(
+        { error: 'Author ID does not match authenticated user' },
+        { status: 403 }
       );
     }
 

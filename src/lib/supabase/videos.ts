@@ -135,33 +135,36 @@ export async function getVideos(limit = 50): Promise<SupabaseVideoWithCreator[]>
 
   console.log(`[getVideos] Found ${data.length} videos, now fetching creator info...`);
 
-  // Fetch creator info separately for each video
-  const videosWithCreators = await Promise.all(
-    data.map(async (video: any) => {
-      let creator = null;
+  // OPTIMIZED: Batch fetch all creators in a single query instead of N+1
+  // Extract unique creator_ids
+  const uniqueCreatorIds = [...new Set(data.map((v: any) => v.creator_id).filter(Boolean))];
 
-      if (video.creator_id && supabase) {
-        const { data: creatorData, error: creatorError } = await supabase
-          .from('creators')
-          .select('id, did, handle, display_name, avatar, verified, bluesky_handle, bluesky_did, youtube_channel_id, youtube_channel_name')
-          .eq('id', video.creator_id)
-          .maybeSingle();
+  let creatorsMap: Map<string, any> = new Map();
 
-        if (!creatorError && creatorData) {
-          creator = creatorData;
-        } else if (creatorError) {
-          console.warn(`[getVideos] Failed to fetch creator for video ${video.id}:`, creatorError);
-        }
-      }
+  if (uniqueCreatorIds.length > 0 && supabase) {
+    const { data: creatorsData, error: creatorsError } = await supabase
+      .from('creators')
+      .select('id, did, handle, display_name, avatar, verified, bluesky_handle, bluesky_did, youtube_channel_id, youtube_channel_name')
+      .in('id', uniqueCreatorIds);
 
-      return {
-        ...video,
-        creator
-      };
-    })
-  );
+    if (creatorsError) {
+      console.warn('[getVideos] Failed to batch fetch creators:', creatorsError);
+    } else if (creatorsData) {
+      // Build a map for O(1) lookup
+      creatorsData.forEach((creator: any) => {
+        creatorsMap.set(creator.id, creator);
+      });
+      console.log(`[getVideos] Batch fetched ${creatorsData.length} creators in 1 query`);
+    }
+  }
 
-  console.log(`[getVideos] Successfully loaded ${videosWithCreators.length} videos with creator info`);
+  // Map creators to videos
+  const videosWithCreators = data.map((video: any) => ({
+    ...video,
+    creator: video.creator_id ? creatorsMap.get(video.creator_id) || null : null
+  }));
+
+  console.log(`[getVideos] Successfully loaded ${videosWithCreators.length} videos with creator info (2 queries total)`);
   return videosWithCreators as SupabaseVideoWithCreator[];
 }
 
@@ -206,33 +209,32 @@ export async function getVideosByCreator(creatorDID: string, limit = 50): Promis
 
   console.log(`[getVideosByCreator] Found ${videos.length} videos for creator ${creatorDID}`);
 
-  // Fetch creator info separately for each video
-  const videosWithCreators = await Promise.all(
-    videos.map(async (video: any) => {
-      let creator = null;
+  // OPTIMIZED: Batch fetch all creators in a single query instead of N+1
+  const uniqueCreatorIds = [...new Set(videos.map((v: any) => v.creator_id).filter(Boolean))];
 
-      if (video.creator_id && supabase) {
-        const { data: creatorData, error: creatorError } = await supabase
-          .from('creators')
-          .select('id, did, handle, display_name, avatar, verified, bluesky_handle, bluesky_did, youtube_channel_id, youtube_channel_name')
-          .eq('id', video.creator_id)
-          .maybeSingle();
+  let creatorsMap: Map<string, any> = new Map();
 
-        if (!creatorError && creatorData) {
-          creator = creatorData;
-        } else if (creatorError) {
-          console.warn(`[getVideosByCreator] Failed to fetch creator for video ${video.id}:`, creatorError);
-        }
-      }
+  if (uniqueCreatorIds.length > 0 && supabase) {
+    const { data: creatorsData, error: creatorsError } = await supabase
+      .from('creators')
+      .select('id, did, handle, display_name, avatar, verified, bluesky_handle, bluesky_did, youtube_channel_id, youtube_channel_name')
+      .in('id', uniqueCreatorIds);
 
-      return {
-        ...video,
-        creator
-      };
-    })
-  );
+    if (creatorsError) {
+      console.warn('[getVideosByCreator] Failed to batch fetch creators:', creatorsError);
+    } else if (creatorsData) {
+      creatorsData.forEach((creator: any) => {
+        creatorsMap.set(creator.id, creator);
+      });
+    }
+  }
 
-  console.log(`[getVideosByCreator] Successfully loaded ${videosWithCreators.length} videos with creator info`);
+  const videosWithCreators = videos.map((video: any) => ({
+    ...video,
+    creator: video.creator_id ? creatorsMap.get(video.creator_id) || null : null
+  }));
+
+  console.log(`[getVideosByCreator] Successfully loaded ${videosWithCreators.length} videos with creator info (2 queries total)`);
   return videosWithCreators as SupabaseVideoWithCreator[];
 }
 

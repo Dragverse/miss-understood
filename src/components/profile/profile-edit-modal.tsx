@@ -112,7 +112,10 @@ export function ProfileEditModal({
 
       const response = await fetch('/api/profile/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
           handle: formData.handle,
           displayName: formData.displayName,

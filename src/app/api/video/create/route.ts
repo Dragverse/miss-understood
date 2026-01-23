@@ -32,33 +32,11 @@ export async function POST(request: NextRequest) {
 
       if (!auth.authenticated) {
         console.error("[Video Create] ❌ Authentication failed:", auth.error);
-
-        // In development, allow test users for debugging
-        if (process.env.NODE_ENV === "development") {
-          const body = await request.json();
-          if (body._testUserId) {
-            userDID = body._testUserId;
-            console.log("[Video Create] Using test user ID (dev mode):", userDID);
-
-            // Re-create request with body for later parsing
-            request = new NextRequest(request.url, {
-              method: request.method,
-              headers: request.headers,
-              body: JSON.stringify(body),
-            });
-          } else {
-            return NextResponse.json(
-              { error: "Authentication required. Please log in to upload videos." },
-              { status: 401 }
-            );
-          }
-        } else {
-          // Production: authentication is required
-          return NextResponse.json(
-            { error: "Authentication required. Please log in to upload videos." },
-            { status: 401 }
-          );
-        }
+        // Authentication is required in all environments
+        return NextResponse.json(
+          { error: "Authentication required. Please log in to upload videos." },
+          { status: 401 }
+        );
       } else {
         userDID = auth.userId || "anonymous";
         console.log("[Video Create] ✅ Authenticated as:", userDID);

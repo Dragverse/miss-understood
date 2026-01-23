@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { FiArrowLeft, FiHeart } from "react-icons/fi";
+import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
 import { SocialLinks } from "@/components/profile/social-links";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
@@ -61,11 +62,13 @@ export default function DynamicProfilePage() {
   const params = useParams();
   const router = useRouter();
   const handle = params.handle as string;
+  const { user } = usePrivy();
 
   const [profileType, setProfileType] = useState<"loading" | "dragverse" | "bluesky" | "not-found">("loading");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [activeTab, setActiveTab] = useState<"feed" | "looks" | "profile">("feed");
-  const [currentUserDID, setCurrentUserDID] = useState<string | undefined>();
+  // Initialize currentUserDID from authenticated user
+  const currentUserDID = user?.id;
 
   // Try to fetch Bluesky profile if it looks like a Bluesky handle
   const isBlueskyHandle = handle.includes(".bsky.social") || handle.includes(".");

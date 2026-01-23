@@ -234,6 +234,7 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
         },
         body: JSON.stringify({
           videoId: audio?.id,
+          userDID: user.id,
           action: isLiked ? "unlike" : "like",
         }),
       });
