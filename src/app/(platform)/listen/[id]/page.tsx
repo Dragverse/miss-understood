@@ -7,7 +7,7 @@ import { FiMessageCircle, FiShare2, FiPlay, FiPause, FiSkipForward, FiSkipBack, 
 import { ShareModal } from "@/components/video/share-modal";
 import { VideoCommentModal } from "@/components/video/video-comment-modal";
 import { VideoOptionsMenu } from "@/components/video/video-options-menu";
-import { getVideo } from "@/lib/supabase/videos";
+import { getVideo, incrementVideoViews } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 import { usePrivy } from "@privy-io/react-auth";
@@ -16,8 +16,9 @@ import toast from "react-hot-toast";
 import { HeartAnimation, LoadingShimmer, MoodBadge } from "@/components/shared";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
-export default function ListenPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ListenPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: { token?: string } }) {
   const resolvedParams = React.use(params);
+  const shareToken = searchParams.token;
   const router = useRouter();
   const { getAccessToken, login, user } = usePrivy();
   const { playTrack, pause, resume, isPlaying: isGlobalPlaying, currentTrack, audioRef } = useAudioPlayer();
@@ -31,6 +32,8 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [relatedAudio, setRelatedAudio] = useState<Video[]>([]);
 
   const isOwner = !!(user?.id && audio?.creator?.did && audio.creator.did === user.id);
 
@@ -38,6 +41,35 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
   useEffect(() => {
     async function loadAudio() {
       try {
+        // Check access via API (includes privacy check)
+        const authToken = await getAccessToken().catch(() => null);
+
+        const accessUrl = new URL(`/api/video/access/${resolvedParams.id}`, window.location.origin);
+        if (shareToken) {
+          accessUrl.searchParams.set("token", shareToken);
+        }
+
+        const accessResponse = await fetch(accessUrl.toString(), {
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        });
+
+        if (!accessResponse.ok) {
+          const accessData = await accessResponse.json();
+
+          if (accessResponse.status === 403) {
+            // Access denied
+            setAccessDenied(true);
+            setAudio(null);
+            setIsLoading(false);
+            return;
+          }
+
+          // Audio not found
+          setAudio(null);
+          setIsLoading(false);
+          return;
+        }
+
         const audioDoc = await getVideo(resolvedParams.id);
 
         if (audioDoc) {
@@ -45,6 +77,17 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
           const transformedAudio = await transformVideoWithCreator(audioDoc);
           setAudio(transformedAudio);
           setLikes(transformedAudio.likes || 0);
+
+          // Increment view count for Dragverse audio
+          if (transformedAudio.source === 'ceramic') {
+            try {
+              await incrementVideoViews(resolvedParams.id);
+              console.log("[Listen] View count incremented for audio:", resolvedParams.id);
+            } catch (error) {
+              console.error("[Listen] Failed to increment view count:", error);
+              // Don't block page load on view count failure
+            }
+          }
         } else {
           setAudio(null);
         }
@@ -57,7 +100,46 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
     }
 
     loadAudio();
-  }, [resolvedParams.id]);
+  }, [resolvedParams.id, shareToken, getAccessToken]);
+
+  // Initialize like state from API
+  useEffect(() => {
+    async function checkUserInteractions() {
+      if (!user?.id || !audio?.id) return;
+
+      try {
+        // Check if user has liked the audio
+        const likeResponse = await fetch(`/api/social/like/check?userDID=${user.id}&videoId=${audio.id}`);
+        if (likeResponse.ok) {
+          const likeData = await likeResponse.json();
+          setIsLiked(likeData.liked || false);
+        }
+      } catch (error) {
+        console.error("[Listen] Failed to check user interactions:", error);
+      }
+    }
+
+    checkUserInteractions();
+  }, [user?.id, audio?.id]);
+
+  // Fetch related audio (similar content type and category)
+  useEffect(() => {
+    async function fetchRelatedAudio() {
+      if (!audio?.id) return;
+
+      try {
+        const response = await fetch(`/api/video/related?videoId=${audio.id}&contentType=${audio.contentType}&limit=6`);
+        if (response.ok) {
+          const data = await response.json();
+          setRelatedAudio(data.videos || []);
+        }
+      } catch (error) {
+        console.error("[Listen] Failed to fetch related audio:", error);
+      }
+    }
+
+    fetchRelatedAudio();
+  }, [audio?.id, audio?.contentType]);
 
   // Play audio when page loads
   useEffect(() => {
@@ -218,6 +300,28 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
     );
   }
 
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-500/10 to-red-600/10 flex items-center justify-center mx-auto mb-6">
+            <FiPlay className="w-10 h-10 text-red-500" />
+          </div>
+          <h3 className="text-white text-2xl font-bold mb-3">Access Denied</h3>
+          <p className="text-gray-400 max-w-md mx-auto mb-6">
+            This audio is private. You need permission from the creator to listen to it.
+          </p>
+          <button
+            onClick={() => router.push("/")}
+            className="px-6 py-3 bg-[#EB83EA] text-white rounded-xl hover:bg-[#EB83EA]/90 transition"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!audio) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -367,6 +471,41 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
             </div>
           )}
         </div>
+
+        {/* Related Audio */}
+        {relatedAudio.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold text-white mb-6">More Like This</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {relatedAudio.map((relatedTrack) => (
+                <Link
+                  key={relatedTrack.id}
+                  href={`/listen/${relatedTrack.id}`}
+                  className="group bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-2xl p-4 border border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition"
+                >
+                  <div className="relative aspect-square rounded-xl overflow-hidden mb-3">
+                    <Image
+                      src={relatedTrack.thumbnail || "/default-thumbnail.jpg"}
+                      alt={relatedTrack.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform"
+                    />
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-center justify-center">
+                      <FiPlay className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition" />
+                    </div>
+                  </div>
+                  <h3 className="text-white font-semibold mb-1 line-clamp-2">{relatedTrack.title}</h3>
+                  <p className="text-gray-400 text-sm">{relatedTrack.creator?.displayName}</p>
+                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-2">
+                    <span>{relatedTrack.views?.toLocaleString() || 0} views</span>
+                    <span>•</span>
+                    <span>{Math.floor(relatedTrack.duration / 60)}:{String(relatedTrack.duration % 60).padStart(2, '0')}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modals */}
