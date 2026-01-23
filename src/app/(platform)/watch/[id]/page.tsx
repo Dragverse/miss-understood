@@ -12,7 +12,7 @@ import { ShareModal } from "@/components/video/share-modal";
 import { VideoCommentModal } from "@/components/video/video-comment-modal";
 import { VideoOptionsMenu } from "@/components/video/video-options-menu";
 import { ChocolateBar } from "@/components/ui/chocolate-bar";
-import { getVideo, getVideos, type SupabaseVideo } from "@/lib/supabase/videos";
+import { getVideo, getVideos, incrementVideoViews, type SupabaseVideo } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
 import { getLocalVideos } from "@/lib/utils/local-storage";
@@ -47,6 +47,35 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   const [theaterMode, setTheaterMode] = useState(false);
 
   const isOwner = !!(user?.id && video?.creator?.did && video.creator.did === user.id);
+
+  // Initialize like and follow states from API
+  useEffect(() => {
+    async function checkUserInteractions() {
+      if (!user?.id || !video?.id) return;
+
+      try {
+        // Check if user has liked the video
+        const likeResponse = await fetch(`/api/social/like/check?userDID=${user.id}&videoId=${video.id}`);
+        if (likeResponse.ok) {
+          const likeData = await likeResponse.json();
+          setIsLiked(likeData.liked || false);
+        }
+
+        // Check if user is following the creator
+        if (video.creator.did) {
+          const followResponse = await fetch(`/api/social/follow/check?followerDID=${user.id}&followingDID=${video.creator.did}`);
+          if (followResponse.ok) {
+            const followData = await followResponse.json();
+            setIsFollowing(followData.following || false);
+          }
+        }
+      } catch (error) {
+        console.error("[Watch] Failed to check user interactions:", error);
+      }
+    }
+
+    checkUserInteractions();
+  }, [user?.id, video?.id, video?.creator.did]);
 
   // Pause audio when video page loads or when video is playing
   useEffect(() => {
@@ -187,6 +216,17 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         setVideo(formattedVideo);
         setLikes(formattedVideo.likes);
         setAccessDenied(false);
+
+        // Increment view count for Dragverse videos only
+        if (formattedVideo.source === 'ceramic' && resolvedParams.id) {
+          try {
+            await incrementVideoViews(resolvedParams.id);
+            console.log("[Watch] View count incremented for video:", resolvedParams.id);
+          } catch (error) {
+            console.error("[Watch] Failed to increment view count:", error);
+            // Don't block page load on view count failure
+          }
+        }
       } catch (error) {
         console.error("Failed to load video:", error);
         toast.error("Failed to load video");
@@ -694,7 +734,48 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 {/* Dragverse Follow Button - only for non-YouTube creators */}
                 {!video.creator.youtubeChannelId && (
                   <ActionButton
-                    onClick={() => setIsFollowing(!isFollowing)}
+                    onClick={async () => {
+                      if (!user?.id) {
+                        toast.error("Please sign in to follow creators");
+                        login();
+                        return;
+                      }
+
+                      if (!video?.creator?.did) {
+                        toast.error("Unable to follow this creator");
+                        return;
+                      }
+
+                      const newFollowing = !isFollowing;
+                      setIsFollowing(newFollowing); // Optimistic update
+
+                      try {
+                        const authToken = await getAccessToken();
+                        const response = await fetch("/api/social/follow", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${authToken}`,
+                          },
+                          body: JSON.stringify({
+                            followerDID: user.id,
+                            followingDID: video.creator.did,
+                            action: newFollowing ? "follow" : "unfollow",
+                          }),
+                        });
+
+                        if (!response.ok) {
+                          throw new Error("Failed to update follow status");
+                        }
+
+                        toast.success(newFollowing ? `Following ${video.creator.displayName}` : `Unfollowed ${video.creator.displayName}`);
+                      } catch (error) {
+                        // Revert on error
+                        setIsFollowing(!newFollowing);
+                        console.error("[Watch] Follow error:", error);
+                        toast.error("Failed to update follow status. Please try again.");
+                      }
+                    }}
                     variant={isFollowing ? "secondary" : "primary"}
                     icon={<FiUserPlus className="w-5 h-5" />}
                     size="md"
@@ -782,7 +863,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         videoId={video.id}
         videoTitle={video.title}
         videoVisibility={video.visibility || "public"}
-        isOwner={false} // TODO: Check if current user is owner
+        isOwner={isOwner}
       />
     </div>
   );
