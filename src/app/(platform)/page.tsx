@@ -121,7 +121,7 @@ export default function HomePage() {
 
       // YouTube drag content (30 videos from curated channels - includes shorts)
       fetchPromises.push(
-        fetch("/api/youtube/feed?limit=30")
+        fetch("/api/youtube/feed?limit=30&rssOnly=true")
           .then((response) => response.json())
           .then((data) => {
             if (data.success && data.videos.length > 0) {

@@ -36,7 +36,7 @@ function ShortsContent() {
             .then((data) => data.posts || [])
             .catch(() => []),
           // YouTube Shorts (via RSS from curated drag channels)
-          fetch("/api/youtube/feed?limit=30&shortsOnly=true")
+          fetch("/api/youtube/feed?limit=30&shortsOnly=true&rssOnly=true")
             .then((res) => (res.ok ? res.json() : { videos: [] }))
             .then((data) => data.videos || [])
             .catch(() => []),

@@ -73,7 +73,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           try {
             // Try to fetch from YouTube RSS feed (no limit to get all videos)
             // This ensures we find videos even if they're not in the most recent 100
-            const response = await fetch("/api/youtube/feed");
+            const response = await fetch("/api/youtube/feed?rssOnly=true");
             const data = await response.json();
 
             if (data.success && data.videos) {
@@ -224,7 +224,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
 
       // Fetch from YouTube (horizontal videos only if watching horizontal)
       try {
-        const youtubeResponse = await fetch("/api/youtube/feed?limit=20");
+        const youtubeResponse = await fetch("/api/youtube/feed?limit=20&rssOnly=true");
         if (youtubeResponse.ok) {
           const youtubeData = await youtubeResponse.json();
           if (youtubeData.videos) {

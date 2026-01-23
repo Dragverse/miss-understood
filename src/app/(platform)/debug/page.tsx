@@ -76,7 +76,7 @@ export default function DebugPage() {
       // Test YouTube API endpoint
       try {
         console.log("[Debug] Testing YouTube API...");
-        const youtubeResponse = await fetch("/api/youtube/feed?limit=5");
+        const youtubeResponse = await fetch("/api/youtube/feed?limit=5&rssOnly=true");
         const youtubeData = await youtubeResponse.json();
         results.sources.youtube = {
           success: youtubeResponse.ok,
