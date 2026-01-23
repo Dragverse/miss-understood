@@ -25,7 +25,7 @@ function FeedContent() {
   const [showComposer, setShowComposer] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  // Check Bluesky session status
+  // Check Bluesky session status and backfill posts
   useEffect(() => {
     async function checkBlueskySession() {
       try {
@@ -37,10 +37,28 @@ function FeedContent() {
       }
     }
 
+    // Backfill any posts missing creator_id
+    async function backfillPosts() {
+      try {
+        await fetch("/api/posts/backfill-creators", {
+          method: "POST",
+          credentials: "include",
+        });
+      } catch (error) {
+        // Silent fail - this is just a background fix
+      }
+    }
+
     if (isAuthenticated) {
       checkBlueskySession();
+      backfillPosts();
     }
   }, [isAuthenticated]);
+
+  // Handle post deletion
+  const handlePostDeleted = (postId: string) => {
+    setDragversePosts((posts) => posts.filter((p) => p.id !== postId));
+  };
 
   useEffect(() => {
     async function loadFeed() {
@@ -239,7 +257,7 @@ function FeedContent() {
             <div className="space-y-6">
               {/* Dragverse Native Posts */}
               {dragversePosts.map((post) => (
-                <PostCard key={`dragverse-${post.id}`} post={post} />
+                <PostCard key={`dragverse-${post.id}`} post={post} onDelete={handlePostDeleted} />
               ))}
 
               {/* Bluesky Posts */}

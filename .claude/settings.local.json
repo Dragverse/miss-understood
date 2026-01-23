@@ -75,7 +75,8 @@
       "Bash(git show:*)",
       "Bash(git pull:*)",
       "Bash(git diff:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(npm cache clean:*)"
     ]
   }
 }

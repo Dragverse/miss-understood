@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiHeart, FiMessageCircle, FiShare2, FiMoreHorizontal, FiZap, FiActivity, FiFilm, FiSmile, FiAward, FiStar } from "react-icons/fi";
+import { FiHeart, FiMessageCircle, FiShare2, FiMoreHorizontal, FiZap, FiActivity, FiFilm, FiSmile, FiAward, FiStar, FiTrash2 } from "react-icons/fi";
+import { usePrivy } from "@privy-io/react-auth";
+import toast from "react-hot-toast";
 
 interface PostCardProps {
   post: {
@@ -25,6 +27,7 @@ interface PostCardProps {
       verified?: boolean;
     };
   };
+  onDelete?: (postId: string) => void;
 }
 
 const MOOD_GRADIENTS: Record<string, string> = {
@@ -49,14 +52,66 @@ const MOOD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   magical: FiStar,
 };
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, onDelete }: PostCardProps) {
+  const { user, getAccessToken } = usePrivy();
   const [liked, setLiked] = useState(false);
   const [localLikes, setLocalLikes] = useState(post.likes);
+  const [showMenu, setShowMenu] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Check if current user owns this post
+  const isOwner = user?.id === post.creator_did;
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLike = async () => {
     setLiked(!liked);
     setLocalLikes(liked ? localLikes - 1 : localLikes + 1);
     // TODO: Call API to toggle like
+  };
+
+  const handleDelete = async () => {
+    if (!isOwner) return;
+
+    const confirmed = window.confirm("Are you sure you want to delete this post?");
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    setShowMenu(false);
+
+    try {
+      const token = await getAccessToken();
+      const response = await fetch(`/api/posts/delete?postId=${post.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        toast.success("Post deleted");
+        if (onDelete) {
+          onDelete(post.id);
+        }
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to delete post");
+      }
+    } catch (error) {
+      toast.error("Failed to delete post");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -113,9 +168,33 @@ export function PostCard({ post }: PostCardProps) {
           </div>
         </Link>
 
-        <button className="p-2 hover:bg-[#2f2942] rounded-full transition-colors">
-          <FiMoreHorizontal className="text-gray-400" />
-        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="p-2 hover:bg-[#2f2942] rounded-full transition-colors"
+          >
+            <FiMoreHorizontal className="text-gray-400" />
+          </button>
+
+          {/* Dropdown menu */}
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-1 w-48 bg-[#1a0b2e] border border-[#2f2942] rounded-xl shadow-xl z-10 overflow-hidden">
+              {isOwner && (
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="w-full px-4 py-3 text-left text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  <FiTrash2 className="w-4 h-4" />
+                  {isDeleting ? "Deleting..." : "Delete Post"}
+                </button>
+              )}
+              {!isOwner && (
+                <p className="px-4 py-3 text-gray-500 text-sm">No actions available</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Mood indicator */}

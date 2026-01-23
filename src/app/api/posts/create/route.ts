@@ -44,11 +44,50 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseServerClient();
 
-    // Create post
+    // Look up or create creator by DID
+    let creatorId: string | null = null;
+
+    // First try to find existing creator
+    const { data: existingCreator } = await supabase
+      .from("creators")
+      .select("id")
+      .eq("did", userDID)
+      .single();
+
+    if (existingCreator) {
+      creatorId = existingCreator.id;
+    } else {
+      // Create new creator with basic info
+      // Generate a handle from the DID (last segment)
+      const didParts = userDID.split(":");
+      const shortId = didParts[didParts.length - 1]?.substring(0, 8) || "user";
+
+      const { data: newCreator, error: creatorError } = await supabase
+        .from("creators")
+        .insert({
+          did: userDID,
+          handle: shortId,
+          display_name: `User ${shortId}`,
+          avatar: "/defaultpfp.png",
+          verified: false,
+        })
+        .select("id")
+        .single();
+
+      if (newCreator) {
+        creatorId = newCreator.id;
+        console.log(`[Posts] Created new creator for DID ${userDID}: ${creatorId}`);
+      } else {
+        console.warn(`[Posts] Failed to create creator: ${creatorError?.message}`);
+      }
+    }
+
+    // Create post with both creator_did and creator_id
     const { data: post, error: createError } = await supabase
       .from("posts")
       .insert({
         creator_did: userDID,
+        creator_id: creatorId,
         text_content: textContent || null,
         media_urls: mediaUrls,
         media_types: mediaTypes,
