@@ -400,313 +400,350 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header Section */}
+      <div className="max-w-5xl mx-auto">
+        {/* Instagram-Style Header */}
         <div className="mb-8">
-          {/* Banner */}
-          <div className="relative h-48 lg:h-64 rounded-3xl overflow-hidden mb-6 border-2 border-[#EB83EA]/10">
-            {creator.banner ? (
-              <Image
-                src={creator.banner}
-                alt="banner"
-                fill
-                className="object-cover"
-                priority
-              />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          {/* Profile Info - Circular Avatar with Inline Stats */}
+          <div className="flex items-start gap-8 mb-6">
+            {/* Circular Avatar */}
+            <div className="flex-shrink-0">
+              <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#EB83EA]/30 overflow-hidden shadow-2xl shadow-[#EB83EA]/20">
+                <Image
+                  src={creator.avatar}
+                  alt={creator.displayName}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              </div>
+            </div>
 
-            {/* Avatar Overlay */}
-            <div className="absolute bottom-0 left-0 right-0 p-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
-                <div className="relative w-28 h-28 lg:w-32 lg:h-32 rounded-3xl border-4 border-[#18122D] overflow-hidden shadow-2xl flex-shrink-0">
-                  <Image
-                    src={creator.avatar}
-                    alt={creator.displayName}
-                    fill
-                    className="object-cover"
-                  />
+            {/* Profile Details */}
+            <div className="flex-1 min-w-0">
+              {/* Username and Actions */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h1 className="text-2xl font-semibold text-white truncate">
+                    {creator.handle}
+                  </h1>
+                  {creator.verified && (
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#CDB531] flex items-center justify-center" title="Verified Creator">
+                      <FiStar className="w-3 h-3 text-black font-bold" />
+                    </div>
+                  )}
                 </div>
-                <div className="flex-1 pb-2">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-3xl lg:text-4xl font-bold uppercase tracking-wide text-white">
-                      {creator.displayName}
-                    </h1>
-                    {creator.verified && (
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#CDB531] flex items-center justify-center" title="Verified Creator">
-                        <FiStar className="w-4 h-4 text-black font-bold" />
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-[#EB83EA] text-lg font-semibold">@{creator.handle}</p>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleShareProfile}
-                    className="px-6 py-3 bg-gradient-to-r from-[#2f2942] to-[#1a0b2e] hover:from-[#3f3952] hover:to-[#2a1b3e] text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg border-2 border-[#EB83EA]/30"
-                    title="Copy profile link"
-                  >
-                    {profileLinkCopied ? (
-                      <>
-                        <FiCheck className="w-5 h-5" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <FiShare2 className="w-5 h-5" />
-                        Share
-                      </>
-                    )}
-                  </button>
+                <div className="flex gap-2">
                   <button
                     onClick={() => router.push("/settings")}
-                    className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg"
+                    className="px-4 py-1.5 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all text-sm"
                   >
-                    <FiEdit2 className="w-5 h-5" />
                     Edit Profile
+                  </button>
+                  <button
+                    onClick={handleShareProfile}
+                    className="px-4 py-1.5 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all text-sm"
+                    title="Copy profile link"
+                  >
+                    {profileLinkCopied ? <FiCheck className="w-4 h-4" /> : <FiShare2 className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
+
+              {/* Stats Row */}
+              <div className="flex items-center gap-8 mb-6">
+                <div className="text-center">
+                  <div className="text-white font-semibold text-base">
+                    {stats.videoCount.toLocaleString()}
+                  </div>
+                  <div className="text-gray-400 text-sm">posts</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-white font-semibold text-base">
+                    {aggregatedStats ? aggregatedStats.totalFollowers.toLocaleString() : creator.followerCount.toLocaleString()}
+                  </div>
+                  <div className="text-gray-400 text-sm">followers</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-white font-semibold text-base">
+                    {aggregatedStats ? aggregatedStats.totalFollowing.toLocaleString() : creator.followingCount.toLocaleString()}
+                  </div>
+                  <div className="text-gray-400 text-sm">following</div>
+                </div>
+              </div>
+
+              {/* Display Name and Bio */}
+              <div>
+                <div className="text-white font-semibold mb-1">{creator.displayName}</div>
+                {creator.description && (
+                  <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">
+                    {creator.description}
+                  </p>
+                )}
+              </div>
+
+              {/* Social Links - Compact */}
+              {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle) && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {creator.instagramHandle && (
+                    <a
+                      href={`https://instagram.com/${creator.instagramHandle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#E1306C] to-[#C13584] hover:from-[#D12963] hover:to-[#B02575] text-white text-xs font-semibold rounded-lg transition-all"
+                    >
+                      <FaInstagram className="w-3.5 h-3.5" />
+                      <span>Instagram</span>
+                    </a>
+                  )}
+                  {creator.tiktokHandle && (
+                    <a
+                      href={`https://tiktok.com/@${creator.tiktokHandle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#000000] to-[#00f2ea] hover:from-[#111111] hover:to-[#00d9d1] text-white text-xs font-semibold rounded-lg transition-all"
+                    >
+                      <FaTiktok className="w-3.5 h-3.5" />
+                      <span>TikTok</span>
+                    </a>
+                  )}
+                  {creator.blueskyHandle && (
+                    <a
+                      href={`https://bsky.app/profile/${creator.blueskyHandle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#0085ff] to-[#0066cc] hover:from-[#0077ee] hover:to-[#0055bb] text-white text-xs font-semibold rounded-lg transition-all"
+                    >
+                      <SiBluesky className="w-3.5 h-3.5" />
+                      <span>Bluesky</span>
+                    </a>
+                  )}
+                  {creator.website && (
+                    <a
+                      href={creator.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2f2942] hover:bg-[#3f3952] text-white text-xs font-semibold rounded-lg transition-all"
+                    >
+                      <FiGlobe className="w-3.5 h-3.5" />
+                      <span>Website</span>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Bio */}
-          {creator.description && (
-            <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10 mb-6">
-              <p className="text-gray-200 text-lg leading-relaxed">
-                {creator.description}
-              </p>
-            </div>
-          )}
-
-          {/* Social Links & Connection Status */}
-          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Connect</h3>
-              {/* Connection Indicators */}
-              <div className="flex items-center gap-2">
-                {creator.blueskyHandle && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0085ff]/20 border border-[#0085ff]/30 rounded-full">
-                    <SiBluesky className="w-3 h-3 text-[#0085ff]" />
-                    <span className="text-[#0085ff] text-xs font-bold">BLUESKY</span>
-                  </div>
-                )}
-                {userVideos.some(v => v.source === 'youtube') && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-full">
-                    <FaYoutube className="w-3 h-3 text-red-500" />
-                    <span className="text-red-500 text-xs font-bold">YOUTUBE</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle) ? (
-              <div className="flex flex-wrap gap-3">
-                {creator.instagramHandle && (
-                  <a
-                    href={`https://instagram.com/${creator.instagramHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-[#E1306C] to-[#C13584] hover:from-[#D12963] hover:to-[#B02575] text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
-                  >
-                    <FaInstagram className="w-5 h-5" />
-                    <span>@{creator.instagramHandle}</span>
-                  </a>
-                )}
-                {creator.tiktokHandle && (
-                  <a
-                    href={`https://tiktok.com/@${creator.tiktokHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-[#000000] to-[#00f2ea] hover:from-[#111111] hover:to-[#00d9d1] text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
-                  >
-                    <FaTiktok className="w-5 h-5" />
-                    <span>@{creator.tiktokHandle}</span>
-                  </a>
-                )}
-                {creator.blueskyHandle && (
-                  <a
-                    href={`https://bsky.app/profile/${creator.blueskyHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-[#0085ff] to-[#0066cc] hover:from-[#0077ee] hover:to-[#0055bb] text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
-                  >
-                    <SiBluesky className="w-5 h-5" />
-                    <span>@{creator.blueskyHandle}</span>
-                  </a>
-                )}
-                {creator.website && (
-                  <a
-                    href={creator.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
-                  >
-                    <FiGlobe className="w-5 h-5" />
-                    <span>Website</span>
-                  </a>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-400 mb-4">Connect your social accounts to share your content</p>
-                <button
-                  onClick={() => router.push("/settings")}
-                  className="px-6 py-2 bg-[#EB83EA] hover:bg-[#E748E6] text-white font-bold rounded-xl transition-all"
-                >
-                  Add Social Links
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Stats - Compact Display */}
-        <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10 mb-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#2f2942]/40 flex items-center justify-center flex-shrink-0">
-                <FiUsers className="w-5 h-5 text-[#EB83EA]" />
-              </div>
-              <div>
-                <p className="text-gray-400 text-xs">Followers</p>
-                <p className="text-white font-bold text-lg">
-                  {aggregatedStats ? aggregatedStats.totalFollowers.toLocaleString() : creator.followerCount.toLocaleString()}
-                </p>
-                {/* Platform breakdown on hover/click */}
-                {aggregatedStats && (aggregatedStats.blueskyFollowers > 0 || aggregatedStats.youtubeSubscribers > 0) && (
-                  <div className="flex items-center gap-1 mt-1">
-                    {aggregatedStats.dragverseFollowers > 0 && (
-                      <span className="text-[10px] text-gray-500" title="Dragverse">
-                        {aggregatedStats.dragverseFollowers.toLocaleString()} DV
-                      </span>
-                    )}
-                    {aggregatedStats.blueskyFollowers > 0 && (
-                      <span className="text-[10px] text-[#0085ff]" title="Bluesky">
-                        {aggregatedStats.dragverseFollowers > 0 && " • "}
-                        {aggregatedStats.blueskyFollowers.toLocaleString()} BS
-                      </span>
-                    )}
-                    {aggregatedStats.youtubeSubscribers > 0 && (
-                      <span className="text-[10px] text-red-500" title="YouTube">
-                        {(aggregatedStats.dragverseFollowers > 0 || aggregatedStats.blueskyFollowers > 0) && " • "}
-                        {aggregatedStats.youtubeSubscribers.toLocaleString()} YT
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#2f2942]/40 flex items-center justify-center flex-shrink-0">
-                <FiVideo className="w-5 h-5 text-[#EB83EA]" />
-              </div>
-              <div>
-                <p className="text-gray-400 text-xs">Videos</p>
-                <p className="text-white font-bold text-lg">{stats.videoCount.toLocaleString()}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#2f2942]/40 flex items-center justify-center flex-shrink-0">
-                <FiEye className="w-5 h-5 text-[#EB83EA]" />
-              </div>
-              <div>
-                <p className="text-gray-400 text-xs">Views</p>
-                <p className="text-white font-bold text-lg">{stats.totalViews.toLocaleString()}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#2f2942]/40 flex items-center justify-center flex-shrink-0">
-                <FiHeart className="w-5 h-5 text-[#EB83EA]" />
-              </div>
-              <div>
-                <p className="text-gray-400 text-xs">Hearts</p>
-                <p className="text-white font-bold text-lg">{stats.totalLikes.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Content Section */}
-        <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/10 shadow-xl">
-          {/* Tabs */}
-          <div className="flex gap-4 border-b border-[#EB83EA]/20 mb-8 overflow-x-auto pb-px">
-            {/* Only show Bytes tab if user has bytes */}
+          {/* Story Highlights Row */}
+          <div className="flex gap-6 px-4 mb-8 overflow-x-auto pb-2">
+            {/* Bytes Highlight */}
             {bytesList.length > 0 && (
               <button
                 onClick={() => setActiveTab("bytes")}
-                className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
-                  activeTab === "bytes"
-                    ? "border-b-2 border-[#EB83EA] text-[#EB83EA]"
-                    : "text-gray-400 hover:text-white"
-                }`}
+                className="flex flex-col items-center gap-2 flex-shrink-0 group"
               >
-                BYTES ({bytesList.length})
+                <div className={`w-20 h-20 rounded-full border-2 ${activeTab === "bytes" ? "border-[#EB83EA]" : "border-gray-600"} p-1 transition-all`}>
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
+                    <FiZap className="w-8 h-8 text-[#EB83EA]" />
+                  </div>
+                </div>
+                <span className="text-xs text-gray-300 group-hover:text-white transition">Bytes</span>
               </button>
             )}
+
+            {/* Videos Highlight */}
             <button
               onClick={() => setActiveTab("videos")}
-              className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
-                activeTab === "videos"
-                  ? "border-b-2 border-[#EB83EA] text-[#EB83EA]"
-                  : "text-gray-400 hover:text-white"
-              }`}
+              className="flex flex-col items-center gap-2 flex-shrink-0 group"
             >
-              VIDEOS ({videosList.length})
+              <div className={`w-20 h-20 rounded-full border-2 ${activeTab === "videos" ? "border-[#EB83EA]" : "border-gray-600"} p-1 transition-all`}>
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
+                  <FiFilm className="w-8 h-8 text-[#EB83EA]" />
+                </div>
+              </div>
+              <span className="text-xs text-gray-300 group-hover:text-white transition">Videos</span>
             </button>
+
+            {/* Audio Highlight */}
             {audioList.length > 0 && (
               <button
                 onClick={() => setActiveTab("audio")}
-                className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
-                  activeTab === "audio"
-                    ? "border-b-2 border-[#EB83EA] text-[#EB83EA]"
-                    : "text-gray-400 hover:text-white"
-                }`}
+                className="flex flex-col items-center gap-2 flex-shrink-0 group"
               >
-                AUDIO ({audioList.length})
+                <div className={`w-20 h-20 rounded-full border-2 ${activeTab === "audio" ? "border-[#EB83EA]" : "border-gray-600"} p-1 transition-all`}>
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
+                    <FiHeadphones className="w-8 h-8 text-[#EB83EA]" />
+                  </div>
+                </div>
+                <span className="text-xs text-gray-300 group-hover:text-white transition">Audio</span>
               </button>
             )}
+
+            {/* Photos Highlight */}
+            {userPhotos.length > 0 && (
+              <button
+                onClick={() => setActiveTab("photos")}
+                className="flex flex-col items-center gap-2 flex-shrink-0 group"
+              >
+                <div className={`w-20 h-20 rounded-full border-2 ${activeTab === "photos" ? "border-[#EB83EA]" : "border-gray-600"} p-1 transition-all`}>
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
+                    <FiImage className="w-8 h-8 text-[#EB83EA]" />
+                  </div>
+                </div>
+                <span className="text-xs text-gray-300 group-hover:text-white transition">Photos</span>
+              </button>
+            )}
+
+            {/* Posts Highlight */}
+            {userPosts.length > 0 && (
+              <button
+                onClick={() => setActiveTab("posts")}
+                className="flex flex-col items-center gap-2 flex-shrink-0 group"
+              >
+                <div className={`w-20 h-20 rounded-full border-2 ${activeTab === "posts" ? "border-[#EB83EA]" : "border-gray-600"} p-1 transition-all`}>
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
+                    <FiMessageSquare className="w-8 h-8 text-[#EB83EA]" />
+                  </div>
+                </div>
+                <span className="text-xs text-gray-300 group-hover:text-white transition">Posts</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Content Section with Icon Tabs */}
+        <div>
+          {/* Icon-Based Tabs (Instagram Style) */}
+          <div className="flex justify-center gap-12 border-t border-[#2f2942] mb-8">
+            <button
+              onClick={() => setActiveTab("videos")}
+              className={`flex items-center gap-2 py-4 px-2 transition relative ${
+                activeTab === "videos"
+                  ? "text-[#EB83EA]"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              <FiGrid className="w-6 h-6" />
+              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Videos</span>
+              {activeTab === "videos" && (
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
+              )}
+            </button>
+
+            {bytesList.length > 0 && (
+              <button
+                onClick={() => setActiveTab("bytes")}
+                className={`flex items-center gap-2 py-4 px-2 transition relative ${
+                  activeTab === "bytes"
+                    ? "text-[#EB83EA]"
+                    : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                <FiZap className="w-6 h-6" />
+                <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Bytes</span>
+                {activeTab === "bytes" && (
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
+                )}
+              </button>
+            )}
+
+            {audioList.length > 0 && (
+              <button
+                onClick={() => setActiveTab("audio")}
+                className={`flex items-center gap-2 py-4 px-2 transition relative ${
+                  activeTab === "audio"
+                    ? "text-[#EB83EA]"
+                    : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                <FiHeadphones className="w-6 h-6" />
+                <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Audio</span>
+                {activeTab === "audio" && (
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
+                )}
+              </button>
+            )}
+
             <button
               onClick={() => setActiveTab("photos")}
-              className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
+              className={`flex items-center gap-2 py-4 px-2 transition relative ${
                 activeTab === "photos"
-                  ? "border-b-2 border-[#EB83EA] text-[#EB83EA]"
-                  : "text-gray-400 hover:text-white"
+                  ? "text-[#EB83EA]"
+                  : "text-gray-500 hover:text-gray-300"
               }`}
             >
-              PHOTOS ({userPhotos.length})
+              <FiImage className="w-6 h-6" />
+              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Photos</span>
+              {activeTab === "photos" && (
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
+              )}
             </button>
+
             <button
               onClick={() => setActiveTab("posts")}
-              className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
+              className={`flex items-center gap-2 py-4 px-2 transition relative ${
                 activeTab === "posts"
-                  ? "border-b-2 border-[#EB83EA] text-[#EB83EA]"
-                  : "text-gray-400 hover:text-white"
+                  ? "text-[#EB83EA]"
+                  : "text-gray-500 hover:text-gray-300"
               }`}
             >
-              POSTS ({userPosts.length})
+              <FiMessageSquare className="w-6 h-6" />
+              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Posts</span>
+              {activeTab === "posts" && (
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
+              )}
             </button>
+
             <button
               onClick={() => setActiveTab("about")}
-              className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
+              className={`flex items-center gap-2 py-4 px-2 transition relative ${
                 activeTab === "about"
-                  ? "border-b-2 border-[#EB83EA] text-[#EB83EA]"
-                  : "text-gray-400 hover:text-white"
+                  ? "text-[#EB83EA]"
+                  : "text-gray-500 hover:text-gray-300"
               }`}
             >
-              ABOUT
+              <FiInfo className="w-6 h-6" />
+              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">About</span>
+              {activeTab === "about" && (
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
+              )}
             </button>
           </div>
 
-          {/* Tab Content */}
+          {/* Tab Content - 3 Column Grid */}
           {activeTab === "videos" && (
             <div>
               {videosList.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-3 gap-1">
                   {videosList.map((video) => (
-                    <VideoCard key={video.id} video={video} />
+                    <Link
+                      key={video.id}
+                      href={`/watch/${video.id}`}
+                      className="relative aspect-square group bg-black overflow-hidden"
+                    >
+                      <Image
+                        src={video.thumbnail || "/default-thumbnail.jpg"}
+                        alt={video.title}
+                        fill
+                        className="object-cover group-hover:opacity-80 transition-opacity"
+                      />
+                      {/* Hover Overlay */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="flex items-center gap-4 text-white">
+                          <div className="flex items-center gap-1">
+                            <FiEye className="w-5 h-5" />
+                            <span className="font-semibold">{video.views.toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <FiHeart className="w-5 h-5" />
+                            <span className="font-semibold">{video.likes.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Duration Badge */}
+                      <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-white text-xs font-semibold">
+                        {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+                      </div>
+                    </Link>
                   ))}
                 </div>
               ) : (
@@ -737,29 +774,35 @@ export default function ProfilePage() {
           {activeTab === "audio" && (
             <div>
               {audioList.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-3 gap-1">
                   {audioList.map((audio) => (
                     <Link
                       key={audio.id}
                       href={`/listen/${audio.id}`}
-                      className="group bg-gradient-to-br from-[#2f2942] to-[#1a0b2e] rounded-2xl overflow-hidden border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all shadow-lg hover:shadow-[#EB83EA]/20"
+                      className="relative aspect-square group bg-black overflow-hidden"
                     >
-                      <div className="relative aspect-square">
-                        <Image
-                          src={audio.thumbnail || "/default-thumbnail.jpg"}
-                          alt={audio.title}
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                        <div className="absolute bottom-3 left-3 right-3">
-                          <h3 className="text-white font-bold text-sm line-clamp-2 mb-1">
-                            {audio.title}
-                          </h3>
-                          <p className="text-gray-300 text-xs">
-                            {audio.creator?.displayName || "Unknown Artist"}
-                          </p>
+                      <Image
+                        src={audio.thumbnail || "/default-thumbnail.jpg"}
+                        alt={audio.title}
+                        fill
+                        className="object-cover group-hover:opacity-80 transition-opacity"
+                      />
+                      {/* Hover Overlay */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="flex items-center gap-4 text-white">
+                          <div className="flex items-center gap-1">
+                            <FiEye className="w-5 h-5" />
+                            <span className="font-semibold">{audio.views?.toLocaleString() || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <FiHeart className="w-5 h-5" />
+                            <span className="font-semibold">{audio.likes?.toLocaleString() || 0}</span>
+                          </div>
                         </div>
+                      </div>
+                      {/* Audio Icon Badge */}
+                      <div className="absolute top-2 right-2 bg-black/80 p-2 rounded-full">
+                        <FiHeadphones className="w-4 h-4 text-[#EB83EA]" />
                       </div>
                     </Link>
                   ))}
@@ -785,20 +828,20 @@ export default function ProfilePage() {
           {activeTab === "photos" && (
             <div>
               {userPhotos.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 gap-1">
                   {userPhotos.map((photo) => (
                     <a
                       key={photo.id}
                       href={photo.externalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group relative aspect-square rounded-2xl overflow-hidden bg-[#0f071a] border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all"
+                      className="group relative aspect-square bg-black overflow-hidden"
                     >
                       <Image
                         src={photo.thumbnail}
                         alt={photo.description || "Photo"}
                         fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-300"
+                        className="object-cover group-hover:opacity-80 transition-opacity"
                       />
                     </a>
                   ))}
