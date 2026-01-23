@@ -24,6 +24,31 @@ interface LivepeerAsset {
 }
 
 /**
+ * Clear all stale TUS upload sessions from localStorage
+ * This prevents 409 Conflict errors from previous interrupted uploads
+ */
+function clearStaleTusFingerprints() {
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('tus::') || key.includes('livepeer'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+      console.log('🧹 Cleared stale TUS fingerprint:', key);
+    });
+    if (keysToRemove.length > 0) {
+      console.log(`✅ Cleared ${keysToRemove.length} stale TUS fingerprint(s)`);
+    }
+  } catch (e) {
+    console.warn('Failed to clear TUS fingerprints:', e);
+  }
+}
+
+/**
  * Upload video file to Livepeer via backend API
  */
 export async function uploadVideoToLivepeer(
@@ -31,6 +56,9 @@ export async function uploadVideoToLivepeer(
   onProgress?: (progress: UploadProgress) => void,
   authToken?: string | null
 ): Promise<LivepeerAsset> {
+  // Clear any stale TUS fingerprints to prevent 409 conflicts
+  clearStaleTusFingerprints();
+
   // Step 1: Request upload URL from our backend
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -123,21 +151,10 @@ export async function uploadVideoToLivepeer(
       onShouldRetry: (err, retryAttempt, options) => {
         const errorMessage = err?.message || String(err);
 
-        // Don't retry on 409 conflicts - these are unrecoverable without clearing state
+        // Don't retry on 409 conflicts - clear all fingerprints and fail
         if (errorMessage.includes('409')) {
-          console.error('❌ 409 Conflict detected - clearing fingerprint to allow fresh retry');
-          // Remove the stored fingerprint to force a fresh upload session
-          if (upload.url) {
-            const fingerprint = upload.options.fingerprint;
-            if (fingerprint) {
-              // Clear the fingerprint from storage
-              try {
-                localStorage.removeItem(`tus::${fingerprint}::${upload.url}`);
-              } catch (e) {
-                console.warn('Failed to clear fingerprint:', e);
-              }
-            }
-          }
+          console.error('❌ 409 Conflict detected - clearing all TUS fingerprints');
+          clearStaleTusFingerprints();
           return false; // Don't retry, let it fail and user can try again fresh
         }
 
@@ -159,9 +176,10 @@ export async function uploadVideoToLivepeer(
         const errorMessage = error?.message || String(error);
 
         if (errorMessage.includes('409')) {
-          // Conflict error - upload session already exists
-          console.error('❌ Upload conflict (409): Stale session detected.');
-          reject(new Error('Upload session conflict. Please refresh the page and try uploading again.'));
+          // Conflict error - upload session already exists, clear fingerprints
+          console.error('❌ Upload conflict (409): Stale session detected. Fingerprints cleared.');
+          clearStaleTusFingerprints();
+          reject(new Error('Upload session expired. Please try uploading again.'));
         } else if (errorMessage.includes('500')) {
           // Server error - likely Livepeer storage issue
           console.error('❌ Server error (500): Livepeer storage issue');
