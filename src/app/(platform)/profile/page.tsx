@@ -2,7 +2,7 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import Image from "next/image";
-import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe, FiShare2, FiCheck } from "react-icons/fi";
+import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe, FiShare2, FiCheck, FiMusic } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -23,7 +23,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle, blueskyProfile: blueskyProfileFromHook } = useAuthUser();
   const { getAccessToken } = usePrivy();
-  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "photos" | "posts" | "about">("videos");
+  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "audio" | "photos" | "posts" | "about">("videos");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -385,12 +385,16 @@ export default function ProfilePage() {
     );
   }
 
-  const videosList = userVideos.filter(v => v.contentType !== 'short');
+  const videosList = userVideos.filter(v => v.contentType !== 'short' && v.contentType !== 'podcast' && v.contentType !== 'music');
   // Filter bytes to exclude external videos (YouTube/Bluesky) as they can't be played in vertical player
   const bytesList = userVideos.filter(v =>
     v.contentType === 'short' &&
     v.source !== 'youtube' &&
     v.source !== 'bluesky'
+  );
+  // Filter audio content (podcast and music)
+  const audioList = userVideos.filter(v =>
+    v.contentType === 'podcast' || v.contentType === 'music'
   );
 
 
@@ -652,6 +656,18 @@ export default function ProfilePage() {
             >
               VIDEOS ({videosList.length})
             </button>
+            {audioList.length > 0 && (
+              <button
+                onClick={() => setActiveTab("audio")}
+                className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
+                  activeTab === "audio"
+                    ? "border-b-2 border-[#EB83EA] text-[#EB83EA]"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                AUDIO ({audioList.length})
+              </button>
+            )}
             <button
               onClick={() => setActiveTab("photos")}
               className={`pb-4 px-4 font-bold transition whitespace-nowrap ${
@@ -716,6 +732,54 @@ export default function ProfilePage() {
               bytesList={bytesList}
               onClose={() => setActiveTab("videos")}
             />
+          )}
+
+          {activeTab === "audio" && (
+            <div>
+              {audioList.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {audioList.map((audio) => (
+                    <Link
+                      key={audio.id}
+                      href={`/listen/${audio.id}`}
+                      className="group bg-gradient-to-br from-[#2f2942] to-[#1a0b2e] rounded-2xl overflow-hidden border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all shadow-lg hover:shadow-[#EB83EA]/20"
+                    >
+                      <div className="relative aspect-square">
+                        <Image
+                          src={audio.thumbnail || "/default-thumbnail.jpg"}
+                          alt={audio.title}
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                        <div className="absolute bottom-3 left-3 right-3">
+                          <h3 className="text-white font-bold text-sm line-clamp-2 mb-1">
+                            {audio.title}
+                          </h3>
+                          <p className="text-gray-300 text-xs">
+                            {audio.creator?.displayName || "Unknown Artist"}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
+                    <FiMusic className="w-10 h-10 text-gray-500" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">No Audio Yet</h3>
+                  <p className="text-gray-400 mb-6">Start uploading your podcasts and music!</p>
+                  <button
+                    onClick={() => router.push("/upload")}
+                    className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all"
+                  >
+                    Upload Your First Audio
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === "photos" && (

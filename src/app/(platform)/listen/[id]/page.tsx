@@ -189,12 +189,12 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <div className="min-h-screen pb-24">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Audio Player Card */}
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        {/* Audio Player Card - Centered Music Player Style */}
         <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-8 border-2 border-[#EB83EA]/20 mb-8">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
-            {/* Album Art */}
-            <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-[#EB83EA]/20">
+          {/* Album Art - Large and Centered */}
+          <div className="relative w-full max-w-md mx-auto mb-8">
+            <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-[#EB83EA]/30">
               <Image
                 src={audio.thumbnail || "/default-thumbnail.jpg"}
                 alt={audio.title}
@@ -208,102 +208,96 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
                 <MoodBadge mood={audio.contentType === 'podcast' ? 'podcast' : 'music'} />
               </div>
             </div>
+          </div>
 
-            {/* Audio Info & Controls */}
-            <div className="space-y-6">
-              {/* Title & Artist */}
-              <div>
-                <h1 className="text-4xl font-bold text-white mb-3">{audio.title}</h1>
-                <Link
-                  href={`/profile/${audio.creator?.handle || audio.creator?.did}`}
-                  className="flex items-center gap-3 group w-fit"
-                >
-                  <Image
-                    src={audio.creator?.avatar || "/default-avatar.jpg"}
-                    alt={audio.creator?.displayName || "Creator"}
-                    width={48}
-                    height={48}
-                    className="rounded-full border-2 border-[#EB83EA]/30"
-                  />
-                  <div>
-                    <p className="text-[#EB83EA] font-semibold group-hover:underline">
-                      {audio.creator?.displayName}
-                    </p>
-                    <p className="text-gray-400 text-sm">@{audio.creator?.handle}</p>
-                  </div>
-                </Link>
-              </div>
+          {/* Track Info - Centered */}
+          <div className="text-center mb-6">
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{audio.title}</h1>
+            <Link
+              href={`/profile/${audio.creator?.handle || audio.creator?.did}`}
+              className="inline-flex items-center gap-2 group"
+            >
+              <Image
+                src={audio.creator?.avatar || "/default-avatar.jpg"}
+                alt={audio.creator?.displayName || "Creator"}
+                width={32}
+                height={32}
+                className="rounded-full border-2 border-[#EB83EA]/30"
+              />
+              <span className="text-[#EB83EA] font-semibold group-hover:underline">
+                {audio.creator?.displayName}
+              </span>
+            </Link>
+          </div>
 
-              {/* Playback Controls */}
-              <div className="space-y-4">
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <input
-                    type="range"
-                    min="0"
-                    max={duration || 100}
-                    value={currentTime}
-                    onChange={handleSeek}
-                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#EB83EA]"
-                  />
-                  <div className="flex justify-between text-sm text-gray-400">
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
-                  </div>
-                </div>
-
-                {/* Play/Pause Button */}
-                <div className="flex items-center justify-center gap-4">
-                  <button
-                    onClick={handlePlayPause}
-                    className="w-20 h-20 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-[#EB83EA]/50"
-                  >
-                    {isPlaying ? (
-                      <FiPause className="w-10 h-10 text-white" />
-                    ) : (
-                      <FiPlay className="w-10 h-10 text-white ml-1" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-4">
-                <HeartAnimation
-                  initialLiked={isLiked}
-                  onToggle={handleLike}
-                  showCount={true}
-                  count={likes}
-                />
-                <button
-                  onClick={() => setCommentModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] rounded-full transition"
-                >
-                  <FiMessageCircle className="w-5 h-5 text-[#EB83EA]" />
-                  <span className="text-white font-semibold">0</span>
-                </button>
-                <button
-                  onClick={() => setShareModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] rounded-full transition"
-                >
-                  <FiShare2 className="w-5 h-5 text-[#EB83EA]" />
-                  <span className="text-white font-semibold">Share</span>
-                </button>
+          {/* Playback Controls - Music Player Style */}
+          <div className="space-y-6 mb-6">
+            {/* Progress Bar */}
+            <div className="space-y-2">
+              <input
+                type="range"
+                min="0"
+                max={duration || 100}
+                value={currentTime}
+                onChange={handleSeek}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#EB83EA]"
+              />
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
               </div>
             </div>
+
+            {/* Play/Pause Button - Centered */}
+            <div className="flex items-center justify-center">
+              <button
+                onClick={handlePlayPause}
+                className="w-16 h-16 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-[#EB83EA]/50"
+              >
+                {isPlaying ? (
+                  <FiPause className="w-8 h-8 text-white" />
+                ) : (
+                  <FiPlay className="w-8 h-8 text-white ml-1" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Action Buttons - Centered */}
+          <div className="flex items-center justify-center gap-4 pb-6 border-b border-[#EB83EA]/10">
+            <HeartAnimation
+              initialLiked={isLiked}
+              onToggle={handleLike}
+              showCount={true}
+              count={likes}
+            />
+            <button
+              onClick={() => setCommentModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] rounded-full transition"
+            >
+              <FiMessageCircle className="w-5 h-5 text-[#EB83EA]" />
+              <span className="text-white font-semibold">0</span>
+            </button>
+            <button
+              onClick={() => setShareModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] rounded-full transition"
+            >
+              <FiShare2 className="w-5 h-5 text-[#EB83EA]" />
+              <span className="text-white font-semibold">Share</span>
+            </button>
           </div>
 
           {/* Description */}
           {audio.description && (
-            <div className="mt-8 pt-8 border-t border-[#EB83EA]/10">
-              <h2 className="text-xl font-bold text-white mb-3">About</h2>
+            <div className="mt-6">
+              <h2 className="text-lg font-bold text-white mb-2">About</h2>
               <p className="text-gray-300 leading-relaxed">{audio.description}</p>
             </div>
           )}
 
           {/* Tags */}
           {audio.tags && audio.tags.length > 0 && (
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-6 flex flex-wrap gap-2 justify-center">
               {audio.tags.map((tag) => (
                 <span
                   key={tag}
