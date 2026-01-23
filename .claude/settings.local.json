@@ -73,7 +73,8 @@
       "Bash(Connected Accounts\", their custom uploads were overwritten with \n  Bluesky/Twitter images\n- Users lost their custom artwork after syncing\n\nSolution:\n- Modified sync-profile API to check for existing custom uploads\n- Detects custom images by checking for Livepeer IPFS URLs\n- Only overwrites avatar/banner if user is using default or no image\n- Preserves custom description field\n- Updated UI help text to clarify custom images are preserved\n\nChanges:\n- src/app/api/creator/sync-profile/route.ts:\n  - Fetch existing creator profile before syncing\n  - Check if avatar/banner contain Livepeer URLs \\(custom uploads\\)\n  - Preserve custom content, only sync empty/default fields\n  \n- src/app/\\(platform\\)/settings/page.tsx:\n  - Updated help text to inform users custom uploads are preserved\n\nTesting:\n1. User uploads custom avatar → saves successfully\n2. User clicks \"Import from Connected Accounts\"\n3. Custom avatar is preserved, only empty fields are filled\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(tree:*)",
       "Bash(git show:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git diff:*)"
     ]
   }
 }

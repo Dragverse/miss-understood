@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchDragContent } from "@/lib/youtube/client";
 import { fetchCuratedDragContent, fetchCuratedShorts } from "@/lib/youtube/rss-client";
 import { getCachedVideos, setCachedVideos } from "@/lib/youtube/cache";
+import { getVideos } from "@/lib/supabase/videos";
+import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 import type { Video } from "@/types";
 
 /**
@@ -16,6 +18,7 @@ import type { Video } from "@/types";
  * - sortBy: "engagement" | "recent" (default: "recent")
  * - shortsOnly: "true" | "false" (default: "false") - only return YouTube Shorts
  * - rssOnly: "true" | "false" (default: "false") - force RSS-only, skip API
+ * - includeDatabase: "true" | "false" (default: "false") - include uploaded videos from database
  */
 export async function GET(request: NextRequest) {
   try {
@@ -24,6 +27,7 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get("sortBy") || "recent";
     const shortsOnly = searchParams.get("shortsOnly") === "true";
     const rssOnly = searchParams.get("rssOnly") === "true";
+    const includeDatabase = searchParams.get("includeDatabase") === "true";
 
     console.log(`[YouTube Feed API] Fetching ${limit} ${shortsOnly ? 'shorts' : 'videos'}...`);
 
@@ -81,6 +85,24 @@ export async function GET(request: NextRequest) {
     // Cache successful results (even empty arrays, to avoid repeated failed API calls)
     if (videos.length > 0) {
       setCachedVideos(cacheKey, videos);
+    }
+
+    // Include database videos if requested
+    if (includeDatabase) {
+      console.log("[YouTube Feed API] Including database videos...");
+      try {
+        const dbVideos = await getVideos(100); // Get up to 100 database videos
+
+        // Transform Supabase videos to Video type
+        const transformedDbVideos = await Promise.all(
+          dbVideos.map(async (v) => await transformVideoWithCreator(v))
+        );
+
+        videos = [...transformedDbVideos, ...videos];
+        console.log(`[YouTube Feed API] ✅ Added ${transformedDbVideos.length} database videos (total: ${videos.length})`);
+      } catch (dbError) {
+        console.error("[YouTube Feed API] Failed to fetch database videos:", dbError);
+      }
     }
 
     // Sort by recent if requested
