@@ -12,15 +12,16 @@ import type { Video } from "@/types";
 interface BytesSliderProps {
   bytesList: Video[];
   onClose: () => void;
+  initialIndex?: number;
 }
 
-export function BytesSlider({ bytesList, onClose }: BytesSliderProps) {
-  const [currentSlide, setCurrentSlide] = useState(0);
+export function BytesSlider({ bytesList, onClose, initialIndex = 0 }: BytesSliderProps) {
+  const [currentSlide, setCurrentSlide] = useState(initialIndex);
   const [sliderReady, setSliderReady] = useState(false);
 
   // Keen Slider for vertical video player
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
-    initial: 0,
+    initial: initialIndex,
     vertical: true,
     slides: {
       perView: 1,

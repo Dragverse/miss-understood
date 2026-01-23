@@ -50,6 +50,8 @@ export default function ProfilePage() {
     };
   } | null>(null);
   const [profileLinkCopied, setProfileLinkCopied] = useState(false);
+  const [showBytePlayer, setShowBytePlayer] = useState(false);
+  const [selectedByteIndex, setSelectedByteIndex] = useState(0);
 
   // Copy profile link to clipboard
   const handleShareProfile = async () => {
@@ -253,16 +255,16 @@ export default function ProfilePage() {
   useEffect(() => {
     async function loadAllBlueskyData() {
       try {
-        const [sessionResponse, profileResponse, feedResponse] = await Promise.all([
+        const [sessionResponse, profileResponse, userFeedResponse] = await Promise.all([
           fetch("/api/bluesky/session"),
           fetch("/api/bluesky/profile"),
-          fetch("/api/bluesky/feed?limit=50")
+          fetch("/api/bluesky/user-feed?limit=50") // NEW: User-specific feed
         ]);
 
-        const [sessionData, profileData, feedData] = await Promise.all([
+        const [sessionData, profileData, userFeedData] = await Promise.all([
           sessionResponse.json(),
           profileResponse.json(),
-          feedResponse.json()
+          userFeedResponse.json()
         ]);
 
         if (profileData.success && profileData.profile) {
@@ -281,21 +283,23 @@ export default function ProfilePage() {
           });
         }
 
-        if (sessionData.connected && feedData.posts) {
-          const userBlueskyPosts = feedData.posts.filter(
-            (post: any) => post.creator.handle === sessionData.handle
-          );
+        // NEW: User's own posts from dedicated endpoint
+        if (sessionData.connected && userFeedData.success && userFeedData.posts) {
+          const userBlueskyPosts = userFeedData.posts;
 
+          // Separate into photos (images without video) and text posts
           const photos = userBlueskyPosts.filter(
             (post: any) => post.thumbnail && !post.playbackUrl?.includes("m3u8")
           );
           const textPosts = userBlueskyPosts.filter(
-            (post: any) => !post.thumbnail
+            (post: any) => !post.thumbnail && !post.playbackUrl
           );
 
           setUserPhotos(photos);
           setUserPosts(textPosts);
           setStats(prev => ({ ...prev, photoCount: photos.length }));
+
+          console.log(`[Profile] Loaded ${photos.length} photos and ${textPosts.length} text posts from user's Bluesky`);
         }
       } catch (error) {
         console.error("Failed to load Bluesky data:", error);
@@ -696,10 +700,76 @@ export default function ProfilePage() {
           )}
 
           {activeTab === "bytes" && (
-            <BytesSlider
-              bytesList={bytesList}
-              onClose={() => setActiveTab("videos")}
-            />
+            <div>
+              {bytesList.length > 0 ? (
+                <>
+                  {/* Grid of Bytes Thumbnails */}
+                  <div className="grid grid-cols-3 gap-1">
+                    {bytesList.map((byte, index) => (
+                      <div
+                        key={byte.id}
+                        className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
+                        onClick={() => {
+                          setSelectedByteIndex(index);
+                          setShowBytePlayer(true);
+                        }}
+                      >
+                        <Image
+                          src={byte.thumbnail || "/default-thumbnail.jpg"}
+                          alt={byte.title}
+                          fill
+                          className="object-cover group-hover:opacity-80 transition-opacity"
+                        />
+                        {/* Hover Overlay with Stats */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="flex items-center gap-4 text-white">
+                            <div className="flex items-center gap-1">
+                              <FiEye className="w-5 h-5" />
+                              <span className="font-semibold">{byte.views?.toLocaleString() || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <FiHeart className="w-5 h-5" />
+                              <span className="font-semibold">{byte.likes?.toLocaleString() || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Bytes Badge */}
+                        <div className="absolute top-2 right-2 bg-[#EB83EA] p-2 rounded-full">
+                          <FiZap className="w-4 h-4 text-white" />
+                        </div>
+                        {/* Duration Badge */}
+                        <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-white text-xs font-semibold">
+                          {Math.floor(byte.duration / 60)}:{(byte.duration % 60).toString().padStart(2, '0')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* BytesSlider Modal (opens when thumbnail clicked) */}
+                  {showBytePlayer && (
+                    <BytesSlider
+                      bytesList={bytesList}
+                      initialIndex={selectedByteIndex}
+                      onClose={() => setShowBytePlayer(false)}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
+                    <FiZap className="w-10 h-10 text-gray-500" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">No Bytes Yet</h3>
+                  <p className="text-gray-400 mb-6">Start uploading your short-form content!</p>
+                  <button
+                    onClick={() => router.push("/upload")}
+                    className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all"
+                  >
+                    Upload Your First Byte
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === "audio" && (
