@@ -5,11 +5,12 @@
 
 import { redirect } from "next/navigation";
 
-export default function ShortProfilePage({
+export default async function ShortProfilePage({
   params,
 }: {
-  params: { handle: string };
+  params: Promise<{ handle: string }>;
 }) {
+  const { handle } = await params;
   // Redirect to full profile route
-  redirect(`/profile/${params.handle}`);
+  redirect(`/profile/${handle}`);
 }
