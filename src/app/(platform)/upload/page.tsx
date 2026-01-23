@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { FiUploadCloud, FiCheck, FiFilm, FiZap, FiUpload, FiLoader, FiClock } from "react-icons/fi";
+import { FiUploadCloud, FiCheck, FiFilm, FiZap, FiUpload, FiLoader, FiClock, FiMusic, FiMic } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { uploadVideoToLivepeer, waitForAssetReady } from "@/lib/livepeer/client-upload";
 import { useAuthUser } from "@/lib/privy/hooks";
@@ -16,7 +16,8 @@ export default function UploadPage() {
   const router = useRouter();
 
   const [formData, setFormData] = useState({
-    contentType: "short" as "short" | "long",
+    mediaType: "video" as "video" | "audio",
+    contentType: "short" as "short" | "long" | "podcast" | "music",
     title: "",
     description: "",
     category: "",
@@ -60,25 +61,43 @@ export default function UploadPage() {
     }
   }, []);
 
-  const validateVideoFile = useCallback((file: File, contentType: "short" | "long"): Promise<boolean> => {
+  const validateMediaFile = useCallback((file: File, mediaType: "video" | "audio", contentType: "short" | "long" | "podcast" | "music"): Promise<boolean> => {
     return new Promise((resolve) => {
-      // Check file type
-      const validTypes = ["video/mp4", "video/webm", "video/x-matroska", "video/quicktime", "video/x-msvideo", "video/avi"];
-      if (!validTypes.includes(file.type) && !file.type.startsWith("video/")) {
-        toast.error("Invalid file type. Please upload MP4, WebM, MOV, or AVI files.");
-        resolve(false);
-        return;
+      // Check file type based on media type
+      if (mediaType === "video") {
+        const validTypes = ["video/mp4", "video/webm", "video/x-matroska", "video/quicktime", "video/x-msvideo", "video/avi"];
+        if (!validTypes.includes(file.type) && !file.type.startsWith("video/")) {
+          toast.error("Invalid file type. Please upload MP4, WebM, MOV, or AVI files.");
+          resolve(false);
+          return;
+        }
+      } else if (mediaType === "audio") {
+        const validAudioTypes = ["audio/mpeg", "audio/wav", "audio/ogg", "audio/aac", "audio/flac", "audio/mp3", "audio/x-m4a", "audio/mpeg3", "audio/x-mpeg-3"];
+        if (!validAudioTypes.includes(file.type) && !file.type.startsWith("audio/")) {
+          toast.error("Invalid audio type. Please upload MP3, WAV, OGG, AAC, or FLAC files.");
+          resolve(false);
+          return;
+        }
       }
 
-      // Check file size (5GB max)
-      const maxSize = 5 * 1024 * 1024 * 1024; // 5GB in bytes
+      // Check file size (5GB max for video, 500MB max for audio)
+      const maxSize = mediaType === "video" ? 5 * 1024 * 1024 * 1024 : 500 * 1024 * 1024; // 5GB for video, 500MB for audio
       if (file.size > maxSize) {
-        toast.error("File too large. Maximum size is 5GB.");
+        toast.error(`File too large. Maximum size is ${mediaType === "video" ? "5GB" : "500MB"}.`);
         resolve(false);
         return;
       }
 
-      // Check video duration based on content type
+      // Check duration based on media type
+      if (mediaType === "audio") {
+        // For audio, skip duration validation as browsers may not read audio metadata
+        // File size limit is sufficient for audio files
+        toast.success("Audio file accepted");
+        resolve(true);
+        return;
+      }
+
+      // Video duration validation
       const video = document.createElement("video");
       video.preload = "metadata";
 
@@ -167,12 +186,12 @@ export default function UploadPage() {
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const isValid = await validateVideoFile(file, formData.contentType);
+      const isValid = await validateMediaFile(file, formData.mediaType, formData.contentType);
       if (isValid) {
         setFormData((prev) => ({ ...prev, video: file }));
       }
     }
-  }, [formData.contentType, validateVideoFile]);
+  }, [formData.mediaType, formData.contentType, validateMediaFile]);
 
   const handleThumbnailChange = (file: File | null) => {
     if (file) {
@@ -335,6 +354,7 @@ export default function UploadPage() {
       // Redirect to dashboard after successful upload
       setTimeout(() => {
         setFormData({
+          mediaType: "video",
           contentType: "short",
           title: "",
           description: "",
@@ -394,49 +414,125 @@ export default function UploadPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Media Type Toggle */}
+        <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
+          <label className="block text-lg font-bold uppercase tracking-widest mb-4">
+            Media Type
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, mediaType: "video", contentType: "short", video: null })}
+              className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
+                formData.mediaType === "video"
+                  ? "border-[#EB83EA] bg-[#EB83EA]/10"
+                  : "border-[#2f2942] hover:border-[#EB83EA]/50"
+              }`}
+            >
+              <FiFilm className={`w-8 h-8 ${formData.mediaType === "video" ? "text-[#EB83EA]" : "text-gray-400"}`} />
+              <div className="text-center">
+                <div className="font-bold">Video</div>
+                <div className="text-xs text-gray-400">Short or long-form video content</div>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, mediaType: "audio", contentType: "podcast", video: null })}
+              className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
+                formData.mediaType === "audio"
+                  ? "border-[#EB83EA] bg-[#EB83EA]/10"
+                  : "border-[#2f2942] hover:border-[#EB83EA]/50"
+              }`}
+            >
+              <FiMusic className={`w-8 h-8 ${formData.mediaType === "audio" ? "text-[#EB83EA]" : "text-gray-400"}`} />
+              <div className="text-center">
+                <div className="font-bold">Audio</div>
+                <div className="text-xs text-gray-400">Music or podcast content</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* Content Type Toggle */}
         <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
           <label className="block text-lg font-bold uppercase tracking-widest mb-4">
             Content Type
           </label>
           <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, contentType: "short" })}
-              className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
-                formData.contentType === "short"
-                  ? "border-[#EB83EA] bg-[#EB83EA]/10"
-                  : "border-[#2f2942] hover:border-[#EB83EA]/50"
-              }`}
-            >
-              <FiZap className={`w-8 h-8 ${formData.contentType === "short" ? "text-[#EB83EA]" : "text-gray-400"}`} />
-              <div className="text-center">
-                <div className="font-bold">Byte</div>
-                <div className="text-xs text-gray-400">Vertical - Max 20 minutes</div>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, contentType: "long" })}
-              className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
-                formData.contentType === "long"
-                  ? "border-[#EB83EA] bg-[#EB83EA]/10"
-                  : "border-[#2f2942] hover:border-[#EB83EA]/50"
-              }`}
-            >
-              <FiFilm className={`w-8 h-8 ${formData.contentType === "long" ? "text-[#EB83EA]" : "text-gray-400"}`} />
-              <div className="text-center">
-                <div className="font-bold">Video</div>
-                <div className="text-xs text-gray-400">Horizontal - 1 to 60 minutes</div>
-              </div>
-            </button>
+            {formData.mediaType === "video" ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, contentType: "short" })}
+                  className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
+                    formData.contentType === "short"
+                      ? "border-[#EB83EA] bg-[#EB83EA]/10"
+                      : "border-[#2f2942] hover:border-[#EB83EA]/50"
+                  }`}
+                >
+                  <FiZap className={`w-8 h-8 ${formData.contentType === "short" ? "text-[#EB83EA]" : "text-gray-400"}`} />
+                  <div className="text-center">
+                    <div className="font-bold">Byte</div>
+                    <div className="text-xs text-gray-400">Vertical - Max 20 minutes</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, contentType: "long" })}
+                  className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
+                    formData.contentType === "long"
+                      ? "border-[#EB83EA] bg-[#EB83EA]/10"
+                      : "border-[#2f2942] hover:border-[#EB83EA]/50"
+                  }`}
+                >
+                  <FiFilm className={`w-8 h-8 ${formData.contentType === "long" ? "text-[#EB83EA]" : "text-gray-400"}`} />
+                  <div className="text-center">
+                    <div className="font-bold">Video</div>
+                    <div className="text-xs text-gray-400">Horizontal - 1 to 60 minutes</div>
+                  </div>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, contentType: "podcast" })}
+                  className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
+                    formData.contentType === "podcast"
+                      ? "border-[#EB83EA] bg-[#EB83EA]/10"
+                      : "border-[#2f2942] hover:border-[#EB83EA]/50"
+                  }`}
+                >
+                  <FiMic className={`w-8 h-8 ${formData.contentType === "podcast" ? "text-[#EB83EA]" : "text-gray-400"}`} />
+                  <div className="text-center">
+                    <div className="font-bold">Podcast</div>
+                    <div className="text-xs text-gray-400">Spoken word, interviews, discussions</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, contentType: "music" })}
+                  className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
+                    formData.contentType === "music"
+                      ? "border-[#EB83EA] bg-[#EB83EA]/10"
+                      : "border-[#2f2942] hover:border-[#EB83EA]/50"
+                  }`}
+                >
+                  <FiMusic className={`w-8 h-8 ${formData.contentType === "music" ? "text-[#EB83EA]" : "text-gray-400"}`} />
+                  <div className="text-center">
+                    <div className="font-bold">Music</div>
+                    <div className="text-xs text-gray-400">Songs, performances, audio tracks</div>
+                  </div>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Video Upload */}
+        {/* Media Upload */}
         <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
           <label className="block text-lg font-bold uppercase tracking-widest mb-4">
-            Video File
+            {formData.mediaType === "video" ? "Video File" : "Audio File"}
           </label>
           <label
             className={`flex flex-col items-center justify-center w-full px-6 py-12 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
@@ -480,17 +576,21 @@ export default function UploadPage() {
                   Drag and drop or click to upload
                 </span>
                 <span className="text-sm text-gray-400 mt-2">
-                  MP4, WebM, MKV - Max 5GB
+                  {formData.mediaType === "video" ? "MP4, WebM, MKV - Max 5GB" : "MP3, WAV, OGG, FLAC - Max 500MB"}
                 </span>
               </>
             )}
             <input
               type="file"
-              accept="video/mp4,video/webm,video/x-matroska,video/quicktime,video/x-msvideo,video/avi,video/*"
+              accept={
+                formData.mediaType === "video"
+                  ? "video/mp4,video/webm,video/x-matroska,video/quicktime,video/x-msvideo,video/avi,video/*"
+                  : "audio/mpeg,audio/wav,audio/ogg,audio/aac,audio/flac,audio/mp3,audio/x-m4a,audio/*"
+              }
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (file) {
-                  const isValid = await validateVideoFile(file, formData.contentType);
+                  const isValid = await validateMediaFile(file, formData.mediaType, formData.contentType);
                   if (isValid) {
                     setFormData({
                       ...formData,
