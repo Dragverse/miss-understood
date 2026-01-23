@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FiChevronLeft, FiChevronRight, FiImage, FiHeart, FiMessageCircle } from "react-icons/fi";
+import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
 
 interface PhotoPost {
   id: string;
@@ -23,6 +24,7 @@ interface PhotoPost {
 
 export function TrendingPhotosSection({ photos }: { photos: PhotoPost[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -64,14 +66,14 @@ export function TrendingPhotosSection({ photos }: { photos: PhotoPost[] }) {
 
       {/* Horizontal scroll container */}
       <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-        {photos.map((photo) => {
-          // Use internal URL if available, otherwise fall back to profile route or external URL
-          const photoLink = photo.internalUrl ||
-                           (photo.creator?.handle ? `/profile/${photo.creator.handle}` : photo.externalUrl);
-
+        {photos.map((photo, index) => {
           return (
-            <Link key={photo.id} href={photoLink} className="flex-shrink-0 snap-start group">
-              <div className="relative w-[280px] aspect-square rounded-2xl overflow-hidden cursor-pointer shadow-lg">
+            <div
+              key={photo.id}
+              onClick={() => setSelectedPhotoIndex(index)}
+              className="flex-shrink-0 snap-start group cursor-pointer"
+            >
+              <div className="relative w-[280px] aspect-square rounded-2xl overflow-hidden shadow-lg">
                 <Image src={photo.thumbnail} alt={photo.description} fill className="object-cover group-hover:scale-110 transition-transform duration-700" />
 
                 {/* Gradient overlay */}
@@ -105,10 +107,19 @@ export function TrendingPhotosSection({ photos }: { photos: PhotoPost[] }) {
                   )}
                 </div>
               </div>
-            </Link>
+            </div>
           );
         })}
       </div>
+
+      {/* Photo Viewer Modal */}
+      {selectedPhotoIndex !== null && (
+        <PhotoViewerModal
+          photos={photos}
+          initialIndex={selectedPhotoIndex}
+          onClose={() => setSelectedPhotoIndex(null)}
+        />
+      )}
     </section>
   );
 }

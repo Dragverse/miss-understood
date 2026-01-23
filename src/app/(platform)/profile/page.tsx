@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
 import { BytesSlider } from "@/components/profile/bytes-slider";
+import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
 import { getCreatorByDID } from "@/lib/supabase/creators";
 import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { getVideosByCreator } from "@/lib/supabase/videos";
@@ -52,13 +53,14 @@ export default function ProfilePage() {
   const [profileLinkCopied, setProfileLinkCopied] = useState(false);
   const [showBytePlayer, setShowBytePlayer] = useState(false);
   const [selectedByteIndex, setSelectedByteIndex] = useState(0);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
   // Copy profile link to clipboard
   const handleShareProfile = async () => {
     if (!creator) return;
 
-    // Generate profile URL using handle
-    const profileUrl = `${window.location.origin}/creator/${creator.handle}`;
+    // Generate profile URL using handle (short URL format)
+    const profileUrl = `${window.location.origin}/u/${creator.handle}`;
 
     try {
       await navigator.clipboard.writeText(profileUrl);
@@ -829,24 +831,33 @@ export default function ProfilePage() {
           {activeTab === "photos" && (
             <div>
               {userPhotos.length > 0 ? (
-                <div className="grid grid-cols-3 gap-1">
-                  {userPhotos.map((photo) => (
-                    <a
-                      key={photo.id}
-                      href={photo.externalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group relative aspect-square bg-black overflow-hidden"
-                    >
-                      <Image
-                        src={photo.thumbnail}
-                        alt={photo.description || "Photo"}
-                        fill
-                        className="object-cover group-hover:opacity-80 transition-opacity"
-                      />
-                    </a>
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-3 gap-1">
+                    {userPhotos.map((photo, index) => (
+                      <div
+                        key={photo.id}
+                        onClick={() => setSelectedPhotoIndex(index)}
+                        className="group relative aspect-square bg-black overflow-hidden cursor-pointer"
+                      >
+                        <Image
+                          src={photo.thumbnail}
+                          alt={photo.description || "Photo"}
+                          fill
+                          className="object-cover group-hover:opacity-80 transition-opacity"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Photo Viewer Modal */}
+                  {selectedPhotoIndex !== null && (
+                    <PhotoViewerModal
+                      photos={userPhotos}
+                      initialIndex={selectedPhotoIndex}
+                      onClose={() => setSelectedPhotoIndex(null)}
+                    />
+                  )}
+                </>
               ) : (
                 <div className="text-center py-16">
                   <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
@@ -943,7 +954,7 @@ export default function ProfilePage() {
                   <div className="flex items-center gap-3">
                     <div className="flex-1 bg-[#0f071a] rounded-xl px-4 py-3 border border-[#EB83EA]/20">
                       <p className="text-gray-300 font-mono text-sm break-all">
-                        {typeof window !== 'undefined' ? `${window.location.origin}/creator/${creator.handle}` : `/creator/${creator.handle}`}
+                        {typeof window !== 'undefined' ? `${window.location.origin}/u/${creator.handle}` : `/u/${creator.handle}`}
                       </p>
                     </div>
                     <button
