@@ -48,7 +48,34 @@ export function Providers({ children }: { children: React.ReactNode }) {
                   color: "#FCF1FC",
                   border: "1px solid #2f2942",
                 },
+                // Default duration for all toasts
+                duration: 5000,
                 success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: "#EB83EA",
+                    secondary: "#FCF1FC",
+                  },
+                },
+                error: {
+                  duration: 8000, // Errors stay longer (8 seconds)
+                  style: {
+                    background: "#18122D",
+                    color: "#FCF1FC",
+                    border: "2px solid #EF4444",
+                  },
+                  iconTheme: {
+                    primary: "#EF4444",
+                    secondary: "#FCF1FC",
+                  },
+                },
+                loading: {
+                  duration: Infinity, // Loading toasts stay until dismissed
+                  style: {
+                    background: "#18122D",
+                    color: "#FCF1FC",
+                    border: "1px solid #EB83EA",
+                  },
                   iconTheme: {
                     primary: "#EB83EA",
                     secondary: "#FCF1FC",
