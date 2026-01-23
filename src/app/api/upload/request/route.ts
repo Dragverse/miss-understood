@@ -13,21 +13,16 @@ export async function POST(request: NextRequest) {
       console.log("🔐 Verifying Privy authentication...");
       const auth = await verifyAuth(request);
       if (!auth.authenticated) {
-        console.error("❌ Authentication failed:", auth.error);
-        console.error("❌ Full auth result:", JSON.stringify(auth));
-
-        // TEMPORARY: Log error but allow upload anyway
-        // TODO: Remove this once auth is fixed
-        console.warn("⚠️  ALLOWING UPLOAD DESPITE AUTH FAILURE (TEMPORARY)");
-
-        // Uncomment to enforce auth:
-        // return NextResponse.json(
-        //   { error: "Unauthorized", details: auth.error },
-        //   { status: 401 }
-        // );
-      } else {
-        console.log("✓ User authenticated:", auth.userId);
+        console.error("[UploadRequest] Authentication failed:", auth.error);
+        return NextResponse.json(
+          {
+            error: "Authentication required to upload content.",
+            errorType: "UNAUTHORIZED"
+          },
+          { status: 401 }
+        );
       }
+      console.log("✓ User authenticated:", auth.userId);
     } else {
       console.log("⚠ Privy not configured - skipping auth");
     }

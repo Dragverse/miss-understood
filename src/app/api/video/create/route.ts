@@ -164,6 +164,27 @@ export async function POST(request: NextRequest) {
       visibility: visibility || "public",
     };
 
+    // Validate duration based on content type
+    if (duration) {
+      const maxDurations: { [key: string]: number } = {
+        short: 1200,      // 20 minutes
+        long: 3600,       // 60 minutes
+        podcast: 10800,   // 3 hours
+        music: 900        // 15 minutes
+      };
+
+      const maxDuration = maxDurations[contentType];
+      if (maxDuration && duration > maxDuration) {
+        return NextResponse.json(
+          {
+            error: `${contentType} content must be ${maxDuration / 60} minutes or less`,
+            errorType: "VALIDATION_ERROR"
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Save to Supabase
     try {
       console.log("[Video Create] Attempting to save to Supabase with creator_did:", userDID);
@@ -223,9 +244,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         videoId,
-        message: "Video uploaded successfully (local storage)",
+        message: "Video uploaded successfully (temporary storage)",
         fallbackMode: true,
-        videoData
+        videoData,
+        warning: "Your video is saved locally. Please ensure you have a stable connection to sync it to the cloud."
       });
     }
   } catch (error) {

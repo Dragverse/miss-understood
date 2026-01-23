@@ -400,6 +400,13 @@ function UploadPageContent() {
       return;
     }
 
+    // Validate terms checkbox
+    const termsCheckbox = document.querySelector('#terms') as HTMLInputElement;
+    if (!termsCheckbox?.checked) {
+      toast.error("Please confirm that you have the rights to share this content");
+      return;
+    }
+
     // If editing, allow updating without a video file
     if (editId) {
       return handleUpdate();
@@ -528,7 +535,11 @@ function UploadPageContent() {
 
         // Show appropriate success message based on mode
         if (metadataResult.fallbackMode) {
-          toast.success("Video uploaded! (Saved locally - will sync when available)");
+          toast.error(
+            "Video uploaded but couldn't save to cloud. It's stored locally. Please check your connection.",
+            { duration: 10000 }
+          );
+          // TODO: Implement sync retry mechanism
         } else {
           toast.success("Video uploaded successfully!");
         }
@@ -790,6 +801,15 @@ function UploadPageContent() {
               className="hidden"
             />
           </label>
+          </div>
+        )}
+
+        {/* Edit mode message */}
+        {editId && (
+          <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
+            <p className="text-gray-400 text-center">
+              Media file cannot be changed when editing. Upload a new file to create a new post.
+            </p>
           </div>
         )}
 
