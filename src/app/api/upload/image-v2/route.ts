@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseServerClient } from "@/lib/supabase/client";
 
 // Force dynamic route
 export const dynamic = 'force-dynamic';
@@ -34,18 +34,10 @@ export async function POST(request: NextRequest) {
     console.log("[ImageUpload] Privy not configured - skipping auth check");
   }
 
-  // Check Supabase
-  if (!supabase) {
-    return NextResponse.json(
-      {
-        error: "Image upload is currently unavailable. Please contact support.",
-        errorType: "CONFIG_ERROR"
-      },
-      { status: 503 }
-    );
-  }
-
   try {
+    // Get Supabase server client
+    const supabase = getSupabaseServerClient();
+
     const formData = await request.formData();
     const file = formData.get("file") as File;
 

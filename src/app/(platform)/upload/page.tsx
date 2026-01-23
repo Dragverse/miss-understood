@@ -347,21 +347,28 @@ function UploadPageContent() {
         }
       }
 
+      // Only send thumbnail URL if it's a valid HTTP(S) URL, not a base64 string
+      const updatePayload: any = {
+        videoId: editId,
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        tags: formData.tags ? formData.tags.split(",").map((t: string) => t.trim()) : [],
+        visibility: formData.visibility,
+      };
+
+      // Only include thumbnail if it's a new upload (HTTP URL)
+      if (thumbnailUrl && (thumbnailUrl.startsWith('http://') || thumbnailUrl.startsWith('https://'))) {
+        updatePayload.thumbnail = thumbnailUrl;
+      }
+
       const response = await fetch("/api/video/update", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify({
-          videoId: editId,
-          title: formData.title,
-          description: formData.description,
-          thumbnail: thumbnailUrl,
-          category: formData.category,
-          tags: formData.tags ? formData.tags.split(",").map((t: string) => t.trim()) : [],
-          visibility: formData.visibility,
-        }),
+        body: JSON.stringify(updatePayload),
       });
 
       if (!response.ok) {

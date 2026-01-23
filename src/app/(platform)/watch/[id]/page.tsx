@@ -10,6 +10,7 @@ import { getSrc } from "@livepeer/react/external";
 import { TipModal } from "@/components/video/tip-modal";
 import { ShareModal } from "@/components/video/share-modal";
 import { VideoCommentModal } from "@/components/video/video-comment-modal";
+import { VideoOptionsMenu } from "@/components/video/video-options-menu";
 import { ChocolateBar } from "@/components/ui/chocolate-bar";
 import { getVideo, getVideos, type SupabaseVideo } from "@/lib/supabase/videos";
 import { Video } from "@/types";
@@ -44,6 +45,8 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
   const [theaterMode, setTheaterMode] = useState(false);
+
+  const isOwner = !!(user?.id && video?.creator?.did && video.creator.did === user.id);
 
   // Pause audio when video page loads or when video is playing
   useEffect(() => {
@@ -395,6 +398,42 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
     }
   };
 
+  const handleEdit = () => {
+    window.location.href = `/upload?edit=${video?.id}`;
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this video? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const authToken = await getAccessToken();
+      const response = await fetch(`/api/video/delete`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ videoId: video?.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete video");
+      }
+
+      toast.success("Video deleted successfully");
+      window.location.href = "/profile";
+    } catch (error) {
+      console.error("Error deleting video:", error);
+      toast.error("Failed to delete video. Please try again.");
+    }
+  };
+
+  const handleShare = () => {
+    setShareModalOpen(true);
+  };
+
   return (
     <div className={`${theaterMode ? "max-w-full" : "max-w-7xl"} mx-auto px-4 py-8 transition-all duration-300`}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -509,6 +548,16 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   <MoodBadge mood={video.category} size="md" />
                 )}
               </div>
+              {/* Options Menu - Only for Dragverse videos */}
+              {video.source === "ceramic" && (
+                <VideoOptionsMenu
+                  video={video}
+                  isOwner={isOwner}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onShare={handleShare}
+                />
+              )}
             </div>
 
             {/* Action Buttons */}
