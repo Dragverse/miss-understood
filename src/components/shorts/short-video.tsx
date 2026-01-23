@@ -415,8 +415,8 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 <span className="text-white text-xs font-semibold">Share</span>
               </button>
 
-              {/* Tip Button - Only for Dragverse creators */}
-              {video.source === "ceramic" && (
+              {/* Tip Button - Temporarily hidden until tipping feature is implemented */}
+              {false && video.source === "ceramic" && (
                 <button
                   onClick={handleTip}
                   className="flex flex-col items-center gap-1"

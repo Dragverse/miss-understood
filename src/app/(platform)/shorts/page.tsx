@@ -9,8 +9,6 @@ import { getLocalVideos } from "@/lib/utils/local-storage";
 import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/shorts/short-video";
-import { ShortOverlayTop } from "@/components/shorts/short-overlay-top";
-import { ShortOverlayBottom } from "@/components/shorts/short-overlay-bottom";
 import { FiChevronUp, FiChevronDown } from "react-icons/fi";
 import { isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
 
@@ -224,8 +222,6 @@ function ShortsContent() {
               onNext={() => instanceRef.current?.next()}
               onEnded={handleVideoEnded}
             />
-            <ShortOverlayTop video={video} />
-            <ShortOverlayBottom video={video} />
           </div>
         ))}
       </div>

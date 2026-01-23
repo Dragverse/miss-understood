@@ -29,17 +29,21 @@ export function ProfileActionButtons({
 
     setIsLoading(true);
     try {
-      const response = await fetch("/api/bluesky/follow", {
+      // Use Dragverse follow API for all users
+      const response = await fetch("/api/social/follow", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          did: creator.blueskyDID || creator.did,
+          followerDID: currentUserDID,
+          followingDID: creator.did,
           action: isFollowing ? "unfollow" : "follow",
         }),
       });
 
       if (response.ok) {
         setIsFollowing(!isFollowing);
+      } else {
+        console.error("Follow failed:", await response.text());
       }
     } catch (error) {
       console.error("Follow error:", error);
