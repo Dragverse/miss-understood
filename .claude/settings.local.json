@@ -74,7 +74,8 @@
       "Bash(tree:*)",
       "Bash(git show:*)",
       "Bash(git pull:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(tail:*)"
     ]
   }
 }

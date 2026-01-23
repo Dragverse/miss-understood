@@ -1,19 +1,23 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import { FiUploadCloud, FiCheck, FiFilm, FiZap, FiUpload, FiLoader, FiClock, FiMusic, FiMic } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { uploadVideoToLivepeer, waitForAssetReady } from "@/lib/livepeer/client-upload";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { usePrivy } from "@privy-io/react-auth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { saveLocalVideo } from "@/lib/utils/local-storage";
+import { getVideo } from "@/lib/supabase/videos";
+import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 
-export default function UploadPage() {
+function UploadPageContent() {
   const { isAuthenticated, signIn, user } = useAuthUser();
   const { getAccessToken, ready } = usePrivy();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
 
   const [formData, setFormData] = useState({
     mediaType: "video" as "video" | "audio",
@@ -50,6 +54,55 @@ export default function UploadPage() {
     "Behind the Scenes",
     "Other",
   ];
+
+  // Load existing video data if editing
+  useEffect(() => {
+    if (editId && user) {
+      loadVideoForEdit();
+    }
+
+    async function loadVideoForEdit() {
+      try {
+        const videoDoc = await getVideo(editId!);
+        if (!videoDoc) {
+          toast.error("Video not found");
+          router.push("/upload");
+          return;
+        }
+
+        const video = await transformVideoWithCreator(videoDoc);
+
+        // Check if user owns this video
+        if (video.creator?.did !== user?.id) {
+          toast.error("You don't have permission to edit this video");
+          router.push("/upload");
+          return;
+        }
+
+        // Determine media type from content type
+        const mediaType = video.contentType === 'podcast' || video.contentType === 'music' ? 'audio' : 'video';
+
+        // Populate form with existing data
+        setFormData({
+          mediaType,
+          contentType: video.contentType as any,
+          title: video.title,
+          description: video.description || "",
+          category: video.category || "",
+          tags: video.tags?.join(", ") || "",
+          visibility: video.visibility || "public",
+          thumbnail: null,
+          thumbnailPreview: video.thumbnail || null,
+          video: null, // Don't load the actual file
+        });
+
+        toast.success("Loaded video data for editing");
+      } catch (error) {
+        console.error("Failed to load video for edit:", error);
+        toast.error("Failed to load video data");
+      }
+    }
+  }, [editId, user, router]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -213,6 +266,75 @@ export default function UploadPage() {
     }
   };
 
+  const handleUpdate = async () => {
+    if (!formData.title) {
+      toast.error("Please enter a title");
+      return;
+    }
+
+    if (!formData.category) {
+      toast.error("Please select a category");
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const authToken = await getAccessToken();
+
+      if (!authToken) {
+        toast.error("Authentication failed. Please try signing in again.");
+        setUploading(false);
+        return;
+      }
+
+      // If user uploaded a new thumbnail, upload it to Livepeer
+      let thumbnailUrl = formData.thumbnailPreview;
+
+      if (formData.thumbnail) {
+        toast("Uploading new thumbnail...");
+        try {
+          // Create a temporary asset for the thumbnail
+          const asset = await uploadVideoToLivepeer(formData.thumbnail, () => {});
+          const readyAsset = await waitForAssetReady(asset.id, () => {});
+          thumbnailUrl = `https://image.lp-playback.studio/image/${readyAsset.playbackId}/thumbnail.webp`;
+        } catch (error) {
+          console.error("Failed to upload thumbnail:", error);
+          toast.error("Failed to upload new thumbnail");
+        }
+      }
+
+      const response = await fetch("/api/video/update", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          videoId: editId,
+          title: formData.title,
+          description: formData.description,
+          thumbnail: thumbnailUrl,
+          category: formData.category,
+          tags: formData.tags ? formData.tags.split(",").map((t: string) => t.trim()) : [],
+          visibility: formData.visibility,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update video");
+      }
+
+      toast.success("Video updated successfully!");
+      router.push("/profile");
+    } catch (error) {
+      console.error("Update error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update video");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -225,6 +347,11 @@ export default function UploadPage() {
       toast.error("Please sign in to upload videos");
       signIn();
       return;
+    }
+
+    // If editing, allow updating without a video file
+    if (editId) {
+      return handleUpdate();
     }
 
     if (!formData.video) {
@@ -416,9 +543,9 @@ export default function UploadPage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Upload Content</h1>
+        <h1 className="text-3xl font-bold mb-2">{editId ? "Edit Content" : "Upload Content"}</h1>
         <p className="text-gray-400">
-          Share your drag content with the Dragverse community
+          {editId ? "Update your content details and thumbnail" : "Share your drag content with the Dragverse community"}
         </p>
       </div>
 
@@ -539,10 +666,11 @@ export default function UploadPage() {
         </div>
 
         {/* Media Upload */}
-        <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
-          <label className="block text-lg font-bold uppercase tracking-widest mb-4">
-            {formData.mediaType === "video" ? "Video File" : "Audio File"}
-          </label>
+        {!editId && (
+          <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
+            <label className="block text-lg font-bold uppercase tracking-widest mb-4">
+              {formData.mediaType === "video" ? "Video File" : "Audio File"}
+            </label>
           <label
             className={`flex flex-col items-center justify-center w-full px-6 py-12 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
               dragActive
@@ -611,7 +739,8 @@ export default function UploadPage() {
               className="hidden"
             />
           </label>
-        </div>
+          </div>
+        )}
 
         {/* Details */}
         <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942] space-y-6">
@@ -759,7 +888,7 @@ export default function UploadPage() {
         {/* Thumbnail */}
         <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
           <label className="block text-lg font-bold uppercase tracking-widest mb-4">
-            Thumbnail (Optional)
+            {editId ? "Cover Image (Click to change)" : "Thumbnail (Optional)"}
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <label className="flex flex-col items-center justify-center w-full px-4 py-8 border-2 border-dashed border-[#2f2942] rounded-2xl hover:border-[#EB83EA]/50 cursor-pointer transition">
@@ -813,10 +942,10 @@ export default function UploadPage() {
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={uploading || !formData.video || !formData.title || !formData.category}
+          disabled={uploading || (!editId && !formData.video) || !formData.title || !formData.category}
           className="w-full px-6 py-4 bg-[#EB83EA] hover:bg-[#E748E6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-full transition-colors text-lg"
         >
-          {uploading ? "Uploading..." : "Upload Content"}
+          {uploading ? (editId ? "Updating..." : "Uploading...") : (editId ? "Update Content" : "Upload Content")}
         </button>
 
         {/* Upload Progress - Fixed Bottom Right Popup */}
@@ -903,5 +1032,19 @@ export default function UploadPage() {
         )}
       </form>
     </div>
+  );
+}
+
+export default function UploadPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <UploadPageContent />
+    </Suspense>
   );
 }

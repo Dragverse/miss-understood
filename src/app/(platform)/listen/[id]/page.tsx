@@ -6,16 +6,19 @@ import Link from "next/link";
 import { FiMessageCircle, FiShare2, FiPlay, FiPause, FiSkipForward, FiSkipBack, FiVolume2 } from "react-icons/fi";
 import { ShareModal } from "@/components/video/share-modal";
 import { VideoCommentModal } from "@/components/video/video-comment-modal";
+import { VideoOptionsMenu } from "@/components/video/video-options-menu";
 import { getVideo } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 import { usePrivy } from "@privy-io/react-auth";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { HeartAnimation, LoadingShimmer, MoodBadge } from "@/components/shared";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
 export default function ListenPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
+  const router = useRouter();
   const { getAccessToken, login, user } = usePrivy();
   const { playTrack, pause, resume, isPlaying: isGlobalPlaying, currentTrack, audioRef } = useAudioPlayer();
 
@@ -28,6 +31,8 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+
+  const isOwner = !!(user?.id && audio?.creator?.did && audio.creator.did === user.id);
 
   // Fetch audio from database
   useEffect(() => {
@@ -163,6 +168,48 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
     }
   };
 
+  const handleEdit = () => {
+    router.push(`/upload?edit=${audio?.id}`);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this audio? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const authToken = await getAccessToken();
+      const response = await fetch(`/api/video/delete`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ videoId: audio?.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete audio");
+      }
+
+      toast.success("Audio deleted successfully");
+      router.push("/profile");
+    } catch (error) {
+      console.error("Error deleting audio:", error);
+      toast.error("Failed to delete audio. Please try again.");
+    }
+  };
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/listen/${audio?.id}`;
+    if (navigator.share) {
+      navigator.share({ title: audio?.title, url });
+    } else {
+      navigator.clipboard.writeText(url);
+      toast.success("Link copied to clipboard!");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -206,6 +253,17 @@ export default function ListenPage({ params }: { params: Promise<{ id: string }>
               {/* Content Type Badge */}
               <div className="absolute top-4 left-4">
                 <MoodBadge mood={audio.contentType === 'podcast' ? 'podcast' : 'music'} />
+              </div>
+
+              {/* Options Menu */}
+              <div className="absolute top-4 right-4 z-10">
+                <VideoOptionsMenu
+                  video={audio}
+                  isOwner={isOwner}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onShare={handleShare}
+                />
               </div>
             </div>
           </div>

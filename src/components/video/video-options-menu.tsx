@@ -50,10 +50,10 @@ export function VideoOptionsMenu({
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        className="p-2 bg-black/60 rounded-full hover:bg-black/80 transition-all"
+        className="p-3 bg-black/70 backdrop-blur-sm rounded-full hover:bg-black/90 transition-all shadow-lg border border-white/10"
         aria-label="More options"
       >
-        <FiMoreVertical className="w-4 h-4 text-white" />
+        <FiMoreVertical className="w-5 h-5 text-white" />
       </button>
 
       {/* Dropdown menu */}
