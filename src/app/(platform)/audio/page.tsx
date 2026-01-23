@@ -22,6 +22,7 @@ interface AudioContent {
   };
   youtubeUrl: string;
   type: "podcast" | "music";
+  source?: "youtube" | "dragverse";
 }
 
 export default function AudioPage() {
@@ -46,11 +47,48 @@ export default function AudioPage() {
   async function loadAudioContent() {
     setLoading(true);
     try {
-      // Fetch YouTube videos from RSS feeds (no API quota!)
+      const allContent: AudioContent[] = [];
+
+      // 1. Fetch uploaded audio from Dragverse database (podcast & music content types)
+      try {
+        const dbResponse = await fetch("/api/youtube/feed?includeDatabase=true");
+        const dbData = await dbResponse.json();
+
+        if (dbData.success && dbData.videos) {
+          // Filter for audio content types (podcast, music)
+          const audioVideos = dbData.videos.filter((v: any) =>
+            v.contentType === 'podcast' || v.contentType === 'music'
+          );
+
+          audioVideos.forEach((v: any) => {
+            allContent.push({
+              id: v.id,
+              title: v.title,
+              description: v.description || "",
+              thumbnail: v.thumbnail || "/default-thumbnail.jpg",
+              duration: v.duration || 0,
+              views: v.views || 0,
+              createdAt: v.createdAt ? new Date(v.createdAt) : new Date(),
+              creator: v.creator || {
+                displayName: "Creator",
+                handle: "creator",
+                avatar: "/default-avatar.jpg",
+              },
+              youtubeUrl: v.playbackUrl || "", // Use playback URL for uploaded audio
+              type: v.contentType === 'podcast' ? 'podcast' : 'music',
+              source: 'dragverse', // Mark as uploaded content
+            });
+          });
+
+          console.log(`[Audio] Loaded ${audioVideos.length} uploaded audio items from database`);
+        }
+      } catch (dbError) {
+        console.error("[Audio] Failed to fetch database audio:", dbError);
+      }
+
+      // 2. Fetch YouTube videos from RSS feeds (no API quota!)
       const response = await fetch("/api/youtube/feed?limit=50&rssOnly=true");
       const data = await response.json();
-
-      const allContent: AudioContent[] = [];
 
       if (data.success && data.videos) {
         // Since RSS doesn't provide duration, we'll categorize by keywords in titles
@@ -85,6 +123,7 @@ export default function AudioPage() {
             },
             youtubeUrl: v.externalUrl || v.playbackUrl || "",
             type,
+            source: 'youtube',
           });
         });
       }
@@ -256,7 +295,14 @@ export default function AudioPage() {
             {filteredContent.map((content) => (
               <button
                 key={content.id}
-                onClick={() => handlePlayTrack(content)}
+                onClick={() => {
+                  // Navigate to /listen/[id] for uploaded Dragverse audio, YouTube modal for RSS content
+                  if (content.source === 'dragverse') {
+                    router.push(`/listen/${content.id}`);
+                  } else {
+                    handlePlayTrack(content);
+                  }
+                }}
                 className="group bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl overflow-hidden border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all cursor-pointer hover:shadow-lg hover:shadow-[#EB83EA]/20 text-left w-full"
               >
                 {/* Thumbnail */}
