@@ -31,6 +31,7 @@ function UploadPageContent() {
     thumbnail: null as File | null,
     thumbnailPreview: null as string | null,
     video: null as File | null,
+    crossPostBluesky: false,
   });
 
   const [uploading, setUploading] = useState(false);
@@ -542,6 +543,39 @@ function UploadPageContent() {
           // TODO: Implement sync retry mechanism
         } else {
           toast.success("Video uploaded successfully!");
+
+          // Cross-post to Bluesky if enabled and video was saved successfully
+          if (formData.crossPostBluesky && metadataResult.video?.id) {
+            try {
+              toast("Sharing to Bluesky...");
+              const videoUrl = `${window.location.origin}/watch/${metadataResult.video.id}`;
+              const postText = `${formData.title}\n\n${formData.description ? formData.description.slice(0, 200) + (formData.description.length > 200 ? '...' : '') : ''}\n\nWatch on Dragverse: ${videoUrl}`;
+
+              const blueskyResponse = await fetch("/api/bluesky/post", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  text: postText,
+                  images: thumbnailUrl?.startsWith('http') ? [thumbnailUrl] : [],
+                }),
+              });
+
+              if (blueskyResponse.ok) {
+                toast.success("Shared to Bluesky!");
+              } else {
+                const blueskyError = await blueskyResponse.json();
+                if (blueskyError.requiresConnection) {
+                  toast.error("Bluesky not connected. Connect in Settings to cross-post.");
+                } else {
+                  console.warn("[Upload] Bluesky cross-post failed:", blueskyError);
+                  toast.error("Couldn't share to Bluesky. You can share manually later.");
+                }
+              }
+            } catch (blueskyError) {
+              console.error("[Upload] Bluesky cross-post error:", blueskyError);
+              // Don't show error toast - video upload was successful
+            }
+          }
         }
       } catch (metadataError) {
         console.error("[Upload] Metadata save error:", metadataError);
@@ -562,6 +596,7 @@ function UploadPageContent() {
           thumbnail: null,
           thumbnailPreview: null,
           video: null,
+          crossPostBluesky: false,
         });
         setUploadStage("idle");
         setUploadProgress(0);
@@ -996,6 +1031,34 @@ function UploadPageContent() {
             )}
           </div>
         </div>
+
+        {/* Cross-Post to Bluesky - Only show for new uploads (not edits) */}
+        {!editId && formData.visibility === "public" && (
+          <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
+            <label className="block text-lg font-bold uppercase tracking-widest mb-4">
+              Share to Social
+            </label>
+            <label className="flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-[#0085ff]/50 transition">
+              <input
+                type="checkbox"
+                checked={formData.crossPostBluesky}
+                onChange={(e) => setFormData({ ...formData, crossPostBluesky: e.target.checked })}
+                className="mt-1 w-5 h-5 accent-[#0085ff] rounded"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-[#0085ff]" viewBox="0 0 568 501" fill="currentColor">
+                    <path d="M123.121 33.6637C188.241 82.5526 258.281 181.681 284 234.873C309.719 181.681 379.759 82.5526 444.879 33.6637C491.866 -1.61183 568 -28.9064 568 57.9464C568 75.2916 558.055 203.659 552.222 224.501C531.947 296.954 458.067 315.434 392.347 304.249C507.222 323.8 536.444 388.56 473.333 453.32C353.473 576.312 301.061 422.461 287.631 googletag 383.039C285.169 375.812 284.017 372.431 284 375.306C283.983 372.431 282.831 375.812 280.369 383.039C266.939 422.461 214.527 576.312 94.6667 453.32C31.5556 388.56 60.7778 323.8 175.653 304.249C109.933 315.434 36.0535 296.954 15.7778 224.501C9.94525 203.659 0 75.2916 0 57.9464C0 -28.9064 76.1345 -1.61183 123.121 33.6637Z"/>
+                  </svg>
+                  <span className="font-semibold text-white">Cross-post to Bluesky</span>
+                </div>
+                <p className="text-sm text-gray-400 mt-1">
+                  Share a link to this video on your connected Bluesky account
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
 
         {/* Terms */}
         <div className="flex items-start gap-3 p-4 bg-[#1a0b2e] border border-[#2f2942] rounded-2xl">

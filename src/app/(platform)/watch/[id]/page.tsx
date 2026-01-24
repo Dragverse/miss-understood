@@ -7,11 +7,11 @@ import Link from "next/link";
 import { FiMessageCircle, FiShare2, FiUserPlus, FiLock, FiMaximize2, FiMinimize2, FiPlay } from "react-icons/fi";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
-import { TipModal } from "@/components/video/tip-modal";
+// import { TipModal } from "@/components/video/tip-modal"; // Hidden until monetization feature
 import { ShareModal } from "@/components/video/share-modal";
 import { VideoCommentModal } from "@/components/video/video-comment-modal";
 import { VideoOptionsMenu } from "@/components/video/video-options-menu";
-import { ChocolateBar } from "@/components/ui/chocolate-bar";
+// import { ChocolateBar } from "@/components/ui/chocolate-bar"; // Hidden until monetization feature
 import { getVideo, getVideos, incrementVideoViews, type SupabaseVideo } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
@@ -40,7 +40,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [tipModalOpen, setTipModalOpen] = useState(false);
+  // const [tipModalOpen, setTipModalOpen] = useState(false); // Hidden until monetization feature
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
@@ -512,34 +512,45 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   />
                 </div>
               ) : (
-                // Livepeer Player for uploaded videos
+                // Livepeer Player for uploaded videos - Enhanced quality
                 <Player.Root
                   src={getSrc(video.playbackUrl)}
                   aspectRatio={video.contentType === "short" ? 9 / 16 : 16 / 9}
+                  autoPlay
+                  volume={0.8}
                 >
-                  <Player.Container>
+                  <Player.Container className="rounded-2xl overflow-hidden">
+                    {/* Poster/Thumbnail while loading */}
+                    <Player.Poster
+                      className="object-cover"
+                      src={video.thumbnail || `https://image.lp-playback.studio/image/${video.livepeerAssetId}/thumbnail.webp`}
+                    />
+                    {/* Loading indicator */}
+                    <Player.LoadingIndicator className="w-full h-full flex items-center justify-center bg-black/50">
+                      <div className="w-12 h-12 border-4 border-[#EB83EA] border-t-transparent rounded-full animate-spin" />
+                    </Player.LoadingIndicator>
                     <Player.Video
                       className={video.contentType === "short" ? "max-h-[80vh] mx-auto" : ""}
                       style={{ objectFit: "contain" }}
                     />
-                    <Player.Controls autoHide={3000}>
-                      <Player.PlayPauseTrigger />
-                      <Player.Seek>
-                        <Player.Track>
-                          <Player.SeekBuffer />
-                          <Player.Range />
+                    <Player.Controls autoHide={3000} className="bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
+                      <Player.PlayPauseTrigger className="w-12 h-12 flex items-center justify-center rounded-full bg-[#EB83EA]/20 hover:bg-[#EB83EA]/40 transition" />
+                      <Player.Seek className="flex-1 mx-4">
+                        <Player.Track className="h-1.5 bg-white/30 rounded-full">
+                          <Player.SeekBuffer className="bg-white/50 rounded-full" />
+                          <Player.Range className="bg-[#EB83EA] rounded-full" />
                         </Player.Track>
-                        <Player.Thumb />
+                        <Player.Thumb className="w-4 h-4 bg-[#EB83EA] rounded-full shadow-lg" />
                       </Player.Seek>
-                      <Player.Time />
-                      <Player.MuteTrigger />
-                      <Player.Volume>
-                        <Player.Track>
-                          <Player.Range />
+                      <Player.Time className="text-sm font-medium text-white/90 min-w-[80px]" />
+                      <Player.MuteTrigger className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition" />
+                      <Player.Volume className="w-20 mx-2">
+                        <Player.Track className="h-1 bg-white/30 rounded-full">
+                          <Player.Range className="bg-white rounded-full" />
                         </Player.Track>
-                        <Player.Thumb />
+                        <Player.Thumb className="w-3 h-3 bg-white rounded-full" />
                       </Player.Volume>
-                      <Player.FullscreenTrigger />
+                      <Player.FullscreenTrigger className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition" />
                     </Player.Controls>
                   </Player.Container>
                 </Player.Root>
@@ -573,10 +584,30 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   {video.title}
                 </h1>
                 <div className="flex items-center gap-4 text-sm text-gray-400 mb-3">
-                  <span className="flex items-center gap-1">
-                    <span className="text-[#EB83EA] font-bold">{(video.views / 1000).toFixed(1)}K</span> views
-                  </span>
-                  <span>•</span>
+                  {/* Only show view count for Dragverse videos with tracked views */}
+                  {video.source === "ceramic" && video.views > 0 && (
+                    <>
+                      <span className="flex items-center gap-1">
+                        <span className="text-[#EB83EA] font-bold">
+                          {video.views >= 1000 ? `${(video.views / 1000).toFixed(1)}K` : video.views}
+                        </span> views
+                      </span>
+                      <span>•</span>
+                    </>
+                  )}
+                  {/* For external videos, show source indicator */}
+                  {video.source === "youtube" && (
+                    <>
+                      <span className="text-red-400 font-semibold">YouTube</span>
+                      <span>•</span>
+                    </>
+                  )}
+                  {video.source === "bluesky" && (
+                    <>
+                      <span className="text-blue-400 font-semibold">Bluesky</span>
+                      <span>•</span>
+                    </>
+                  )}
                   <span>
                     {new Date(video.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
@@ -644,7 +675,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 Share
               </ActionButton>
 
-              {/* Tip Button - Only for Dragverse videos */}
+              {/* Tip Button - Hidden until monetization feature is implemented
               {video.source === "ceramic" && (
                 <ActionButton
                   onClick={() => setTipModalOpen(true)}
@@ -655,6 +686,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   Tip Creator
                 </ActionButton>
               )}
+              */}
             </div>
 
             {/* Description */}
@@ -841,7 +873,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         )}
       </div>
 
-      {/* Tip Modal */}
+      {/* Tip Modal - Hidden until monetization feature is implemented
       <TipModal
         isOpen={tipModalOpen}
         onClose={() => setTipModalOpen(false)}
@@ -849,6 +881,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         creatorDID={video.creator.did}
         videoId={video.id}
       />
+      */}
 
       {/* Comment Modal */}
       <VideoCommentModal

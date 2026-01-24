@@ -44,6 +44,7 @@ export default function DynamicProfilePage() {
   const [showBytePlayer, setShowBytePlayer] = useState(false);
   const [selectedByteIndex, setSelectedByteIndex] = useState(0);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
+  const [connectedBlueskyStats, setConnectedBlueskyStats] = useState<{ followersCount: number; followsCount: number } | null>(null);
 
   // Try to fetch Bluesky profile if it looks like a Bluesky handle
   const isBlueskyHandle = handle.includes(".bsky.social") || handle.includes(".");
@@ -77,9 +78,22 @@ export default function DynamicProfilePage() {
           // Load content for Dragverse user
           loadUserContent(ceramicProfile.did);
 
-          // If Dragverse user has Bluesky connected, fetch their Bluesky content too
+          // If Dragverse user has Bluesky connected, fetch their Bluesky content and stats
           if (ceramicProfile.bluesky_handle) {
             fetchBlueskyContent(ceramicProfile.bluesky_handle);
+            // Fetch Bluesky profile stats for follower aggregation
+            try {
+              const bskyRes = await fetch(`/api/bluesky/profile/${encodeURIComponent(ceramicProfile.bluesky_handle)}`);
+              const bskyData = await bskyRes.json();
+              if (bskyData.success && bskyData.profile) {
+                setConnectedBlueskyStats({
+                  followersCount: bskyData.profile.followersCount,
+                  followsCount: bskyData.profile.followsCount,
+                });
+              }
+            } catch (err) {
+              console.warn("Failed to fetch connected Bluesky stats:", err);
+            }
           }
           return;
         }
@@ -308,15 +322,40 @@ export default function DynamicProfilePage() {
                       </span>
                       <span className="text-white/80 ml-2">posts</span>
                     </div>
-                    <div>
+                    <div className="group relative">
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {creator.followerCount?.toLocaleString() || 0}
+                        {/* Show aggregated count if Bluesky is connected (either from hook or connected stats) */}
+                        {(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount)
+                          ? ((creator.followerCount || 0) + (connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0)).toLocaleString()
+                          : (creator.followerCount?.toLocaleString() || 0)
+                        }
                       </span>
                       <span className="text-white/80 ml-2">followers</span>
+                      {/* Platform breakdown tooltip */}
+                      {(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount) && (connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                          <div className="bg-[#1a0b2e]/95 border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[160px] backdrop-blur-sm">
+                            <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Sources</div>
+                            <div className="space-y-1.5 text-sm">
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-[#EB83EA]">Dragverse</span>
+                                <span className="text-white font-medium">{(creator.followerCount || 0).toLocaleString()}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-[#0085ff]">Bluesky</span>
+                                <span className="text-white font-medium">{(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0).toLocaleString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {creator.followingCount?.toLocaleString() || 0}
+                        {(connectedBlueskyStats?.followsCount || blueskyProfile?.followsCount)
+                          ? ((creator.followingCount || 0) + (connectedBlueskyStats?.followsCount || blueskyProfile?.followsCount || 0)).toLocaleString()
+                          : (creator.followingCount?.toLocaleString() || 0)
+                        }
                       </span>
                       <span className="text-white/80 ml-2">following</span>
                     </div>

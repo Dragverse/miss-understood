@@ -463,11 +463,38 @@ export default function ProfilePage() {
                   </div>
                   <div className="text-gray-400 text-sm">posts</div>
                 </div>
-                <div className="text-center">
+                <div className="text-center group relative">
                   <div className="text-white font-semibold text-base">
                     {aggregatedStats ? aggregatedStats.totalFollowers.toLocaleString() : creator.followerCount.toLocaleString()}
                   </div>
                   <div className="text-gray-400 text-sm">followers</div>
+                  {/* Platform breakdown tooltip */}
+                  {aggregatedStats && (aggregatedStats.platforms.bluesky || aggregatedStats.platforms.youtube) && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                      <div className="bg-[#1a0b2e] border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[180px]">
+                        <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Follower Sources</div>
+                        <div className="space-y-1.5 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[#EB83EA]">Dragverse</span>
+                            <span className="text-white font-medium">{aggregatedStats.dragverseFollowers.toLocaleString()}</span>
+                          </div>
+                          {aggregatedStats.platforms.bluesky && aggregatedStats.blueskyFollowers > 0 && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-[#0085ff]">Bluesky</span>
+                              <span className="text-white font-medium">{aggregatedStats.blueskyFollowers.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {aggregatedStats.platforms.youtube && aggregatedStats.youtubeSubscribers > 0 && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-red-500">YouTube</span>
+                              <span className="text-white font-medium">{aggregatedStats.youtubeSubscribers.toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-[#EB83EA]/30"></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="text-center">
                   <div className="text-white font-semibold text-base">

@@ -146,7 +146,12 @@ export async function uploadVideoToLivepeer(
       // Improved retry strategy with exponential backoff for better reliability
       retryDelays: [0, 2000, 5000, 10000, 30000], // More retries with longer delays
       parallelUploads: 1, // Sequential for stability
-      removeFingerprintOnSuccess: true, // Clean up after success
+      // CRITICAL: Disable fingerprint storage entirely to prevent 409 conflicts
+      // Each upload gets a fresh URL from our backend, so resumability isn't needed
+      // and causes stale session conflicts when Livepeer expires the upload
+      urlStorage: null,
+      fingerprint: () => Promise.resolve(null), // Also disable fingerprint generation
+      removeFingerprintOnSuccess: true, // Clean up after success (belt and suspenders)
       // CRITICAL: Also remove fingerprint on error to prevent 409 conflicts on retry
       onShouldRetry: (err, retryAttempt, options) => {
         const errorMessage = err?.message || String(err);

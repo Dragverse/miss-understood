@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     console.log(`[Aggregate API] Fetching stats for user ${userId}...`);
 
     // Fetch creator record from Supabase
+    // Note: youtube_channel_id and youtube_follower_count columns not yet migrated
     const { data: creator, error } = await supabase
       .from("creators")
       .select(
@@ -36,9 +37,7 @@ export async function GET(request: NextRequest) {
         dragverse_follower_count,
         following_count,
         bluesky_handle,
-        bluesky_follower_count,
-        youtube_channel_id,
-        youtube_follower_count
+        bluesky_follower_count
       `
       )
       .eq("did", userId)
@@ -69,13 +68,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Aggregate stats from all platforms
+    // Note: YouTube integration not yet migrated, passing undefined
     const stats = await aggregateFollowerStats({
       dragverseFollowerCount: creator.dragverse_follower_count || 0,
       dragverseFollowingCount: creator.following_count || 0,
       blueskyHandle: creator.bluesky_handle,
       blueskyFollowerCount: creator.bluesky_follower_count,
-      youtubeChannelId: creator.youtube_channel_id,
-      youtubeFollowerCount: creator.youtube_follower_count,
+      youtubeChannelId: undefined,
+      youtubeFollowerCount: undefined,
     });
 
     // Update cached counts in database (async, don't wait)
