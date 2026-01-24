@@ -114,6 +114,24 @@ export const DRAG_MUSIC_CHANNELS: CuratedChannel[] = [
 ];
 
 /**
+ * Curated drag music playlists for the audio page
+ * RSS feed format: https://www.youtube.com/feeds/videos.xml?playlist_id={playlistId}
+ */
+export interface DragPlaylist {
+  playlistId: string;
+  name: string;
+  description: string;
+}
+
+export const DRAG_MUSIC_PLAYLISTS: DragPlaylist[] = [
+  {
+    playlistId: "PLobBk6-xk93Iwawut2lo3O7dRpcBo75if",
+    name: "Drag Music Collection",
+    description: "Curated drag music playlist with performances and tracks",
+  },
+];
+
+/**
  * Get RSS feed URL for a YouTube channel
  * Try both channel_id and user formats as fallback
  */
@@ -121,6 +139,13 @@ export function getChannelRSSUrl(channelId: string, handle?: string): string {
   // Primary: Use channel_id
   // Note: Some channels may not have working RSS feeds
   return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+}
+
+/**
+ * Get RSS feed URL for a YouTube playlist
+ */
+export function getPlaylistRSSUrl(playlistId: string): string {
+  return `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
 }
 
 /**

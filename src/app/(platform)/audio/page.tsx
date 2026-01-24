@@ -86,8 +86,8 @@ export default function AudioPage() {
         console.error("[Audio] Failed to fetch database audio:", dbError);
       }
 
-      // 2. Fetch YouTube videos from RSS feeds (no API quota!)
-      const response = await fetch("/api/youtube/feed?limit=50&rssOnly=true");
+      // 2. Fetch YouTube videos from RSS feeds (no API quota!) + music playlists
+      const response = await fetch("/api/youtube/feed?limit=50&rssOnly=true&includePlaylists=true");
       const data = await response.json();
 
       if (data.success && data.videos) {
@@ -276,7 +276,7 @@ export default function AudioPage() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <LoadingShimmer key={i} aspectRatio="video" className="h-72" />
+              <LoadingShimmer key={i} aspectRatio="square" className="h-72" />
             ))}
           </div>
         ) : filteredContent.length === 0 ? (
@@ -306,7 +306,7 @@ export default function AudioPage() {
                 className="group bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl overflow-hidden border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all cursor-pointer hover:shadow-lg hover:shadow-[#EB83EA]/20 text-left w-full"
               >
                 {/* Thumbnail */}
-                <div className="relative aspect-video">
+                <div className="relative aspect-square">
                   <Image
                     src={content.thumbnail}
                     alt={content.title}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchDragContent } from "@/lib/youtube/client";
-import { fetchCuratedDragContent, fetchCuratedShorts } from "@/lib/youtube/rss-client";
+import { fetchCuratedDragContent, fetchCuratedShorts, fetchCuratedMusicPlaylists } from "@/lib/youtube/rss-client";
 import { getCachedVideos, setCachedVideos } from "@/lib/youtube/cache";
 import { getVideos } from "@/lib/supabase/videos";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
@@ -19,6 +19,7 @@ import type { Video } from "@/types";
  * - shortsOnly: "true" | "false" (default: "false") - only return YouTube Shorts
  * - rssOnly: "true" | "false" (default: "false") - force RSS-only, skip API
  * - includeDatabase: "true" | "false" (default: "false") - include uploaded videos from database
+ * - includePlaylists: "true" | "false" (default: "false") - include videos from curated music playlists
  */
 export async function GET(request: NextRequest) {
   try {
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
     const shortsOnly = searchParams.get("shortsOnly") === "true";
     const rssOnly = searchParams.get("rssOnly") === "true";
     const includeDatabase = searchParams.get("includeDatabase") === "true";
+    const includePlaylists = searchParams.get("includePlaylists") === "true";
 
     console.log(`[YouTube Feed API] Fetching ${limit} ${shortsOnly ? 'shorts' : 'videos'}...`);
 
@@ -85,6 +87,18 @@ export async function GET(request: NextRequest) {
     // Cache successful results (even empty arrays, to avoid repeated failed API calls)
     if (videos.length > 0) {
       setCachedVideos(cacheKey, videos);
+    }
+
+    // Include playlist videos if requested
+    if (includePlaylists) {
+      console.log("[YouTube Feed API] Including playlist videos...");
+      try {
+        const playlistVideos = await fetchCuratedMusicPlaylists(limit);
+        videos = [...videos, ...playlistVideos];
+        console.log(`[YouTube Feed API] ✅ Added ${playlistVideos.length} playlist videos (total: ${videos.length})`);
+      } catch (playlistError) {
+        console.error("[YouTube Feed API] Failed to fetch playlist videos:", playlistError);
+      }
     }
 
     // Include database videos if requested

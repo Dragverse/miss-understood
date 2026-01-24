@@ -83,6 +83,55 @@ async function fetchChannelRSS(channelId: string): Promise<RSSVideo[]> {
 }
 
 /**
+ * Fetch RSS feed for a YouTube playlist
+ */
+async function fetchPlaylistRSS(playlistId: string): Promise<RSSVideo[]> {
+  try {
+    const url = `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
+    console.log(`[YouTube RSS] Fetching playlist feed: ${url}`);
+
+    const response = await fetch(url, {
+      next: { revalidate: 3600 }, // Cache for 1 hour
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; DragverseBot/1.0)',
+      }
+    });
+
+    if (!response.ok) {
+      console.error(`[YouTube RSS] Failed to fetch playlist ${playlistId}: ${response.status}`);
+      return [];
+    }
+
+    const xmlText = await response.text();
+    if (xmlText.length < 100) {
+      console.error(`[YouTube RSS] Suspiciously short response for playlist`);
+      return [];
+    }
+
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: "@_",
+    });
+
+    const result = parser.parse(xmlText);
+    const entries = result?.feed?.entry;
+
+    if (!entries) {
+      console.warn(`[YouTube RSS] No entries found in playlist ${playlistId}`);
+      return [];
+    }
+
+    const videoEntries = Array.isArray(entries) ? entries : [entries];
+    console.log(`[YouTube RSS] Found ${videoEntries.length} videos from playlist ${playlistId}`);
+
+    return videoEntries;
+  } catch (error) {
+    console.error(`[YouTube RSS] Error fetching playlist ${playlistId}:`, error);
+    return [];
+  }
+}
+
+/**
  * Transform RSS video entry to internal Video type
  */
 function rssVideoToVideo(rssVideo: RSSVideo): Video {
@@ -189,4 +238,47 @@ export async function fetchCuratedShorts(limit: number = 30): Promise<Video[]> {
   const allVideos = await fetchCuratedDragContent(limit * 2); // Fetch more to filter
   const shorts = allVideos.filter(v => v.contentType === "short");
   return shorts.slice(0, limit);
+}
+
+/**
+ * Fetch videos from curated drag music playlists
+ * Primarily for the /audio page
+ */
+export async function fetchCuratedMusicPlaylists(limit: number = 50): Promise<Video[]> {
+  try {
+    const { DRAG_MUSIC_PLAYLISTS } = await import("./channels");
+    console.log(`[YouTube RSS] Fetching from ${DRAG_MUSIC_PLAYLISTS.length} music playlists...`);
+
+    // Fetch RSS feeds from all playlists in parallel
+    const playlistPromises = DRAG_MUSIC_PLAYLISTS.map(playlist =>
+      fetchPlaylistRSS(playlist.playlistId)
+    );
+
+    const allFeeds = await Promise.all(playlistPromises);
+    const allVideos = allFeeds.flat();
+
+    console.log(`[YouTube RSS] Fetched ${allVideos.length} videos from music playlists`);
+
+    if (allVideos.length === 0) {
+      return [];
+    }
+
+    // Transform to internal Video type, force contentType to "music"
+    const videos = allVideos.map((rssVideo) => {
+      const video = rssVideoToVideo(rssVideo);
+      return {
+        ...video,
+        contentType: "music" as const, // Force music type for playlist content
+      };
+    });
+
+    // Sort by date (newest first)
+    videos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    // Limit results
+    return videos.slice(0, limit);
+  } catch (error) {
+    console.error("[YouTube RSS] Failed to fetch music playlists:", error);
+    return [];
+  }
 }
