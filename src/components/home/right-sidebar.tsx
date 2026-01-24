@@ -18,16 +18,35 @@ export function RightSidebar() {
 
   return (
     <aside className="hidden lg:block space-y-6">
-      {/* Platform Status */}
-      <div className="p-6 rounded-[24px] bg-purple-900/20 border border-purple-900/30">
-        <div className="flex items-center gap-3 mb-3 text-purple-400">
-          <FiAlertTriangle className="w-5 h-5" />
-          <h3 className="font-bold text-lg">Early Access</h3>
+      {/* Platform Status - Beta */}
+      <div className="p-6 rounded-[24px] bg-purple-900/20 border border-purple-500/40">
+        <div className="flex items-center gap-3 mb-3">
+          <FiAlertTriangle className="w-5 h-5 text-purple-400" />
+          <span className="px-3 py-1 bg-purple-500/30 rounded-full text-xs font-bold text-purple-300 uppercase">
+            Beta
+          </span>
         </div>
-        <p className="text-sm text-purple-300/80 leading-relaxed">
-          Upload videos, build your profile, and explore content from Bluesky.
-          More features coming soon!
+        <p className="text-sm text-purple-200 leading-relaxed mb-3">
+          Dragverse is in active development. Some features may be incomplete or change over time.
         </p>
+        <div className="space-y-2 text-xs text-purple-300/80">
+          <div className="flex items-start gap-2">
+            <FiCheck className="w-4 h-4 flex-shrink-0 text-green-400 mt-0.5" />
+            <span>Upload videos & build your profile</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <FiCheck className="w-4 h-4 flex-shrink-0 text-green-400 mt-0.5" />
+            <span>Browse content from Bluesky & YouTube</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <FiCircle className="w-3 h-3 flex-shrink-0 text-purple-500 mt-1 ml-0.5" />
+            <span className="opacity-60">Live streaming (invite-only)</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <FiCircle className="w-3 h-3 flex-shrink-0 text-purple-500 mt-1 ml-0.5" />
+            <span className="opacity-60">Monetization features (coming soon)</span>
+          </div>
+        </div>
       </div>
 
       {/* Dragverse Worlds */}

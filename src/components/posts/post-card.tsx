@@ -197,21 +197,36 @@ export function PostCard({ post, onDelete }: PostCardProps) {
         </div>
       </div>
 
-      {/* Mood indicator */}
-      {MoodIcon && (
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#EB83EA]/10 rounded-full border border-[#EB83EA]/20 mb-3">
-          <MoodIcon className="text-[#EB83EA] w-4 h-4" />
-          <span className="text-[#EB83EA] text-xs font-semibold capitalize">
-            {post.mood}
-          </span>
+      {/* Source badge and mood indicator */}
+      <div className="flex items-center gap-2 mb-3">
+        {/* Dragverse source badge */}
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
+          <Image src="/logo.svg" alt="" width={12} height={12} />
+          <span className="text-purple-300 text-[10px] font-semibold uppercase">Dragverse</span>
         </div>
-      )}
 
-      {/* Text content */}
+        {/* Mood indicator */}
+        {MoodIcon && (
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#EB83EA]/10 rounded-full border border-[#EB83EA]/20">
+            <MoodIcon className="text-[#EB83EA] w-4 h-4" />
+            <span className="text-[#EB83EA] text-xs font-semibold capitalize">
+              {post.mood}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Text content - enhanced for text-only posts */}
       {post.text_content && (
-        <p className="text-white text-lg leading-relaxed mb-4 whitespace-pre-wrap">
-          {post.text_content}
-        </p>
+        <div className={`mb-4 ${!post.media_urls || post.media_urls.length === 0 ? 'text-center py-6' : ''}`}>
+          <p className={`text-white leading-relaxed whitespace-pre-wrap ${
+            !post.media_urls || post.media_urls.length === 0
+              ? 'text-2xl font-medium'
+              : 'text-lg'
+          }`}>
+            {post.text_content}
+          </p>
+        </div>
       )}
 
       {/* Media grid */}
@@ -273,23 +288,23 @@ export function PostCard({ post, onDelete }: PostCardProps) {
             </span>
           </button>
 
-          {/* Comment button */}
-          <button className="flex items-center gap-2 group">
-            <div className="p-2 rounded-full hover:bg-[#EB83EA]/20 text-gray-400 group-hover:text-[#EB83EA] transition-all">
+          {/* Comment button - Coming soon */}
+          <button className="flex items-center gap-2 group opacity-40 cursor-not-allowed" title="Comments coming soon">
+            <div className="p-2 rounded-full text-gray-500 transition-all">
               <FiMessageCircle size={20} />
             </div>
-            <span className="text-gray-400 group-hover:text-white font-semibold">
-              {post.comment_count}
+            <span className="text-gray-500 font-semibold text-sm">
+              Soon
             </span>
           </button>
 
-          {/* Share button */}
-          <button className="flex items-center gap-2 group">
-            <div className="p-2 rounded-full hover:bg-[#EB83EA]/20 text-gray-400 group-hover:text-[#EB83EA] transition-all">
+          {/* Share button - Coming soon */}
+          <button className="flex items-center gap-2 group opacity-40 cursor-not-allowed" title="Sharing coming soon">
+            <div className="p-2 rounded-full text-gray-500 transition-all">
               <FiShare2 size={20} />
             </div>
-            {post.repost_count > 0 && (
-              <span className="text-gray-400 group-hover:text-white font-semibold">
+            {false && post.repost_count > 0 && (
+              <span className="text-gray-500 font-semibold">
                 {post.repost_count}
               </span>
             )}

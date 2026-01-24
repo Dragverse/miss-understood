@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FiHeart, FiMessageCircle, FiExternalLink, FiBookmark, FiUserPlus, FiUserCheck } from "react-icons/fi";
+import { SiBluesky } from "react-icons/si";
 import { parseTextWithLinks } from "@/lib/text-parser";
 import { CommentModal } from "./comment-modal";
 import * as Player from "@livepeer/react/player";
@@ -229,6 +230,12 @@ export function PostCard({ post }: PostCardProps) {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Bluesky source badge */}
+      <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-500/20 rounded-full border border-blue-500/30 mb-3">
+        <SiBluesky className="w-3 h-3 text-blue-400" />
+        <span className="text-blue-300 text-[10px] font-semibold uppercase">Bluesky</span>
       </div>
 
       {/* Content */}
