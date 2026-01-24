@@ -634,6 +634,7 @@ function UploadPageContent() {
           thumbnailPreview: null,
           video: null,
           crossPostBluesky: false,
+          crossPostFarcaster: false,
         });
         setUploadStage("idle");
         setUploadProgress(0);

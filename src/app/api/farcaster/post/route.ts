@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-// import { NeynarAPIClient } from "@neynar/nodejs-sdk"; // Will be used once signer flow is implemented
+import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 import { getPrivyClient } from "@/lib/privy/server";
+import { getSupabaseServerClient } from "@/lib/supabase/client";
 
 /**
  * POST /api/farcaster/post
@@ -15,8 +16,7 @@ import { getPrivyClient } from "@/lib/privy/server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { text } = body;
-    // videoUrl and imageUrl will be used once signer integration is complete
+    const { text, videoUrl, imageUrl } = body;
 
     if (!text || typeof text !== "string") {
       return NextResponse.json(
@@ -80,49 +80,79 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    // Neynar client will be initialized once signer flow is implemented
 
-    // Check for Privy's embedded signer
-    const signerPublicKey = (farcasterAccount as any).signerPublicKey;
-    const fid = (farcasterAccount as any).fid;
+    // Check if user has a registered Neynar signer
+    const supabase = getSupabaseServerClient();
+    const { data: creatorData, error: dbError } = await supabase
+      .from("creators")
+      .select("farcaster_signer_uuid")
+      .eq("did", auth.userId)
+      .single();
 
-    if (!signerPublicKey || !fid) {
-      console.warn("[Farcaster Post] Incomplete Farcaster account for user", user.id, {
-        hasSignerPublicKey: !!signerPublicKey,
-        hasFid: !!fid,
-      });
+    if (dbError || !creatorData) {
+      console.error("[Farcaster Post] Failed to fetch creator data:", dbError);
       return NextResponse.json(
         {
           success: false,
-          error: "Farcaster signer not configured",
-          message: "Your Farcaster account needs to authorize a signer. Please reconnect your Farcaster account in Settings.",
-          requiresSignerAuth: true,
+          error: "Failed to fetch user data",
+        },
+        { status: 500 }
+      );
+    }
+
+    const signerUuid = creatorData.farcaster_signer_uuid;
+
+    if (!signerUuid) {
+      console.warn("[Farcaster Post] No signer UUID found for user", auth.userId);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Farcaster signer not registered",
+          message: "Please register your Farcaster signer first. Call POST /api/farcaster/register-signer",
+          requiresSignerRegistration: true,
         },
         { status: 400 }
       );
     }
 
-    // TODO: Implement Neynar managed signer creation
-    // For now, we need to create a managed signer via Neynar API
-    // This requires a separate flow to register the Privy signer with Neynar
-    //
-    // Implementation steps needed:
-    // 1. Call Neynar API to create a managed signer with the FID
-    // 2. Store the returned signerUuid in our database linked to the user
-    // 3. Use that signerUuid for future posts
-    //
-    // Reference: https://docs.neynar.com/docs/how-to-let-users-connect-farcaster-accounts
+    // Initialize Neynar client
+    const neynar = new NeynarAPIClient({ apiKey });
 
-    console.error("[Farcaster Post] Neynar managed signer integration not yet implemented");
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Farcaster posting temporarily unavailable",
-        message: "We're working on enabling Farcaster cross-posting. This feature will be available soon!",
-        details: "Neynar managed signer integration pending - we need to create a flow to register signers",
+    // Prepare embeds
+    const embeds: Array<{ url: string }> = [];
+    if (videoUrl) embeds.push({ url: videoUrl });
+    if (imageUrl) embeds.push({ url: imageUrl });
+
+    console.log("[Farcaster Post] Publishing cast to /dragverse channel", {
+      fid: farcasterAccount.fid,
+      textLength: text.length,
+      embedCount: embeds.length,
+      signerUuid: signerUuid.substring(0, 8) + "...",
+    });
+
+    // Publish cast to Farcaster /dragverse channel
+    const cast = await neynar.publishCast({
+      signerUuid,
+      text,
+      embeds: embeds.length > 0 ? embeds : undefined,
+      channelId: "dragverse",
+    });
+
+    console.log("[Farcaster Post] ✅ Cast published successfully", {
+      castHash: (cast as any).hash || (cast as any).cast?.hash,
+      channelId: "dragverse",
+    });
+
+    // Extract hash from response (API structure may vary)
+    const castHash = (cast as any).hash || (cast as any).cast?.hash;
+
+    return NextResponse.json({
+      success: true,
+      cast: {
+        hash: castHash,
+        url: castHash ? `https://warpcast.com/~/conversations/${castHash}` : undefined,
       },
-      { status: 501 } // 501 Not Implemented
-    );
+    });
   } catch (error: any) {
     console.error("[Farcaster Post] Failed to publish cast:", error);
 
