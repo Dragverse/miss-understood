@@ -11,6 +11,7 @@
   "dependencies": {
     "@atproto/api": "^0.18.15",
     "@livepeer/react": "^4.3.6",
+    "@neynar/nodejs-sdk": "^3.125.0",
     "@privy-io/node": "^0.7.0",
     "@privy-io/react-auth": "^3.10.2",
     "@privy-io/wagmi": "^2.1.3",

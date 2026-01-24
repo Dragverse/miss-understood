@@ -32,6 +32,7 @@ function UploadPageContent() {
     thumbnailPreview: null as string | null,
     video: null as File | null,
     crossPostBluesky: false,
+    crossPostFarcaster: false,
   });
 
   const [uploading, setUploading] = useState(false);
@@ -97,6 +98,7 @@ function UploadPageContent() {
           thumbnailPreview: video.thumbnail || null,
           video: null, // Don't load the actual file
           crossPostBluesky: false, // Don't cross-post when editing
+          crossPostFarcaster: false, // Don't cross-post when editing
         });
 
         toast.success("Loaded video data for editing");
@@ -574,6 +576,40 @@ function UploadPageContent() {
               }
             } catch (blueskyError) {
               console.error("[Upload] Bluesky cross-post error:", blueskyError);
+              // Don't show error toast - video upload was successful
+            }
+          }
+
+          // Cross-post to Farcaster if enabled and video was saved successfully
+          if (formData.crossPostFarcaster && metadataResult.video?.id) {
+            try {
+              toast("Sharing to Farcaster...");
+              const videoUrl = `${window.location.origin}/watch/${metadataResult.video.id}`;
+              const postText = `${formData.title}\n\n${formData.description ? formData.description.slice(0, 200) + (formData.description.length > 200 ? '...' : '') : ''}\n\nWatch on Dragverse: ${videoUrl}`;
+
+              const farcasterResponse = await fetch("/api/farcaster/post", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  text: postText,
+                  videoUrl: videoUrl,
+                  imageUrl: thumbnailUrl?.startsWith('http') ? thumbnailUrl : undefined,
+                }),
+              });
+
+              if (farcasterResponse.ok) {
+                toast.success("Shared to Farcaster /dragverse channel!");
+              } else {
+                const farcasterError = await farcasterResponse.json();
+                if (farcasterError.error === "Farcaster not connected") {
+                  toast.error("Farcaster not connected. Connect in Settings to cross-post.");
+                } else {
+                  console.warn("[Upload] Farcaster cross-post failed:", farcasterError);
+                  toast.error("Couldn't share to Farcaster. You can share manually later.");
+                }
+              }
+            } catch (farcasterError) {
+              console.error("[Upload] Farcaster cross-post error:", farcasterError);
               // Don't show error toast - video upload was successful
             }
           }
@@ -1055,6 +1091,26 @@ function UploadPageContent() {
                 </div>
                 <p className="text-sm text-gray-400 mt-1">
                   Share a link to this video on your connected Bluesky account
+                </p>
+              </div>
+            </label>
+
+            <label className="flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-purple-500/50 transition mt-3">
+              <input
+                type="checkbox"
+                checked={formData.crossPostFarcaster}
+                onChange={(e) => setFormData({ ...formData, crossPostFarcaster: e.target.checked })}
+                className="mt-1 w-5 h-5 accent-purple-500 rounded"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm2-1a1 1 0 00-1 1v12a1 1 0 001 1h16a1 1 0 001-1V6a1 1 0 00-1-1H4z"/>
+                  </svg>
+                  <span className="font-semibold text-white">Cross-post to Farcaster</span>
+                </div>
+                <p className="text-sm text-gray-400 mt-1">
+                  Share this video to /dragverse channel on your connected Farcaster account
                 </p>
               </div>
             </label>
