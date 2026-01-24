@@ -96,6 +96,7 @@ function UploadPageContent() {
           thumbnail: null,
           thumbnailPreview: video.thumbnail || null,
           video: null, // Don't load the actual file
+          crossPostBluesky: false, // Don't cross-post when editing
         });
 
         toast.success("Loaded video data for editing");
