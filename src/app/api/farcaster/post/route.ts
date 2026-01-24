@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { NeynarAPIClient } from "@neynar/nodejs-sdk";
-import { usePrivy } from "@/lib/privy/server";
+import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
+import { getPrivyClient } from "@/lib/privy/server";
 
 /**
  * POST /api/farcaster/post
@@ -23,19 +24,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Authenticate user with Privy
-    const { user } = await usePrivy();
-    if (!user) {
+    // Verify authentication
+    if (!isPrivyConfigured()) {
+      return NextResponse.json(
+        { success: false, error: "Authentication system not configured" },
+        { status: 500 }
+      );
+    }
+
+    const auth = await verifyAuth(request);
+    if (!auth.authenticated || !auth.userId) {
       return NextResponse.json(
         { success: false, error: "Unauthorized - please sign in" },
         { status: 401 }
       );
     }
 
+    // Fetch user's Privy profile to get Farcaster account
+    const privyClient = getPrivyClient();
+    const user = await privyClient.users()._get(auth.userId);
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "User not found" },
+        { status: 404 }
+      );
+    }
+
     // Check if user has Farcaster linked
-    const farcasterAccount = user.linkedAccounts?.find(
+    const farcasterAccount = user.linked_accounts?.find(
       (account: any) => account.type === "farcaster"
-    );
+    ) as any;
 
     if (!farcasterAccount?.fid) {
       return NextResponse.json(
@@ -61,7 +80,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const neynar = new NeynarAPIClient(apiKey);
+    const neynar = new NeynarAPIClient({ apiKey });
 
     // Get signer UUID from Privy (if available)
     const signerUuid = (farcasterAccount as any).signerUuid;
@@ -97,15 +116,18 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("[Farcaster Post] ✅ Cast published successfully", {
-      castHash: cast.hash,
+      castHash: (cast as any).hash || (cast as any).cast?.hash,
       channelId: "dragverse",
     });
+
+    // Extract hash from response (API structure may vary)
+    const castHash = (cast as any).hash || (cast as any).cast?.hash;
 
     return NextResponse.json({
       success: true,
       cast: {
-        hash: cast.hash,
-        url: `https://warpcast.com/~/conversations/${cast.hash}`,
+        hash: castHash,
+        url: castHash ? `https://warpcast.com/~/conversations/${castHash}` : undefined,
       },
     });
   } catch (error: any) {
