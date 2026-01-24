@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { NeynarAPIClient } from "@neynar/nodejs-sdk";
+// import { NeynarAPIClient } from "@neynar/nodejs-sdk"; // Will be used once signer flow is implemented
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 import { getPrivyClient } from "@/lib/privy/server";
 
@@ -15,7 +15,8 @@ import { getPrivyClient } from "@/lib/privy/server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { text, videoUrl, imageUrl } = body;
+    const { text } = body;
+    // videoUrl and imageUrl will be used once signer integration is complete
 
     if (!text || typeof text !== "string") {
       return NextResponse.json(
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Initialize Neynar client
+    // Verify Neynar API key is configured
     const apiKey = process.env.NEYNAR_API_KEY;
     if (!apiKey) {
       console.error("[Farcaster Post] NEYNAR_API_KEY not configured");
@@ -79,57 +80,49 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+    // Neynar client will be initialized once signer flow is implemented
 
-    const neynar = new NeynarAPIClient({ apiKey });
+    // Check for Privy's embedded signer
+    const signerPublicKey = (farcasterAccount as any).signerPublicKey;
+    const fid = (farcasterAccount as any).fid;
 
-    // Get signer UUID from Privy (if available)
-    const signerUuid = (farcasterAccount as any).signerUuid;
-    if (!signerUuid) {
-      console.warn("[Farcaster Post] No signer UUID found for user", user.id);
+    if (!signerPublicKey || !fid) {
+      console.warn("[Farcaster Post] Incomplete Farcaster account for user", user.id, {
+        hasSignerPublicKey: !!signerPublicKey,
+        hasFid: !!fid,
+      });
       return NextResponse.json(
         {
           success: false,
           error: "Farcaster signer not configured",
-          message: "Please reconnect your Farcaster account",
+          message: "Your Farcaster account needs to authorize a signer. Please reconnect your Farcaster account in Settings.",
+          requiresSignerAuth: true,
         },
         { status: 400 }
       );
     }
 
-    // Prepare embeds
-    const embeds: Array<{ url: string }> = [];
-    if (videoUrl) embeds.push({ url: videoUrl });
-    if (imageUrl) embeds.push({ url: imageUrl });
+    // TODO: Implement Neynar managed signer creation
+    // For now, we need to create a managed signer via Neynar API
+    // This requires a separate flow to register the Privy signer with Neynar
+    //
+    // Implementation steps needed:
+    // 1. Call Neynar API to create a managed signer with the FID
+    // 2. Store the returned signerUuid in our database linked to the user
+    // 3. Use that signerUuid for future posts
+    //
+    // Reference: https://docs.neynar.com/docs/how-to-let-users-connect-farcaster-accounts
 
-    console.log("[Farcaster Post] Publishing cast to /dragverse channel", {
-      fid: farcasterAccount.fid,
-      textLength: text.length,
-      embedCount: embeds.length,
-    });
-
-    // Publish cast to Farcaster /dragverse channel
-    const cast = await neynar.publishCast({
-      signerUuid,
-      text,
-      embeds: embeds.length > 0 ? embeds : undefined,
-      channelId: "dragverse", // Post to your /dragverse channel
-    });
-
-    console.log("[Farcaster Post] ✅ Cast published successfully", {
-      castHash: (cast as any).hash || (cast as any).cast?.hash,
-      channelId: "dragverse",
-    });
-
-    // Extract hash from response (API structure may vary)
-    const castHash = (cast as any).hash || (cast as any).cast?.hash;
-
-    return NextResponse.json({
-      success: true,
-      cast: {
-        hash: castHash,
-        url: castHash ? `https://warpcast.com/~/conversations/${castHash}` : undefined,
+    console.error("[Farcaster Post] Neynar managed signer integration not yet implemented");
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Farcaster posting temporarily unavailable",
+        message: "We're working on enabling Farcaster cross-posting. This feature will be available soon!",
+        details: "Neynar managed signer integration pending - we need to create a flow to register signers",
       },
-    });
+      { status: 501 } // 501 Not Implemented
+    );
   } catch (error: any) {
     console.error("[Farcaster Post] Failed to publish cast:", error);
 
