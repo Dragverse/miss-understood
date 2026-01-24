@@ -97,6 +97,7 @@ export const CURATED_DRAG_CHANNELS: CuratedChannel[] = [
 
 /**
  * Music-focused drag channels for the audio page
+ * Avatars are dynamically fetched via avatar-fetcher.ts
  */
 export const DRAG_MUSIC_CHANNELS: CuratedChannel[] = [
   {

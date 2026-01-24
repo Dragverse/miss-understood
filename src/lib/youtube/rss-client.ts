@@ -8,6 +8,7 @@
 import { Video } from "@/types";
 import { CURATED_DRAG_CHANNELS, getChannelRSSUrl } from "./channels";
 import { XMLParser } from "fast-xml-parser";
+import { getYouTubeChannelAvatar } from "./avatar-fetcher";
 
 interface RSSVideo {
   "yt:videoId": string;
@@ -134,7 +135,7 @@ async function fetchPlaylistRSS(playlistId: string): Promise<RSSVideo[]> {
 /**
  * Transform RSS video entry to internal Video type
  */
-function rssVideoToVideo(rssVideo: RSSVideo): Video {
+async function rssVideoToVideo(rssVideo: RSSVideo): Promise<Video> {
   const videoId = rssVideo["yt:videoId"];
   const channelId = rssVideo["yt:channelId"];
   const channel = CURATED_DRAG_CHANNELS.find(ch => ch.channelId === channelId);
@@ -149,6 +150,16 @@ function rssVideoToVideo(rssVideo: RSSVideo): Video {
 
   const views = parseInt(rssVideo["media:group"]["media:community"]?.["media:statistics"]?.["@_views"] || "0", 10);
   const publishedAt = new Date(rssVideo.published);
+
+  // Fetch YouTube channel avatar dynamically
+  let channelAvatar = channel?.avatar || "/defaultpfp.png";
+  if (channelId && channelAvatar === "/defaultpfp.png") {
+    try {
+      channelAvatar = await getYouTubeChannelAvatar(channelId, channel?.handle);
+    } catch (error) {
+      console.warn(`[RSS Client] Failed to fetch avatar for channel ${channelId}:`, error);
+    }
+  }
 
   // Note: RSS doesn't provide duration or reliable aspect ratio
   // Default to "long" for all RSS videos - shorts detection happens elsewhere if needed
@@ -170,7 +181,7 @@ function rssVideoToVideo(rssVideo: RSSVideo): Video {
       did: channelId,
       handle: channel?.handle || "youtube",
       displayName: channel?.displayName || rssVideo.author?.name || "YouTube Channel",
-      avatar: channel?.avatar || "/defaultpfp.png",
+      avatar: channelAvatar,
       description: channel?.description || "",
       followerCount: 0,
       followingCount: 0,
@@ -213,7 +224,7 @@ export async function fetchCuratedDragContent(limit: number = 50): Promise<Video
     }
 
     // Transform to internal Video type
-    const videos = allVideos.map(rssVideoToVideo);
+    const videos = await Promise.all(allVideos.map(rssVideoToVideo));
 
     // Sort by date (newest first)
     videos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -262,13 +273,15 @@ export async function fetchCuratedMusicPlaylists(limit: number = 50): Promise<Vi
     }
 
     // Transform to internal Video type, force contentType to "music"
-    const videos = allVideos.map((rssVideo) => {
-      const video = rssVideoToVideo(rssVideo);
-      return {
-        ...video,
-        contentType: "music" as const, // Force music type for playlist content
-      };
-    });
+    const videos = await Promise.all(
+      allVideos.map(async (rssVideo) => {
+        const video = await rssVideoToVideo(rssVideo);
+        return {
+          ...video,
+          contentType: "music" as const, // Force music type for playlist content
+        };
+      })
+    );
 
     // Sort by date (newest first)
     videos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
