@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiHome, FiCompass, FiZap, FiUser, FiSettings, FiAward, FiBarChart2, FiMessageSquare, FiUsers, FiHeadphones } from "react-icons/fi";
+import { useEffect, useState } from "react";
+import { usePrivy } from "@privy-io/react-auth";
+import { FiHome, FiCompass, FiZap, FiUser, FiSettings, FiAward, FiBarChart2, FiMessageSquare, FiUsers, FiHeadphones, FiBell } from "react-icons/fi";
 
 const navItems = [
   { href: "/", icon: FiHome, label: "Home" },
@@ -16,8 +18,38 @@ const navItems = [
   { href: "/profile", icon: FiUser, label: "Profile" },
 ];
 
+// Mobile bottom nav items (first 4 + notifications)
+const mobileNavItems = [
+  { href: "/", icon: FiHome, label: "Home" },
+  { href: "/feed", icon: FiMessageSquare, label: "Feed" },
+  { href: "/videos", icon: FiCompass, label: "Explore" },
+  { href: "/shorts", icon: FiZap, label: "Bytes" },
+  { href: "/notifications", icon: FiBell, label: "Notifications", hasNotification: true },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
+  const { authenticated } = usePrivy();
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  // Fetch notification count
+  useEffect(() => {
+    async function fetchNotifications() {
+      if (!authenticated) return;
+      try {
+        const response = await fetch("/api/notifications");
+        const data = await response.json();
+        if (data.success) {
+          setNotificationCount(data.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+      }
+    }
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [authenticated]);
 
   return (
     <>
@@ -55,7 +87,7 @@ export function Sidebar() {
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#1a0b2e] border-t border-[#2f2942] z-40 md:hidden">
         <div className="flex items-center justify-around px-2 py-2 safe-area-bottom">
-          {navItems.slice(0, 5).map((item) => {
+          {mobileNavItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
 
@@ -69,7 +101,12 @@ export function Sidebar() {
                     : "text-gray-400"
                 }`}
               >
-                <Icon className={`w-6 h-6 ${isActive ? "scale-110" : ""} transition-transform`} />
+                <div className="relative">
+                  <Icon className={`w-6 h-6 ${isActive ? "scale-110" : ""} transition-transform`} />
+                  {item.hasNotification && notificationCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#EB83EA] rounded-full border border-[#1a0b2e]" />
+                  )}
+                </div>
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );

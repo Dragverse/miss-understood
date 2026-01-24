@@ -17,7 +17,7 @@ import { clearBlueskyCache } from "@/lib/bluesky/hooks";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { getAccessToken } = usePrivy();
+  const { getAccessToken, linkFarcaster, unlinkFarcaster } = usePrivy();
   const {
     isAuthenticated,
     isReady,
@@ -1099,13 +1099,36 @@ export default function SettingsPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {farcasterHandle && (
-                        <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
-                          Connected
-                        </span>
+                    <div className="flex items-center gap-2">
+                      {farcasterHandle ? (
+                        <>
+                          <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                            Connected
+                          </span>
+                          {canUnlinkAccount() && (
+                            <button
+                              onClick={() => {
+                                const farcasterAccount = linkedAccounts?.find(
+                                  (account: any) => account.type === "farcaster"
+                                ) as any;
+                                if (farcasterAccount?.fid) {
+                                  unlinkFarcaster(farcasterAccount.fid);
+                                }
+                              }}
+                              className="text-sm px-3 py-1 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition"
+                            >
+                              Disconnect
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => linkFarcaster()}
+                          className="text-sm px-4 py-2 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border border-purple-500/30 hover:border-purple-500 rounded-lg transition font-semibold"
+                        >
+                          Connect Farcaster
+                        </button>
                       )}
-                      <p className="text-xs text-gray-500">Via Privy</p>
                     </div>
                   </div>
 

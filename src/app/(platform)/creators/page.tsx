@@ -4,8 +4,56 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FiUsers, FiVideo, FiEye, FiHeart, FiCheck, FiSearch, FiFilter, FiStar } from "react-icons/fi";
-import { LoadingShimmer } from "@/components/shared";
 import { isVerified } from "@/config/verified-creators";
+
+// Custom loading card component that matches creator card layout
+function CreatorLoadingCard() {
+  return (
+    <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl overflow-hidden border-2 border-[#EB83EA]/10 animate-pulse">
+      {/* Banner shimmer */}
+      <div className="w-full h-32 bg-[#2f2942]/40" />
+
+      {/* Avatar shimmer */}
+      <div className="relative px-6 -mt-12 mb-4">
+        <div className="w-24 h-24 rounded-2xl border-4 border-[#18122D] bg-[#2f2942]/40" />
+      </div>
+
+      {/* Creator info shimmer */}
+      <div className="px-6 pb-6">
+        {/* Name shimmer */}
+        <div className="h-7 bg-[#2f2942]/40 rounded w-2/3 mb-2" />
+        {/* Handle shimmer */}
+        <div className="h-4 bg-[#2f2942]/40 rounded w-1/2 mb-4" />
+        {/* Description shimmer */}
+        <div className="h-4 bg-[#2f2942]/40 rounded w-full mb-2" />
+        <div className="h-4 bg-[#2f2942]/40 rounded w-4/5 mb-4" />
+
+        {/* Stats grid shimmer */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-[#2f2942]/40 rounded-xl p-3">
+            <div className="h-3 bg-[#2f2942]/60 rounded w-2/3 mb-2" />
+            <div className="h-6 bg-[#2f2942]/60 rounded w-1/2" />
+          </div>
+          <div className="bg-[#2f2942]/40 rounded-xl p-3">
+            <div className="h-3 bg-[#2f2942]/60 rounded w-2/3 mb-2" />
+            <div className="h-6 bg-[#2f2942]/60 rounded w-1/2" />
+          </div>
+          <div className="bg-[#2f2942]/40 rounded-xl p-3">
+            <div className="h-3 bg-[#2f2942]/60 rounded w-2/3 mb-2" />
+            <div className="h-6 bg-[#2f2942]/60 rounded w-1/2" />
+          </div>
+          <div className="bg-[#2f2942]/40 rounded-xl p-3">
+            <div className="h-3 bg-[#2f2942]/60 rounded w-2/3 mb-2" />
+            <div className="h-6 bg-[#2f2942]/60 rounded w-1/2" />
+          </div>
+        </div>
+
+        {/* Button shimmer */}
+        <div className="h-10 bg-[#2f2942]/40 rounded-xl w-full" />
+      </div>
+    </div>
+  );
+}
 
 interface CreatorStats {
   followers: number;
@@ -174,7 +222,7 @@ export default function CreatorsDirectory() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <LoadingShimmer key={i} aspectRatio="video" className="h-80" />
+              <CreatorLoadingCard key={i} />
             ))}
           </div>
         ) : filteredAndSortedCreators.length === 0 ? (

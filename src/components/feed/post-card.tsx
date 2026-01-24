@@ -232,11 +232,25 @@ export function PostCard({ post }: PostCardProps) {
         </div>
       </div>
 
-      {/* Bluesky source badge */}
-      <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-500/20 rounded-full border border-blue-500/30 mb-3">
-        <SiBluesky className="w-3 h-3 text-blue-400" />
-        <span className="text-blue-300 text-[10px] font-semibold uppercase">Bluesky</span>
-      </div>
+      {/* Dynamic source badge */}
+      {(post as any).source === "youtube" ? (
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-500/20 rounded-full border border-red-500/30 mb-3">
+          <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+          </svg>
+          <span className="text-red-300 text-[10px] font-semibold uppercase">YouTube</span>
+        </div>
+      ) : (post as any).source === "ceramic" || (post as any).source === "dragverse" ? (
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-500/20 rounded-full border border-purple-500/30 mb-3">
+          <Image src="/logo.svg" alt="" width={12} height={12} />
+          <span className="text-purple-300 text-[10px] font-semibold uppercase">Dragverse</span>
+        </div>
+      ) : (
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-500/20 rounded-full border border-blue-500/30 mb-3">
+          <SiBluesky className="w-3 h-3 text-blue-400" />
+          <span className="text-blue-300 text-[10px] font-semibold uppercase">Bluesky</span>
+        </div>
+      )}
 
       {/* Content */}
       <div className="text-gray-200 mb-4 whitespace-pre-wrap leading-relaxed">
@@ -325,7 +339,27 @@ export function PostCard({ post }: PostCardProps) {
           <FiBookmark className={`w-5 h-5 ${isBookmarked ? "fill-current" : ""}`} />
           <span>Save</span>
         </button>
-        {post.externalUrl && (
+        {(post as any).source === "youtube" && post.externalUrl && (
+          <a
+            href={post.externalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 hover:text-[#EB83EA] transition-colors ml-auto"
+          >
+            <FiExternalLink className="w-5 h-5" />
+            <span>Watch on YouTube</span>
+          </a>
+        )}
+        {((post as any).source === "dragverse" || (post as any).source === "ceramic") && post.id && (
+          <Link
+            href={`/watch/${post.id}`}
+            className="flex items-center gap-2 hover:text-[#EB83EA] transition-colors ml-auto"
+          >
+            <FiExternalLink className="w-5 h-5" />
+            <span>Watch on Dragverse</span>
+          </Link>
+        )}
+        {(post as any).source !== "youtube" && (post as any).source !== "dragverse" && (post as any).source !== "ceramic" && post.externalUrl && (
           <a
             href={post.externalUrl}
             target="_blank"

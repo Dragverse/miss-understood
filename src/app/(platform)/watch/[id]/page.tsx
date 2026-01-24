@@ -219,11 +219,12 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         setLikes(formattedVideo.likes);
         setAccessDenied(false);
 
-        // Increment view count for Dragverse videos only
+        // Increment view count for Dragverse videos only (with unique tracking)
         if (formattedVideo.source === 'ceramic' && resolvedParams.id) {
           try {
-            await incrementVideoViews(resolvedParams.id);
-            console.log("[Watch] View count incremented for video:", resolvedParams.id);
+            const viewerDID = user?.id || undefined;
+            await incrementVideoViews(resolvedParams.id, viewerDID);
+            console.log("[Watch] View count incremented for video:", resolvedParams.id, viewerDID ? "(authenticated)" : "(anonymous)");
           } catch (error) {
             console.error("[Watch] Failed to increment view count:", error);
             // Don't block page load on view count failure

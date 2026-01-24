@@ -158,15 +158,19 @@ export default function HomePage() {
     loadVideos();
   }, []);
 
-  // Separate shorts and regular videos
-  // Include YouTube vertical videos alongside Dragverse native shorts
-  // This populates the bytes feed while we build up native content
-  const shorts = videos.filter((v) =>
+  // Filter for shorts - Dragverse native + YouTube (if feels native)
+  const dragverseShorts = videos.filter((v) =>
     v.contentType === "short" &&
-    // Allow YouTube shorts (they're drag-focused from curated channels)
-    // Exclude Bluesky shorts as they may not be optimized for vertical player
-    (!(v as any).source || (v as any).source === "youtube")
+    ((v as any).source === "ceramic" || !(v as any).source)
   );
+
+  const youtubeShorts = videos.filter((v) =>
+    v.contentType === "short" &&
+    (v as any).source === "youtube"
+  );
+
+  // Show Dragverse first, then YouTube if space (up to 12 total)
+  const shorts = [...dragverseShorts, ...youtubeShorts].slice(0, 12);
   const horizontalVideos = videos.filter((v) => v.contentType !== "short");
 
   const filteredVideos = videos.filter((video) => {

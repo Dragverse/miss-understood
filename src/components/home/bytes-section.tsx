@@ -40,7 +40,10 @@ export function BytesSection({ shorts }: BytesSectionProps) {
         <div className="flex items-center gap-3">
           <FiZap className="text-[#EB83EA] w-8 h-8" />
           <h2 className="font-bold text-2xl lg:text-3xl uppercase tracking-widest">
-            Bytes
+            <span className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+              Dragverse Bytes
+            </span>
+            <span className="ml-3 text-sm text-gray-500 font-normal">Vertical Video Feed</span>
           </h2>
         </div>
         <div className="flex gap-3">
@@ -78,6 +81,12 @@ export function BytesSection({ shorts }: BytesSectionProps) {
                 fill
                 className="object-cover group-hover:scale-110 transition-transform duration-700"
               />
+              {/* YouTube indicator for external content */}
+              {(video as any).source === "youtube" && (
+                <div className="absolute top-2 right-2 bg-gray-900/80 px-1.5 py-0.5 rounded backdrop-blur-sm flex items-center gap-1">
+                  <span className="text-[9px] text-gray-300 font-medium">YT</span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-white mb-2">

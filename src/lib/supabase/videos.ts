@@ -253,12 +253,34 @@ export async function getVideosByContentType(contentType: string, limit = 50): P
   return (data as SupabaseVideo[]) || [];
 }
 
-export async function incrementVideoViews(videoId: string) {
+export async function incrementVideoViews(
+  videoId: string,
+  viewerDID?: string
+) {
   if (!supabase) {
     console.warn('Supabase not configured');
     return;
   }
 
-  const { error } = await supabase.rpc('increment_video_views', { video_id: videoId });
+  // Generate session ID if user not authenticated
+  let sessionId = null;
+  if (!viewerDID) {
+    // Check if session ID exists in localStorage (client-side only)
+    if (typeof window !== 'undefined') {
+      sessionId = localStorage.getItem('viewer_session_id');
+      if (!sessionId) {
+        // Generate new session ID
+        sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        localStorage.setItem('viewer_session_id', sessionId);
+      }
+    }
+  }
+
+  const { error } = await supabase.rpc('increment_video_views', {
+    video_id_param: videoId,
+    viewer_did_param: viewerDID || null,
+    viewer_session_param: sessionId
+  });
+
   if (error) console.error('Failed to increment views:', error);
 }

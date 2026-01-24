@@ -18,6 +18,7 @@ import {
   FiPlus,
   FiPlay,
   FiZap,
+  FiUser,
 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
@@ -216,7 +217,7 @@ export function Navbar() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#1a0b2e] border-t border-white/10">
+        <div className="md:hidden bg-[#1a0b2e] border-t border-white/10 max-h-[calc(100vh-4rem)] overflow-y-auto mobile-menu-enter">
           {/* Mobile Search */}
           <div className="p-4 border-b border-white/10">
             <div className="relative">
@@ -293,7 +294,27 @@ export function Navbar() {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
                 >
-                  <FiSearch className="w-5 h-5" /> Profile
+                  <FiUser className="w-5 h-5" /> Profile
+                </Link>
+                <Link
+                  href="/notifications"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
+                >
+                  <div className="relative">
+                    <FiBell className="w-5 h-5" />
+                    {notificationCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#EB83EA] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {notificationCount > 9 ? '9+' : notificationCount}
+                      </span>
+                    )}
+                  </div>
+                  <span>Notifications</span>
+                  {notificationCount > 0 && (
+                    <span className="ml-auto text-xs text-[#EB83EA] font-semibold">
+                      {notificationCount} new
+                    </span>
+                  )}
                 </Link>
                 <button
                   onClick={() => {

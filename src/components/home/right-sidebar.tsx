@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -12,9 +13,39 @@ import {
   FiVideo,
 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
+import { useAuthUser } from "@/lib/privy/hooks";
 
 export function RightSidebar() {
   const { authenticated } = usePrivy();
+  const { userId } = useAuthUser();
+  const [profileStats, setProfileStats] = useState({
+    hasAvatar: false,
+    hasBio: false,
+    hasBanner: false,
+  });
+
+  useEffect(() => {
+    async function fetchProfileStats() {
+      if (!authenticated || !userId) return;
+
+      try {
+        const response = await fetch(`/api/user/me`);
+        const data = await response.json();
+
+        if (data.success && data.creator) {
+          setProfileStats({
+            hasAvatar: !!data.creator.avatar && !data.creator.avatar.includes("defaultpfp"),
+            hasBio: !!data.creator.description && data.creator.description.length > 10,
+            hasBanner: !!data.creator.banner,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile stats:", error);
+      }
+    }
+
+    fetchProfileStats();
+  }, [authenticated, userId]);
 
   return (
     <aside className="hidden lg:block space-y-6">
@@ -109,17 +140,46 @@ export function RightSidebar() {
 
         {authenticated ? (
           <div className="space-y-3 mb-6">
-            <div className="flex items-center gap-3 text-sm text-gray-400">
-              <FiCheck className="w-4 h-4 text-green-500" />
-              <span className="line-through">Set profile name</span>
+            <div className={`flex items-center gap-3 text-sm ${profileStats.hasAvatar ? "text-gray-400" : "text-white"}`}>
+              {profileStats.hasAvatar ? (
+                <>
+                  <FiCheck className="w-4 h-4 text-green-500" />
+                  <span className="line-through">Upload profile picture</span>
+                </>
+              ) : (
+                <>
+                  <FiCircle className="w-4 h-4 text-gray-500" />
+                  <span>Upload profile picture</span>
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <FiCircle className="w-4 h-4 text-gray-500" />
-              <span>Add profile bio</span>
+
+            <div className={`flex items-center gap-3 text-sm ${profileStats.hasBio ? "text-gray-400" : "text-white"}`}>
+              {profileStats.hasBio ? (
+                <>
+                  <FiCheck className="w-4 h-4 text-green-500" />
+                  <span className="line-through">Add profile bio</span>
+                </>
+              ) : (
+                <>
+                  <FiCircle className="w-4 h-4 text-gray-500" />
+                  <span>Add profile bio</span>
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <FiCircle className="w-4 h-4 text-gray-500" />
-              <span>Upload profile pic</span>
+
+            <div className={`flex items-center gap-3 text-sm ${profileStats.hasBanner ? "text-gray-400" : "text-white"}`}>
+              {profileStats.hasBanner ? (
+                <>
+                  <FiCheck className="w-4 h-4 text-green-500" />
+                  <span className="line-through">Upload banner image</span>
+                </>
+              ) : (
+                <>
+                  <FiCircle className="w-4 h-4 text-gray-500" />
+                  <span>Upload banner image</span>
+                </>
+              )}
             </div>
           </div>
         ) : (
