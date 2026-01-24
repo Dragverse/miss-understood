@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { mockVideos } from "@/lib/utils/mock-data";
 import Image from "next/image";
 import Link from "next/link";
-import { FiMessageCircle, FiShare2, FiUserPlus, FiLock, FiMaximize2, FiMinimize2, FiPlay } from "react-icons/fi";
+import { FiMessageCircle, FiShare2, FiUserPlus, FiLock, FiMaximize2, FiMinimize2, FiPlay, FiPause, FiVolume2, FiVolumeX } from "react-icons/fi";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 // import { TipModal } from "@/components/video/tip-modal"; // Hidden until monetization feature
@@ -44,6 +44,8 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
+  const [creatorVideos, setCreatorVideos] = useState<Video[]>([]);
+  const [loadingRelated, setLoadingRelated] = useState(true);
   const [theaterMode, setTheaterMode] = useState(false);
 
   const isOwner = !!(user?.id && video?.creator?.did && video.creator.did === user.id);
@@ -239,107 +241,94 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
     loadVideo();
   }, [resolvedParams.id, shareToken, getAccessToken]);
 
-  // Load related videos from various sources
+  // Load related videos and creator videos in parallel
   useEffect(() => {
-    async function loadRelatedVideos() {
+    async function loadRelatedAndCreatorVideos() {
+      setLoadingRelated(true);
       const allVideos: Video[] = [];
 
-      // Try Supabase first
-      try {
-        const ceramicResult = await getVideos(20);
-        if (ceramicResult && ceramicResult.length > 0) {
-          // Transform to Video type
-          const transformed = ceramicResult.map(v => ({
-            id: v.id,
-            title: v.title,
-            description: v.description || '',
-            thumbnail: v.thumbnail || '',
-            duration: v.duration || 0,
-            views: v.views,
-            likes: v.likes,
-            createdAt: new Date(v.created_at),
-            playbackUrl: v.playback_url || '',
-            livepeerAssetId: v.livepeer_asset_id || '',
-            contentType: v.content_type as any || 'long',
-            creator: {} as any,
-            category: v.category || '',
-            tags: v.tags || [],
-            source: 'ceramic' as const,
-          }));
-          allVideos.push(...transformed as Video[]);
-        }
-      } catch (error) {
-        console.warn("Supabase unavailable for related videos");
+      // Fetch all sources in parallel for speed
+      const [ceramicResult, youtubeData, blueskyData] = await Promise.all([
+        getVideos(20).catch(() => []),
+        fetch("/api/youtube/feed?limit=20&rssOnly=true")
+          .then(res => res.ok ? res.json() : { videos: [] })
+          .catch(() => ({ videos: [] })),
+        fetch("/api/bluesky/feed?limit=10")
+          .then(res => res.ok ? res.json() : { posts: [] })
+          .catch(() => ({ posts: [] })),
+      ]);
+
+      // Transform Supabase videos
+      if (ceramicResult && ceramicResult.length > 0) {
+        const transformed = ceramicResult.map(v => ({
+          id: v.id,
+          title: v.title,
+          description: v.description || '',
+          thumbnail: v.thumbnail || '',
+          duration: v.duration || 0,
+          views: v.views,
+          likes: v.likes,
+          createdAt: new Date(v.created_at),
+          playbackUrl: v.playback_url || '',
+          livepeerAssetId: v.livepeer_asset_id || '',
+          contentType: v.content_type as any || 'long',
+          creator: v.creator ? {
+            did: v.creator.did,
+            handle: v.creator.handle,
+            displayName: v.creator.display_name,
+            avatar: v.creator.avatar || '/defaultpfp.png',
+          } : { did: v.creator_did },
+          category: v.category || '',
+          tags: v.tags || [],
+          source: 'ceramic' as const,
+        }));
+        allVideos.push(...transformed as Video[]);
       }
 
-      // Fetch from YouTube (horizontal videos only if watching horizontal)
-      try {
-        const youtubeResponse = await fetch("/api/youtube/feed?limit=20&rssOnly=true");
-        if (youtubeResponse.ok) {
-          const youtubeData = await youtubeResponse.json();
-          if (youtubeData.videos) {
-            allVideos.push(...youtubeData.videos);
-          }
-        }
-      } catch (error) {
-        console.warn("YouTube unavailable for related videos");
-      }
+      // Add YouTube and Bluesky
+      if (youtubeData.videos) allVideos.push(...youtubeData.videos);
+      if (blueskyData.posts) allVideos.push(...blueskyData.posts);
+      allVideos.push(...getLocalVideos());
 
-      // Fetch from Bluesky
-      try {
-        const blueskyResponse = await fetch("/api/bluesky/feed?limit=10");
-        if (blueskyResponse.ok) {
-          const blueskyData = await blueskyResponse.json();
-          if (blueskyData.posts) {
-            allVideos.push(...blueskyData.posts);
-          }
-        }
-      } catch (error) {
-        console.warn("Bluesky unavailable for related videos");
-      }
+      // Filter videos from the same creator
+      const fromCreator = allVideos.filter(v =>
+        v.id !== resolvedParams.id &&
+        v.creator?.did === video?.creator?.did
+      ).slice(0, 5);
+      setCreatorVideos(fromCreator);
 
-      // Add local uploads
-      const localVideos = getLocalVideos();
-      allVideos.push(...localVideos);
+      // Filter by matching content type for related videos
+      const matchingContentType = allVideos.filter(v =>
+        v.id !== resolvedParams.id &&
+        v.contentType === video?.contentType &&
+        v.creator?.did !== video?.creator?.did // Exclude creator's videos from related
+      );
 
-      console.log(`[Watch] Loaded ${allVideos.length} total videos for recommendations`);
-      console.log(`[Watch] Current video content type:`, video?.contentType);
-
-      // Filter by matching content type (critical: shorts should recommend shorts, horizontal should recommend horizontal)
-      const matchingContentType = allVideos.filter((v) => {
-        return v.id !== resolvedParams.id && v.contentType === video?.contentType;
-      });
-
-      console.log(`[Watch] Found ${matchingContentType.length} videos matching content type`);
-
-      // Further filter by category/tags for better relevance
+      // Prefer videos with same category/tags
       const related = matchingContentType
-        .filter((v) => {
-          // Prefer videos in same category
+        .filter(v => {
           if (video?.category && v.category === video.category) return true;
-          // Or videos with overlapping tags
           if (video?.tags && v.tags) {
-            return video.tags.some((tag) => v.tags.includes(tag));
+            return video.tags.some(tag => v.tags.includes(tag));
           }
-          return true; // Include all matching content type if no category/tag match
+          return true;
         })
         .slice(0, 10);
 
-      // If not enough related videos with same category/tags, add more with matching content type
+      // Fill up to 10 if needed
       if (related.length < 10) {
         const additional = matchingContentType
-          .filter((v) => !related.includes(v))
+          .filter(v => !related.includes(v))
           .slice(0, 10 - related.length);
         related.push(...additional);
       }
 
-      console.log(`[Watch] Showing ${related.length} related ${video?.contentType} videos`);
-
       setRelatedVideos(related);
+      setLoadingRelated(false);
     }
 
     if (video) {
-      loadRelatedVideos();
+      loadRelatedAndCreatorVideos();
     }
   }, [resolvedParams.id, video]);
 
@@ -519,7 +508,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   autoPlay
                   volume={0.8}
                 >
-                  <Player.Container className="rounded-2xl overflow-hidden">
+                  <Player.Container className="rounded-2xl overflow-hidden bg-black">
                     {/* Poster/Thumbnail while loading */}
                     <Player.Poster
                       className="object-cover"
@@ -527,30 +516,79 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                     />
                     {/* Loading indicator */}
                     <Player.LoadingIndicator className="w-full h-full flex items-center justify-center bg-black/50">
-                      <div className="w-12 h-12 border-4 border-[#EB83EA] border-t-transparent rounded-full animate-spin" />
+                      <div className="w-16 h-16 border-4 border-[#EB83EA] border-t-transparent rounded-full animate-spin" />
                     </Player.LoadingIndicator>
                     <Player.Video
                       className={video.contentType === "short" ? "max-h-[80vh] mx-auto" : ""}
                       style={{ objectFit: "contain" }}
                     />
-                    <Player.Controls autoHide={3000} className="bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
-                      <Player.PlayPauseTrigger className="w-12 h-12 flex items-center justify-center rounded-full bg-[#EB83EA]/20 hover:bg-[#EB83EA]/40 transition" />
-                      <Player.Seek className="flex-1 mx-4">
-                        <Player.Track className="h-1.5 bg-white/30 rounded-full">
-                          <Player.SeekBuffer className="bg-white/50 rounded-full" />
-                          <Player.Range className="bg-[#EB83EA] rounded-full" />
-                        </Player.Track>
-                        <Player.Thumb className="w-4 h-4 bg-[#EB83EA] rounded-full shadow-lg" />
-                      </Player.Seek>
-                      <Player.Time className="text-sm font-medium text-white/90 min-w-[80px]" />
-                      <Player.MuteTrigger className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition" />
-                      <Player.Volume className="w-20 mx-2">
-                        <Player.Track className="h-1 bg-white/30 rounded-full">
-                          <Player.Range className="bg-white rounded-full" />
-                        </Player.Track>
-                        <Player.Thumb className="w-3 h-3 bg-white rounded-full" />
-                      </Player.Volume>
-                      <Player.FullscreenTrigger className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition" />
+                    {/* Enhanced Controls */}
+                    <Player.Controls autoHide={3000} className="flex flex-col justify-end">
+                      {/* Progress Bar - Full width at top of controls */}
+                      <div className="px-4 pb-2">
+                        <Player.Seek className="w-full group">
+                          <Player.Track className="h-1 group-hover:h-2 bg-white/30 rounded-full transition-all cursor-pointer">
+                            <Player.SeekBuffer className="bg-white/40 rounded-full h-full" />
+                            <Player.Range className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-full h-full" />
+                          </Player.Track>
+                          <Player.Thumb className="w-4 h-4 bg-[#EB83EA] rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Player.Seek>
+                      </div>
+
+                      {/* Control Buttons Row */}
+                      <div className="flex items-center gap-2 px-4 pb-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-8">
+                        {/* Play/Pause */}
+                        <Player.PlayPauseTrigger className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-[#EB83EA]/40 transition">
+                          <Player.PlayingIndicator matcher={false}>
+                            <FiPlay className="w-5 h-5 text-white ml-0.5" />
+                          </Player.PlayingIndicator>
+                          <Player.PlayingIndicator matcher={true}>
+                            <FiPause className="w-5 h-5 text-white" />
+                          </Player.PlayingIndicator>
+                        </Player.PlayPauseTrigger>
+
+                        {/* Volume */}
+                        <div className="flex items-center gap-1 group">
+                          <Player.MuteTrigger className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition">
+                            <Player.VolumeIndicator matcher={false}>
+                              <FiVolumeX className="w-5 h-5 text-white" />
+                            </Player.VolumeIndicator>
+                            <Player.VolumeIndicator matcher={true}>
+                              <FiVolume2 className="w-5 h-5 text-white" />
+                            </Player.VolumeIndicator>
+                          </Player.MuteTrigger>
+                          <Player.Volume className="w-0 group-hover:w-20 overflow-hidden transition-all duration-200">
+                            <Player.Track className="h-1 bg-white/30 rounded-full cursor-pointer">
+                              <Player.Range className="bg-white rounded-full h-full" />
+                            </Player.Track>
+                            <Player.Thumb className="w-3 h-3 bg-white rounded-full" />
+                          </Player.Volume>
+                        </div>
+
+                        {/* Time Display */}
+                        <Player.Time className="text-sm font-medium text-white/90 ml-2" />
+
+                        {/* Spacer */}
+                        <div className="flex-1" />
+
+                        {/* Picture in Picture */}
+                        <Player.PictureInPictureTrigger className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition">
+                          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" />
+                            <rect x="12" y="9" width="8" height="6" rx="1" fill="currentColor" />
+                          </svg>
+                        </Player.PictureInPictureTrigger>
+
+                        {/* Fullscreen */}
+                        <Player.FullscreenTrigger className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition">
+                          <Player.FullscreenIndicator matcher={false}>
+                            <FiMaximize2 className="w-5 h-5 text-white" />
+                          </Player.FullscreenIndicator>
+                          <Player.FullscreenIndicator matcher={true}>
+                            <FiMinimize2 className="w-5 h-5 text-white" />
+                          </Player.FullscreenIndicator>
+                        </Player.FullscreenTrigger>
+                      </div>
                     </Player.Controls>
                   </Player.Container>
                 </Player.Root>
@@ -740,9 +778,15 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   <p className="text-gray-400 text-sm mb-1">
                     @{video.creator.handle}
                   </p>
-                  <p className="text-[#EB83EA] text-sm font-semibold">
-                    {(video.creator.followerCount / 1000).toFixed(1)}K followers
-                  </p>
+                  <div className="flex items-center gap-4 text-sm">
+                    <p className="text-[#EB83EA] font-semibold">
+                      {(video.creator.followerCount / 1000).toFixed(1)}K followers
+                    </p>
+                    <span className="text-gray-600">•</span>
+                    <p className="text-gray-400">
+                      {(video.creator.followingCount / 1000).toFixed(1)}K following
+                    </p>
+                  </div>
                   {video.creator.description && (
                     <p className="text-gray-400 text-sm mt-2 line-clamp-2">
                       {video.creator.description}
@@ -822,42 +866,94 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
 
-        {/* Sidebar - Recommended Videos */}
+        {/* Sidebar - Creator Videos & Recommended */}
         {!theaterMode && (
           <div className="lg:col-span-1">
-            <div className="sticky top-8">
-              <h3 className="font-bold text-xl uppercase tracking-wide mb-4 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
-                Up Next
-              </h3>
-              <div className="space-y-3">
-                {relatedVideos.length > 0 ? (
-                  relatedVideos.map((v) => (
-                    <Link
-                      key={v.id}
-                      href={`/watch/${v.id}`}
-                      className="flex gap-3 p-3 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] hover:from-[#2f2942] hover:to-[#18122D] rounded-2xl border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all shadow-lg hover:shadow-xl hover:shadow-[#EB83EA]/10 group"
-                    >
-                      <div className="relative w-32 h-20 flex-shrink-0 rounded-xl overflow-hidden border border-[#EB83EA]/20">
-                        <Image
-                          src={getSafeThumbnail(v.thumbnail, `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`)}
-                          alt={v.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+            <div className="sticky top-8 space-y-6">
+              {/* More from Creator */}
+              {creatorVideos.length > 0 && (
+                <div>
+                  <h3 className="font-bold text-lg uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <span className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+                      More from {video.creator.displayName}
+                    </span>
+                  </h3>
+                  <div className="space-y-2">
+                    {creatorVideos.map((v) => (
+                      <Link
+                        key={v.id}
+                        href={`/watch/${v.id}`}
+                        className="flex gap-2 p-2 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] hover:from-[#2f2942] hover:to-[#18122D] rounded-xl border border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all group"
+                      >
+                        <div className="relative w-24 h-16 flex-shrink-0 rounded-lg overflow-hidden">
+                          <Image
+                            src={getSafeThumbnail(v.thumbnail, `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`)}
+                            alt={v.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-xs line-clamp-2 mb-1 group-hover:text-[#EB83EA] transition-colors">
+                            {v.title}
+                          </h4>
+                          <p className="text-xs text-gray-500">
+                            {(v.views / 1000).toFixed(1)}K views
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Up Next - Related Videos */}
+              <div>
+                <h3 className="font-bold text-xl uppercase tracking-wide mb-4 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+                  Up Next
+                </h3>
+                {loadingRelated ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex gap-3 p-3 bg-[#18122D] rounded-2xl border border-[#EB83EA]/10 animate-pulse">
+                        <div className="w-32 h-20 bg-[#2f2942] rounded-xl" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-[#2f2942] rounded w-3/4" />
+                          <div className="h-3 bg-[#2f2942] rounded w-1/2" />
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm line-clamp-2 mb-1 group-hover:text-[#EB83EA] transition-colors">
-                          {v.title}
-                        </h4>
-                        <p className="text-xs text-gray-400 mb-1">
-                          {v.creator?.displayName || "Unknown"}
-                        </p>
-                        <p className="text-xs text-[#EB83EA] font-semibold">
-                          {(v.views / 1000).toFixed(1)}K views
-                        </p>
-                      </div>
-                    </Link>
-                  ))
+                    ))}
+                  </div>
+                ) : relatedVideos.length > 0 ? (
+                  <div className="space-y-3">
+                    {relatedVideos.map((v) => (
+                      <Link
+                        key={v.id}
+                        href={`/watch/${v.id}`}
+                        className="flex gap-3 p-3 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] hover:from-[#2f2942] hover:to-[#18122D] rounded-2xl border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all shadow-lg hover:shadow-xl hover:shadow-[#EB83EA]/10 group"
+                      >
+                        <div className="relative w-32 h-20 flex-shrink-0 rounded-xl overflow-hidden border border-[#EB83EA]/20">
+                          <Image
+                            src={getSafeThumbnail(v.thumbnail, `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`)}
+                            alt={v.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-sm line-clamp-2 mb-1 group-hover:text-[#EB83EA] transition-colors">
+                            {v.title}
+                          </h4>
+                          <p className="text-xs text-gray-400 mb-1">
+                            {v.creator?.displayName || "Unknown"}
+                          </p>
+                          <p className="text-xs text-[#EB83EA] font-semibold">
+                            {(v.views / 1000).toFixed(1)}K views
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 ) : (
                   <EmptyState
                     icon="🎬"
