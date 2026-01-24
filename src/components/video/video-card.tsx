@@ -95,6 +95,8 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
             alt={video.title}
             fill
             className="object-cover"
+            loading="lazy"
+            sizes="192px"
           />
           <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-xs font-medium">
             {formatDuration(video.duration)}
@@ -137,6 +139,8 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
             alt={video.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 20vw"
           />
           {/* Duration badge */}
           {video.duration > 0 && (
@@ -162,15 +166,25 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
               />
             </div>
           )}
-          {/* Source indicator badge */}
+          {/* Source indicator badges - discreet bottom-left corner */}
           {(video as any).source === "youtube" && (
-            <div className="absolute top-2 right-2 bg-red-600/90 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm flex items-center gap-1">
-              <span>YouTube</span>
+            <div className="absolute bottom-2 left-2 bg-gray-900/60 px-1.5 py-0.5 rounded backdrop-blur-sm flex items-center gap-1">
+              <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              <span className="text-[10px] text-gray-300 font-medium">YT</span>
             </div>
           )}
           {(video as any).source === "bluesky" && (
-            <div className="absolute top-2 right-2 bg-blue-500/90 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm flex items-center gap-1">
-              <SiBluesky className="w-3 h-3" />
+            <div className="absolute bottom-2 left-2 bg-gray-900/60 px-1.5 py-0.5 rounded backdrop-blur-sm flex items-center gap-1">
+              <SiBluesky className="w-3 h-3 text-blue-400" />
+              <span className="text-[10px] text-gray-300 font-medium">BS</span>
+            </div>
+          )}
+          {(video as any).source === "ceramic" && (
+            <div className="absolute bottom-2 left-2 bg-gray-900/60 px-1.5 py-0.5 rounded backdrop-blur-sm flex items-center gap-1">
+              <Image src="/logo.svg" alt="" width={12} height={12} />
+              <span className="text-[10px] text-purple-300 font-medium">DV</span>
             </div>
           )}
           {/* Gradient overlay on hover */}

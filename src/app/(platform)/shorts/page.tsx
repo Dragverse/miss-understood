@@ -90,13 +90,13 @@ function ShortsContent() {
         ];
 
         // Include shorts from all sources (Dragverse, YouTube, Bluesky)
-        // Now that content type detection is improved, Bluesky shorts are only
-        // those with confirmed vertical aspect ratio
+        // Relaxed filtering: include if marked as short OR duration < 60s
         const shortsOnly = allVideos.filter((v) => {
-          return (
-            v.contentType === "short" &&
-            isValidPlaybackUrl(v.playbackUrl)
-          );
+          const isShortDuration = v.duration > 0 && v.duration < 60;
+          const isShortType = v.contentType === "short";
+          const hasValidUrl = isValidPlaybackUrl(v.playbackUrl);
+
+          return hasValidUrl && (isShortType || isShortDuration);
         });
 
         // Sort by date (newest first)

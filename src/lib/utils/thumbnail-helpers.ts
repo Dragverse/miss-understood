@@ -3,25 +3,49 @@
  */
 
 /**
- * Validate and get a safe thumbnail URL
- * Returns the URL if valid, or a fallback
+ * Extract playback ID from Livepeer playback URL
+ */
+function extractPlaybackId(playbackUrl: string): string | null {
+  try {
+    // Extract from URLs like:
+    // - https://livepeercdn.studio/hls/{playbackId}/index.m3u8
+    // - https://livepeercdn.com/recordings/{playbackId}/index.m3u8
+    const match = playbackUrl.match(/\/(?:hls|recordings)\/([a-zA-Z0-9]+)\//);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate and get a safe thumbnail URL with intelligent fallback chain
+ * Priority: provided thumbnail → Livepeer auto-thumbnail → fallback
  */
 export function getSafeThumbnail(
   thumbnail: string | null | undefined,
-  fallback: string = '/default-thumbnail.jpg'
+  fallback: string = '/default-thumbnail.jpg',
+  playbackUrl?: string
 ): string {
-  // Check if thumbnail exists and is non-empty
-  if (!thumbnail || thumbnail.trim() === '') {
-    return fallback;
+  // 1. Try provided thumbnail if valid
+  if (thumbnail && thumbnail.trim() !== '' && !thumbnail.includes('default-thumbnail')) {
+    try {
+      new URL(thumbnail);
+      return thumbnail;
+    } catch {
+      // Invalid URL, continue to fallback chain
+    }
   }
 
-  // Check if it's a valid URL format
-  try {
-    new URL(thumbnail);
-    return thumbnail;
-  } catch {
-    return fallback;
+  // 2. Try Livepeer auto-generated thumbnail if playbackUrl provided
+  if (playbackUrl) {
+    const playbackId = extractPlaybackId(playbackUrl);
+    if (playbackId) {
+      return `https://image.lp-playback.studio/image/${playbackId}/thumbnail.webp`;
+    }
   }
+
+  // 3. Final fallback
+  return fallback;
 }
 
 /**

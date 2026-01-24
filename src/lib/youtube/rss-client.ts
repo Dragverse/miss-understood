@@ -150,11 +150,9 @@ function rssVideoToVideo(rssVideo: RSSVideo): Video {
   const views = parseInt(rssVideo["media:group"]["media:community"]?.["media:statistics"]?.["@_views"] || "0", 10);
   const publishedAt = new Date(rssVideo.published);
 
-  // Determine if it's a Short based on thumbnail aspect ratio or duration
-  // YouTube Shorts have portrait thumbnails (9:16)
-  const thumbnailHeight = parseInt(rssVideo["media:group"]["media:thumbnail"]?.["@_height"] || "0", 10);
-  const thumbnailWidth = parseInt(rssVideo["media:group"]["media:thumbnail"]?.["@_width"] || "0", 10);
-  const isShort = thumbnailHeight > thumbnailWidth; // Portrait = Short
+  // Note: RSS doesn't provide duration or reliable aspect ratio
+  // Default to "long" for all RSS videos - shorts detection happens elsewhere if needed
+  const contentType = "long";
 
   return {
     id: `youtube-${videoId}`,
@@ -167,7 +165,7 @@ function rssVideoToVideo(rssVideo: RSSVideo): Video {
     createdAt: publishedAt,
     playbackUrl: `https://www.youtube.com/watch?v=${videoId}`,
     livepeerAssetId: "",
-    contentType: isShort ? "short" : "long",
+    contentType,
     creator: {
       did: channelId,
       handle: channel?.handle || "youtube",
