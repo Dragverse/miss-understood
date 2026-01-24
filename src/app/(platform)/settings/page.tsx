@@ -66,6 +66,13 @@ export default function SettingsPage() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
+  // Farcaster signer state
+  const [farcasterSignerStatus, setFarcasterSignerStatus] = useState<{
+    hasSigner: boolean;
+    signerUuid: string | null;
+  } | null>(null);
+  const [isSettingUpFarcaster, setIsSettingUpFarcaster] = useState(false);
+
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -304,6 +311,37 @@ export default function SettingsPage() {
 
     return () => clearTimeout(timeout);
   }, [isLoadingProfile]);
+
+  // Check Farcaster signer status when Farcaster is connected
+  useEffect(() => {
+    async function checkFarcasterSigner() {
+      if (!farcasterHandle || !isAuthenticated) {
+        setFarcasterSignerStatus(null);
+        return;
+      }
+
+      try {
+        const token = await getAccessToken();
+        const response = await fetch("/api/farcaster/register-signer", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setFarcasterSignerStatus({
+            hasSigner: data.hasSigner,
+            signerUuid: data.signerUuid,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to check Farcaster signer status:", error);
+      }
+    }
+
+    checkFarcasterSigner();
+  }, [farcasterHandle, isAuthenticated, getAccessToken]);
 
   const handleBannerChange = async (file: File | null) => {
     if (file) {
@@ -642,6 +680,54 @@ export default function SettingsPage() {
       }
     } catch (error) {
       toast.error("Failed to disconnect Bluesky account");
+    }
+  };
+
+  const handleSetupFarcaster = async () => {
+    if (!farcasterHandle) {
+      toast.error("Please connect your Farcaster account first");
+      return;
+    }
+
+    setIsSettingUpFarcaster(true);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch("/api/farcaster/register-signer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.signerApprovalUrl) {
+          toast.success("Opening Warpcast to approve posting permissions...");
+          window.open(data.signerApprovalUrl, "_blank");
+
+          // Update signer status
+          setFarcasterSignerStatus({
+            hasSigner: true,
+            signerUuid: data.signerUuid,
+          });
+
+          toast.success(
+            "After approving in Warpcast, you'll be able to cross-post to Farcaster!",
+            { duration: 8000 }
+          );
+        } else {
+          toast.error("Setup incomplete. Please try again.");
+        }
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || "Failed to setup Farcaster posting");
+      }
+    } catch (error) {
+      console.error("Farcaster setup error:", error);
+      toast.error("Failed to setup Farcaster posting");
+    } finally {
+      setIsSettingUpFarcaster(false);
     }
   };
 
@@ -1085,51 +1171,84 @@ export default function SettingsPage() {
                   )}
 
                   {/* Farcaster */}
-                  <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
-                        <span className="text-white font-bold text-lg">F</span>
+                  <div className="p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">F</span>
+                        </div>
+                        <div>
+                          <p className="font-semibold">Farcaster</p>
+                          {farcasterHandle ? (
+                            <p className="text-sm text-gray-400">@{farcasterHandle}</p>
+                          ) : (
+                            <p className="text-sm text-gray-500">Not connected</p>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold">Farcaster</p>
+                      <div className="flex items-center gap-2">
                         {farcasterHandle ? (
-                          <p className="text-sm text-gray-400">@{farcasterHandle}</p>
+                          <>
+                            <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                              Connected
+                            </span>
+                            {canUnlinkAccount() && (
+                              <button
+                                onClick={() => {
+                                  const farcasterAccount = linkedAccounts?.find(
+                                    (account: any) => account.type === "farcaster"
+                                  ) as any;
+                                  if (farcasterAccount?.fid) {
+                                    unlinkFarcaster(farcasterAccount.fid);
+                                  }
+                                }}
+                                className="text-sm px-3 py-1 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition"
+                              >
+                                Disconnect
+                              </button>
+                            )}
+                          </>
                         ) : (
-                          <p className="text-sm text-gray-500">Not connected</p>
+                          <button
+                            onClick={() => linkFarcaster()}
+                            className="text-sm px-4 py-2 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border border-purple-500/30 hover:border-purple-500 rounded-lg transition font-semibold"
+                          >
+                            Connect Farcaster
+                          </button>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {farcasterHandle ? (
-                        <>
-                          <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
-                            Connected
-                          </span>
-                          {canUnlinkAccount() && (
+
+                    {/* Posting permissions status */}
+                    {farcasterHandle && (
+                      <div className="pt-3 border-t border-[#2f2942]">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-300">
+                              Cross-posting to /dragverse
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {farcasterSignerStatus?.hasSigner
+                                ? "You can share videos to Farcaster"
+                                : "Setup required to share videos"}
+                            </p>
+                          </div>
+                          {farcasterSignerStatus?.hasSigner ? (
+                            <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                              Enabled
+                            </span>
+                          ) : (
                             <button
-                              onClick={() => {
-                                const farcasterAccount = linkedAccounts?.find(
-                                  (account: any) => account.type === "farcaster"
-                                ) as any;
-                                if (farcasterAccount?.fid) {
-                                  unlinkFarcaster(farcasterAccount.fid);
-                                }
-                              }}
-                              className="text-sm px-3 py-1 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition"
+                              onClick={handleSetupFarcaster}
+                              disabled={isSettingUpFarcaster}
+                              className="text-sm px-4 py-2 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border border-purple-500/30 hover:border-purple-500 rounded-lg transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              Disconnect
+                              {isSettingUpFarcaster ? "Setting up..." : "Setup Posting"}
                             </button>
                           )}
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => linkFarcaster()}
-                          className="text-sm px-4 py-2 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border border-purple-500/30 hover:border-purple-500 rounded-lg transition font-semibold"
-                        >
-                          Connect Farcaster
-                        </button>
-                      )}
-                    </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Bluesky */}

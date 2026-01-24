@@ -123,18 +123,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Register the signer with the FID
-    try {
-      await neynar.registerSignedKey({
-        signer_uuid: signerUuid,
-        fid: parseInt(fid),
-        deadline: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 30), // 30 days
-      });
-      console.log("[Farcaster Register] ✅ Signer registered with FID");
-    } catch (registerError) {
-      console.error("[Farcaster Register] Failed to register signer:", registerError);
-      // Continue anyway - the user will need to approve via the URL
-    }
+    // Note: The signer needs to be approved by the user via the signerApprovalUrl
+    // No additional API calls needed - the approval URL handles everything
 
     return NextResponse.json({
       success: true,

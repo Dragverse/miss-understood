@@ -603,6 +603,37 @@ function UploadPageContent() {
                 const farcasterError = await farcasterResponse.json();
                 if (farcasterError.error === "Farcaster not connected") {
                   toast.error("Farcaster not connected. Connect in Settings to cross-post.");
+                } else if (farcasterError.requiresSignerRegistration) {
+                  // Auto-register signer for user
+                  toast("Setting up Farcaster posting...");
+                  try {
+                    const token = await getAccessToken();
+                    const registerResponse = await fetch("/api/farcaster/register-signer", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`,
+                      },
+                    });
+
+                    if (registerResponse.ok) {
+                      const registerData = await registerResponse.json();
+                      if (registerData.signerApprovalUrl) {
+                        toast.success("Opening Warpcast to approve posting permissions...");
+                        window.open(registerData.signerApprovalUrl, "_blank");
+                        toast("After approving in Warpcast, you can share your video to Farcaster!", {
+                          duration: 8000,
+                        });
+                      } else {
+                        toast.error("Farcaster setup incomplete. Please try again from Settings.");
+                      }
+                    } else {
+                      toast.error("Couldn't setup Farcaster. Please connect in Settings.");
+                    }
+                  } catch (registerError) {
+                    console.error("[Upload] Farcaster registration error:", registerError);
+                    toast.error("Farcaster setup failed. Please try from Settings.");
+                  }
                 } else {
                   console.warn("[Upload] Farcaster cross-post failed:", farcasterError);
                   toast.error("Couldn't share to Farcaster. You can share manually later.");
