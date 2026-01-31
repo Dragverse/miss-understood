@@ -11,7 +11,6 @@ import { Video } from "@/types";
 import { ShortVideo } from "@/components/shorts/short-video";
 import { FiChevronUp, FiChevronDown, FiRefreshCw } from "react-icons/fi";
 import { isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
-import { calculateQualityScore } from "@/lib/curation/quality-score";
 
 function ShortsContent() {
   const searchParams = useSearchParams();
@@ -33,44 +32,17 @@ function ShortsContent() {
     });
   };
 
-  // Apply quality filtering and prioritization
-  const filterAndSortShorts = (dragverseShorts: Video[], externalShorts: Video[]) => {
-    // Calculate quality scores
-    const dragverseWithScores = dragverseShorts.map(video => ({
-      ...video,
-      qualityScore: calculateQualityScore(video).overallScore,
-    }));
+  // Prioritize and sort shorts (no quality filtering - curated sources)
+  const sortShorts = (dragverseShorts: Video[], externalShorts: Video[]) => {
+    // Sort by date (newest first)
+    const sortedDragverse = [...dragverseShorts].sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    const sortedExternal = [...externalShorts].sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
-    const externalWithScores = externalShorts.map(video => ({
-      ...video,
-      qualityScore: calculateQualityScore(video).overallScore,
-    }));
-
-    // Filter by quality thresholds (RELAXED for better content flow)
-    const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 15);
-    const filteredExternal = externalWithScores.filter(v => v.qualityScore >= 20);
-
-    // Diagnostic logging
-    console.log(`[Shorts Quality] Dragverse: ${dragverseShorts.length} → ${filteredDragverse.length} (threshold: 15)`);
-    console.log(`[Shorts Quality] External: ${externalShorts.length} → ${filteredExternal.length} (threshold: 20)`);
-    if (dragverseWithScores.length > 0) {
-      console.log(`[Shorts Quality] Sample Dragverse scores:`, dragverseWithScores.slice(0, 3).map(v => ({
-        title: v.title?.substring(0, 30),
-        score: v.qualityScore,
-        source: v.source,
-      })));
-    }
-    if (externalWithScores.length > 0) {
-      console.log(`[Shorts Quality] Sample external scores:`, externalWithScores.slice(0, 3).map(v => ({
-        title: v.title?.substring(0, 30),
-        score: v.qualityScore,
-        source: v.source,
-      })));
-    }
-
-    // Sort each group by quality score (descending)
-    const sortedDragverse = filteredDragverse.sort((a, b) => b.qualityScore - a.qualityScore);
-    const sortedExternal = filteredExternal.sort((a, b) => b.qualityScore - a.qualityScore);
+    console.log(`[Shorts] Dragverse: ${dragverseShorts.length} shorts, External: ${externalShorts.length} shorts (no filtering)`);
 
     // Strong Dragverse priority: show all Dragverse first
     return [...sortedDragverse, ...sortedExternal];
@@ -88,14 +60,14 @@ function ShortsContent() {
       // Fetch from ALL sources in parallel (faster!)
       const [supabaseVideos, blueskyVideos, youtubeVideos] = await Promise.all([
         // Supabase/Dragverse videos
-        getVideos(50).catch(() => []),
-        // Bluesky videos (only posts with actual video embeds - may be sparse)
-        fetch("/api/bluesky/feed?limit=30")
+        getVideos(100).catch(() => []),
+        // Bluesky videos (videos, images, text - all vertical content)
+        fetch("/api/bluesky/feed?limit=100&contentType=all")
           .then((res) => (res.ok ? res.json() : { posts: [] }))
           .then((data) => data.posts || [])
           .catch(() => []),
         // YouTube Shorts (via RSS from curated drag channels)
-        fetch("/api/youtube/feed?limit=30&shortsOnly=true&rssOnly=true")
+        fetch("/api/youtube/feed?limit=100&shortsOnly=true&rssOnly=true")
           .then((res) => (res.ok ? res.json() : { videos: [] }))
           .then((data) => data.videos || [])
           .catch(() => []),
@@ -162,7 +134,7 @@ function ShortsContent() {
       // Deduplicate and apply quality filtering
       const dedupedDragverse = deduplicateShorts(dragverseShorts);
       const dedupedExternal = deduplicateShorts(externalShorts);
-      const sortedShorts = filterAndSortShorts(dedupedDragverse, dedupedExternal);
+      const sortedShorts = sortShorts(dedupedDragverse, dedupedExternal);
 
       setShorts(sortedShorts);
     } catch (error) {
