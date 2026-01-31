@@ -165,6 +165,7 @@ function ShortsContent() {
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
     initial: 0,
     vertical: true,
+    mode: "free-snap",
     slides: {
       perView: 1,
       spacing: 0,
@@ -256,6 +257,7 @@ function ShortsContent() {
       <div
         ref={sliderRef}
         className="keen-slider h-full w-full"
+        style={{ touchAction: 'pan-y' }}
       >
         {shorts.map((video, idx) => (
           <div key={video.id} className="keen-slider__slide relative">
