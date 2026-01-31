@@ -162,12 +162,12 @@ export default function HomePage() {
         qualityScore: calculateQualityScore(video).overallScore,
       }));
 
-      // Filter by quality thresholds
-      const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 25);
-      const filteredExternal = externalWithScores.filter(v => v.qualityScore >= 30);
+      // Filter by quality thresholds (RELAXED to ensure content flow)
+      const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 15);
+      const filteredExternal = externalWithScores.filter(v => v.qualityScore >= 20);
 
-      console.log(`[Homepage Quality] Dragverse: ${dragverseContent.length} → ${filteredDragverse.length} (threshold: 25)`);
-      console.log(`[Homepage Quality] External: ${externalContent.length} → ${filteredExternal.length} (threshold: 30)`);
+      console.log(`[Homepage Quality] Dragverse: ${dragverseContent.length} → ${filteredDragverse.length} (threshold: 15)`);
+      console.log(`[Homepage Quality] External: ${externalContent.length} → ${filteredExternal.length} (threshold: 20)`);
 
       // Sort each group by quality score
       const sortedDragverse = filteredDragverse.sort((a, b) => b.qualityScore - a.qualityScore);

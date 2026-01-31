@@ -46,13 +46,13 @@ function ShortsContent() {
       qualityScore: calculateQualityScore(video).overallScore,
     }));
 
-    // Filter by quality thresholds (LOWERED for better content flow)
-    const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 25);
-    const filteredExternal = externalWithScores.filter(v => v.qualityScore >= 30);
+    // Filter by quality thresholds (RELAXED for better content flow)
+    const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 15);
+    const filteredExternal = externalWithScores.filter(v => v.qualityScore >= 20);
 
     // Diagnostic logging
-    console.log(`[Shorts Quality] Dragverse: ${dragverseShorts.length} → ${filteredDragverse.length} (threshold: 25)`);
-    console.log(`[Shorts Quality] External: ${externalShorts.length} → ${filteredExternal.length} (threshold: 30)`);
+    console.log(`[Shorts Quality] Dragverse: ${dragverseShorts.length} → ${filteredDragverse.length} (threshold: 15)`);
+    console.log(`[Shorts Quality] External: ${externalShorts.length} → ${filteredExternal.length} (threshold: 20)`);
     if (dragverseWithScores.length > 0) {
       console.log(`[Shorts Quality] Sample Dragverse scores:`, dragverseWithScores.slice(0, 3).map(v => ({
         title: v.title?.substring(0, 30),

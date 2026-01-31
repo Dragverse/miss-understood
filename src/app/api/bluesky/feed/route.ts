@@ -70,15 +70,15 @@ export async function GET(request: NextRequest) {
       })));
     }
 
-    // Apply quality filtering (score >= 30 for external content - LOWERED for better flow)
+    // Apply quality filtering (score >= 20 for external content - RELAXED for better flow)
     const videosWithScores = videos.map(video => ({
       ...video,
       qualityScore: calculateQualityScore(video).overallScore,
     }));
 
-    const qualityFiltered = videosWithScores.filter(v => v.qualityScore >= 30);
+    const qualityFiltered = videosWithScores.filter(v => v.qualityScore >= 20);
 
-    console.log(`[Bluesky API] Quality filtering: ${videos.length} → ${qualityFiltered.length} items (threshold: 30)`);
+    console.log(`[Bluesky API] Quality filtering: ${videos.length} → ${qualityFiltered.length} items (threshold: 20)`);
 
     videos = qualityFiltered;
 
