@@ -7,7 +7,6 @@ import {
   sortPostsByEngagement,
 } from "@/lib/bluesky/client";
 import { getValidDragAccountHandles } from "@/lib/bluesky/drag-accounts";
-import { calculateQualityScore } from "@/lib/curation/quality-score";
 
 /**
  * API route to fetch drag-related content from Bluesky
@@ -70,17 +69,7 @@ export async function GET(request: NextRequest) {
       })));
     }
 
-    // Apply quality filtering (score >= 20 for external content - RELAXED for better flow)
-    const videosWithScores = videos.map(video => ({
-      ...video,
-      qualityScore: calculateQualityScore(video).overallScore,
-    }));
-
-    const qualityFiltered = videosWithScores.filter(v => v.qualityScore >= 20);
-
-    console.log(`[Bluesky API] Quality filtering: ${videos.length} → ${qualityFiltered.length} items (threshold: 20)`);
-
-    videos = qualityFiltered;
+    console.log(`[Bluesky API] Returning ${videos.length} items from curated accounts (no filtering)`);
 
     return NextResponse.json({
       success: true,
