@@ -46,53 +46,66 @@ export const CURATED_DRAG_CHANNELS: CuratedChannel[] = [
     displayName: "Bianca Del Rio",
     description: "Bianca Del Rio - Winner of Season 6, comedy queen, and insult comic",
   },
-  // Note: Additional channels disabled pending RSS verification
-  // To add more channels, get correct channel IDs from https://www.youtube.com/@handle
-  // and verify RSS feed works at: https://www.youtube.com/feeds/videos.xml?channel_id={ID}
-  /*
   {
-    channelId: "UCjz-VzyIHVdvvPsIBIo0MGA", // TODO: Verify this channel ID
+    channelId: "UCb3Oph7yUq5jPDO1Q61qcMw", // Katya Zamolodchikova
     handle: "katya",
     displayName: "Katya Zamolodchikova",
     description: "Katya - Russian bisexual transvestite hooker, comedian, and drag superstar",
   },
   {
-    channelId: "UCjWn3aYXWU8BvyFQqOZiGWg", // TODO: Verify this channel ID
-    handle: "bobthedragqueen",
-    displayName: "Bob The Drag Queen",
-    description: "Bob The Drag Queen - Winner of Season 8, comedian, and activist",
+    channelId: "UCeHAShKyGQIJ262xboI0oVQ", // Sasha Velour
+    handle: "sashavelour",
+    displayName: "Sasha Velour",
+    description: "Sasha Velour - Winner of Season 9, artist, and nightlife legend",
   },
   {
-    channelId: "UCEoxBX0HP6H2BoCLLYFPYsg", // TODO: Verify this channel ID
-    handle: "biancadelrio",
-    displayName: "Bianca Del Rio",
-    description: "Bianca Del Rio - Winner of Season 6, comedy queen, and insult comic",
+    channelId: "UC7-S6iRXVUQ2AsVjrJC-xfg", // Manila Luzon
+    handle: "manilaluzon",
+    displayName: "Manila Luzon",
+    description: "Manila Luzon - All Stars queen and fashion icon",
   },
   {
-    channelId: "UCvigFH6LyX8Y-xD-L3X7qTw", // TODO: Verify this channel ID
+    channelId: "UCSKnlPjYji7RJbvPxPepgfA", // Alyssa Edwards
+    handle: "alyssaedwards",
+    displayName: "Alyssa Edwards",
+    description: "Alyssa Edwards - Dance teacher, All Stars queen, and queen of tongue pops",
+  },
+  {
+    channelId: "UCqGh3IjZ02rlBjq1u9g4eHw", // Jinkx Monsoon
+    handle: "jinkxmonsoon",
+    displayName: "Jinkx Monsoon",
+    description: "Jinkx Monsoon - Winner of Season 5 and All Stars 7",
+  },
+  {
+    channelId: "UCuhKIYy7mOh76V7dWh600Mg", // Willam
+    handle: "willam",
+    displayName: "Willam",
+    description: "Willam - Season 4 queen, actor, and YouTube icon",
+  },
+  {
+    channelId: "UCOTowPfU-1M-7l6hGE5l3xg", // Violet Chachki
+    handle: "violetchachki",
+    displayName: "Violet Chachki",
+    description: "Violet Chachki - Winner of Season 7, burlesque performer",
+  },
+  {
+    channelId: "UCLFvHz1W9TKPPYVr8U0AJPA", // Kim Chi
+    handle: "kimchi",
+    displayName: "Kim Chi",
+    description: "Kim Chi - Fashion and beauty queen from Season 8",
+  },
+  {
+    channelId: "UCfFEFk3yQ7eXqVTmQWUXQAQ", // Adore Delano
+    handle: "adoredelano",
+    displayName: "Adore Delano",
+    description: "Adore Delano - Season 6 queen and recording artist",
+  },
+  {
+    channelId: "UCLuuQ4eZQd0RSHYJ6R-4VdQ", // Gottmik
     handle: "gottmik",
     displayName: "Gottmik",
     description: "Gottmik - First trans man on Drag Race, makeup artist",
   },
-  {
-    channelId: "UCfRPiOY7tCMhbGqzZvqFvsA", // TODO: Verify this channel ID
-    handle: "kimchi",
-    displayName: "Kim Chi",
-    description: "Kim Chi - Fashion and beauty queen, Season 8 finalist",
-  },
-  {
-    channelId: "UCWSpWz5FUB5sFXdXDYlqT4g", // TODO: Verify this channel ID
-    handle: "shangela",
-    displayName: "Shangela",
-    description: "Shangela - Professional queen, actor, and All Stars legend",
-  },
-  {
-    channelId: "UCmvQLG_84PG_xVGGV0c1cUA", // TODO: Verify this channel ID
-    handle: "aquaria",
-    displayName: "Aquaria",
-    description: "Aquaria - Winner of Season 10, fashion icon",
-  },
-  */
 ];
 
 /**

@@ -158,20 +158,47 @@ export default function HomePage() {
     loadVideos();
   }, []);
 
-  // Filter for shorts - Dragverse native + YouTube (if feels native)
-  const dragverseShorts = videos.filter((v) =>
+  // PRIORITY 1: Dragverse Bytes (native user uploads) - ALWAYS SHOW THESE FIRST
+  const dragverseBytes = videos.filter((v) =>
     v.contentType === "short" &&
     ((v as any).source === "ceramic" || !(v as any).source)
   );
 
+  // PRIORITY 2: YouTube Shorts from curated drag channels
   const youtubeShorts = videos.filter((v) =>
     v.contentType === "short" &&
     (v as any).source === "youtube"
   );
 
-  // Show Dragverse first, then YouTube if space (up to 12 total)
-  const shorts = [...dragverseShorts, ...youtubeShorts].slice(0, 12);
-  const horizontalVideos = videos.filter((v) => v.contentType !== "short");
+  // PRIORITY 3: Bluesky vertical videos
+  const blueskyShorts = videos.filter((v) =>
+    v.contentType === "short" &&
+    (v as any).source === "bluesky"
+  );
+
+  // Show Dragverse Bytes FIRST (native content always prioritized)
+  // Then fill with YouTube, then Bluesky (up to 15 total)
+  const shorts = [
+    ...dragverseBytes,
+    ...youtubeShorts.slice(0, Math.max(0, 12 - dragverseBytes.length)),
+    ...blueskyShorts.slice(0, Math.max(0, 15 - dragverseBytes.length - Math.min(youtubeShorts.length, 12 - dragverseBytes.length)))
+  ].slice(0, 15);
+
+  // Horizontal videos - prioritize Dragverse first
+  const dragverseVideos = videos.filter((v) =>
+    v.contentType !== "short" &&
+    ((v as any).source === "ceramic" || !(v as any).source)
+  );
+  const youtubeVideos = videos.filter((v) =>
+    v.contentType !== "short" &&
+    (v as any).source === "youtube"
+  );
+  const blueskyVideos = videos.filter((v) =>
+    v.contentType !== "short" &&
+    (v as any).source === "bluesky"
+  );
+
+  const horizontalVideos = [...dragverseVideos, ...youtubeVideos, ...blueskyVideos];
 
   const filteredVideos = videos.filter((video) => {
     const matchesSearch =
