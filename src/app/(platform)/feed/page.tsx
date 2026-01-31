@@ -9,7 +9,6 @@ import { PostCard as BlueskyPostCard } from "@/components/feed/post-card";
 import { PostCard } from "@/components/posts/post-card";
 import { PostComposer } from "@/components/posts/post-composer";
 import { FeedRightSidebar } from "@/components/feed/feed-right-sidebar";
-import { calculateQualityScore } from "@/lib/curation/quality-score";
 
 function FeedContent() {
   const { isAuthenticated } = useAuthUser();
@@ -74,46 +73,18 @@ function FeedContent() {
     });
   };
 
-  // Apply quality filtering and prioritization
-  const filterAndSortContent = (dragversePosts: any[], externalPosts: any[]) => {
-    // Calculate quality scores for all content
-    const dragverseWithScores = dragversePosts.map(post => ({
-      ...post,
-      qualityScore: calculateQualityScore(post).overallScore,
-    }));
+  // Sort content by date (no quality filtering - curated sources are already high quality)
+  const sortContent = (dragversePosts: any[], externalPosts: any[]) => {
+    // Sort by date (newest first)
+    const sortedDragverse = [...dragversePosts].sort((a, b) =>
+      new Date(b.createdAt || b.indexedAt).getTime() - new Date(a.createdAt || a.indexedAt).getTime()
+    );
+    const sortedExternal = [...externalPosts].sort((a, b) =>
+      new Date(b.createdAt || b.indexedAt).getTime() - new Date(a.createdAt || a.indexedAt).getTime()
+    );
 
-    const externalWithScores = externalPosts.map(post => ({
-      ...post,
-      qualityScore: calculateQualityScore(post).overallScore,
-    }));
+    console.log(`[Feed] Dragverse: ${dragversePosts.length} posts, External: ${externalPosts.length} posts (no filtering)`);
 
-    // Filter by quality thresholds (RELAXED for better content flow)
-    const filteredDragverse = dragverseWithScores.filter(p => p.qualityScore >= 15);
-    const filteredExternal = externalWithScores.filter(p => p.qualityScore >= 20);
-
-    // Diagnostic logging
-    console.log(`[Feed Quality] Dragverse: ${dragversePosts.length} → ${filteredDragverse.length} (threshold: 15)`);
-    console.log(`[Feed Quality] External: ${externalPosts.length} → ${filteredExternal.length} (threshold: 20)`);
-    if (dragverseWithScores.length > 0) {
-      console.log(`[Feed Quality] Sample Dragverse scores:`, dragverseWithScores.slice(0, 3).map(p => ({
-        title: p.title?.substring(0, 30),
-        score: p.qualityScore,
-        source: p.source,
-      })));
-    }
-    if (externalWithScores.length > 0) {
-      console.log(`[Feed Quality] Sample external scores:`, externalWithScores.slice(0, 3).map(p => ({
-        title: p.title?.substring(0, 30),
-        score: p.qualityScore,
-        source: p.source,
-      })));
-    }
-
-    // Sort each group by quality score (descending)
-    const sortedDragverse = filteredDragverse.sort((a, b) => b.qualityScore - a.qualityScore);
-    const sortedExternal = filteredExternal.sort((a, b) => b.qualityScore - a.qualityScore);
-
-    // Strong Dragverse priority: show all Dragverse first
     return {
       dragverse: sortedDragverse,
       external: sortedExternal,
@@ -138,12 +109,12 @@ function FeedContent() {
         // Bluesky content (or search if hashtag) - fetch ALL content types
         fetch(
           hashtag
-            ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30&contentType=all`
-            : `/api/bluesky/feed?limit=30&sortBy=${sortBy}&contentType=all`
+            ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=100&contentType=all`
+            : `/api/bluesky/feed?limit=100&sortBy=${sortBy}&contentType=all`
         ).catch(() => null),
 
         // YouTube drag content from curated channels (RSS feeds - no quota!)
-        fetch("/api/youtube/feed?limit=20&rssOnly=true").catch(() => null)
+        fetch("/api/youtube/feed?limit=100&rssOnly=true").catch(() => null)
       ]);
 
       // Parse Dragverse posts
@@ -190,8 +161,8 @@ function FeedContent() {
       dragverseData = deduplicateContent(dragverseData);
       externalPosts = deduplicateContent(externalPosts);
 
-      // Apply quality filtering and prioritization
-      const { dragverse, external } = filterAndSortContent(dragverseData, externalPosts);
+      // Sort content by date (curated sources don't need quality filtering)
+      const { dragverse, external } = sortContent(dragverseData, externalPosts);
 
       // Filter by bookmarks if needed
       if (showBookmarks) {

@@ -92,7 +92,7 @@ export default function HomePage() {
         : Promise.resolve([]);
 
       // Bluesky content (fetch ALL content types: videos, images, text)
-      const blueskyPromise = fetch("/api/bluesky/feed?limit=30&contentType=all")
+      const blueskyPromise = fetch("/api/bluesky/feed?limit=100&contentType=all")
         .then((response) => response.json())
         .then((data) => {
           const blueskyContent = data.posts || data.videos || [];
@@ -119,8 +119,8 @@ export default function HomePage() {
           return [];
         });
 
-      // YouTube drag content (30 videos from curated channels - includes shorts)
-      const youtubePromise = fetch("/api/youtube/feed?limit=30&rssOnly=true")
+      // YouTube drag content (100 videos from curated channels - includes shorts)
+      const youtubePromise = fetch("/api/youtube/feed?limit=100&rssOnly=true")
         .then((response) => response.json())
         .then((data) => {
           if (data.success && data.videos.length > 0) {
