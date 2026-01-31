@@ -76,7 +76,9 @@
       "Bash(git pull:*)",
       "Bash(git diff:*)",
       "Bash(tail:*)",
-      "Bash(npm cache clean:*)"
+      "Bash(npm cache clean:*)",
+      "Bash(for handle in \"bobthedragqueen.bsky.social\" \"biancadelrio.bsky.social\" \"katya.bsky.social\" \"willam.bsky.social\" \"gottmik.bsky.social\")",
+      "Bash(python3:*)"
     ]
   }
 }

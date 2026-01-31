@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "50", 10);
-    const source = searchParams.get("source") || "accounts"; // Default to "accounts" for curated drag creators
+    const source = searchParams.get("source") || "search"; // Default to "search" since most curated accounts have no posts
     const sortBy = searchParams.get("sortBy") as "engagement" | "recent" || "engagement";
     const contentType = searchParams.get("contentType") || "videos"; // "all" or "videos"
 
@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
       console.log(`[Bluesky API] Fetching from ${dragAccounts.length} curated drag accounts`);
       posts = await getDragAccountsPosts(dragAccounts, limit);
     } else {
-      // Search by hashtags (fallback)
-      console.log("[Bluesky API] Searching by hashtags");
+      // Search by drag-related hashtags and keywords
+      console.log("[Bluesky API] Searching by drag keywords/hashtags");
       posts = await searchDragContent(limit);
     }
 

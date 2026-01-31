@@ -82,16 +82,32 @@ export async function searchDragContent(
     const agent = await getBlueskyAgent();
     const allPosts: BlueskyPost[] = [];
 
-    // Search for drag-related posts using multiple keywords
+    // Search for drag-related posts using diverse keywords
+    // Includes queens, kings, monsters, gamers, streamers, and alternative drag
     const searchTerms = [
+      // Traditional drag
       "drag queen",
       "drag race",
       "drag performance",
       "drag show",
+      // Drag kings
+      "drag king",
+      "#dragking",
+      // Alternative drag (Dragula style)
       "dragula",
+      "drag monster",
+      "#dragmonster",
+      // Modern drag content creators
+      "drag streamer",
+      "drag gamer",
+      "drag makeup",
+      "drag transformation",
+      // Hashtags
       "#drag",
       "#dragrace",
-      "#dragqueen"
+      "#dragqueen",
+      "#dragartist",
+      "#lgbtq drag"
     ];
 
     console.log(`[Bluesky] Searching for drag content with ${searchTerms.length} search terms (limit: ${limit})...`);
