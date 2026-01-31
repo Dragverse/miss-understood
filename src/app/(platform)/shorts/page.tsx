@@ -50,6 +50,24 @@ function ShortsContent() {
     const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 30);
     const filteredExternal = externalWithScores.filter(v => v.qualityScore >= 40);
 
+    // Diagnostic logging
+    console.log(`[Shorts Quality] Dragverse: ${dragverseShorts.length} → ${filteredDragverse.length} (threshold: 30)`);
+    console.log(`[Shorts Quality] External: ${externalShorts.length} → ${filteredExternal.length} (threshold: 40)`);
+    if (dragverseWithScores.length > 0) {
+      console.log(`[Shorts Quality] Sample Dragverse scores:`, dragverseWithScores.slice(0, 3).map(v => ({
+        title: v.title?.substring(0, 30),
+        score: v.qualityScore,
+        source: v.source,
+      })));
+    }
+    if (externalWithScores.length > 0) {
+      console.log(`[Shorts Quality] Sample external scores:`, externalWithScores.slice(0, 3).map(v => ({
+        title: v.title?.substring(0, 30),
+        score: v.qualityScore,
+        source: v.source,
+      })));
+    }
+
     // Sort each group by quality score (descending)
     const sortedDragverse = filteredDragverse.sort((a, b) => b.qualityScore - a.qualityScore);
     const sortedExternal = filteredExternal.sort((a, b) => b.qualityScore - a.qualityScore);

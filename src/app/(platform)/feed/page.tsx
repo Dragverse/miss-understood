@@ -91,6 +91,24 @@ function FeedContent() {
     const filteredDragverse = dragverseWithScores.filter(p => p.qualityScore >= 30);
     const filteredExternal = externalWithScores.filter(p => p.qualityScore >= 40);
 
+    // Diagnostic logging
+    console.log(`[Feed Quality] Dragverse: ${dragversePosts.length} → ${filteredDragverse.length} (threshold: 30)`);
+    console.log(`[Feed Quality] External: ${externalPosts.length} → ${filteredExternal.length} (threshold: 40)`);
+    if (dragverseWithScores.length > 0) {
+      console.log(`[Feed Quality] Sample Dragverse scores:`, dragverseWithScores.slice(0, 3).map(p => ({
+        title: p.title?.substring(0, 30),
+        score: p.qualityScore,
+        source: p.source,
+      })));
+    }
+    if (externalWithScores.length > 0) {
+      console.log(`[Feed Quality] Sample external scores:`, externalWithScores.slice(0, 3).map(p => ({
+        title: p.title?.substring(0, 30),
+        score: p.qualityScore,
+        source: p.source,
+      })));
+    }
+
     // Sort each group by quality score (descending)
     const sortedDragverse = filteredDragverse.sort((a, b) => b.qualityScore - a.qualityScore);
     const sortedExternal = filteredExternal.sort((a, b) => b.qualityScore - a.qualityScore);
