@@ -15,6 +15,7 @@ import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 import { VideoGridSkeleton, ShortsSectionSkeleton } from "@/components/loading/video-card-skeleton";
+import { calculateQualityScore } from "@/lib/curation/quality-score";
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,12 +145,36 @@ export default function HomePage() {
           duration: 4000,
         });
       }
-      const allVideos = [...localVideos, ...results.flat()];
 
-      // Sort by date (newest first)
-      if (allVideos.length > 0) {
-        allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      }
+      // Separate Dragverse from external content
+      const [supabaseResults, blueskyResults, youtubeResults] = results;
+      const dragverseContent = [...localVideos, ...supabaseResults];
+      const externalContent = [...blueskyResults, ...youtubeResults];
+
+      // Apply quality filtering
+      const dragverseWithScores = dragverseContent.map(video => ({
+        ...video,
+        qualityScore: calculateQualityScore(video).overallScore,
+      }));
+
+      const externalWithScores = externalContent.map(video => ({
+        ...video,
+        qualityScore: calculateQualityScore(video).overallScore,
+      }));
+
+      // Filter by quality thresholds
+      const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 25);
+      const filteredExternal = externalWithScores.filter(v => v.qualityScore >= 30);
+
+      console.log(`[Homepage Quality] Dragverse: ${dragverseContent.length} → ${filteredDragverse.length} (threshold: 25)`);
+      console.log(`[Homepage Quality] External: ${externalContent.length} → ${filteredExternal.length} (threshold: 30)`);
+
+      // Sort each group by quality score
+      const sortedDragverse = filteredDragverse.sort((a, b) => b.qualityScore - a.qualityScore);
+      const sortedExternal = filteredExternal.sort((a, b) => b.qualityScore - a.qualityScore);
+
+      // Combine with Dragverse first (strong prioritization)
+      const allVideos = [...sortedDragverse, ...sortedExternal];
 
       setVideos(allVideos);
       setLoading(false);
