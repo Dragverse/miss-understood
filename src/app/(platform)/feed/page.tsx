@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { FiZap, FiPlus } from "react-icons/fi";
+import { FiZap, FiPlus, FiRefreshCw } from "react-icons/fi";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuthUser } from "@/lib/privy/hooks";
@@ -9,6 +9,7 @@ import { PostCard as BlueskyPostCard } from "@/components/feed/post-card";
 import { PostCard } from "@/components/posts/post-card";
 import { PostComposer } from "@/components/posts/post-composer";
 import { FeedRightSidebar } from "@/components/feed/feed-right-sidebar";
+import { calculateQualityScore } from "@/lib/curation/quality-score";
 
 function FeedContent() {
   const { isAuthenticated } = useAuthUser();
@@ -24,6 +25,8 @@ function FeedContent() {
   const [sortBy, setSortBy] = useState<"engagement" | "recent">("engagement");
   const [showComposer, setShowComposer] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [newContentAvailable, setNewContentAvailable] = useState(false);
 
   // Check Bluesky session status and backfill posts
   useEffect(() => {
@@ -60,87 +63,154 @@ function FeedContent() {
     setDragversePosts((posts) => posts.filter((p) => p.id !== postId));
   };
 
-  useEffect(() => {
-    async function loadFeed() {
+  // Deduplicate content by ID/URI
+  const deduplicateContent = (content: any[]) => {
+    const seen = new Set<string>();
+    return content.filter(item => {
+      const id = item.id || item.uri || item.externalUrl || `${item.type}-${item.title}`;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  };
+
+  // Apply quality filtering and prioritization
+  const filterAndSortContent = (dragversePosts: any[], externalPosts: any[]) => {
+    // Calculate quality scores for all content
+    const dragverseWithScores = dragversePosts.map(post => ({
+      ...post,
+      qualityScore: calculateQualityScore(post).overallScore,
+    }));
+
+    const externalWithScores = externalPosts.map(post => ({
+      ...post,
+      qualityScore: calculateQualityScore(post).overallScore,
+    }));
+
+    // Filter by quality thresholds
+    const filteredDragverse = dragverseWithScores.filter(p => p.qualityScore >= 30);
+    const filteredExternal = externalWithScores.filter(p => p.qualityScore >= 40);
+
+    // Sort each group by quality score (descending)
+    const sortedDragverse = filteredDragverse.sort((a, b) => b.qualityScore - a.qualityScore);
+    const sortedExternal = filteredExternal.sort((a, b) => b.qualityScore - a.qualityScore);
+
+    // Strong Dragverse priority: show all Dragverse first
+    return {
+      dragverse: sortedDragverse,
+      external: sortedExternal,
+    };
+  };
+
+  // Load feed with quality scoring and filtering
+  async function loadFeed(isRefresh = false) {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
       setLoading(true);
-      setSearchError(null);
-      try {
-        // Fetch from all sources in parallel for maximum content diversity
-        const [dragverseRes, blueskyRes, youtubeRes] = await Promise.all([
-          // Native Dragverse posts
-          fetch("/api/posts/feed?limit=50").catch(() => null),
-
-          // Bluesky content (or search if hashtag) - fetch ALL content types
-          fetch(
-            hashtag
-              ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30&contentType=all`
-              : `/api/bluesky/feed?limit=30&sortBy=${sortBy}&contentType=all`
-          ).catch(() => null),
-
-          // YouTube drag content from curated channels (RSS feeds - no quota!)
-          fetch("/api/youtube/feed?limit=20&rssOnly=true").catch(() => null)
-        ]);
-
-        // Parse Dragverse posts
-        if (dragverseRes?.ok) {
-          const dragverseData = await dragverseRes.json();
-          setDragversePosts(dragverseData.posts || []);
-        }
-
-        // Parse Bluesky and YouTube content
-        let allPosts: any[] = [];
-
-        if (blueskyRes?.ok) {
-          const blueskyData = await blueskyRes.json();
-          if (blueskyData.error) {
-            setSearchError(blueskyData.error);
-          } else {
-            // Bluesky posts already have the correct structure from blueskyPostToContent/blueskyPostToVideo
-            allPosts = [...allPosts, ...(blueskyData.posts || [])];
-          }
-        }
-
-        if (youtubeRes?.ok) {
-          const youtubeData = await youtubeRes.json();
-          if (youtubeData.success && youtubeData.videos) {
-            // Convert YouTube videos to post format for unified feed display
-            const youtubePosts = youtubeData.videos.map((video: any) => ({
-              ...video,
-              type: "youtube-video",
-              text: video.description,
-              // Add post-like properties for BlueskyPostCard compatibility
-              author: video.creator,
-              uri: video.externalUrl,
-              indexedAt: video.createdAt,
-              // Ensure playbackUrl is set correctly
-              playbackUrl: video.playbackUrl || video.externalUrl,
-            }));
-            allPosts = [...allPosts, ...youtubePosts];
-          }
-        }
-
-        // Sort combined posts by date (newest first)
-        allPosts.sort((a, b) => {
-          const aDate = new Date(a.createdAt || a.indexedAt).getTime();
-          const bDate = new Date(b.createdAt || b.indexedAt).getTime();
-          return bDate - aDate;
-        });
-
-        // Filter by bookmarks if needed
-        if (showBookmarks) {
-          const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
-          allPosts = allPosts.filter((post: any) => bookmarks.includes(post.id));
-        }
-
-        setPosts(allPosts);
-      } catch (error) {
-        console.error("Failed to load feed:", error);
-        setSearchError(error instanceof Error ? error.message : "Failed to load feed");
-      } finally {
-        setLoading(false);
-      }
     }
+    setSearchError(null);
+
+    try {
+      // Fetch from all sources in parallel for maximum content diversity
+      const [dragverseRes, blueskyRes, youtubeRes] = await Promise.all([
+        // Native Dragverse posts
+        fetch("/api/posts/feed?limit=50").catch(() => null),
+
+        // Bluesky content (or search if hashtag) - fetch ALL content types
+        fetch(
+          hashtag
+            ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30&contentType=all`
+            : `/api/bluesky/feed?limit=30&sortBy=${sortBy}&contentType=all`
+        ).catch(() => null),
+
+        // YouTube drag content from curated channels (RSS feeds - no quota!)
+        fetch("/api/youtube/feed?limit=20&rssOnly=true").catch(() => null)
+      ]);
+
+      // Parse Dragverse posts
+      let dragverseData: any[] = [];
+      if (dragverseRes?.ok) {
+        const data = await dragverseRes.json();
+        dragverseData = data.posts || [];
+      }
+
+      // Parse Bluesky and YouTube content
+      let externalPosts: any[] = [];
+
+      if (blueskyRes?.ok) {
+        const blueskyData = await blueskyRes.json();
+        if (blueskyData.error) {
+          setSearchError(blueskyData.error);
+        } else {
+          // Bluesky posts already have the correct structure from blueskyPostToContent/blueskyPostToVideo
+          externalPosts = [...externalPosts, ...(blueskyData.posts || [])];
+        }
+      }
+
+      if (youtubeRes?.ok) {
+        const youtubeData = await youtubeRes.json();
+        if (youtubeData.success && youtubeData.videos) {
+          // Convert YouTube videos to post format for unified feed display
+          const youtubePosts = youtubeData.videos.map((video: any) => ({
+            ...video,
+            type: "youtube-video",
+            text: video.description,
+            source: "youtube",
+            // Add post-like properties for BlueskyPostCard compatibility
+            author: video.creator,
+            uri: video.externalUrl,
+            indexedAt: video.createdAt,
+            // Ensure playbackUrl is set correctly
+            playbackUrl: video.playbackUrl || video.externalUrl,
+          }));
+          externalPosts = [...externalPosts, ...youtubePosts];
+        }
+      }
+
+      // Deduplicate content
+      dragverseData = deduplicateContent(dragverseData);
+      externalPosts = deduplicateContent(externalPosts);
+
+      // Apply quality filtering and prioritization
+      const { dragverse, external } = filterAndSortContent(dragverseData, externalPosts);
+
+      // Filter by bookmarks if needed
+      if (showBookmarks) {
+        const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
+        setDragversePosts(dragverse.filter((post: any) => bookmarks.includes(post.id)));
+        setPosts(external.filter((post: any) => bookmarks.includes(post.id)));
+      } else {
+        setDragversePosts(dragverse);
+        setPosts(external);
+      }
+
+      // If this was a refresh, show notification if new content was found
+      if (isRefresh && (dragverse.length > 0 || external.length > 0)) {
+        setNewContentAvailable(true);
+        setTimeout(() => setNewContentAvailable(false), 5000);
+      }
+    } catch (error) {
+      console.error("Failed to load feed:", error);
+      setSearchError(error instanceof Error ? error.message : "Failed to load feed");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  // Initial load
+  useEffect(() => {
     loadFeed();
+  }, [sortBy, showBookmarks, hashtag]);
+
+  // Auto-refresh every 15 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadFeed(true);
+    }, 15 * 60 * 1000); // 15 minutes
+
+    return () => clearInterval(interval);
   }, [sortBy, showBookmarks, hashtag]);
 
   const handlePostCreated = () => {
@@ -171,15 +241,27 @@ function FeedContent() {
                     : "What's Happening Backstage"}
                 </h1>
               </div>
-              {isAuthenticated && !showBookmarks && (
+              <div className="flex items-center gap-3">
+                {/* Manual Refresh Button */}
                 <button
-                  onClick={() => setShowComposer(!showComposer)}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30"
+                  onClick={() => loadFeed(true)}
+                  disabled={refreshing}
+                  className="flex items-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-full font-medium transition-all disabled:opacity-50"
+                  title="Refresh feed"
                 >
-                  <FiPlus className="w-5 h-5" />
-                  {showComposer ? "Cancel" : "Share Your Story"}
+                  <FiRefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Refresh</span>
                 </button>
-              )}
+                {isAuthenticated && !showBookmarks && (
+                  <button
+                    onClick={() => setShowComposer(!showComposer)}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30"
+                  >
+                    <FiPlus className="w-5 h-5" />
+                    {showComposer ? "Cancel" : "Share Your Story"}
+                  </button>
+                )}
+              </div>
             </div>
             <p className="text-gray-400 text-sm ml-14">
               {showBookmarks
@@ -189,6 +271,24 @@ function FeedContent() {
                 : "The latest tea, looks, and moments from your favorite queens"}
             </p>
           </div>
+
+          {/* New Content Available Banner */}
+          {newContentAvailable && (
+            <div className="mb-6 bg-gradient-to-r from-[#EB83EA]/20 to-[#7c3aed]/20 border-2 border-[#EB83EA]/30 rounded-2xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FiZap className="w-5 h-5 text-[#EB83EA]" />
+                <p className="text-sm font-medium">New content available! Feed has been updated.</p>
+              </div>
+              <button
+                onClick={() => setNewContentAvailable(false)}
+                className="text-gray-400 hover:text-white transition"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
 
           {/* Post Composer */}
           {showComposer && isAuthenticated && (

@@ -4,6 +4,7 @@ import { fetchCuratedDragContent, fetchCuratedShorts, fetchCuratedMusicPlaylists
 import { getCachedVideos, setCachedVideos } from "@/lib/youtube/cache";
 import { getVideos } from "@/lib/supabase/videos";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
+import { calculateQualityScore, filterByQuality } from "@/lib/curation/quality-score";
 import type { Video } from "@/types";
 
 /**
@@ -84,10 +85,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Apply quality filtering (score >= 40 for external content)
+    const videosWithScores = videos.map(video => ({
+      ...video,
+      qualityScore: calculateQualityScore(video).overallScore,
+    }));
+
+    const qualityFiltered = videosWithScores.filter(v => v.qualityScore >= 40);
+
+    console.log(`[YouTube Feed API] Quality filtering: ${videos.length} → ${qualityFiltered.length} videos (threshold: 40)`);
+
     // Cache successful results (even empty arrays, to avoid repeated failed API calls)
-    if (videos.length > 0) {
-      setCachedVideos(cacheKey, videos);
+    if (qualityFiltered.length > 0) {
+      setCachedVideos(cacheKey, qualityFiltered);
     }
+
+    videos = qualityFiltered;
 
     // Include playlist videos if requested
     if (includePlaylists) {

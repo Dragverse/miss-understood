@@ -9,8 +9,9 @@ import { getLocalVideos } from "@/lib/utils/local-storage";
 import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/shorts/short-video";
-import { FiChevronUp, FiChevronDown } from "react-icons/fi";
+import { FiChevronUp, FiChevronDown, FiRefreshCw } from "react-icons/fi";
 import { isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
+import { calculateQualityScore } from "@/lib/curation/quality-score";
 
 function ShortsContent() {
   const searchParams = useSearchParams();
@@ -19,101 +20,156 @@ function ShortsContent() {
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [sliderReady, setSliderReady] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Deduplicate shorts by ID
+  const deduplicateShorts = (videos: Video[]) => {
+    const seen = new Set<string>();
+    return videos.filter(video => {
+      const id = video.id || video.externalUrl || `${video.source}-${video.title}`;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  };
+
+  // Apply quality filtering and prioritization
+  const filterAndSortShorts = (dragverseShorts: Video[], externalShorts: Video[]) => {
+    // Calculate quality scores
+    const dragverseWithScores = dragverseShorts.map(video => ({
+      ...video,
+      qualityScore: calculateQualityScore(video).overallScore,
+    }));
+
+    const externalWithScores = externalShorts.map(video => ({
+      ...video,
+      qualityScore: calculateQualityScore(video).overallScore,
+    }));
+
+    // Filter by quality thresholds
+    const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 30);
+    const filteredExternal = externalWithScores.filter(v => v.qualityScore >= 40);
+
+    // Sort each group by quality score (descending)
+    const sortedDragverse = filteredDragverse.sort((a, b) => b.qualityScore - a.qualityScore);
+    const sortedExternal = filteredExternal.sort((a, b) => b.qualityScore - a.qualityScore);
+
+    // Strong Dragverse priority: show all Dragverse first
+    return [...sortedDragverse, ...sortedExternal];
+  };
 
   // Load shorts from various sources
-  useEffect(() => {
-    async function loadShorts() {
+  async function loadShorts(isRefresh = false) {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
       setLoading(true);
-
-      try {
-        // Fetch from ALL sources in parallel (faster!)
-        const [supabaseVideos, blueskyVideos, youtubeVideos] = await Promise.all([
-          // Supabase/Dragverse videos
-          getVideos(50).catch(() => []),
-          // Bluesky videos (only posts with actual video embeds - may be sparse)
-          fetch("/api/bluesky/feed?limit=30")
-            .then((res) => (res.ok ? res.json() : { posts: [] }))
-            .then((data) => data.posts || [])
-            .catch(() => []),
-          // YouTube Shorts (via RSS from curated drag channels)
-          fetch("/api/youtube/feed?limit=30&shortsOnly=true&rssOnly=true")
-            .then((res) => (res.ok ? res.json() : { videos: [] }))
-            .then((data) => data.videos || [])
-            .catch(() => []),
-        ]);
-
-        // Transform Supabase videos to Video type
-        const transformedSupabase = (supabaseVideos || []).map((v: any) => ({
-          id: v.id,
-          title: v.title,
-          description: v.description || "",
-          thumbnail: v.thumbnail || "/default-thumbnail.jpg",
-          duration: v.duration || 0,
-          views: v.views,
-          likes: v.likes,
-          createdAt: new Date(v.created_at),
-          playbackUrl: v.playback_url || "",
-          livepeerAssetId: v.livepeer_asset_id || "",
-          contentType: (v.content_type as any) || "short",
-          creator: v.creator ? {
-            did: v.creator.did,
-            handle: v.creator.handle,
-            displayName: v.creator.display_name,
-            avatar: v.creator.avatar || "/defaultpfp.png",
-            description: "",
-            followerCount: 0,
-            followingCount: 0,
-            createdAt: new Date(v.created_at),
-            verified: v.creator.verified || false,
-          } : {
-            did: v.creator_did || "unknown",
-            handle: v.creator_did?.split(":").pop()?.substring(0, 8) || "creator",
-            displayName: "Dragverse Creator",
-            avatar: "/defaultpfp.png",
-            description: "",
-            followerCount: 0,
-            followingCount: 0,
-            createdAt: new Date(v.created_at),
-            verified: false,
-          },
-          category: v.category || "",
-          tags: v.tags || [],
-          source: "ceramic" as const,
-        })) as Video[];
-
-        // Combine all sources
-        const allVideos = [
-          ...transformedSupabase,
-          ...(blueskyVideos || []),
-          ...(youtubeVideos || []),
-          ...getLocalVideos(),
-        ];
-
-        // Include shorts from all sources (Dragverse, YouTube, Bluesky)
-        // Relaxed filtering: include if marked as short OR duration < 60s
-        const shortsOnly = allVideos.filter((v) => {
-          const isShortDuration = v.duration > 0 && v.duration < 60;
-          const isShortType = v.contentType === "short";
-          const hasValidUrl = isValidPlaybackUrl(v.playbackUrl);
-
-          return hasValidUrl && (isShortType || isShortDuration);
-        });
-
-        // Sort by date (newest first)
-        shortsOnly.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-        setShorts(shortsOnly);
-      } catch (error) {
-        console.error("[Shorts] Failed to load shorts:", error);
-        // Fallback to local videos only
-        const localVideos = getLocalVideos();
-        setShorts(localVideos.filter((v) => v.contentType === "short"));
-      } finally {
-        setLoading(false);
-      }
     }
 
+    try {
+      // Fetch from ALL sources in parallel (faster!)
+      const [supabaseVideos, blueskyVideos, youtubeVideos] = await Promise.all([
+        // Supabase/Dragverse videos
+        getVideos(50).catch(() => []),
+        // Bluesky videos (only posts with actual video embeds - may be sparse)
+        fetch("/api/bluesky/feed?limit=30")
+          .then((res) => (res.ok ? res.json() : { posts: [] }))
+          .then((data) => data.posts || [])
+          .catch(() => []),
+        // YouTube Shorts (via RSS from curated drag channels)
+        fetch("/api/youtube/feed?limit=30&shortsOnly=true&rssOnly=true")
+          .then((res) => (res.ok ? res.json() : { videos: [] }))
+          .then((data) => data.videos || [])
+          .catch(() => []),
+      ]);
+
+      // Transform Supabase videos to Video type
+      const transformedSupabase = (supabaseVideos || []).map((v: any) => ({
+        id: v.id,
+        title: v.title,
+        description: v.description || "",
+        thumbnail: v.thumbnail || "/default-thumbnail.jpg",
+        duration: v.duration || 0,
+        views: v.views,
+        likes: v.likes,
+        createdAt: new Date(v.created_at),
+        playbackUrl: v.playback_url || "",
+        livepeerAssetId: v.livepeer_asset_id || "",
+        contentType: (v.content_type as any) || "short",
+        creator: v.creator ? {
+          did: v.creator.did,
+          handle: v.creator.handle,
+          displayName: v.creator.display_name,
+          avatar: v.creator.avatar || "/defaultpfp.png",
+          description: "",
+          followerCount: 0,
+          followingCount: 0,
+          createdAt: new Date(v.created_at),
+          verified: v.creator.verified || false,
+        } : {
+          did: v.creator_did || "unknown",
+          handle: v.creator_did?.split(":").pop()?.substring(0, 8) || "creator",
+          displayName: "Dragverse Creator",
+          avatar: "/defaultpfp.png",
+          description: "",
+          followerCount: 0,
+          followingCount: 0,
+          createdAt: new Date(v.created_at),
+          verified: false,
+        },
+        category: v.category || "",
+        tags: v.tags || [],
+        source: "ceramic" as const,
+      })) as Video[];
+
+      // Separate shorts by source
+      const dragverseShorts = transformedSupabase.filter((v) => {
+        const isShortDuration = v.duration > 0 && v.duration < 60;
+        const isShortType = v.contentType === "short";
+        const hasValidUrl = isValidPlaybackUrl(v.playbackUrl);
+        return hasValidUrl && (isShortType || isShortDuration);
+      });
+
+      const externalShorts = [
+        ...(blueskyVideos || []),
+        ...(youtubeVideos || []),
+        ...getLocalVideos(),
+      ].filter((v) => {
+        const isShortDuration = v.duration > 0 && v.duration < 60;
+        const isShortType = v.contentType === "short";
+        const hasValidUrl = isValidPlaybackUrl(v.playbackUrl);
+        return hasValidUrl && (isShortType || isShortDuration);
+      });
+
+      // Deduplicate and apply quality filtering
+      const dedupedDragverse = deduplicateShorts(dragverseShorts);
+      const dedupedExternal = deduplicateShorts(externalShorts);
+      const sortedShorts = filterAndSortShorts(dedupedDragverse, dedupedExternal);
+
+      setShorts(sortedShorts);
+    } catch (error) {
+      console.error("[Shorts] Failed to load shorts:", error);
+      // Fallback to local videos only
+      const localVideos = getLocalVideos();
+      setShorts(localVideos.filter((v) => v.contentType === "short"));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  // Initial load
+  useEffect(() => {
     loadShorts();
+  }, []);
+
+  // Auto-refresh every 15 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadShorts(true);
+    }, 15 * 60 * 1000); // 15 minutes
+
+    return () => clearInterval(interval);
   }, []);
 
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
@@ -242,6 +298,16 @@ function ShortsContent() {
           </button>
         </div>
       )}
+
+      {/* Refresh Button - Top Right */}
+      <button
+        onClick={() => loadShorts(true)}
+        disabled={refreshing}
+        className="fixed top-6 right-6 z-20 w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-50"
+        title="Refresh shorts"
+      >
+        <FiRefreshCw className={`w-6 h-6 text-white ${refreshing ? 'animate-spin' : ''}`} />
+      </button>
 
       {/* Slide Indicator */}
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-20">

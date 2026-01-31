@@ -7,6 +7,7 @@ import {
   sortPostsByEngagement,
 } from "@/lib/bluesky/client";
 import { getValidDragAccountHandles } from "@/lib/bluesky/drag-accounts";
+import { calculateQualityScore } from "@/lib/curation/quality-score";
 
 /**
  * API route to fetch drag-related content from Bluesky
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Debug logging
-    console.log(`[Bluesky API] Found ${posts.length} posts, converted to ${videos.length} videos (contentType: ${contentType})`);
+    console.log(`[Bluesky API] Found ${posts.length} posts, converted to ${videos.length} items (contentType: ${contentType})`);
     if (posts.length > 0 && videos.length === 0) {
       console.log("[Bluesky API] Sample post embeds:", posts.slice(0, 3).map(p => ({
         text: p.text.substring(0, 50),
@@ -68,6 +69,18 @@ export async function GET(request: NextRequest) {
         hasImages: !!p.embed?.images
       })));
     }
+
+    // Apply quality filtering (score >= 40 for external content)
+    const videosWithScores = videos.map(video => ({
+      ...video,
+      qualityScore: calculateQualityScore(video).overallScore,
+    }));
+
+    const qualityFiltered = videosWithScores.filter(v => v.qualityScore >= 40);
+
+    console.log(`[Bluesky API] Quality filtering: ${videos.length} → ${qualityFiltered.length} items (threshold: 40)`);
+
+    videos = qualityFiltered;
 
     return NextResponse.json({
       success: true,

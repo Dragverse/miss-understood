@@ -232,6 +232,68 @@ handle: "dragulaofficial",
 displayName: "Dragula Official",
 description: "Official channel for The Boulet Brothers' Dragula - horror, filth, and glamour",
 },
+
+// === DRAG PODCASTS ON YOUTUBE ===
+{
+channelId: "UCQ-vA635R9YKEg7vpbpJhjQ", // Race Chaser with Alaska & Willam
+handle: "racechaserpodcast",
+displayName: "Race Chaser",
+description: "Alaska and Willam recap every Drag Race episode with humor and insight",
+},
+{
+channelId: "UCEfNT9eAJ1wG6v4KlJQZ7cg", // Sibling Rivalry
+handle: "siblingrivalrypodcast",
+displayName: "Sibling Rivalry",
+description: "Bob The Drag Queen and Monét X Change debate, laugh, and spill drag tea",
+},
+{
+channelId: "UCvXQKasFXu3SRfm7skV_xQg", // UNHhhh
+handle: "wowpresentsplus",
+displayName: "UNHhhh",
+description: "Trixie Mattel and Katya discuss everything and nothing — chaotic brilliance",
+},
+{
+channelId: "UCN4hDYbxNBNPtGM3WFZYdZg", // Hey Qween!
+handle: "heyqween",
+displayName: "Hey Qween!",
+description: "Jonny McGovern interviews drag legends and queer icons in long-form chats",
+},
+{
+channelId: "UCkqkAQeLfE0gE0YTlJKTZGg", // Very That
+handle: "verythatpodcast",
+displayName: "VERY THAT",
+description: "Delta Work and Raja discuss drag, pop culture, and the art of being unbothered",
+},
+{
+channelId: "UCDwvYQ6qEyp0PQMM4FiyhQQ", // Hot Goss
+handle: "hotgosspodcast",
+displayName: "Hot Goss",
+description: "Weekly drag news and gossip from the Race Chaser team",
+},
+{
+channelId: "UCizrXRV6EgHXME3t7gHx0dg", // Drag Her!
+handle: "dragherpodcast",
+displayName: "Drag Her!",
+description: "Mano Agapion and guests recap Drag Race episodes with comedy and chaos",
+},
+{
+channelId: "UCN0u6sfqARgFErgCB5gmnzA", // Sloppy Seconds Podcast
+handle: "sloppysecondspodcast",
+displayName: "Sloppy Seconds",
+description: "Big Dipper and Meatball talk drag, sex, and queer life with hilarious guests",
+},
+{
+channelId: "UCZYdJM36Nzd8gYZ3dUQLh5Q", // No Gorge
+handle: "nogorgepodcast",
+displayName: "No Gorge",
+description: "Naomi Smalls and Kim Chi talk drag, fashion, and friendship",
+},
+{
+channelId: "UCRIEhqCfVz_LKvHG8xUJeHw", // The Drag Detectives
+handle: "dragdetectives",
+displayName: "The Drag Detectives",
+description: "Fans analyze Drag Race edits, theories, and controversies with humor",
+},
 ];
 
 /**

@@ -150,9 +150,9 @@ function calculateCreatorReputationScore(content: Video | any): number {
   }
 
   // Platform reputation
-  // Native Dragverse creators get small boost (supporting the platform)
-  if (source === "dragverse") {
-    score = Math.min(100, score + 5);
+  // Native Dragverse creators get boost (supporting the platform)
+  if (source === "dragverse" || source === "ceramic") {
+    score = Math.min(100, score + 10);
   }
 
   return Math.min(100, Math.max(0, score));
