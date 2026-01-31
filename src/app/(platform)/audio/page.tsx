@@ -286,7 +286,7 @@ export default function AudioPage() {
             </div>
             <h3 className="text-white text-2xl font-bold mb-3">No Audio Content Available</h3>
             <p className="text-gray-400 max-w-md mx-auto">
-              We're currently fetching drag podcasts and music from YouTube.
+              We&apos;re currently fetching drag podcasts and music from YouTube.
               Check back in a few moments, or try refreshing the page!
             </p>
           </div>
