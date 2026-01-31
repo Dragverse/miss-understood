@@ -279,11 +279,11 @@ function ShortsContent() {
   };
 
   return (
-    <div className="relative h-[100dvh] md:h-[calc(100vh-4rem)] overflow-hidden bg-black">
+    <div className="relative h-[100dvh] md:h-[calc(100vh-4rem)] overflow-hidden bg-black w-full">
       {/* Vertical Slider */}
       <div
         ref={sliderRef}
-        className="keen-slider h-full snap-y snap-mandatory overflow-y-hidden"
+        className="keen-slider h-full w-full snap-y snap-mandatory overflow-y-hidden"
       >
         {shorts.map((video, idx) => (
           <div key={video.id} className="keen-slider__slide relative">

@@ -213,7 +213,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
 
   return (
     <div className="keen-slider__slide flex snap-center justify-center focus-visible:outline-none md:ml-16 md:pb-2">
-      <div className="rounded-large ultrawide:w-[650px] bg-gray-950 flex h-full w-[calc(100vw-80px)] items-center overflow-hidden md:w-[450px] relative">
+      <div className="rounded-large ultrawide:w-[650px] bg-gray-950 flex h-full w-full md:w-[450px] items-center overflow-hidden relative">
         {hasValidPlaybackUrl ? (
           <div className="w-full h-full relative" onClick={!isYouTubeVideo ? handleVideoClick : undefined}>
             {isYouTubeVideo ? (
@@ -278,7 +278,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
             )}
 
             {/* Top Right Controls */}
-            <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+            <div className="absolute top-2 md:top-4 right-2 md:right-4 flex flex-col gap-2 z-10">
               {/* Creator Menu Button */}
               {isCreator && (
                 <div className="relative">
@@ -346,7 +346,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
             )}
 
             {/* Interaction Buttons - Right Side */}
-            <div className="absolute bottom-20 right-4 flex flex-col gap-4 z-20">
+            <div className="absolute bottom-20 right-2 md:right-4 flex flex-col gap-3 md:gap-4 z-20">
               {/* Creator Avatar */}
               {video.creator?.avatar && (
                 <Link
@@ -430,7 +430,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
             </div>
 
             {/* Video Info - Bottom Left */}
-            <div className="absolute bottom-4 left-4 right-20 z-20 text-white">
+            <div className="absolute bottom-4 left-2 md:left-4 right-16 md:right-20 z-20 text-white">
               <Link
                 href={`/profile/${video.creator?.handle || video.creator?.did}`}
                 onClick={(e) => e.stopPropagation()}
