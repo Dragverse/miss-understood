@@ -34,9 +34,74 @@ export async function GET(request: NextRequest) {
       console.log(`[Bluesky API] Fetching from ${dragAccounts.length} curated drag accounts`);
       posts = await getDragAccountsPosts(dragAccounts, limit);
     } else {
-      // Search by drag-related hashtags and keywords
-      console.log("[Bluesky API] Searching by drag keywords/hashtags");
-      posts = await searchDragContent(limit);
+      // HYBRID APPROACH: Fetch from BOTH search AND specific active accounts in parallel
+      // This ensures we get:
+      // 1. Broad drag content from search (hashtags, keywords)
+      // 2. Content from known active creators (tenderoni88, gottmik, etc.)
+      console.log("[Bluesky API] Using hybrid approach: search + active accounts");
+
+      // Active accounts that actually post content regularly on Bluesky
+      // (verified by checking bsky.app/profile/[handle])
+      const activeAccounts = [
+        // Drag Kings & Alternative Drag
+        "tenderoni88.bsky.social",
+        "landon.cider.bsky.social",
+        "murrayhill.bsky.social",
+        "spikeyvan.dykey.bsky.social",
+        "vicoorlando.bsky.social",
+
+        // Dragula & Horror Drag
+        "dragula.bsky.social",
+        "sigourneybeaver.bsky.social",
+        "holloweve.bsky.social",
+        "abhorra.bsky.social",
+        "victoriablack.bsky.social",
+        "saintdrag.bsky.social",
+        "evahdestruction.bsky.social",
+
+        // Drag Race Queens (active on Bluesky)
+        "gottmik.bsky.social",
+        "symone.bsky.social",
+        "jinkxmonsoon.bsky.social",
+        "trixiemattel.bsky.social",
+        "katya.bsky.social",
+        "bobthedragqueen.bsky.social",
+        "monet.bsky.social",
+        "peppermint.bsky.social",
+        "yvieoddly.bsky.social",
+        "kandymuse.bsky.social",
+        "denalifoxx.bsky.social",
+        "plastique.bsky.social",
+        "sashacolby.bsky.social",
+        "willowpill.bsky.social",
+        "kornbread.bsky.social",
+
+        // Makeup & Beauty Creators
+        "ellismiah.bsky.social",
+        "patrickstarrr.bsky.social",
+        "ravenbeauty.bsky.social",
+        "missffame.bsky.social",
+        "trixiecosmetics.bsky.social",
+
+        // International & Other Active Queens
+        "biminibabes.bsky.social",
+        "brookelynnhytes.bsky.social",
+        "panginaheals.bsky.social",
+        "jimbo.bsky.social",
+        "anetra.bsky.social",
+      ];
+
+      const [searchPosts, accountPosts] = await Promise.all([
+        searchDragContent(Math.ceil(limit * 0.7)), // 70% from search
+        getDragAccountsPosts(activeAccounts, Math.ceil(limit * 0.3)) // 30% from accounts
+      ]);
+
+      // Combine and deduplicate by URI
+      const allPosts = [...searchPosts, ...accountPosts];
+      const uniquePostsMap = new Map(allPosts.map(post => [post.uri, post]));
+      posts = Array.from(uniquePostsMap.values());
+
+      console.log(`[Bluesky API] Hybrid results: ${searchPosts.length} from search + ${accountPosts.length} from accounts = ${posts.length} unique`);
     }
 
     // Sort posts by engagement or recency
