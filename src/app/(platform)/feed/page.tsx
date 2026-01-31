@@ -114,7 +114,7 @@ function FeedContent() {
         ).catch(() => null),
 
         // YouTube drag content from curated channels (RSS feeds - no quota!)
-        fetch("/api/youtube/feed?limit=100&rssOnly=true").catch(() => null)
+        fetch("/api/youtube/feed?limit=100").catch(() => null)
       ]);
 
       // Parse Dragverse posts

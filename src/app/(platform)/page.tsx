@@ -120,7 +120,8 @@ export default function HomePage() {
         });
 
       // YouTube drag content (100 videos from curated channels - includes shorts)
-      const youtubePromise = fetch("/api/youtube/feed?limit=100&rssOnly=true")
+      // Use API if available (more reliable than RSS), fallback to RSS automatically
+      const youtubePromise = fetch("/api/youtube/feed?limit=100")
         .then((response) => response.json())
         .then((data) => {
           if (data.success && data.videos.length > 0) {
