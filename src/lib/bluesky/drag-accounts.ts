@@ -144,72 +144,264 @@ export const CURATED_DRAG_ACCOUNTS: CuratedBlueskyAccount[] = [
   {
     handle: "peppermint.bsky.social",
     displayName: "Peppermint",
-    description: "Season 9 finalist, trans icon",
+    description: "Season 9 finalist, trans activist and performer",
   },
   {
-    handle: "sasha.bsky.social",
-    displayName: "Sasha Velour",
-    description: "Winner of Season 9, brainy queen",
-  },
-  {
-    handle: "yvie.bsky.social",
+    handle: "yvieoddly.bsky.social",
     displayName: "Yvie Oddly",
-    description: "Winner of Season 11, oddball icon",
+    description: "Winner of Season 11, creative and unpredictable",
   },
   {
-    handle: "priyanka.bsky.social",
-    displayName: "Priyanka",
-    description: "Winner of Canada's Drag Race Season 1",
+    handle: "raja.bsky.social",
+    displayName: "Raja",
+    description: "Winner of Season 3 and All Stars 7, fashion visionary",
   },
   {
-    handle: "lawrence.bsky.social",
-    displayName: "Lawrence Chaney",
-    description: "Winner of UK Season 2, Scottish queen",
+    handle: "trinitythetuck.bsky.social",
+    displayName: "Trinity The Tuck",
+    description: "Winner of All Stars 4, pageant perfection",
   },
   {
-    handle: "bimini.bsky.social",
-    displayName: "Bimini Bon Boulash",
-    description: "UK Season 2 finalist, non-binary icon",
-  },
-  {
-    handle: "tayce.bsky.social",
-    displayName: "Tayce",
-    description: "UK Season 2 finalist, Welsh goddess",
-  },
-  {
-    handle: "thedivina.bsky.social",
-    displayName: "The Vivienne",
-    description: "Winner of UK Season 1 and All Stars",
-  },
-  {
-    handle: "envy.bsky.social",
-    displayName: "Envy Peru",
-    description: "Winner of Holland Season 1",
-  },
-  {
-    handle: "nicky.bsky.social",
-    displayName: "Nicky Doll",
-    description: "Season 12, French fashion queen",
+    handle: "kandymuse.bsky.social",
+    displayName: "Kandy Muse",
+    description: "Season 13 runner-up and All Stars 8 finalist",
   },
   {
     handle: "plastique.bsky.social",
     displayName: "Plastique Tiara",
-    description: "Season 11, Vietnamese-American beauty",
+    description: "Season 11 queen, beauty influencer",
   },
   {
-    handle: "drag.bsky.social",
-    displayName: "Drag Community",
-    description: "General drag community account",
+    handle: "denalifoxx.bsky.social",
+    displayName: "Denali",
+    description: "Season 13 queen, ice skater and performer",
   },
   {
-    handle: "queendom.bsky.social",
-    displayName: "Queendom",
-    description: "Drag and LGBTQ+ community",
+    handle: "rosé.bsky.social",
+    displayName: "Rosé",
+    description: "Season 13 finalist, singer and performer",
   },
   {
-    handle: "lgbtq.bsky.social",
-    displayName: "LGBTQ+",
-    description: "LGBTQ+ community content",
+    handle: "luxxnoiralondon.bsky.social",
+    displayName: "Luxx Noir London",
+    description: "Season 15 finalist, fashion-forward queen",
+  },
+  {
+    handle: "sashacolby.bsky.social",
+    displayName: "Sasha Colby",
+    description: "Winner of Season 15, legendary performer",
+  },
+  {
+    handle: "angeriabks.bsky.social",
+    displayName: "Angeria Paris VanMicheals",
+    description: "Season 14 finalist, Southern charm and glamour",
+  },
+  {
+    handle: "willowpill.bsky.social",
+    displayName: "Willow Pill",
+    description: "Winner of Season 14, quirky and creative",
+  },
+  {
+    handle: "kornbread.bsky.social",
+    displayName: "Kornbread Jeté",
+    description: "Season 14 queen, comedian and performer",
+  },
+  {
+    handle: "jessicawild.bsky.social",
+    displayName: "Jessica Wild",
+    description: "Season 2 and All Stars 8, Puerto Rican powerhouse",
+  },
+  {
+    handle: "heidincloset.bsky.social",
+    displayName: "Heidi N Closet",
+    description: "Season 12 and All Stars 8, lovable and hilarious",
+  },
+  {
+    handle: "jan.bsky.social",
+    displayName: "Jan",
+    description: "Season 12 and All Stars 6, pop diva energy",
+  },
+  {
+    handle: "kylie.bsky.social",
+    displayName: "Kylie Sonique Love",
+    description: "Winner of All Stars 6, trans trailblazer",
+  },
+  {
+    handle: "gingerminge.bsky.social",
+    displayName: "Ginger Minj",
+    description: "Season 7, All Stars 2 and 6, Broadway queen",
+  },
+  {
+    handle: "eurekaph.bsky.social",
+    displayName: "Eureka O’Hara",
+    description: "Season 9, 10 and All Stars 6, big personality and heart",
+  },
+  {
+    handle: "trinitykbonet.bsky.social",
+    displayName: "Trinity K. Bonet",
+    description: "Season 6 and All Stars 6, powerhouse performer",
+  },
+  {
+    handle: "scarletenvy.bsky.social",
+    displayName: "Scarlet Envy",
+    description: "Season 11 and All Stars 6, vintage glamour",
+  },
+  {
+    handle: "raqueldrag.bsky.social",
+    displayName: "Ra’Jah O’Hara",
+    description: "Winner of Canada vs The World, All Stars 6 finalist",
+  },
+  {
+    handle: "jimbo.bsky.social",
+    displayName: "Jimbo",
+    description: "Winner of All Stars 8, Canada’s Drag Race icon",
+  },
+  {
+    handle: "panginaheals.bsky.social",
+    displayName: "Pangina Heals",
+    description: "Host of Drag Race Thailand, international superstar",
+  },
+  {
+    handle: "brookelynnhytes.bsky.social",
+    displayName: "Brooke Lynn Hytes",
+    description: "Season 11 finalist, host of Canada’s Drag Race",
+  },
+  {
+    handle: "anetra.bsky.social",
+    displayName: "Anetra",
+    description: "Season 15 finalist, duck-walking sensation",
+  },
+  {
+    handle: "luxqueen.bsky.social",
+    displayName: "Lux Queen",
+    description: "Emerging drag artist and digital creator",
+  },
+    {
+    handle: "landon.cider.bsky.social",
+    displayName: "Landon Cider",
+    description: "Winner of Dragula Season 3, iconic drag king and performer",
+  },
+  {
+    handle: "murrayhill.bsky.social",
+    displayName: "Murray Hill",
+    description: "Legendary drag king, comedian, and actor",
+  },
+  {
+    handle: "tenderoni.bsky.social",
+    displayName: "Tenderoni",
+    description: "Drag king superstar, winner of Drag King of the World 2021",
+  },
+  {
+    handle: "kennydrag.bsky.social",
+    displayName: "Kenny Drag",
+    description: "Drag king and content creator known for high-energy performances",
+  },
+  {
+    handle: "maxdrag.bsky.social",
+    displayName: "Max Drag King",
+    description: "Performer and advocate for drag king visibility",
+  },
+  {
+    handle: "spikeyvan.dykey.bsky.social",
+    displayName: "Spikey Van Dykey",
+    description: "Trailblazing drag king and LGBTQ+ activist",
+  },
+  {
+    handle: "hansdrag.bsky.social",
+    displayName: "Hans",
+    description: "Cabaret performer and drag artist blending comedy and music",
+  },
+  {
+    handle: "vicoorlando.bsky.social",
+    displayName: "Vico Suave",
+    description: "Drag king and producer, known for suave masculine performances",
+  },
+  {
+    handle: "dragula.bsky.social",
+    displayName: "The Boulet Brothers’ Dragula",
+    description: "Platform celebrating alternative drag, kings, and monsters",
+  },
+  {
+    handle: "sigourneybeaver.bsky.social",
+    displayName: "Sigourney Beaver",
+    description: "Dragula Season 4 finalist, femme drag creator and producer",
+  },
+  {
+    handle: "holloweve.bsky.social",
+    displayName: "Hollow Eve",
+    description: "Dragula performer and performance artist pushing drag boundaries",
+  },
+  {
+    handle: "abhorra.bsky.social",
+    displayName: "Abhora",
+    description: "Alternative drag artist and visual creator from Dragula",
+  },
+  {
+    handle: "victoriablack.bsky.social",
+    displayName: "Victoria Black",
+    description: "Dragula legend known for horror and artistry",
+  },
+  {
+    handle: "saintdrag.bsky.social",
+    displayName: "Saint",
+    description: "Dragula Resurrection winner, dark and ethereal performer",
+  },
+  {
+    handle: "evahdestruction.bsky.social",
+    displayName: "Evah Destruction",
+    description: "Dragula and Drag Race performer, singer and creator",
+  },
+  {
+    handle: "kingphantom.bsky.social",
+    displayName: "King Phantom",
+    description: "Emerging drag king and digital content creator",
+  },
+  {
+    handle: "dragthing.bsky.social",
+    displayName: "DragThing",
+    description: "Collective of drag performers and creators across genres",
+  },
+  {
+    handle: "dragkingdom.bsky.social",
+    displayName: "Drag Kingdom",
+    description: "Community promoting drag kings and masc performers worldwide",
+  },
+
+  // === DRAG MAKEUP & BEAUTY CREATORS ===
+  {
+    handle: "ellismiah.bsky.social",
+    displayName: "Ellis Miah",
+    description: "Drag makeup artist, beauty creator, and performer",
+  },
+  {
+    handle: "patrickstarrr.bsky.social",
+    displayName: "Patrick Starrr",
+    description: "Beauty influencer, makeup artist, and drag icon",
+  },
+  {
+    handle: "ravenbeauty.bsky.social",
+    displayName: "Raven",
+    description: "Professional makeup artist and drag beauty guru",
+  },
+  {
+    handle: "missffame.bsky.social",
+    displayName: "Miss Fame",
+    description: "Season 7 queen, makeup artist, and beauty icon",
+  },
+  {
+    handle: "trixiecosmetics.bsky.social",
+    displayName: "Trixie Cosmetics",
+    description: "Official Trixie Cosmetics makeup brand",
+  },
+  {
+    handle: "kimchimakeup.bsky.social",
+    displayName: "Kim Chi Makeup",
+    description: "Kim Chi's beauty and makeup content",
+  },
+  {
+    handle: "jaymes.bsky.social",
+    displayName: "Jaymes Mansfield",
+    description: "Season 9 queen known for vintage beauty and makeup",
   },
 ];
 
