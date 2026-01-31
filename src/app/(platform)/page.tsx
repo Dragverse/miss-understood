@@ -146,35 +146,38 @@ export default function HomePage() {
         });
       }
 
-      // Separate Dragverse from external content
+      // Separate Dragverse, YouTube, and Bluesky content
       const [supabaseResults, blueskyResults, youtubeResults] = results;
       const dragverseContent = [...localVideos, ...supabaseResults];
-      const externalContent = [...blueskyResults, ...youtubeResults];
 
-      // Apply quality filtering
+      // Apply quality filtering to Dragverse content
       const dragverseWithScores = dragverseContent.map(video => ({
         ...video,
         qualityScore: calculateQualityScore(video).overallScore,
       }));
+      const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 15);
+      console.log(`[Homepage Quality] Dragverse: ${dragverseContent.length} → ${filteredDragverse.length} (threshold: 15)`);
 
-      const externalWithScores = externalContent.map(video => ({
+      // Apply quality filtering to Bluesky content (has engagement data)
+      const blueskyWithScores = blueskyResults.map((video: any) => ({
         ...video,
         qualityScore: calculateQualityScore(video).overallScore,
       }));
+      const filteredBluesky = blueskyWithScores.filter((v: any) => v.qualityScore >= 20);
+      console.log(`[Homepage Quality] Bluesky: ${blueskyResults.length} → ${filteredBluesky.length} (threshold: 20)`);
 
-      // Filter by quality thresholds (RELAXED to ensure content flow)
-      const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 15);
-      const filteredExternal = externalWithScores.filter(v => v.qualityScore >= 20);
+      // Skip quality filtering for YouTube (curated channels, lacks RSS engagement data)
+      console.log(`[Homepage Quality] YouTube: ${youtubeResults.length} videos (no filtering - curated sources)`);
 
-      console.log(`[Homepage Quality] Dragverse: ${dragverseContent.length} → ${filteredDragverse.length} (threshold: 15)`);
-      console.log(`[Homepage Quality] External: ${externalContent.length} → ${filteredExternal.length} (threshold: 20)`);
+      // Sort each group
+      const sortedDragverse = filteredDragverse.sort((a: any, b: any) => b.qualityScore - a.qualityScore);
+      const sortedBluesky = filteredBluesky.sort((a: any, b: any) => b.qualityScore - a.qualityScore);
+      const sortedYoutube = youtubeResults.sort((a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
 
-      // Sort each group by quality score
-      const sortedDragverse = filteredDragverse.sort((a, b) => b.qualityScore - a.qualityScore);
-      const sortedExternal = filteredExternal.sort((a, b) => b.qualityScore - a.qualityScore);
-
-      // Combine with Dragverse first (strong prioritization)
-      const allVideos = [...sortedDragverse, ...sortedExternal];
+      // Combine with Dragverse first, then YouTube, then Bluesky
+      const allVideos = [...sortedDragverse, ...sortedYoutube, ...sortedBluesky];
 
       setVideos(allVideos);
       setLoading(false);

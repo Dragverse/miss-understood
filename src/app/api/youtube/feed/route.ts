@@ -85,22 +85,25 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Apply quality filtering (score >= 20 for external content - RELAXED for better flow)
-    const videosWithScores = videos.map(video => ({
-      ...video,
-      qualityScore: calculateQualityScore(video).overallScore,
-    }));
+    // Skip quality filtering for RSS videos (curated channels are already high quality)
+    // Only apply quality filtering if using YouTube Data API (which has full engagement metrics)
+    if (source === "youtube-api") {
+      const videosWithScores = videos.map(video => ({
+        ...video,
+        qualityScore: calculateQualityScore(video).overallScore,
+      }));
 
-    const qualityFiltered = videosWithScores.filter(v => v.qualityScore >= 20);
-
-    console.log(`[YouTube Feed API] Quality filtering: ${videos.length} → ${qualityFiltered.length} videos (threshold: 20)`);
-
-    // Cache successful results (even empty arrays, to avoid repeated failed API calls)
-    if (qualityFiltered.length > 0) {
-      setCachedVideos(cacheKey, qualityFiltered);
+      const qualityFiltered = videosWithScores.filter(v => v.qualityScore >= 20);
+      console.log(`[YouTube Feed API] Quality filtering (API): ${videos.length} → ${qualityFiltered.length} videos (threshold: 20)`);
+      videos = qualityFiltered;
+    } else {
+      console.log(`[YouTube Feed API] Skipping quality filter for RSS (curated channels): ${videos.length} videos`);
     }
 
-    videos = qualityFiltered;
+    // Cache successful results (even empty arrays, to avoid repeated failed API calls)
+    if (videos.length > 0) {
+      setCachedVideos(cacheKey, videos);
+    }
 
     // Include playlist videos if requested
     if (includePlaylists) {
