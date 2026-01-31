@@ -45,6 +45,14 @@ const DRAG_KEYWORDS = [
   "allstars", "untucked", "werq", "wow",
 ];
 
+// Non-drag political/generic keywords that should reduce score
+const NON_DRAG_KEYWORDS = [
+  "trump", "biden", "election", "congress", "senate", "republican", "democrat",
+  "house of representatives", "california", "texas", "proposition", "vote yes", "vote no",
+  "legislation", "bill", "amendment", "governor", "mayor", "politics", "political",
+  "protest", "protesters", "ferguson", "blm", "black lives matter"
+];
+
 const DRAG_HASHTAGS = [
   "#drag", "#dragqueen", "#dragking", "#dragrace", "#rupaulsdragrace",
   "#dragmakeup", "#dragshow", "#dragperformance", "#dragart",
@@ -165,11 +173,27 @@ function calculateCreatorReputationScore(content: Video | any): number {
 function calculateContentRelevanceScore(content: Video | any): number {
   const title = (content.title || "").toLowerCase();
   const description = (content.description || "").toLowerCase();
+  const text = (content.text || "").toLowerCase(); // For Bluesky posts
   const tags = content.tags || [];
   const category = (content.category || "").toLowerCase();
-  const combinedText = `${title} ${description} ${tags.join(" ")}`;
+  const combinedText = `${title} ${description} ${text} ${tags.join(" ")}`;
 
   let score = 0;
+
+  // Check for non-drag political/generic content first (penalty)
+  let nonDragMatches = 0;
+  for (const keyword of NON_DRAG_KEYWORDS) {
+    if (combinedText.includes(keyword.toLowerCase())) {
+      nonDragMatches++;
+    }
+  }
+
+  // Heavy penalty for political/generic content
+  if (nonDragMatches > 2) {
+    return 0; // Instant fail for heavily political content
+  } else if (nonDragMatches > 0) {
+    score -= nonDragMatches * 15; // -15 points per non-drag keyword
+  }
 
   // Keyword matching
   let keywordMatches = 0;
@@ -199,6 +223,13 @@ function calculateContentRelevanceScore(content: Video | any): number {
   // Drag tag boost
   if (tags.some((tag: string) => tag.toLowerCase().includes("drag"))) {
     score += 10;
+  }
+
+  // If content has images/video but no drag keywords, give a small benefit of doubt
+  // (from curated accounts, visual content might be drag without text mentioning it)
+  const hasMedia = content.thumbnail || content.playbackUrl || content.embed?.images || content.embed?.video;
+  if (hasMedia && keywordMatches === 0 && score < 20) {
+    score += 10; // Small boost for visual content from curated sources
   }
 
   return Math.min(100, Math.max(0, score));

@@ -85,15 +85,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Apply quality filtering (score >= 40 for external content)
+    // Apply quality filtering (score >= 30 for external content - LOWERED for better flow)
     const videosWithScores = videos.map(video => ({
       ...video,
       qualityScore: calculateQualityScore(video).overallScore,
     }));
 
-    const qualityFiltered = videosWithScores.filter(v => v.qualityScore >= 40);
+    const qualityFiltered = videosWithScores.filter(v => v.qualityScore >= 30);
 
-    console.log(`[YouTube Feed API] Quality filtering: ${videos.length} → ${qualityFiltered.length} videos (threshold: 40)`);
+    console.log(`[YouTube Feed API] Quality filtering: ${videos.length} → ${qualityFiltered.length} videos (threshold: 30)`);
 
     // Cache successful results (even empty arrays, to avoid repeated failed API calls)
     if (qualityFiltered.length > 0) {
