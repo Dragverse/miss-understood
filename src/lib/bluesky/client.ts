@@ -7,6 +7,31 @@ import { BskyAgent } from "@atproto/api";
 
 const BLUESKY_SERVICE = "https://bsky.social";
 
+/**
+ * Blocked hashtags and keywords for content filtering
+ * These are adult/inappropriate content markers that should not appear in the feed
+ */
+const BLOCKED_TERMS = [
+  // Adult content hashtags
+  "#uncut", "#fcf", "#nsfw", "#xxx", "#porn", "#onlyfans", "#fansly",
+  "#nude", "#nudes", "#naked", "#sex", "#sexy", "#horny", "#dick",
+  "#cock", "#pussy", "#ass", "#boobs", "#tits", "#cum", "#anal",
+  "#bbc", "#bwc", "#twink", "#hookup", "#dating", "#dm",
+  // Spam patterns
+  "#follow4follow", "#f4f", "#like4like", "#l4l",
+  // Unrelated content
+  "#crypto", "#nft", "#bitcoin", "#ethereum", "#trading",
+];
+
+/**
+ * Check if content contains blocked terms
+ * Returns true if the content should be filtered out
+ */
+function containsBlockedContent(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return BLOCKED_TERMS.some(term => lowerText.includes(term.toLowerCase()));
+}
+
 // Create an authenticated agent
 // Note: Bluesky now requires auth even for public content
 export async function getBlueskyAgent(): Promise<BskyAgent> {
@@ -159,13 +184,24 @@ export async function searchDragContent(
       new Map(allPosts.map(post => [post.uri, post])).values()
     );
 
+    // Filter out posts with blocked content (adult, spam, etc.)
+    const filteredPosts = uniquePosts.filter(post => {
+      const isBlocked = containsBlockedContent(post.text);
+      if (isBlocked) {
+        console.log(`[Bluesky] Filtered out blocked content: "${post.text.substring(0, 50)}..."`);
+      }
+      return !isBlocked;
+    });
+
+    console.log(`[Bluesky] Content filter: ${uniquePosts.length} → ${filteredPosts.length} posts`);
+
     // Calculate engagement scores and sort by engagement
-    uniquePosts.forEach(post => {
+    filteredPosts.forEach(post => {
       (post as any).engagementScore = calculateEngagementScore(post);
     });
 
-    console.log(`[Bluesky] Total unique posts found: ${uniquePosts.length}`);
-    return sortPostsByEngagement(uniquePosts).slice(0, limit);
+    console.log(`[Bluesky] Total posts after filtering: ${filteredPosts.length}`);
+    return sortPostsByEngagement(filteredPosts).slice(0, limit);
   } catch (error) {
     console.error("[Bluesky] Failed to fetch content:", error);
     return [];
@@ -228,12 +264,16 @@ export async function getDragAccountsPosts(
       }
     }
 
+    // Filter out posts with blocked content (adult, spam, etc.)
+    const filteredPosts = allPosts.filter(post => !containsBlockedContent(post.text));
+    console.log(`[Bluesky Accounts] Content filter: ${allPosts.length} → ${filteredPosts.length} posts`);
+
     // Calculate engagement scores and sort by engagement
-    allPosts.forEach(post => {
+    filteredPosts.forEach(post => {
       (post as any).engagementScore = calculateEngagementScore(post);
     });
 
-    return sortPostsByEngagement(allPosts).slice(0, limit);
+    return sortPostsByEngagement(filteredPosts).slice(0, limit);
   } catch (error) {
     console.error("Failed to fetch drag accounts posts:", error);
     return [];
