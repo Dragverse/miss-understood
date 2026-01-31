@@ -237,6 +237,84 @@ function UploadPageContent() {
     });
   }, []);
 
+  // Extract first frame from video as thumbnail
+  const extractFirstFrame = useCallback(async (videoFile: File): Promise<File | null> => {
+    return new Promise((resolve) => {
+      try {
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.muted = true; // Mute to avoid audio playback
+
+        video.onloadeddata = () => {
+          try {
+            // Seek to 1 second (or 0.5s for shorts) to get a better frame than the first black frame
+            video.currentTime = 1;
+          } catch (error) {
+            console.warn("Could not seek video, using first frame:", error);
+            video.currentTime = 0;
+          }
+        };
+
+        video.onseeked = () => {
+          try {
+            // Create canvas with video dimensions
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            // Draw video frame to canvas
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              console.error("Could not get canvas context");
+              resolve(null);
+              return;
+            }
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert canvas to blob (JPEG at 90% quality)
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  // Create a File object from the blob
+                  const thumbnailFile = new File([blob], "thumbnail.jpg", {
+                    type: "image/jpeg",
+                  });
+                  console.log("[Upload] Extracted thumbnail from video:", {
+                    size: `${(blob.size / 1024).toFixed(1)}KB`,
+                    dimensions: `${canvas.width}x${canvas.height}`,
+                  });
+                  resolve(thumbnailFile);
+                } else {
+                  console.error("Failed to create thumbnail blob");
+                  resolve(null);
+                }
+                URL.revokeObjectURL(video.src);
+              },
+              "image/jpeg",
+              0.9
+            );
+          } catch (error) {
+            console.error("Error extracting video frame:", error);
+            URL.revokeObjectURL(video.src);
+            resolve(null);
+          }
+        };
+
+        video.onerror = (error) => {
+          console.error("Error loading video for thumbnail:", error);
+          URL.revokeObjectURL(video.src);
+          resolve(null);
+        };
+
+        video.src = URL.createObjectURL(videoFile);
+      } catch (error) {
+        console.error("Error in extractFirstFrame:", error);
+        resolve(null);
+      }
+    });
+  }, []);
+
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -899,6 +977,22 @@ function UploadPageContent() {
                       ...formData,
                       video: file,
                     });
+
+                    // Auto-extract first frame as thumbnail for videos
+                    if (formData.mediaType === "video" && !formData.thumbnail) {
+                      toast("Extracting thumbnail from video...");
+                      const thumbnailFile = await extractFirstFrame(file);
+                      if (thumbnailFile) {
+                        // Create preview URL
+                        const previewUrl = URL.createObjectURL(thumbnailFile);
+                        setFormData((prev) => ({
+                          ...prev,
+                          thumbnail: thumbnailFile,
+                          thumbnailPreview: previewUrl,
+                        }));
+                        toast.success("Thumbnail extracted!");
+                      }
+                    }
                   }
                 }
               }}

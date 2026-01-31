@@ -508,6 +508,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   aspectRatio={video.contentType === "short" ? 9 / 16 : 16 / 9}
                   autoPlay
                   volume={0.8}
+                  lowLatency
                 >
                   <Player.Container className="rounded-2xl overflow-hidden bg-black">
                     {/* Poster/Thumbnail while loading */}
@@ -634,16 +635,37 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                       <span>•</span>
                     </>
                   )}
-                  {/* For external videos, show source indicator */}
+                  {/* For external videos, show prominent source indicator */}
                   {video.source === "youtube" && (
                     <>
-                      <span className="text-red-400 font-semibold">YouTube</span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-600/20 border border-red-600/40 rounded-full text-xs font-bold text-red-400">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                        </svg>
+                        FROM YOUTUBE
+                      </span>
                       <span>•</span>
                     </>
                   )}
                   {video.source === "bluesky" && (
                     <>
-                      <span className="text-blue-400 font-semibold">Bluesky</span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600/20 border border-blue-600/40 rounded-full text-xs font-bold text-blue-400">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 3c-1.5 0-3 1.5-3 3v12c0 1.5 1.5 3 3 3s3-1.5 3-3V6c0-1.5-1.5-3-3-3z"/>
+                        </svg>
+                        FROM BLUESKY
+                      </span>
+                      <span>•</span>
+                    </>
+                  )}
+                  {video.source === "ceramic" && (
+                    <>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-600/20 border border-purple-600/40 rounded-full text-xs font-bold text-purple-400">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        DRAGVERSE
+                      </span>
                       <span>•</span>
                     </>
                   )}
@@ -684,12 +706,12 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 />
               )}
 
-              {/* View Count - For external videos */}
-              {video.source !== "ceramic" && (
+              {/* View Count - Only show for Dragverse videos with tracked views */}
+              {video.source === "ceramic" && video.views > 0 && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] border border-[#EB83EA]/20 rounded-xl">
                   <FiPlay className="w-5 h-5 text-[#EB83EA]" />
                   <span className="text-sm font-semibold text-white">
-                    {(video.views / 1000).toFixed(1)}K views
+                    {video.views >= 1000 ? `${(video.views / 1000).toFixed(1)}K` : video.views} views
                   </span>
                 </div>
               )}
@@ -780,12 +802,31 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                     @{video.creator.handle}
                   </p>
                   <div className="flex items-center gap-4 text-sm">
-                    <p className="text-[#EB83EA] font-semibold">
-                      {(video.creator.followerCount / 1000).toFixed(1)}K followers
-                    </p>
+                    <div className="flex flex-col">
+                      <p className="text-[#EB83EA] font-semibold">
+                        {(() => {
+                          const dragverseFollowers = video.creator.followerCount || 0;
+                          const blueskyFollowers = (video.creator as any).blueskyFollowerCount || 0;
+                          const youtubeFollowers = (video.creator as any).youtubeFollowerCount || 0;
+                          const total = dragverseFollowers + blueskyFollowers + youtubeFollowers;
+                          return total >= 1000 ? `${(total / 1000).toFixed(1)}K` : total;
+                        })()} followers
+                      </p>
+                      {(((video.creator as any).blueskyFollowerCount || 0) > 0 || ((video.creator as any).youtubeFollowerCount || 0) > 0) && (
+                        <p className="text-xs text-gray-500">
+                          {[
+                            (video.creator.followerCount || 0) > 0 && `Dragverse: ${video.creator.followerCount}`,
+                            ((video.creator as any).blueskyFollowerCount || 0) > 0 && `Bluesky: ${(video.creator as any).blueskyFollowerCount}`,
+                            ((video.creator as any).youtubeFollowerCount || 0) > 0 && `YouTube: ${(video.creator as any).youtubeFollowerCount}`
+                          ].filter(Boolean).join(' • ')}
+                        </p>
+                      )}
+                    </div>
                     <span className="text-gray-600">•</span>
                     <p className="text-gray-400">
-                      {(video.creator.followingCount / 1000).toFixed(1)}K following
+                      {video.creator.followingCount >= 1000
+                        ? `${(video.creator.followingCount / 1000).toFixed(1)}K`
+                        : video.creator.followingCount} following
                     </p>
                   </div>
                   {video.creator.description && (
@@ -898,9 +939,11 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                           <h4 className="font-semibold text-xs line-clamp-2 mb-1 group-hover:text-[#EB83EA] transition-colors">
                             {v.title}
                           </h4>
-                          <p className="text-xs text-gray-500">
-                            {(v.views / 1000).toFixed(1)}K views
-                          </p>
+                          {v.source === "ceramic" && v.views > 0 && (
+                            <p className="text-xs text-gray-500">
+                              {v.views >= 1000 ? `${(v.views / 1000).toFixed(1)}K` : v.views} views
+                            </p>
+                          )}
                         </div>
                       </Link>
                     ))}
@@ -948,9 +991,11 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                           <p className="text-xs text-gray-400 mb-1">
                             {v.creator?.displayName || "Unknown"}
                           </p>
-                          <p className="text-xs text-[#EB83EA] font-semibold">
-                            {(v.views / 1000).toFixed(1)}K views
-                          </p>
+                          {v.source === "ceramic" && v.views > 0 && (
+                            <p className="text-xs text-[#EB83EA] font-semibold">
+                              {v.views >= 1000 ? `${(v.views / 1000).toFixed(1)}K` : v.views} views
+                            </p>
+                          )}
                         </div>
                       </Link>
                     ))}
