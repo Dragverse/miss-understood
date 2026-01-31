@@ -225,10 +225,11 @@ export async function getDragAccountsPosts(
         const profile = await agent.getProfile({ actor: handle });
         const did = profile.data.did;
 
-        // Get author's feed
+        // Get author's feed - fetch more posts per account to include older content
+        // Bluesky API allows up to 100 posts per request
         const feed = await agent.getAuthorFeed({
           actor: did,
-          limit: Math.ceil(limit / handles.length),
+          limit: Math.min(50, Math.ceil(limit / handles.length * 3)), // Fetch 3x more per account for historical content
         });
 
         if (feed.data.feed) {
@@ -554,7 +555,7 @@ export function blueskyPostToContent(post: BlueskyPost): any | null {
  */
 export function calculateEngagementScore(
   post: BlueskyPost,
-  timeDecayHours: number = 48
+  timeDecayHours: number = 168 // 7 days instead of 2 days
 ): number {
   const likes = post.likeCount || 0;
   const reposts = post.repostCount || 0;
@@ -563,10 +564,11 @@ export function calculateEngagementScore(
   // Base engagement score (weighted)
   const baseScore = likes * 3 + reposts * 2 + replies * 1;
 
-  // Time decay factor (newer posts get boost)
+  // Time decay factor (newer posts get modest boost, but older content still visible)
   const postAge = Date.now() - new Date(post.createdAt).getTime();
   const ageInHours = postAge / (1000 * 60 * 60);
-  const timeDecay = Math.max(0.1, 1 - (ageInHours / timeDecayHours));
+  // Less aggressive decay: min 50% instead of 10%, decay over 7 days instead of 2
+  const timeDecay = Math.max(0.5, 1 - (ageInHours / timeDecayHours));
 
   return baseScore * timeDecay;
 }
