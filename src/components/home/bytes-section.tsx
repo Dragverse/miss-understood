@@ -74,12 +74,12 @@ export function BytesSection({ shorts }: BytesSectionProps) {
             href={`/shorts?v=${video.id}`}
             className="flex-shrink-0 snap-start"
           >
-            <div className="relative w-[160px] aspect-[9/16] rounded-3xl overflow-hidden group cursor-pointer shadow-lg">
+            <div className="relative w-[160px] aspect-[9/16] rounded-3xl overflow-hidden group cursor-pointer shadow-lg bg-black">
               <Image
                 src={getSafeThumbnail(video.thumbnail)}
                 alt={video.title}
                 fill
-                className="object-cover group-hover:scale-110 transition-transform duration-700"
+                className="object-contain group-hover:scale-110 transition-transform duration-700"
               />
               {/* YouTube indicator for external content */}
               {(video as any).source === "youtube" && (

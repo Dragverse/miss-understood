@@ -128,17 +128,21 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
   }
 
   // Grid layout
+  // Use dynamic aspect ratio based on content type
+  const aspectRatioClass = video.contentType === "short" ? "aspect-[9/16]" : "aspect-video";
+  const objectFit = video.contentType === "short" ? "object-contain" : "object-cover";
+
   return (
     <div
       className="group cursor-pointer"
       onClick={handleClick}
     >
-        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-3 shadow-lg">
+        <div className={`relative w-full ${aspectRatioClass} rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-3 shadow-lg`}>
           <Image
             src={getSafeThumbnail(video.thumbnail)}
             alt={video.title}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className={`${objectFit} group-hover:scale-105 transition-transform duration-300`}
             loading="lazy"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 20vw"
           />

@@ -302,11 +302,11 @@ export default function HomePage() {
               {/* Live Now Section (shows when creators are streaming) */}
               <LiveNowSection />
 
-              {/* Trending Photos */}
-              <TrendingPhotosSection photos={photoPosts} />
+              {/* Dragverse Bytes (Shorts) - Show FIRST to highlight native content */}
+              {shorts.length > 0 && <BytesSection shorts={shorts} />}
 
-              {/* Bytes (Shorts) Section */}
-              <BytesSection shorts={shorts} />
+              {/* Trending Photos - Drag looks and performances from Bluesky */}
+              {photoPosts.length > 0 && <TrendingPhotosSection photos={photoPosts} />}
 
               {/* Community Videos Section */}
               <CommunitySection videos={horizontalVideos} />

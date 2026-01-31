@@ -161,9 +161,20 @@ async function rssVideoToVideo(rssVideo: RSSVideo): Promise<Video> {
     }
   }
 
-  // Note: RSS doesn't provide duration or reliable aspect ratio
-  // Default to "long" for all RSS videos - shorts detection happens elsewhere if needed
-  const contentType = "long";
+  // Detect shorts based on title/description keywords and YouTube patterns
+  // YouTube Shorts often have "#shorts" hashtag or specific keywords
+  const titleLower = title.toLowerCase();
+  const descLower = description.toLowerCase();
+  const isLikelyShort =
+    titleLower.includes("#shorts") ||
+    titleLower.includes("#short") ||
+    descLower.includes("#shorts") ||
+    descLower.includes("#short") ||
+    titleLower.includes("shorts") && titleLower.length < 100; // Short title with "shorts" keyword
+
+  // Default to short if detected, otherwise long
+  // Note: RSS doesn't provide duration, so this is best-effort detection
+  const contentType = isLikelyShort ? "short" : "long";
 
   return {
     id: `youtube-${videoId}`,
