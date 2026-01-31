@@ -4,7 +4,6 @@ import { fetchCuratedDragContent, fetchCuratedShorts, fetchCuratedMusicPlaylists
 import { getCachedVideos, setCachedVideos } from "@/lib/youtube/cache";
 import { getVideos } from "@/lib/supabase/videos";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
-import { calculateQualityScore, filterByQuality } from "@/lib/curation/quality-score";
 import type { Video } from "@/types";
 
 /**
@@ -83,21 +82,6 @@ export async function GET(request: NextRequest) {
         source = "youtube-rss";
         console.log(`[YouTube Feed API] ${videos.length > 0 ? '✅' : '⚠️'} Got ${videos.length} videos from RSS`);
       }
-    }
-
-    // Skip quality filtering for RSS videos (curated channels are already high quality)
-    // Only apply quality filtering if using YouTube Data API (which has full engagement metrics)
-    if (source === "youtube-api") {
-      const videosWithScores = videos.map(video => ({
-        ...video,
-        qualityScore: calculateQualityScore(video).overallScore,
-      }));
-
-      const qualityFiltered = videosWithScores.filter(v => v.qualityScore >= 20);
-      console.log(`[YouTube Feed API] Quality filtering (API): ${videos.length} → ${qualityFiltered.length} videos (threshold: 20)`);
-      videos = qualityFiltered;
-    } else {
-      console.log(`[YouTube Feed API] Skipping quality filter for RSS (curated channels): ${videos.length} videos`);
     }
 
     // Cache successful results (even empty arrays, to avoid repeated failed API calls)

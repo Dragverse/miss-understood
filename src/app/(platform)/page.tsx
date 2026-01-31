@@ -15,7 +15,6 @@ import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 import { VideoGridSkeleton, ShortsSectionSkeleton } from "@/components/loading/video-card-skeleton";
-import { calculateQualityScore } from "@/lib/curation/quality-score";
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -146,38 +145,13 @@ export default function HomePage() {
         });
       }
 
-      // Separate Dragverse, YouTube, and Bluesky content
-      const [supabaseResults, blueskyResults, youtubeResults] = results;
-      const dragverseContent = [...localVideos, ...supabaseResults];
+      // Combine all videos (simple approach - curated sources don't need filtering)
+      const allVideos = [...localVideos, ...results.flat()];
 
-      // Apply quality filtering to Dragverse content
-      const dragverseWithScores = dragverseContent.map(video => ({
-        ...video,
-        qualityScore: calculateQualityScore(video).overallScore,
-      }));
-      const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 15);
-      console.log(`[Homepage Quality] Dragverse: ${dragverseContent.length} → ${filteredDragverse.length} (threshold: 15)`);
-
-      // Apply quality filtering to Bluesky content (has engagement data)
-      const blueskyWithScores = blueskyResults.map((video: any) => ({
-        ...video,
-        qualityScore: calculateQualityScore(video).overallScore,
-      }));
-      const filteredBluesky = blueskyWithScores.filter((v: any) => v.qualityScore >= 20);
-      console.log(`[Homepage Quality] Bluesky: ${blueskyResults.length} → ${filteredBluesky.length} (threshold: 20)`);
-
-      // Skip quality filtering for YouTube (curated channels, lacks RSS engagement data)
-      console.log(`[Homepage Quality] YouTube: ${youtubeResults.length} videos (no filtering - curated sources)`);
-
-      // Sort each group
-      const sortedDragverse = filteredDragverse.sort((a: any, b: any) => b.qualityScore - a.qualityScore);
-      const sortedBluesky = filteredBluesky.sort((a: any, b: any) => b.qualityScore - a.qualityScore);
-      const sortedYoutube = youtubeResults.sort((a: any, b: any) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-
-      // Combine with Dragverse first, then YouTube, then Bluesky
-      const allVideos = [...sortedDragverse, ...sortedYoutube, ...sortedBluesky];
+      // Sort by date (newest first)
+      if (allVideos.length > 0) {
+        allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
 
       setVideos(allVideos);
       setLoading(false);
