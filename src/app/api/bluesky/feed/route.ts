@@ -34,66 +34,19 @@ export async function GET(request: NextRequest) {
       console.log(`[Bluesky API] Fetching from ${dragAccounts.length} curated drag accounts`);
       posts = await getDragAccountsPosts(dragAccounts, limit);
     } else {
-      // HYBRID APPROACH: Fetch from BOTH search AND specific active accounts in parallel
+      // HYBRID APPROACH: Fetch from BOTH search AND ALL curated accounts in parallel
       // This ensures we get:
-      // 1. Broad drag content from search (hashtags, keywords)
-      // 2. Content from known active creators (tenderoni88, gottmik, etc.)
-      console.log("[Bluesky API] Using hybrid approach: search + active accounts");
+      // 1. Broad drag content from search (hashtags, keywords) - 50%
+      // 2. Content from ALL 80+ curated creators in drag-accounts.ts - 50%
+      console.log("[Bluesky API] Using hybrid approach: search + ALL curated accounts");
 
-      // Active accounts that actually post content regularly on Bluesky
-      // (verified by checking bsky.app/profile/[handle])
-      const activeAccounts = [
-        // Drag Kings & Alternative Drag
-        "tenderoni88.bsky.social",
-        "landon.cider.bsky.social",
-        "murrayhill.bsky.social",
-        "spikeyvan.dykey.bsky.social",
-        "vicoorlando.bsky.social",
-
-        // Dragula & Horror Drag
-        "dragula.bsky.social",
-        "sigourneybeaver.bsky.social",
-        "holloweve.bsky.social",
-        "abhorra.bsky.social",
-        "victoriablack.bsky.social",
-        "saintdrag.bsky.social",
-        "evahdestruction.bsky.social",
-
-        // Drag Race Queens (active on Bluesky)
-        "gottmik.bsky.social",
-        "symone.bsky.social",
-        "jinkxmonsoon.bsky.social",
-        "trixiemattel.bsky.social",
-        "katya.bsky.social",
-        "bobthedragqueen.bsky.social",
-        "monet.bsky.social",
-        "peppermint.bsky.social",
-        "yvieoddly.bsky.social",
-        "kandymuse.bsky.social",
-        "denalifoxx.bsky.social",
-        "plastique.bsky.social",
-        "sashacolby.bsky.social",
-        "willowpill.bsky.social",
-        "kornbread.bsky.social",
-
-        // Makeup & Beauty Creators
-        "ellismiah.bsky.social",
-        "patrickstarrr.bsky.social",
-        "ravenbeauty.bsky.social",
-        "missffame.bsky.social",
-        "trixiecosmetics.bsky.social",
-
-        // International & Other Active Queens
-        "biminibabes.bsky.social",
-        "brookelynnhytes.bsky.social",
-        "panginaheals.bsky.social",
-        "jimbo.bsky.social",
-        "anetra.bsky.social",
-      ];
+      // Get ALL curated drag accounts (80+ accounts from drag-accounts.ts)
+      const allCuratedAccounts = getValidDragAccountHandles();
+      console.log(`[Bluesky API] Fetching from ${allCuratedAccounts.length} curated accounts`);
 
       const [searchPosts, accountPosts] = await Promise.all([
-        searchDragContent(Math.ceil(limit * 0.7)), // 70% from search
-        getDragAccountsPosts(activeAccounts, Math.ceil(limit * 0.3)) // 30% from accounts
+        searchDragContent(Math.ceil(limit * 0.5)), // 50% from search
+        getDragAccountsPosts(allCuratedAccounts, Math.ceil(limit * 0.5)) // 50% from ALL curated accounts
       ]);
 
       // Combine and deduplicate by URI

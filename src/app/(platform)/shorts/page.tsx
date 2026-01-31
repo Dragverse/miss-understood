@@ -255,7 +255,7 @@ function ShortsContent() {
       {/* Vertical Slider */}
       <div
         ref={sliderRef}
-        className="keen-slider h-full w-full snap-y snap-mandatory overflow-y-hidden"
+        className="keen-slider h-full w-full"
       >
         {shorts.map((video, idx) => (
           <div key={video.id} className="keen-slider__slide relative">

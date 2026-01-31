@@ -8,7 +8,6 @@ import { getLocalVideos } from "@/lib/utils/local-storage";
 import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { FiSearch, FiRefreshCw } from "react-icons/fi";
-import { calculateQualityScore } from "@/lib/curation/quality-score";
 
 export default function VideosPage() {
   const [activeCategory, setActiveCategory] = useState("All");
@@ -29,44 +28,17 @@ export default function VideosPage() {
     });
   };
 
-  // Apply quality filtering and prioritization
-  const filterAndSortVideos = (dragverseVideos: Video[], externalVideos: Video[]) => {
-    // Calculate quality scores for all videos
-    const dragverseWithScores = dragverseVideos.map(video => ({
-      ...video,
-      qualityScore: calculateQualityScore(video).overallScore,
-    }));
+  // Sort videos without quality filtering (trust curated sources)
+  const sortVideos = (dragverseVideos: Video[], externalVideos: Video[]) => {
+    // Sort by date (newest first)
+    const sortedDragverse = [...dragverseVideos].sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    const sortedExternal = [...externalVideos].sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
-    const externalWithScores = externalVideos.map(video => ({
-      ...video,
-      qualityScore: calculateQualityScore(video).overallScore,
-    }));
-
-    // Filter by quality thresholds (RELAXED for better content flow)
-    const filteredDragverse = dragverseWithScores.filter(v => v.qualityScore >= 15);
-    const filteredExternal = externalWithScores.filter(v => v.qualityScore >= 20);
-
-    // Diagnostic logging
-    console.log(`[Videos Quality] Dragverse: ${dragverseVideos.length} → ${filteredDragverse.length} (threshold: 15)`);
-    console.log(`[Videos Quality] External: ${externalVideos.length} → ${filteredExternal.length} (threshold: 20)`);
-    if (dragverseWithScores.length > 0) {
-      console.log(`[Videos Quality] Sample Dragverse scores:`, dragverseWithScores.slice(0, 3).map(v => ({
-        title: v.title?.substring(0, 30),
-        score: v.qualityScore,
-        source: v.source,
-      })));
-    }
-    if (externalWithScores.length > 0) {
-      console.log(`[Videos Quality] Sample external scores:`, externalWithScores.slice(0, 3).map(v => ({
-        title: v.title?.substring(0, 30),
-        score: v.qualityScore,
-        source: v.source,
-      })));
-    }
-
-    // Sort each group by quality score (descending)
-    const sortedDragverse = filteredDragverse.sort((a, b) => b.qualityScore - a.qualityScore);
-    const sortedExternal = filteredExternal.sort((a, b) => b.qualityScore - a.qualityScore);
+    console.log(`[Videos] Dragverse: ${dragverseVideos.length} videos, External: ${externalVideos.length} videos (no filtering)`);
 
     // Strong Dragverse priority: show all Dragverse first
     return [...sortedDragverse, ...sortedExternal];
@@ -156,10 +128,10 @@ export default function VideosPage() {
 
       console.log(`[Videos] Loaded ${dragverseVideos.length} Dragverse, ${blueskyVideos?.length || 0} Bluesky, ${youtubeVideos?.length || 0} YouTube videos`);
 
-      // Deduplicate and apply quality filtering
+      // Deduplicate and sort by date
       const dedupedDragverse = deduplicateVideos(dragverseVideos);
       const dedupedExternal = deduplicateVideos(externalVideos);
-      const sortedVideos = filterAndSortVideos(dedupedDragverse, dedupedExternal);
+      const sortedVideos = sortVideos(dedupedDragverse, dedupedExternal);
 
       setVideos(sortedVideos);
 
@@ -193,7 +165,13 @@ export default function VideosPage() {
   }, []);
 
   // Only show horizontal videos (exclude shorts)
-  const horizontalVideos = videos.filter((v) => v.contentType !== "short");
+  const horizontalVideos = videos.filter((v) => {
+    const isHorizontal = v.contentType !== "short";
+    if (!isHorizontal) {
+      console.log(`[Videos] Filtered out short: ${v.title?.substring(0, 30)} (source: ${v.source})`);
+    }
+    return isHorizontal;
+  });
 
   const filteredVideos = horizontalVideos.filter((video) => {
     const matchesCategory =

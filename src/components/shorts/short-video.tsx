@@ -212,7 +212,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
   }
 
   return (
-    <div className="keen-slider__slide flex snap-center justify-center focus-visible:outline-none md:ml-16 md:pb-2">
+    <div className="keen-slider__slide flex justify-center focus-visible:outline-none md:ml-16 md:pb-2">
       <div className="rounded-large ultrawide:w-[650px] bg-gray-950 flex h-full w-full md:w-[450px] items-center overflow-hidden relative">
         {hasValidPlaybackUrl ? (
           <div className="w-full h-full relative" onClick={!isYouTubeVideo ? handleVideoClick : undefined}>

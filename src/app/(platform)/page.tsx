@@ -15,6 +15,7 @@ import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 import { VideoGridSkeleton, ShortsSectionSkeleton } from "@/components/loading/video-card-skeleton";
+import { calculateQualityScore } from "@/lib/curation/quality-score";
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -145,15 +146,41 @@ export default function HomePage() {
         });
       }
 
-      // Combine all videos (simple approach - curated sources don't need filtering)
+      // Combine all videos and apply light quality filtering
       const allVideos = [...localVideos, ...results.flat()];
 
-      // Sort by date (newest first)
-      if (allVideos.length > 0) {
-        allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      }
+      // Calculate quality scores for all videos
+      const scoredVideos = allVideos.map(v => ({
+        ...v,
+        qualityScore: calculateQualityScore(v).overallScore,
+      }));
 
-      setVideos(allVideos);
+      // Apply LOW threshold filtering (10/12 - very permissive)
+      const filteredVideos = scoredVideos.filter(v => {
+        const isDragverse = v.source === "ceramic" || v.source === "supabase" || !v.source;
+        const threshold = isDragverse ? 10 : 12;
+        const passes = v.qualityScore >= threshold;
+
+        if (!passes) {
+          console.log(`[Homepage] Filtered out: ${v.title?.substring(0, 30)} (score: ${v.qualityScore}, threshold: ${threshold})`);
+        }
+
+        return passes;
+      });
+
+      // Sort by quality score + date (quality priority with date tiebreaker)
+      filteredVideos.sort((a, b) => {
+        // If quality scores differ by more than 5 points, prioritize quality
+        if (Math.abs(a.qualityScore - b.qualityScore) > 5) {
+          return b.qualityScore - a.qualityScore;
+        }
+        // Otherwise use date as tiebreaker
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
+      console.log(`[Homepage] Quality filtering: ${allVideos.length} → ${filteredVideos.length} videos (thresholds: Dragverse≥10, External≥12)`);
+
+      setVideos(filteredVideos);
       setLoading(false);
     }
 

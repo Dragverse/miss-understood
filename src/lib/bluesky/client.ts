@@ -347,6 +347,7 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
     // Clearly horizontal (aspect > 1.2) = long-form
     // Otherwise (vertical or square) = short
     contentType = aspectRatio > 1.2 ? "long" : "short";
+    console.log(`[Bluesky] Video aspect ratio: ${aspectRatio.toFixed(2)} (${width}x${height}) → ${contentType}`);
   } else if (post.embed?.external?.uri) {
     // For external links, check if it's a YouTube Short or TikTok
     const url = post.embed.external.uri.toLowerCase();
@@ -356,6 +357,9 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
       // External links without aspect ratio default to long
       contentType = "long";
     }
+    console.log(`[Bluesky] External link detected → ${contentType}: ${post.embed.external.uri}`);
+  } else {
+    console.log(`[Bluesky] No aspect ratio data, defaulting to short`);
   }
   // Native Bluesky videos without aspect ratio default to "short"
 
