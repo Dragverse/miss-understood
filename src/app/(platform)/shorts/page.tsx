@@ -221,9 +221,9 @@ function ShortsContent() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
           </div>
-          <h2 className="text-white text-2xl font-bold mb-3">No Shorts Available</h2>
+          <h2 className="text-white text-2xl font-bold mb-3">No Shorts Found</h2>
           <p className="text-gray-400 mb-6 leading-relaxed">
-            Be the first to share your drag artistry! Upload your performances, tutorials, makeup transformations, or behind-the-scenes moments in vertical video format.
+            We're loading shorts from YouTube, Bluesky, and Dragverse creators. If you see this message, try refreshing the page or upload your own drag content!
           </p>
           <div className="space-y-3">
             <Link
