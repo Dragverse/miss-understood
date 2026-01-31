@@ -177,7 +177,7 @@ export const CURATED_DRAG_ACCOUNTS: CuratedBlueskyAccount[] = [
     description: "Season 13 queen, ice skater and performer",
   },
   {
-    handle: "rosé.bsky.social",
+    handle: "rose.bsky.social",
     displayName: "Rosé",
     description: "Season 13 finalist, singer and performer",
   },
@@ -417,4 +417,38 @@ export function getDragAccountHandles(): string[] {
  */
 export function getDragAccountInfo(handle: string): CuratedBlueskyAccount | undefined {
   return CURATED_DRAG_ACCOUNTS.find(account => account.handle === handle);
+}
+
+/**
+ * Validate Bluesky handle format
+ * Valid: letters, numbers, hyphens, dots
+ * Invalid: special characters, spaces, @symbols
+ */
+export function isValidBlueskyHandle(handle: string): boolean {
+  // Remove .bsky.social suffix for validation
+  const handlePart = handle.replace('.bsky.social', '');
+
+  // Check format: alphanumeric, hyphens, dots only
+  const validFormat = /^[a-z0-9.-]+$/i.test(handlePart);
+
+  // Check length (3-253 characters per AT Protocol spec)
+  const validLength = handlePart.length >= 3 && handlePart.length <= 253;
+
+  return validFormat && validLength;
+}
+
+/**
+ * Get only valid drag account handles
+ * Filters out any handles with invalid format (e.g., special characters)
+ */
+export function getValidDragAccountHandles(): string[] {
+  return CURATED_DRAG_ACCOUNTS
+    .map(account => account.handle)
+    .filter(handle => {
+      const isValid = isValidBlueskyHandle(handle);
+      if (!isValid) {
+        console.warn(`[Bluesky] Invalid handle format: ${handle}`);
+      }
+      return isValid;
+    });
 }

@@ -19,9 +19,15 @@ export async function getBlueskyAgent(): Promise<BskyAgent> {
   if (identifier && password) {
     try {
       await agent.login({ identifier, password });
+      console.log("[Bluesky] ✅ Authentication successful");
     } catch (error) {
-      console.error("[Bluesky] Authentication failed:", error instanceof Error ? error.message : error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error("[Bluesky] ❌ Authentication failed:", errorMsg);
+      throw new Error(`Bluesky authentication failed: ${errorMsg}`);
     }
+  } else {
+    console.warn("[Bluesky] ⚠️  No credentials provided - agent will be unauthenticated");
+    throw new Error("Bluesky credentials not configured");
   }
 
   return agent;

@@ -6,7 +6,7 @@ import {
   blueskyPostToContent,
   sortPostsByEngagement,
 } from "@/lib/bluesky/client";
-import { getDragAccountHandles } from "@/lib/bluesky/drag-accounts";
+import { getValidDragAccountHandles } from "@/lib/bluesky/drag-accounts";
 
 /**
  * API route to fetch drag-related content from Bluesky
@@ -29,8 +29,8 @@ export async function GET(request: NextRequest) {
     let posts;
 
     if (source === "accounts") {
-      // Fetch from curated drag-related accounts (18 top drag creators)
-      const dragAccounts = getDragAccountHandles();
+      // Fetch from curated drag-related accounts (filtered for valid handles only)
+      const dragAccounts = getValidDragAccountHandles();
       console.log(`[Bluesky API] Fetching from ${dragAccounts.length} curated drag accounts`);
       posts = await getDragAccountsPosts(dragAccounts, limit);
     } else {
@@ -79,11 +79,25 @@ export async function GET(request: NextRequest) {
       sortedBy: sortBy,
     });
   } catch (error) {
-    console.error("Bluesky feed fetch error:", error);
+    console.error("[Bluesky Feed API] Error:", error);
+
+    // Return 401 for auth errors, not 500
+    if (error instanceof Error && error.message.includes("authentication")) {
+      return NextResponse.json(
+        {
+          error: "Bluesky authentication failed. Check credentials.",
+          videos: [],
+          posts: [],
+        },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Failed to fetch feed",
         videos: [],
+        posts: [],
       },
       { status: 500 }
     );
