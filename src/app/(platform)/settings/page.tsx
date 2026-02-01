@@ -7,7 +7,7 @@ import { SiBluesky } from "react-icons/si";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAuthUser } from "@/lib/privy/hooks";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useFundWallet } from "@privy-io/react-auth";
 import { Creator } from "@/types";
 import { uploadBanner, uploadAvatar, getImageDataURL } from "@/lib/livepeer/upload-image";
 import { getCreatorByDID } from "@/lib/supabase/creators";
@@ -18,6 +18,7 @@ import { clearBlueskyCache } from "@/lib/bluesky/hooks";
 export default function SettingsPage() {
   const router = useRouter();
   const { getAccessToken, linkFarcaster, unlinkFarcaster } = usePrivy();
+  const { fundWallet } = useFundWallet();
   const {
     isAuthenticated,
     isReady,
@@ -1332,7 +1333,7 @@ export default function SettingsPage() {
                             try {
                               const wallet = wallets[0];
                               if (wallet && 'address' in wallet) {
-                                toast.success("Opening fund wallet modal...");
+                                await fundWallet({ address: wallet.address });
                               }
                             } catch (error) {
                               toast.error("Failed to open funding modal");

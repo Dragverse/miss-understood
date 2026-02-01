@@ -20,7 +20,8 @@ import { useAuth } from "@/lib/store/auth";
 import { useCanLivestream } from "@/lib/livestream";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { SearchDropdown } from "./search-dropdown";
-import { useBalance } from "wagmi";
+import { useReadContract } from "wagmi";
+import { formatUnits } from "viem";
 
 export function Navbar() {
   const { login, logout, authenticated, user } = usePrivy();
@@ -31,12 +32,28 @@ export function Navbar() {
   const [notificationCount, setNotificationCount] = useState(0);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
 
-  // Get wallet address and fetch balance
+  // Get wallet address and fetch USDC balance
   const wallet = user?.wallet || user?.linkedAccounts?.find((account: any) => account.type === 'wallet');
   const walletAddress = wallet && 'address' in wallet ? wallet.address as `0x${string}` : undefined;
 
-  const { data: balanceData } = useBalance({
-    address: walletAddress,
+  // USDC contract on Base network
+  const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+  const USDC_ABI = [
+    {
+      constant: true,
+      inputs: [{ name: "_owner", type: "address" }],
+      name: "balanceOf",
+      outputs: [{ name: "balance", type: "uint256" }],
+      type: "function",
+    },
+  ] as const;
+
+  // Fetch USDC balance
+  const { data: usdcBalance } = useReadContract({
+    address: USDC_ADDRESS,
+    abi: USDC_ABI,
+    functionName: "balanceOf",
+    args: walletAddress ? [walletAddress] : undefined,
     chainId: 8453, // Base network
   });
 
@@ -206,14 +223,14 @@ export function Navbar() {
                 {/* Dropdown */}
                 <div className="absolute right-0 top-full mt-2 w-64 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2 z-50">
                   {/* Wallet Balance */}
-                  {user && walletAddress && balanceData && parseFloat(balanceData.formatted) > 0 && (
+                  {user && walletAddress && usdcBalance && parseFloat(formatUnits(usdcBalance as bigint, 6)) > 0 && (
                     <>
                       <div className="px-4 py-3 bg-white/5 rounded-xl mb-2">
                         <div className="text-xs text-gray-400 mb-1">Wallet Balance</div>
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">👛</span>
                           <div className="text-lg font-bold text-white">
-                            {parseFloat(balanceData.formatted).toFixed(4)} ETH
+                            ${parseFloat(formatUnits(usdcBalance as bigint, 6)).toFixed(2)} USDC
                           </div>
                         </div>
                         <div className="text-xs text-gray-400 mt-1">
