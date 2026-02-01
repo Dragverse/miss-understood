@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft, FiAlertTriangle } from "react-icons/fi";
+import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft, FiAlertTriangle, FiShare2 } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import Image from "next/image";
 import toast from "react-hot-toast";
@@ -37,7 +37,7 @@ export default function SettingsPage() {
     unlinkGoogle,
   } = useAuthUser();
 
-  const [activeSection, setActiveSection] = useState<"profile" | "accounts" | "danger">("profile");
+  const [activeSection, setActiveSection] = useState<"profile" | "accounts" | "crosspost" | "danger">("profile");
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -76,6 +76,17 @@ export default function SettingsPage() {
   // Delete account state
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+  // Crosspost settings state
+  const [crosspostSettings, setCrosspostSettings] = useState({
+    bluesky: false,
+    farcaster: false,
+  });
+  const [connectedPlatforms, setConnectedPlatforms] = useState({
+    bluesky: false,
+    farcaster: false,
+  });
+  const [isSavingCrosspost, setIsSavingCrosspost] = useState(false);
 
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -346,6 +357,34 @@ export default function SettingsPage() {
 
     checkFarcasterSigner();
   }, [farcasterHandle, isAuthenticated, getAccessToken]);
+
+  // Load crosspost settings
+  useEffect(() => {
+    async function loadCrosspostSettings() {
+      if (!isAuthenticated) return;
+
+      try {
+        const token = await getAccessToken();
+        const response = await fetch("/api/user/crosspost-settings", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setCrosspostSettings(data.settings);
+            setConnectedPlatforms(data.connected);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load crosspost settings:", error);
+      }
+    }
+
+    loadCrosspostSettings();
+  }, [isAuthenticated, getAccessToken]);
 
   const handleBannerChange = async (file: File | null) => {
     if (file) {
@@ -735,6 +774,44 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveCrosspostSettings = async () => {
+    setIsSavingCrosspost(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error("Authentication required. Please log in again.");
+      }
+
+      const response = await fetch("/api/user/crosspost-settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(crosspostSettings),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save settings");
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Cross-posting preferences saved!");
+      } else {
+        throw new Error(result.error || "Failed to save settings");
+      }
+    } catch (error) {
+      console.error("Failed to save crosspost settings:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save settings"
+      );
+    } finally {
+      setIsSavingCrosspost(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== "DELETE") {
       toast.error('Please type "DELETE" to confirm');
@@ -853,6 +930,17 @@ export default function SettingsPage() {
             >
               <FiLink2 className="w-5 h-5" />
               Connected Accounts
+            </button>
+            <button
+              onClick={() => setActiveSection("crosspost")}
+              className={`w-full px-4 py-3 rounded-lg text-left flex items-center gap-3 transition ${
+                activeSection === "crosspost"
+                  ? "bg-[#EB83EA] text-white"
+                  : "bg-[#18122D] text-gray-400 hover:text-white hover:bg-[#2f2942]"
+              }`}
+            >
+              <FiShare2 className="w-5 h-5" />
+              Cross-Posting
             </button>
             <button
               onClick={() => setActiveSection("danger")}
@@ -1116,6 +1204,148 @@ export default function SettingsPage() {
                     {isSaving ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {activeSection === "crosspost" && (
+              <div>
+                <h2 className="text-2xl font-bold text-[#FCF1FC] mb-6">
+                  Cross-Posting Settings
+                </h2>
+                <p className="text-gray-400 mb-6">
+                  Set your default platforms for cross-posting. You can override these settings when creating individual posts.
+                </p>
+
+                <div className="space-y-4">
+                  {/* Bluesky Toggle */}
+                  <div className="p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                          <SiBluesky className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">Bluesky</p>
+                          <p className="text-sm text-gray-400">
+                            {connectedPlatforms.bluesky
+                              ? `Connected as @${blueskyHandle}`
+                              : "Not connected"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {connectedPlatforms.bluesky ? (
+                          <>
+                            <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                              Connected
+                            </span>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={crosspostSettings.bluesky}
+                                onChange={(e) =>
+                                  setCrosspostSettings((prev) => ({
+                                    ...prev,
+                                    bluesky: e.target.checked,
+                                  }))
+                                }
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#EB83EA]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#EB83EA]"></div>
+                            </label>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setActiveSection("accounts")}
+                            className="text-sm px-4 py-2 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 hover:border-blue-500 rounded-lg transition font-semibold"
+                          >
+                            Connect
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Farcaster Toggle */}
+                  <div className="p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">F</span>
+                        </div>
+                        <div>
+                          <p className="font-semibold">Farcaster</p>
+                          <p className="text-sm text-gray-400">
+                            {connectedPlatforms.farcaster
+                              ? `Connected as @${farcasterHandle}`
+                              : "Not connected"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {connectedPlatforms.farcaster ? (
+                          <>
+                            {farcasterSignerStatus?.hasSigner ? (
+                              <>
+                                <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                                  Ready
+                                </span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={crosspostSettings.farcaster}
+                                    onChange={(e) =>
+                                      setCrosspostSettings((prev) => ({
+                                        ...prev,
+                                        farcaster: e.target.checked,
+                                      }))
+                                    }
+                                    className="sr-only peer"
+                                  />
+                                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#EB83EA]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#EB83EA]"></div>
+                                </label>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => setActiveSection("accounts")}
+                                className="text-sm px-4 py-2 bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 border border-yellow-500/30 hover:border-yellow-500 rounded-lg transition font-semibold"
+                              >
+                                Setup Required
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setActiveSection("accounts")}
+                            className="text-sm px-4 py-2 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border border-purple-500/30 hover:border-purple-500 rounded-lg transition font-semibold"
+                          >
+                            Connect
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info Box */}
+                <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                  <p className="text-sm text-blue-400 mb-2">
+                    <strong>Default Cross-Posting:</strong> When enabled, your posts will automatically be shared to the selected platforms.
+                  </p>
+                  <p className="text-sm text-blue-400">
+                    You can override these defaults when creating individual posts in the composer.
+                  </p>
+                </div>
+
+                {/* Save Button */}
+                <button
+                  onClick={handleSaveCrosspostSettings}
+                  disabled={isSavingCrosspost}
+                  className="mt-6 w-full px-6 py-4 bg-[#EB83EA] hover:bg-[#E748E6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-full transition-colors flex items-center justify-center gap-2"
+                >
+                  <FiSave className="w-5 h-5" />
+                  {isSavingCrosspost ? "Saving..." : "Save Cross-Posting Preferences"}
+                </button>
               </div>
             )}
 
