@@ -12,7 +12,7 @@ interface TrendingTopic {
 }
 
 export function FeedRightSidebar() {
-  const { user } = useAuthUser();
+  const { creator } = useAuthUser();
   const [bookmarkCount, setBookmarkCount] = useState(0);
   const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([]);
   const [isLivestreamApproved, setIsLivestreamApproved] = useState(false);
@@ -34,10 +34,10 @@ export function FeedRightSidebar() {
   // Check if user is approved for livestreaming
   useEffect(() => {
     async function checkLivestreamApproval() {
-      if (!user?.did) return;
+      if (!creator?.did) return;
 
       try {
-        const response = await fetch(`/api/creators/${user.did}/livestream-status`);
+        const response = await fetch(`/api/creators/${creator.did}/livestream-status`);
         const data = await response.json();
         setIsLivestreamApproved(data.approved || false);
       } catch (error) {
@@ -45,7 +45,7 @@ export function FeedRightSidebar() {
       }
     }
     checkLivestreamApproval();
-  }, [user]);
+  }, [creator]);
 
   // Fetch trending hashtags from Bluesky
   useEffect(() => {
