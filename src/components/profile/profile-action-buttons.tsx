@@ -135,7 +135,7 @@ export function ProfileActionButtons({
       }
 
       // Check if creator has a wallet to receive tips
-      if (!creator.wallet_address) {
+      if (!creator.walletAddress) {
         alert("This creator hasn't set up their wallet yet");
         setIsSendingTip(false);
         return;
@@ -165,7 +165,7 @@ export function ProfileActionButtons({
         address: USDC_ADDRESS,
         abi: USDC_ABI,
         functionName: "transfer",
-        args: [creator.wallet_address as `0x${string}`, amountInUsdc],
+        args: [creator.walletAddress as `0x${string}`, amountInUsdc],
         chain: base,
       });
 
@@ -179,7 +179,7 @@ export function ProfileActionButtons({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             from: walletAddress,
-            to: creator.wallet_address,
+            to: creator.walletAddress,
             amount: amount,
             amountUSD: amount,
             txHash: hash,
