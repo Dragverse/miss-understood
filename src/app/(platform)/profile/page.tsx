@@ -272,15 +272,21 @@ export default function ProfilePage() {
 
         if (profileData.success && profileData.profile) {
           setBlueskyProfile(profileData.profile);
+          // CRITICAL: Only use Bluesky data as fallback if Supabase data doesn't exist
+          // This ensures user settings (from Supabase) take priority
           setCreator((prev) => {
             if (!prev) return prev;
             return {
               ...prev,
-              avatar: profileData.profile.avatar || prev.avatar,
-              banner: profileData.profile.banner || prev.banner,
-              description: profileData.profile.description || prev.description,
-              followerCount: profileData.profile.followersCount || prev.followerCount,
-              followingCount: profileData.profile.followsCount || prev.followingCount,
+              // Only use Bluesky avatar if no avatar is set in Supabase
+              avatar: prev.avatar && prev.avatar !== "/defaultpfp.png" ? prev.avatar : (profileData.profile.avatar || prev.avatar),
+              // Only use Bluesky banner if no banner is set in Supabase
+              banner: prev.banner || profileData.profile.banner,
+              // Only use Bluesky description if no description is set in Supabase
+              description: prev.description && prev.description !== "Welcome to my Dragverse profile!" ? prev.description : (profileData.profile.description || prev.description),
+              // Store Bluesky follower counts separately for aggregation
+              blueskyFollowerCount: profileData.profile.followersCount,
+              blueskyFollowingCount: profileData.profile.followsCount,
               blueskyHandle: profileData.profile.handle,
             };
           });
@@ -406,15 +412,32 @@ export default function ProfilePage() {
 
 
   return (
-    <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
-      <div className="max-w-5xl mx-auto">
-        {/* Instagram-Style Header */}
-        <div className="mb-8">
-          {/* Profile Info - Circular Avatar with Inline Stats */}
-          <div className="flex items-start gap-8 mb-6">
-            {/* Circular Avatar */}
-            <div className="flex-shrink-0">
-              <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#EB83EA]/30 overflow-hidden shadow-2xl shadow-[#EB83EA]/20">
+    <div className="min-h-screen">
+      {/* Hero Banner - Full width */}
+      <div className="relative w-full h-[40vh] md:h-[50vh] bg-gradient-to-br from-[#EB83EA]/20 via-[#7c3aed]/20 to-[#1a0b2e]">
+        {creator.banner ? (
+          <Image
+            src={creator.banner}
+            alt="Profile banner"
+            fill
+            className="object-cover"
+            priority
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA] via-[#7c3aed] to-[#1a0b2e]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
+          </div>
+        )}
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[#0f071a]" />
+
+        {/* Profile content overlaying banner */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 md:px-8 pb-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex flex-col md:flex-row items-start md:items-end gap-4 md:gap-6">
+              {/* Avatar - Rounded */}
+              <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#0f071a] overflow-hidden bg-[#2f2942] shadow-2xl flex-shrink-0">
                 <Image
                   src={creator.avatar}
                   alt={creator.displayName}
@@ -423,162 +446,159 @@ export default function ProfilePage() {
                   priority
                 />
               </div>
-            </div>
 
-            {/* Profile Details */}
-            <div className="flex-1 min-w-0">
-              {/* Username and Actions */}
-              <div className="flex items-center gap-4 mb-6">
-                <div className="flex items-center gap-2 min-w-0">
-                  <h1 className="text-2xl font-semibold text-white truncate">
-                    {creator.handle}
-                  </h1>
-                  <VerificationBadge
-                    badgeType={getUserBadgeType(
-                      creator.did,
-                      undefined,
-                      !!creator.blueskyHandle,
-                      !!creator.farcasterHandle
-                    )}
-                    size={24}
-                    className="flex-shrink-0"
-                  />
+              {/* Name, handle, and actions */}
+              <div className="flex-1 flex flex-col md:flex-row md:items-end md:justify-between gap-4 pb-2">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-2xl">
+                      {creator.displayName}
+                    </h1>
+                    <VerificationBadge
+                      badgeType={getUserBadgeType(
+                        creator.did,
+                        undefined,
+                        !!creator.blueskyHandle,
+                        !!creator.farcasterHandle
+                      )}
+                      size={28}
+                      className="flex-shrink-0"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <p className="text-white/90 text-lg md:text-xl drop-shadow-lg">@{creator.handle}</p>
+                  </div>
+                  {/* Stats inline */}
+                  <div className="flex gap-6 text-sm md:text-base">
+                    <div>
+                      <span className="font-bold text-xl text-white drop-shadow-lg">
+                        {stats.videoCount}
+                      </span>
+                      <span className="text-white/80 ml-2">posts</span>
+                    </div>
+                    <div className="group relative">
+                      <span className="font-bold text-xl text-white drop-shadow-lg">
+                        {aggregatedStats ? aggregatedStats.totalFollowers.toLocaleString() : creator.followerCount.toLocaleString()}
+                      </span>
+                      <span className="text-white/80 ml-2">followers</span>
+                      {/* Platform breakdown tooltip */}
+                      {aggregatedStats && (aggregatedStats.platforms.bluesky || aggregatedStats.platforms.youtube) && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                          <div className="bg-[#1a0b2e]/95 border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[160px] backdrop-blur-sm">
+                            <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Sources</div>
+                            <div className="space-y-1.5 text-sm">
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-[#EB83EA]">Dragverse</span>
+                                <span className="text-white font-medium">{aggregatedStats.dragverseFollowers.toLocaleString()}</span>
+                              </div>
+                              {aggregatedStats.platforms.bluesky && aggregatedStats.blueskyFollowers > 0 && (
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-[#0085ff]">Bluesky</span>
+                                  <span className="text-white font-medium">{aggregatedStats.blueskyFollowers.toLocaleString()}</span>
+                                </div>
+                              )}
+                              {aggregatedStats.platforms.youtube && aggregatedStats.youtubeSubscribers > 0 && (
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-red-500">YouTube</span>
+                                  <span className="text-white font-medium">{aggregatedStats.youtubeSubscribers.toLocaleString()}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <span className="font-bold text-xl text-white drop-shadow-lg">
+                        {aggregatedStats ? aggregatedStats.totalFollowing.toLocaleString() : creator.followingCount.toLocaleString()}
+                      </span>
+                      <span className="text-white/80 ml-2">following</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-2">
+
+                {/* Action buttons */}
+                <div className="flex-shrink-0 flex gap-2">
                   <button
                     onClick={() => router.push("/settings")}
-                    className="px-4 py-1.5 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all text-sm"
+                    className="px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all"
                   >
                     Edit Profile
                   </button>
                   <button
                     onClick={handleShareProfile}
-                    className="px-4 py-1.5 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all text-sm"
+                    className="px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all"
                     title="Copy profile link"
                   >
-                    {profileLinkCopied ? <FiCheck className="w-4 h-4" /> : <FiShare2 className="w-4 h-4" />}
+                    {profileLinkCopied ? <FiCheck className="w-5 h-5" /> : <FiShare2 className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
-
-              {/* Stats Row */}
-              <div className="flex items-center gap-8 mb-6">
-                <div className="text-center">
-                  <div className="text-white font-semibold text-base">
-                    {stats.videoCount.toLocaleString()}
-                  </div>
-                  <div className="text-gray-400 text-sm">posts</div>
-                </div>
-                <div className="text-center group relative">
-                  <div className="text-white font-semibold text-base">
-                    {aggregatedStats ? aggregatedStats.totalFollowers.toLocaleString() : creator.followerCount.toLocaleString()}
-                  </div>
-                  <div className="text-gray-400 text-sm">followers</div>
-                  {/* Platform breakdown tooltip */}
-                  {aggregatedStats && (aggregatedStats.platforms.bluesky || aggregatedStats.platforms.youtube) && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                      <div className="bg-[#1a0b2e] border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[180px]">
-                        <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Follower Sources</div>
-                        <div className="space-y-1.5 text-sm">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[#EB83EA]">Dragverse</span>
-                            <span className="text-white font-medium">{aggregatedStats.dragverseFollowers.toLocaleString()}</span>
-                          </div>
-                          {aggregatedStats.platforms.bluesky && aggregatedStats.blueskyFollowers > 0 && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-[#0085ff]">Bluesky</span>
-                              <span className="text-white font-medium">{aggregatedStats.blueskyFollowers.toLocaleString()}</span>
-                            </div>
-                          )}
-                          {aggregatedStats.platforms.youtube && aggregatedStats.youtubeSubscribers > 0 && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-red-500">YouTube</span>
-                              <span className="text-white font-medium">{aggregatedStats.youtubeSubscribers.toLocaleString()}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-[#EB83EA]/30"></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="text-center">
-                  <div className="text-white font-semibold text-base">
-                    {aggregatedStats ? aggregatedStats.totalFollowing.toLocaleString() : creator.followingCount.toLocaleString()}
-                  </div>
-                  <div className="text-gray-400 text-sm">following</div>
-                </div>
-              </div>
-
-              {/* Display Name and Bio */}
-              <div>
-                <div className="text-white font-semibold mb-1">{creator.displayName}</div>
-                {creator.description && (
-                  <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">
-                    {creator.description}
-                  </p>
-                )}
-              </div>
-
-              {/* Social Links - Compact */}
-              {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle) && (
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {creator.instagramHandle && (
-                    <a
-                      href={`https://instagram.com/${creator.instagramHandle}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#E1306C] to-[#C13584] hover:from-[#D12963] hover:to-[#B02575] text-white text-xs font-semibold rounded-lg transition-all"
-                    >
-                      <FaInstagram className="w-3.5 h-3.5" />
-                      <span>Instagram</span>
-                    </a>
-                  )}
-                  {creator.tiktokHandle && (
-                    <a
-                      href={`https://tiktok.com/@${creator.tiktokHandle}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#000000] to-[#00f2ea] hover:from-[#111111] hover:to-[#00d9d1] text-white text-xs font-semibold rounded-lg transition-all"
-                    >
-                      <FaTiktok className="w-3.5 h-3.5" />
-                      <span>TikTok</span>
-                    </a>
-                  )}
-                  {creator.blueskyHandle && (
-                    <a
-                      href={`https://bsky.app/profile/${creator.blueskyHandle}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#0085ff] to-[#0066cc] hover:from-[#0077ee] hover:to-[#0055bb] text-white text-xs font-semibold rounded-lg transition-all"
-                    >
-                      <SiBluesky className="w-3.5 h-3.5" />
-                      <span>Bluesky</span>
-                    </a>
-                  )}
-                  {creator.website && (
-                    <a
-                      href={creator.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2f2942] hover:bg-[#3f3952] text-white text-xs font-semibold rounded-lg transition-all"
-                    >
-                      <FiGlobe className="w-3.5 h-3.5" />
-                      <span>Website</span>
-                    </a>
-                  )}
-                </div>
-              )}
             </div>
           </div>
-
-          {/* Story Highlights Row - Hidden for future feature */}
-          {/* TODO: Implement story highlights feature
-          <div className="flex gap-6 px-4 mb-8 overflow-x-auto pb-2">
-            Story highlights will go here
-          </div>
-          */}
         </div>
+      </div>
+
+      {/* Content area */}
+      <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
+        {/* Bio and Social Links */}
+        {(creator.description || creator.instagramHandle || creator.tiktokHandle || creator.blueskyHandle || creator.farcasterHandle || creator.website) && (
+          <div className="mb-8">
+            {creator.description && (
+              <p className="text-gray-200 text-base leading-relaxed mb-4 max-w-3xl">
+                {creator.description}
+              </p>
+            )}
+            {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle || creator.farcasterHandle) && (
+              <div className="flex flex-wrap gap-2">
+                {creator.instagramHandle && (
+                  <a
+                    href={`https://instagram.com/${creator.instagramHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#E1306C] to-[#C13584] hover:from-[#D12963] hover:to-[#B02575] text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    <FaInstagram className="w-3.5 h-3.5" />
+                    <span>Instagram</span>
+                  </a>
+                )}
+                {creator.tiktokHandle && (
+                  <a
+                    href={`https://tiktok.com/@${creator.tiktokHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#000000] to-[#00f2ea] hover:from-[#111111] hover:to-[#00d9d1] text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    <FaTiktok className="w-3.5 h-3.5" />
+                    <span>TikTok</span>
+                  </a>
+                )}
+                {creator.blueskyHandle && (
+                  <a
+                    href={`https://bsky.app/profile/${creator.blueskyHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#0085ff] to-[#0066cc] hover:from-[#0077ee] hover:to-[#0055bb] text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    <SiBluesky className="w-3.5 h-3.5" />
+                    <span>Bluesky</span>
+                  </a>
+                )}
+                {creator.website && (
+                  <a
+                    href={creator.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2f2942] hover:bg-[#3f3952] text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    <FiGlobe className="w-3.5 h-3.5" />
+                    <span>Website</span>
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Content Section with Icon Tabs */}
         <div>
