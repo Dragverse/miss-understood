@@ -1333,7 +1333,14 @@ export default function SettingsPage() {
                             try {
                               const wallet = wallets[0];
                               if (wallet && 'address' in wallet) {
-                                await fundWallet({ address: wallet.address as string });
+                                await fundWallet({
+                                  address: wallet.address as string,
+                                  options: {
+                                    chain: { id: 8453 }, // Base network
+                                    asset: "USDC",
+                                    amount: "10", // Default amount
+                                  }
+                                });
                               } else {
                                 toast.error("No wallet address found");
                               }
