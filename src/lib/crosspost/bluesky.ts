@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { getIronSession } from "iron-session";
-import { sessionOptions, SessionData } from "@/lib/session";
+import { sessionOptions, SessionData } from "@/lib/session/config";
 
 interface BlueskyPostParams {
   text: string;
@@ -31,16 +31,37 @@ export async function postToBluesky(
 ): Promise<BlueskyPostResult> {
   try {
     // Get Bluesky session from iron-session
-    const session = await getIronSession<SessionData>(request, sessionOptions);
+    const response = new Response();
+    const session = await getIronSession<SessionData>(request, response, sessionOptions);
 
-    if (!session.bluesky?.accessJwt || !session.bluesky?.did) {
+    if (!session.bluesky?.handle || !session.bluesky?.appPassword) {
       return {
         success: false,
         error: "Bluesky not connected. Please connect your Bluesky account first."
       };
     }
 
-    const { accessJwt, did } = session.bluesky;
+    const { handle, appPassword } = session.bluesky;
+
+    // Authenticate with Bluesky to get access token
+    const authResponse = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier: handle,
+        password: appPassword,
+      }),
+    });
+
+    if (!authResponse.ok) {
+      return {
+        success: false,
+        error: "Failed to authenticate with Bluesky. Please reconnect your account."
+      };
+    }
+
+    const authData = await authResponse.json();
+    const { accessJwt, did } = authData;
 
     // Upload images if provided
     const embeds: any[] = [];
