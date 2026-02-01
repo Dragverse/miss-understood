@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/store/auth";
 import { useCanLivestream } from "@/lib/livestream";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { SearchDropdown } from "./search-dropdown";
+import { useBalance } from "wagmi";
 
 export function Navbar() {
   const { login, logout, authenticated, user } = usePrivy();
@@ -29,6 +30,15 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+
+  // Get wallet address and fetch balance
+  const wallet = user?.wallet || user?.linkedAccounts?.find((account: any) => account.type === 'wallet');
+  const walletAddress = wallet && 'address' in wallet ? wallet.address as `0x${string}` : undefined;
+
+  const { data: balanceData } = useBalance({
+    address: walletAddress,
+    chainId: 8453, // Base network
+  });
 
   // User has social connection (for create button)
   const hasConnection = blueskyConnected || !!farcasterHandle;
@@ -195,34 +205,19 @@ export function Navbar() {
                 </div>
                 {/* Dropdown */}
                 <div className="absolute right-0 top-full mt-2 w-64 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2 z-50">
-                  {/* Wallet Section */}
-                  {user && (user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet')) && (
+                  {/* Wallet Balance */}
+                  {user && walletAddress && balanceData && parseFloat(balanceData.formatted) > 0 && (
                     <>
                       <div className="px-4 py-3 bg-white/5 rounded-xl mb-2">
-                        <div className="text-xs text-gray-400 mb-1">Wallet</div>
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="text-xs font-mono text-white truncate flex-1">
-                            {(() => {
-                              const wallet = user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet');
-                              if (wallet && 'address' in wallet) {
-                                const addr = wallet.address as string;
-                                return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-                              }
-                              return 'No wallet';
-                            })()}
+                        <div className="text-xs text-gray-400 mb-1">Wallet Balance</div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">👛</span>
+                          <div className="text-lg font-bold text-white">
+                            {parseFloat(balanceData.formatted).toFixed(4)} ETH
                           </div>
-                          <button
-                            onClick={() => {
-                              const wallet = user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet');
-                              if (wallet && 'address' in wallet) {
-                                navigator.clipboard.writeText(wallet.address as string);
-                              }
-                            }}
-                            className="text-[#EB83EA] hover:text-[#E748E6] text-xs"
-                            title="Copy address"
-                          >
-                            Copy
-                          </button>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          on Base network
                         </div>
                       </div>
                       <div className="my-1 h-px bg-white/10" />

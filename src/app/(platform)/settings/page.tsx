@@ -1288,7 +1288,7 @@ export default function SettingsPage() {
                     <div className="bg-gradient-to-br from-[#EB83EA]/20 to-purple-900/20 border border-[#EB83EA]/30 rounded-xl p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-[#FCF1FC] mb-1">Primary Wallet</h3>
+                          <h3 className="text-lg font-bold text-[#FCF1FC] mb-1">Your Wallet</h3>
                           <p className="text-sm text-gray-400">{getWalletType(wallets[0])}</p>
                         </div>
                         <div className="w-12 h-12 rounded-full bg-[#EB83EA] flex items-center justify-center">
@@ -1338,10 +1338,13 @@ export default function SettingsPage() {
                               toast.error("Failed to open funding modal");
                             }
                           }}
-                          className="px-4 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg font-semibold transition flex items-center justify-center gap-2"
+                          className="px-4 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg font-semibold transition flex flex-col items-center justify-center"
                         >
-                          <FiDollarSign className="w-4 h-4" />
-                          Add Funds
+                          <div className="flex items-center gap-2">
+                            <FiDollarSign className="w-4 h-4" />
+                            Add Funds
+                          </div>
+                          <span className="text-xs text-white/80 mt-0.5">Top up to support your faves</span>
                         </button>
                         <button
                           onClick={() => {
@@ -1431,9 +1434,9 @@ export default function SettingsPage() {
                     <div className="w-16 h-16 rounded-full bg-[#2f2942] flex items-center justify-center mx-auto mb-4">
                       <FiDollarSign className="w-8 h-8 text-gray-400" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#FCF1FC] mb-2">No Wallet Connected</h3>
+                    <h3 className="text-lg font-bold text-[#FCF1FC] mb-2">Connect your wallet to tip creators you love ✨</h3>
                     <p className="text-gray-400 mb-6">
-                      Connect a wallet to send tips and receive payments
+                      Support your faves and receive tips from your community
                     </p>
                     <button
                       onClick={handleLinkWallet}

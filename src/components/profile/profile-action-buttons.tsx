@@ -4,6 +4,9 @@ import { useState } from "react";
 import { FiUserPlus, FiUserCheck, FiDollarSign } from "react-icons/fi";
 import { usePrivy, useFundWallet } from "@privy-io/react-auth";
 import { Creator } from "@/types";
+import { useWalletClient, usePublicClient, useReadContract } from "wagmi";
+import { parseUnits, formatUnits } from "viem";
+import { base } from "wagmi/chains";
 
 interface ProfileActionButtonsProps {
   creator: Creator;
@@ -11,6 +14,28 @@ interface ProfileActionButtonsProps {
   isDragverseUser: boolean;
   currentUserDID?: string;
 }
+
+// USDC contract on Base network
+const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+const USDC_ABI = [
+  {
+    constant: true,
+    inputs: [{ name: "_owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    type: "function",
+  },
+  {
+    constant: false,
+    inputs: [
+      { name: "_to", type: "address" },
+      { name: "_value", type: "uint256" },
+    ],
+    name: "transfer",
+    outputs: [{ name: "", type: "bool" }],
+    type: "function",
+  },
+] as const;
 
 export function ProfileActionButtons({
   creator,
@@ -25,6 +50,23 @@ export function ProfileActionButtons({
   const [showTipModal, setShowTipModal] = useState(false);
   const [tipAmount, setTipAmount] = useState("5");
   const [isSendingTip, setIsSendingTip] = useState(false);
+
+  // Wagmi hooks for Web3 transactions
+  const { data: walletClient } = useWalletClient({ chainId: base.id });
+  const publicClient = usePublicClient({ chainId: base.id });
+
+  // Get user's wallet address
+  const wallet = user?.wallet || user?.linkedAccounts?.find((account: any) => account.type === 'wallet');
+  const walletAddress = wallet && 'address' in wallet ? wallet.address as `0x${string}` : undefined;
+
+  // Fetch USDC balance
+  const { data: usdcBalance } = useReadContract({
+    address: USDC_ADDRESS,
+    abi: USDC_ABI,
+    functionName: "balanceOf",
+    args: walletAddress ? [walletAddress] : undefined,
+    chainId: base.id,
+  });
 
   const handleFollow = async () => {
     if (!currentUserDID) {
@@ -86,25 +128,76 @@ export function ProfileActionButtons({
 
     setIsSendingTip(true);
     try {
-      // Get user's wallet address
-      const wallet = user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet');
-      if (!wallet || !('address' in wallet)) {
+      if (!walletAddress) {
         alert("No wallet connected");
+        setIsSendingTip(false);
         return;
       }
 
-      // Open Privy's fund wallet modal
-      await fundWallet({ address: wallet.address as string });
+      // Check if creator has a wallet to receive tips
+      if (!creator.wallet_address) {
+        alert("This creator hasn't set up their wallet yet");
+        setIsSendingTip(false);
+        return;
+      }
 
-      // Note: Actual tip sending would require additional implementation
-      // with web3 library to send transaction on Base network
-      alert(`Tip of $${amount} prepared! Complete the transaction in your wallet.`);
+      // Convert USD amount to USDC (6 decimals)
+      const amountInUsdc = parseUnits(amount.toString(), 6);
 
-      setShowTipModal(false);
-      setTipAmount("5");
-    } catch (error) {
+      // Check USDC balance
+      const balance = usdcBalance as bigint | undefined;
+      if (!balance || balance < amountInUsdc) {
+        // Insufficient balance - open fund wallet modal
+        alert("Insufficient USDC balance. Please fund your wallet first.");
+        await fundWallet({ address: walletAddress });
+        setIsSendingTip(false);
+        return;
+      }
+
+      if (!walletClient) {
+        alert("Wallet not ready. Please try again.");
+        setIsSendingTip(false);
+        return;
+      }
+
+      // Send USDC transaction
+      const hash = await walletClient.writeContract({
+        address: USDC_ADDRESS,
+        abi: USDC_ABI,
+        functionName: "transfer",
+        args: [creator.wallet_address as `0x${string}`, amountInUsdc],
+        chain: base,
+      });
+
+      if (hash) {
+        // Wait for confirmation
+        await publicClient?.waitForTransactionReceipt({ hash });
+
+        // Record transaction in database
+        await fetch("/api/tips/record", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: walletAddress,
+            to: creator.wallet_address,
+            amount: amount,
+            amountUSD: amount,
+            txHash: hash,
+            token: "USDC",
+          }),
+        });
+
+        alert(`Tip sent successfully! 💰`);
+        setShowTipModal(false);
+        setTipAmount("5");
+      }
+    } catch (error: any) {
       console.error("Tip error:", error);
-      alert("Failed to send tip. Please try again.");
+      if (error.message?.includes("User rejected") || error.message?.includes("rejected")) {
+        alert("Transaction cancelled");
+      } else {
+        alert("Failed to send tip. Please try again.");
+      }
     } finally {
       setIsSendingTip(false);
     }
@@ -157,8 +250,8 @@ export function ProfileActionButtons({
           <div className="bg-[#1a0b2e] border border-[#EB83EA]/30 rounded-xl p-6 max-w-md w-full">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-white">Send a Tip</h3>
-                <p className="text-sm text-gray-400 mt-1">to {creator.displayName}</p>
+                <h3 className="text-xl font-bold text-white">support {creator.displayName} 💅</h3>
+                <p className="text-sm text-gray-400 mt-1">show some love with a tip</p>
               </div>
               <FiDollarSign className="w-8 h-8 text-[#EB83EA]" />
             </div>
@@ -200,9 +293,9 @@ export function ProfileActionButtons({
             </div>
 
             {/* Info Box */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-6">
-              <p className="text-xs text-blue-400">
-                Tips are sent via Base network. You'll be prompted to complete the transaction in your wallet.
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 mb-6">
+              <p className="text-xs text-purple-300">
+                Show some love by sending a tip! Your funds are secure with USDC on Base network. 💜
               </p>
             </div>
 

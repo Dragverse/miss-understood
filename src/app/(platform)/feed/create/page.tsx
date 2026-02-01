@@ -20,6 +20,15 @@ export default function CreatePostPage() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [selectedPlatforms, setSelectedPlatforms] = useState({
+    dragverse: true,
+    bluesky: false,
+    farcaster: false,
+  });
+  const [connectedPlatforms, setConnectedPlatforms] = useState({
+    bluesky: false,
+    farcaster: false,
+  });
 
   useEffect(() => {
     async function checkSession() {
@@ -27,16 +36,11 @@ export default function CreatePostPage() {
         const response = await fetch("/api/bluesky/session");
         const data = await response.json();
 
-        if (!data.connected) {
-          toast.error("Please connect your Bluesky account first");
-          router.push("/settings");
-          return;
+        if (data.connected) {
+          setIsBlueskyConnected(true);
         }
-
-        setIsBlueskyConnected(true);
       } catch (error) {
-        toast.error("Please connect your Bluesky account");
-        router.push("/settings");
+        console.error("Bluesky session check error:", error);
       } finally {
         setIsCheckingSession(false);
       }
@@ -46,6 +50,38 @@ export default function CreatePostPage() {
       checkSession();
     }
   }, [isAuthenticated, router]);
+
+  // Load crosspost settings
+  useEffect(() => {
+    async function loadCrosspostSettings() {
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+
+        const response = await fetch("/api/user/crosspost-settings", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setSelectedPlatforms({
+              dragverse: true,
+              bluesky: data.settings.bluesky && data.connected.bluesky,
+              farcaster: data.settings.farcaster && data.connected.farcaster,
+            });
+            setConnectedPlatforms(data.connected);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load crosspost settings:", error);
+      }
+    }
+
+    if (isAuthenticated) {
+      loadCrosspostSettings();
+    }
+  }, [isAuthenticated, getAccessToken]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -147,27 +183,38 @@ export default function CreatePostPage() {
         setUploadProgress(null);
       }
 
-      // Create post
+      // Create post with multi-platform support
       const toastId = toast.loading("Creating post...");
-      const response = await fetch("/api/bluesky/post", {
+      const response = await fetch("/api/posts/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.trim(), images: imageUrls }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          text: text.trim(),
+          mood: "default",
+          images: imageUrls,
+          platforms: selectedPlatforms,
+        }),
       });
 
       toast.dismiss(toastId);
 
       if (!response.ok) {
         const errorData = await response.json();
-        if (errorData.requiresConnection) {
-          toast.error("Session expired. Redirecting to Settings...");
-          setTimeout(() => router.push("/settings"), 2000);
-          return;
-        }
         throw new Error(errorData.error || "Failed to create post");
       }
 
-      toast.success("Post created successfully! 🎉");
+      const result = await response.json();
+
+      // Show success message based on platforms posted to
+      const platformsPosted = [];
+      if (selectedPlatforms.dragverse) platformsPosted.push("Dragverse");
+      if (selectedPlatforms.bluesky && result.bluesky?.success) platformsPosted.push("Bluesky");
+      if (selectedPlatforms.farcaster && result.farcaster?.success) platformsPosted.push("Farcaster");
+
+      toast.success(`Post created on ${platformsPosted.join(", ")}! 🎉`);
       setText("");
       setImages([]);
       setPreviews([]);
@@ -182,7 +229,7 @@ export default function CreatePostPage() {
     }
   };
 
-  if (isCheckingSession || !isBlueskyConnected) {
+  if (isCheckingSession) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EB83EA]"></div>
@@ -289,6 +336,55 @@ export default function CreatePostPage() {
             <p className="text-sm text-red-300">{uploadError}</p>
           </div>
         )}
+
+        {/* Platform Selection */}
+        <div className="space-y-3">
+          <label className="block text-sm font-semibold text-gray-300">
+            Post to:
+          </label>
+          <div className="space-y-2">
+            {/* Dragverse - always checked */}
+            <label className="flex items-center gap-3 p-3 bg-[#2f2942] rounded-lg cursor-not-allowed opacity-75">
+              <input type="checkbox" checked={true} disabled className="w-4 h-4" />
+              <span className="text-sm font-medium">Dragverse</span>
+              <span className="ml-auto text-xs text-green-400">Always</span>
+            </label>
+
+            {/* Bluesky */}
+            <label className={`flex items-center gap-3 p-3 rounded-lg ${
+              connectedPlatforms.bluesky ? 'bg-[#2f2942] cursor-pointer hover:bg-[#3f3952]' : 'bg-[#2f2942]/50 cursor-not-allowed'
+            }`}>
+              <input
+                type="checkbox"
+                checked={selectedPlatforms.bluesky}
+                disabled={!connectedPlatforms.bluesky || posting}
+                onChange={(e) => setSelectedPlatforms(prev => ({ ...prev, bluesky: e.target.checked }))}
+                className="w-4 h-4"
+              />
+              <span className="text-sm font-medium">Bluesky</span>
+              <span className="ml-auto text-xs text-gray-400">
+                {connectedPlatforms.bluesky ? "Connected" : "Not Connected"}
+              </span>
+            </label>
+
+            {/* Farcaster */}
+            <label className={`flex items-center gap-3 p-3 rounded-lg ${
+              connectedPlatforms.farcaster ? 'bg-[#2f2942] cursor-pointer hover:bg-[#3f3952]' : 'bg-[#2f2942]/50 cursor-not-allowed'
+            }`}>
+              <input
+                type="checkbox"
+                checked={selectedPlatforms.farcaster}
+                disabled={!connectedPlatforms.farcaster || posting}
+                onChange={(e) => setSelectedPlatforms(prev => ({ ...prev, farcaster: e.target.checked }))}
+                className="w-4 h-4"
+              />
+              <span className="text-sm font-medium">Farcaster</span>
+              <span className="ml-auto text-xs text-gray-400">
+                {connectedPlatforms.farcaster ? "Connected" : "Not Connected"}
+              </span>
+            </label>
+          </div>
+        </div>
 
         {/* Submit Buttons */}
         <div className="flex gap-3">
