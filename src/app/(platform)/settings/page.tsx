@@ -40,7 +40,6 @@ export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState<"profile" | "accounts" | "crosspost" | "danger">("profile");
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
 
   const [creator, setCreator] = useState<Creator | null>(null);
   const [formData, setFormData] = useState({
@@ -534,78 +533,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSyncProfile = async () => {
-    if (!user) {
-      toast.error("You must be logged in to sync profile");
-      return;
-    }
-
-    setIsSyncing(true);
-    const loadingToast = toast.loading("Syncing profile with Privy...");
-
-    try {
-      // Get Privy access token
-      const token = await getAccessToken();
-      if (!token) {
-        throw new Error("No authentication token found. Please log in again.");
-      }
-
-      const response = await fetch("/api/creator/sync-profile", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      toast.dismiss(loadingToast);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to sync profile");
-      }
-
-      const result = await response.json();
-
-      toast.success("Profile synced successfully!");
-      console.log("Synced profile:", result.creator);
-
-      // Update form data with synced values
-      setFormData({
-        displayName: result.creator.displayName || formData.displayName,
-        handle: result.creator.handle || formData.handle,
-        description: formData.description, // Keep user's description
-        website: formData.website,
-        instagramHandle: formData.instagramHandle,
-        tiktokHandle: formData.tiktokHandle,
-      });
-
-      // Update avatar preview
-      if (result.creator.avatar) {
-        setAvatarPreview(result.creator.avatar);
-      }
-
-      // Reload profile
-      if (user?.id) {
-        try {
-          const updated = await getCreatorByDID(user.id);
-          if (updated) {
-            setCreator(transformSupabaseCreator(updated));
-          }
-        } catch (error) {
-          console.warn("Could not reload profile:", error);
-        }
-      }
-    } catch (error) {
-      toast.dismiss(loadingToast);
-      console.error("Profile sync error:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to sync profile"
-      );
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const handleConnectBluesky = async () => {
     // Validation
@@ -1178,26 +1105,11 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="space-y-3">
-                  {/* Import from Connected Accounts Button */}
-                  <button
-                    onClick={handleSyncProfile}
-                    disabled={isSyncing || isSaving}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-[#6c2bd9] to-[#EB83EA] hover:from-[#5c1bc9] hover:to-[#E748E6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-full transition-all flex items-center justify-center gap-2 border border-white/10"
-                    title="Import your profile info from connected social accounts"
-                  >
-                    <FiUser className="w-4 h-4" />
-                    {isSyncing ? "Importing..." : "Import from Connected Accounts"}
-                  </button>
-
-                  <p className="text-xs text-gray-400 text-center">
-                    Pull your profile info from Twitter, Google, Farcaster, and other connected social accounts. Your custom uploaded images will be preserved.
-                  </p>
-
+                <div className="mt-6">
                   {/* Save Button */}
                   <button
                     onClick={handleSave}
-                    disabled={isSaving || isSyncing}
+                    disabled={isSaving}
                     className="w-full px-6 py-4 bg-[#EB83EA] hover:bg-[#E748E6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-full transition-colors flex items-center justify-center gap-2"
                   >
                     <FiSave className="w-5 h-5" />

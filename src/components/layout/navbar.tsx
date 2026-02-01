@@ -234,7 +234,7 @@ export function Navbar() {
           ) : (
             <button
               onClick={handleLogin}
-              className="hidden md:block px-5 py-2 bg-[#EB83EA] hover:bg-[#E748E6] text-white rounded-full font-semibold text-sm transition"
+              className="px-5 py-2 bg-[#EB83EA] hover:bg-[#E748E6] text-white rounded-full font-semibold text-sm transition"
             >
               Sign In
             </button>
