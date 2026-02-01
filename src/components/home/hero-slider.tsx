@@ -131,21 +131,6 @@ export function HeroSlider() {
         <FiChevronRight className="w-6 h-6" />
       </button>
 
-      {/* Slide Indicators */}
-      <div className="absolute bottom-8 left-8 z-30 flex gap-2.5">
-        {slides.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentSlide(index)}
-            className={`h-1.5 rounded-full transition-all ${
-              index === currentSlide
-                ? "bg-white w-10 shadow-lg shadow-white/50"
-                : "bg-white/50 hover:bg-white/70 w-6"
-            }`}
-            aria-label={`Go to slide ${index + 1}`}
-          />
-        ))}
-      </div>
     </div>
   );
 }
