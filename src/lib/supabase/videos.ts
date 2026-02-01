@@ -139,7 +139,7 @@ export async function getVideos(limit = 50): Promise<SupabaseVideoWithCreator[]>
   // Extract unique creator_ids
   const uniqueCreatorIds = [...new Set(data.map((v: any) => v.creator_id).filter(Boolean))];
 
-  let creatorsMap: Map<string, any> = new Map();
+  const creatorsMap: Map<string, any> = new Map();
 
   if (uniqueCreatorIds.length > 0 && supabase) {
     const { data: creatorsData, error: creatorsError } = await supabase
@@ -211,7 +211,7 @@ export async function getVideosByCreator(creatorDID: string, limit = 50): Promis
   // OPTIMIZED: Batch fetch all creators in a single query instead of N+1
   const uniqueCreatorIds = [...new Set(videos.map((v: any) => v.creator_id).filter(Boolean))];
 
-  let creatorsMap: Map<string, any> = new Map();
+  const creatorsMap: Map<string, any> = new Map();
 
   if (uniqueCreatorIds.length > 0 && supabase) {
     const { data: creatorsData, error: creatorsError } = await supabase

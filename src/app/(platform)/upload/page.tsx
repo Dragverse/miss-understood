@@ -524,7 +524,7 @@ function UploadPageContent() {
         return;
       }
 
-      let startTime = Date.now();
+      const startTime = Date.now();
       let lastUpdate = startTime;
       let lastLoaded = 0;
 

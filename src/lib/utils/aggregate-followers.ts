@@ -143,8 +143,8 @@ export async function aggregateFollowerStats(creator: {
   console.log("[Aggregate] Starting follower aggregation...");
 
   // Start with Dragverse stats (cached in database)
-  let dragverseFollowers = creator.dragverseFollowerCount || 0;
-  let dragverseFollowing = creator.dragverseFollowingCount || 0;
+  const dragverseFollowers = creator.dragverseFollowerCount || 0;
+  const dragverseFollowing = creator.dragverseFollowingCount || 0;
   let blueskyFollowers = creator.blueskyFollowerCount || 0;
   let blueskyFollowing = creator.blueskyFollowingCount || 0;
   let farcasterFollowers = creator.farcasterFollowerCount || 0;

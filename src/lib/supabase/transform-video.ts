@@ -27,6 +27,7 @@ export async function transformVideoWithCreator(supabaseVideo: SupabaseVideo): P
         followingCount: creator.following_count || 0,
         createdAt: new Date(creator.created_at),
         verified: creator.verified || false,
+        walletAddress: creator.wallet_address,
       };
     }
   } catch (error) {
@@ -90,6 +91,7 @@ export async function transformVideosWithCreators(supabaseVideos: SupabaseVideo[
             followingCount: creator.following_count || 0,
             createdAt: new Date(creator.created_at),
             verified: creator.verified || false,
+            walletAddress: creator.wallet_address,
           });
         }
       } catch (error) {

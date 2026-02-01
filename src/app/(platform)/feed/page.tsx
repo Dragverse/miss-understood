@@ -10,6 +10,7 @@ import { PostCard } from "@/components/posts/post-card";
 import { PostComposer } from "@/components/posts/post-composer";
 import { FeedRightSidebar } from "@/components/feed/feed-right-sidebar";
 import { ConnectionGate } from "@/components/feed/connection-gate";
+import { CardSkeleton } from "@/components/shared";
 
 function FeedContent() {
   const { isAuthenticated, farcasterHandle } = useAuthUser();
@@ -357,8 +358,10 @@ function FeedContent() {
 
           {/* Posts Feed */}
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#EB83EA]"></div>
+            <div className="space-y-6">
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
             </div>
           ) : (
             <div className="space-y-6">
@@ -412,10 +415,10 @@ export default function FeedPage() {
     <Suspense
       fallback={
         <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
-          <div className="max-w-[1600px] mx-auto">
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#EB83EA]"></div>
-            </div>
+          <div className="max-w-2xl mx-auto space-y-6">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
           </div>
         </div>
       }

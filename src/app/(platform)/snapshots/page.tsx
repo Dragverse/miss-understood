@@ -11,6 +11,7 @@ import { Video } from "@/types";
 import { ShortVideo } from "@/components/snapshots/short-video";
 import { FiChevronUp, FiChevronDown, FiRefreshCw } from "react-icons/fi";
 import { isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
+import { LoadingShimmer } from "@/components/shared";
 
 function SnapshotsContent() {
   const searchParams = useSearchParams();
@@ -206,8 +207,10 @@ function SnapshotsContent() {
 
   if (loading) {
     return (
-      <div className="h-[100dvh] md:h-[calc(100vh-4rem)] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+      <div className="h-[100dvh] md:h-[calc(100vh-4rem)] bg-black p-4">
+        <div className="max-w-md mx-auto h-full">
+          <LoadingShimmer className="h-full" />
+        </div>
       </div>
     );
   }
@@ -252,11 +255,11 @@ function SnapshotsContent() {
   };
 
   return (
-    <div className="relative h-[100dvh] md:h-[calc(100vh-4rem)] overflow-hidden bg-black w-full">
+    <div className="relative h-[100dvh] md:h-[calc(100vh-4rem)] overflow-hidden bg-black w-full flex items-center justify-center">
       {/* Vertical Slider */}
       <div
         ref={sliderRef}
-        className="keen-slider h-full w-full"
+        className="keen-slider h-full w-full md:max-w-[500px]"
         style={{ touchAction: 'pan-y' }}
       >
         {snapshots.map((video, idx) => (
@@ -322,8 +325,10 @@ export default function SnapshotsPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-[100dvh] md:h-[calc(100vh-4rem)] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+        <div className="h-[100dvh] md:h-[calc(100vh-4rem)] bg-black p-4">
+          <div className="max-w-md mx-auto h-full">
+            <LoadingShimmer className="h-full" />
+          </div>
         </div>
       }
     >
