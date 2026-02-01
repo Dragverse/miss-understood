@@ -1333,10 +1333,14 @@ export default function SettingsPage() {
                             try {
                               const wallet = wallets[0];
                               if (wallet && 'address' in wallet) {
-                                await fundWallet({ address: wallet.address });
+                                console.log("Opening fund wallet for address:", wallet.address);
+                                await fundWallet({ address: wallet.address as string });
+                              } else {
+                                toast.error("No wallet address found");
                               }
                             } catch (error) {
-                              toast.error("Failed to open funding modal");
+                              console.error("Fund wallet error:", error);
+                              toast.error(`Failed to open funding modal: ${error instanceof Error ? error.message : 'Unknown error'}`);
                             }
                           }}
                           className="px-4 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg font-semibold transition flex flex-col items-center justify-center"
