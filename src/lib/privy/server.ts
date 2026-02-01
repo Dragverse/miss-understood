@@ -196,11 +196,17 @@ export function extractAvatar(user: any, userId: string): string {
  * Extract all social handles from Privy user profile
  */
 export function extractSocialHandles(user: any) {
+  // Extract Farcaster FID from linked accounts
+  const farcasterAccount = user.linked_accounts?.find(
+    (account: any) => account.type === "farcaster"
+  );
+
   return {
     twitter_handle: user.twitter?.username || "",
     instagram_handle: user.instagram?.username || "",
     tiktok_handle: user.tiktok?.username || "",
     farcaster_handle: user.farcaster?.username || "",
+    farcaster_fid: farcasterAccount?.fid || null,
     // Bluesky is handled separately via our own integration (see extractBlueskyFromSession)
   };
 }

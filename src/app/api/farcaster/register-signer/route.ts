@@ -104,11 +104,14 @@ export async function POST(request: NextRequest) {
       approvalUrl: signerApprovalUrl,
     });
 
-    // Store the signerUuid in the database
+    // Store the signerUuid and FID in the database
     const supabase = getSupabaseServerClient();
     const { error: updateError } = await supabase
       .from("creators")
-      .update({ farcaster_signer_uuid: signerUuid })
+      .update({
+        farcaster_signer_uuid: signerUuid,
+        farcaster_fid: fid
+      })
       .eq("did", auth.userId);
 
     if (updateError) {
