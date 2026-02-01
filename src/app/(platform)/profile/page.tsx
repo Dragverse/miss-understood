@@ -482,7 +482,7 @@ export default function ProfilePage() {
                       </span>
                       <span className="text-white/80 ml-2">followers</span>
                       {/* Platform breakdown tooltip */}
-                      {aggregatedStats && (aggregatedStats.platforms.bluesky || aggregatedStats.platforms.youtube) && (
+                      {aggregatedStats && (aggregatedStats.platforms.bluesky || aggregatedStats.platforms.farcaster || aggregatedStats.platforms.youtube) && (
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                           <div className="bg-[#1a0b2e]/95 border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[160px] backdrop-blur-sm">
                             <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Sources</div>
@@ -495,6 +495,12 @@ export default function ProfilePage() {
                                 <div className="flex items-center justify-between gap-4">
                                   <span className="text-[#0085ff]">Bluesky</span>
                                   <span className="text-white font-medium">{aggregatedStats.blueskyFollowers.toLocaleString()}</span>
+                                </div>
+                              )}
+                              {aggregatedStats.platforms.farcaster && aggregatedStats.farcasterFollowers > 0 && (
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-[#8a63d2]">Farcaster</span>
+                                  <span className="text-white font-medium">{aggregatedStats.farcasterFollowers.toLocaleString()}</span>
                                 </div>
                               )}
                               {aggregatedStats.platforms.youtube && aggregatedStats.youtubeSubscribers > 0 && (

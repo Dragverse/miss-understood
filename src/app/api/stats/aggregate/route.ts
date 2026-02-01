@@ -37,7 +37,9 @@ export async function GET(request: NextRequest) {
         dragverse_follower_count,
         following_count,
         bluesky_handle,
-        bluesky_follower_count
+        bluesky_follower_count,
+        farcaster_fid,
+        farcaster_follower_count
       `
       )
       .eq("did", userId)
@@ -56,11 +58,14 @@ export async function GET(request: NextRequest) {
           dragverseFollowing: 0,
           blueskyFollowers: 0,
           blueskyFollowing: 0,
+          farcasterFollowers: 0,
+          farcasterFollowing: 0,
           youtubeSubscribers: 0,
           lastUpdated: new Date(),
           platforms: {
             dragverse: false,
             bluesky: false,
+            farcaster: false,
             youtube: false,
           },
         },
@@ -74,6 +79,8 @@ export async function GET(request: NextRequest) {
       dragverseFollowingCount: creator.following_count || 0,
       blueskyHandle: creator.bluesky_handle,
       blueskyFollowerCount: creator.bluesky_follower_count,
+      farcasterFid: creator.farcaster_fid,
+      farcasterFollowerCount: creator.farcaster_follower_count,
       youtubeChannelId: undefined,
       youtubeFollowerCount: undefined,
     });
@@ -85,6 +92,7 @@ export async function GET(request: NextRequest) {
           .from("creators")
           .update({
             bluesky_follower_count: stats.blueskyFollowers,
+            farcaster_follower_count: stats.farcasterFollowers,
             youtube_follower_count: stats.youtubeSubscribers,
             follower_count: stats.totalFollowers, // Update total in main column
             updated_at: new Date().toISOString(),

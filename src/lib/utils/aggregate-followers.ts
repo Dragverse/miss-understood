@@ -1,5 +1,5 @@
 /**
- * Aggregate follower/following counts from YouTube, Bluesky, and Dragverse
+ * Aggregate follower/following counts from YouTube, Bluesky, Farcaster, and Dragverse
  */
 
 import { getChannelStats } from "@/lib/youtube/client";
@@ -14,6 +14,8 @@ export interface AggregatedStats {
   dragverseFollowing: number;
   blueskyFollowers: number;
   blueskyFollowing: number;
+  farcasterFollowers: number;
+  farcasterFollowing: number;
   youtubeSubscribers: number;
 
   // Metadata
@@ -21,6 +23,7 @@ export interface AggregatedStats {
   platforms: {
     dragverse: boolean;
     bluesky: boolean;
+    farcaster: boolean;
     youtube: boolean;
   };
 }
@@ -58,6 +61,48 @@ async function fetchBlueskyStats(blueskyHandle: string): Promise<{
 }
 
 /**
+ * Fetch Farcaster follower stats
+ */
+async function fetchFarcasterStats(fid: number): Promise<{
+  followers: number;
+  following: number;
+} | null> {
+  try {
+    console.log(`[Aggregate] Fetching Farcaster stats for FID ${fid}...`);
+
+    // Use Neynar API to get user stats
+    const response = await fetch(
+      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
+      {
+        headers: {
+          'api_key': process.env.NEYNAR_API_KEY || '',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`[Aggregate] Farcaster API error for FID ${fid}:`, response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const user = data.users?.[0];
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      followers: user.follower_count || 0,
+      following: user.following_count || 0,
+    };
+  } catch (error) {
+    console.error(`[Aggregate] Failed to fetch Farcaster stats for FID ${fid}:`, error);
+    return null;
+  }
+}
+
+/**
  * Fetch YouTube subscriber count
  */
 async function fetchYouTubeStats(channelId: string): Promise<{
@@ -89,6 +134,9 @@ export async function aggregateFollowerStats(creator: {
   blueskyHandle?: string;
   blueskyFollowerCount?: number;
   blueskyFollowingCount?: number;
+  farcasterFid?: number;
+  farcasterFollowerCount?: number;
+  farcasterFollowingCount?: number;
   youtubeChannelId?: string;
   youtubeFollowerCount?: number;
 }): Promise<AggregatedStats> {
@@ -99,11 +147,14 @@ export async function aggregateFollowerStats(creator: {
   let dragverseFollowing = creator.dragverseFollowingCount || 0;
   let blueskyFollowers = creator.blueskyFollowerCount || 0;
   let blueskyFollowing = creator.blueskyFollowingCount || 0;
+  let farcasterFollowers = creator.farcasterFollowerCount || 0;
+  let farcasterFollowing = creator.farcasterFollowingCount || 0;
   let youtubeSubscribers = creator.youtubeFollowerCount || 0;
 
   const platforms = {
     dragverse: dragverseFollowers > 0,
     bluesky: false,
+    farcaster: false,
     youtube: false,
   };
 
@@ -118,6 +169,17 @@ export async function aggregateFollowerStats(creator: {
     }
   }
 
+  // Fetch fresh Farcaster stats if FID is connected
+  if (creator.farcasterFid) {
+    const farcasterStats = await fetchFarcasterStats(creator.farcasterFid);
+    if (farcasterStats) {
+      farcasterFollowers = farcasterStats.followers;
+      farcasterFollowing = farcasterStats.following;
+      platforms.farcaster = true;
+      console.log(`[Aggregate] Farcaster: ${farcasterFollowers} followers, ${farcasterFollowing} following`);
+    }
+  }
+
   // Fetch fresh YouTube stats if channel is connected
   if (creator.youtubeChannelId) {
     const youtubeStats = await fetchYouTubeStats(creator.youtubeChannelId);
@@ -129,8 +191,8 @@ export async function aggregateFollowerStats(creator: {
   }
 
   // Calculate totals
-  const totalFollowers = dragverseFollowers + blueskyFollowers + youtubeSubscribers;
-  const totalFollowing = dragverseFollowing + blueskyFollowing;
+  const totalFollowers = dragverseFollowers + blueskyFollowers + farcasterFollowers + youtubeSubscribers;
+  const totalFollowing = dragverseFollowing + blueskyFollowing + farcasterFollowing;
 
   console.log(`[Aggregate] Total: ${totalFollowers} followers, ${totalFollowing} following`);
 
@@ -141,6 +203,8 @@ export async function aggregateFollowerStats(creator: {
     dragverseFollowing,
     blueskyFollowers,
     blueskyFollowing,
+    farcasterFollowers,
+    farcasterFollowing,
     youtubeSubscribers,
     lastUpdated: new Date(),
     platforms,

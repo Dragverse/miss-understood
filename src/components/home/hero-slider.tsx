@@ -20,7 +20,7 @@ const slides: Slide[] = [
     title: "WHERE DRAG COMES TO PLAY",
     description: "A global community for drag creators and fans to connect, share, and thrive.",
     image: "/Famers/DRAGVERSE_HALL_OF_FAME.png",
-    link: "/videos",
+    link: "/hall-of-fame",
     cta: "Explore Now",
   },
   {
