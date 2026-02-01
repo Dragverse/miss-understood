@@ -230,6 +230,7 @@ export default function ProfilePage() {
               handle: videoCreator?.handle || "creator",
               avatar: videoCreator?.avatar || avatarFallback,
               verified: videoCreator?.verified || false,
+              walletAddress: videoCreator?.wallet_address,
               description: "",
               followerCount: 0,
               followingCount: 0,
