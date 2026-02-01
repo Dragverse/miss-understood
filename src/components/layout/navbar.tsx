@@ -222,7 +222,6 @@ export function Navbar() {
                 </div>
                 {/* Dropdown */}
                 <div className="absolute right-0 top-full mt-2 w-64 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2 z-50">
-                  {/* Wallet Balance */}
                   {user && walletAddress && usdcBalance && parseFloat(formatUnits(usdcBalance as bigint, 6)) > 0 && (
                     <>
                       <div className="px-4 py-3 bg-white/5 rounded-xl mb-2">
