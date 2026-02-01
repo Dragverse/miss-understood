@@ -10,6 +10,8 @@ import { CommentModal } from "./comment-modal";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { getSafeThumbnail, isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
+import { VerificationBadge } from "@/components/profile/verification-badge";
+import { getUserBadgeType } from "@/lib/verification";
 
 interface PostCardProps {
   post: {
@@ -19,6 +21,8 @@ interface PostCardProps {
       handle: string;
       avatar: string;
       did?: string; // Bluesky DID for following
+      blueskyHandle?: string; // For badge verification
+      farcasterHandle?: string; // For badge verification
     };
     description: string;
     thumbnail?: string;
@@ -196,12 +200,23 @@ export function PostCard({ post }: PostCardProps) {
           />
         </Link>
         <div className="flex-1">
-          <Link
-            href={`/profile/${post.creator.handle}`}
-            className="font-semibold text-lg hover:text-[#EB83EA] transition"
-          >
-            {post.creator.displayName}
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/profile/${post.creator.handle}`}
+              className="font-semibold text-lg hover:text-[#EB83EA] transition"
+            >
+              {post.creator.displayName}
+            </Link>
+            <VerificationBadge
+              badgeType={getUserBadgeType(
+                post.creator.did,
+                undefined,
+                !!post.creator.blueskyHandle,
+                !!post.creator.farcasterHandle
+              )}
+              size={18}
+            />
+          </div>
           <p className="text-sm text-gray-400">@{post.creator.handle}</p>
         </div>
         <div className="flex items-center gap-3">

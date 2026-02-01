@@ -8,7 +8,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
 import { FarcasterBadge } from "@/components/profile/farcaster-badge";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
-import { VerificationBadge } from "@/components/ui/verification-badge";
+import { VerificationBadge } from "@/components/profile/verification-badge";
 import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
 import { BytesSlider } from "@/components/profile/bytes-slider";
 import { getCreatorByHandleOrDID } from "@/lib/supabase/creators";
@@ -16,7 +16,7 @@ import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { getVideosByCreator } from "@/lib/supabase/videos";
 import { useBlueskyProfileByHandle } from "@/lib/bluesky/hooks";
 import { Creator, Video } from "@/types";
-import { isVerified } from "@/config/verified-creators";
+import { getUserBadgeType } from "@/lib/verification";
 import { FaInstagram, FaTiktok } from "react-icons/fa";
 import { SiBluesky } from "react-icons/si";
 
@@ -289,11 +289,16 @@ export default function DynamicProfilePage() {
                     <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-2xl">
                       {creator.displayName}
                     </h1>
-                    {(creator.verified || isVerified(creator.did)) && (
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#CDB531] flex items-center justify-center" title="Verified Creator">
-                        <FiStar className="w-4 h-4 text-black font-bold" />
-                      </div>
-                    )}
+                    <VerificationBadge
+                      badgeType={getUserBadgeType(
+                        creator.did,
+                        undefined,
+                        !!creator.blueskyHandle,
+                        !!creator.farcasterHandle
+                      )}
+                      size={28}
+                      className="flex-shrink-0"
+                    />
                   </div>
                   <div className="flex items-center gap-2 mb-3">
                     <p className="text-white/90 text-lg md:text-xl drop-shadow-lg">@{creator.handle}</p>

@@ -3,22 +3,27 @@
  * Controls who can access the Go Live feature
  *
  * For cost control, only allowlisted users can create livestreams.
- * You can add users by their Privy user ID or email.
+ * This includes:
+ * - Users with Golden or Pink verification badges
+ * - Manually added users via allowlist or environment variable
  */
 
-// Allowlist of users who can create livestreams
+import { getPremiumBadgeUsers } from "@/lib/verification/permissions";
+
+// Additional manual allowlist (beyond golden/pink badge holders)
 // Add Privy user IDs or email addresses here
 const LIVESTREAM_ALLOWLIST: string[] = [
-  // Founder/Admin
-  "privy:cmkgjgjd003ezla0cf5dweu37", // Salti (founder)
+  // Golden and pink badge holders are automatically included
+  // Add any additional users here if needed
 ];
 
 // Environment variable override - comma-separated list of allowed users
 const ENV_ALLOWLIST = process.env.NEXT_PUBLIC_LIVESTREAM_ALLOWLIST?.split(",").map(s => s.trim()).filter(Boolean) || [];
 
-// Combined allowlist
+// Combined allowlist (includes golden/pink badge holders automatically)
 const getAllowlist = (): string[] => {
-  return [...LIVESTREAM_ALLOWLIST, ...ENV_ALLOWLIST];
+  const premiumBadgeUsers = getPremiumBadgeUsers();
+  return [...premiumBadgeUsers, ...LIVESTREAM_ALLOWLIST, ...ENV_ALLOWLIST];
 };
 
 /**
