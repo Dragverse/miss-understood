@@ -91,6 +91,15 @@ export default function SettingsPage() {
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  // Debug: Check if fundWallet is available
+  useEffect(() => {
+    console.log("fundWallet hook status:", {
+      exists: !!fundWallet,
+      type: typeof fundWallet,
+      fundWallet,
+    });
+  }, [fundWallet]);
+
   // Utility functions
   const formatAddress = (address: string): string => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -1330,12 +1339,15 @@ export default function SettingsPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <button
                           onClick={async () => {
+                            console.log("🔥 BUTTON CLICKED - Add Funds button was clicked!");
                             try {
                               const wallet = wallets[0];
+                              console.log("Wallet object:", wallet);
                               if (wallet && 'address' in wallet) {
                                 console.log("Opening fund wallet for address:", wallet.address);
                                 await fundWallet({ address: wallet.address as string });
                               } else {
+                                console.log("No wallet found or no address property");
                                 toast.error("No wallet address found");
                               }
                             } catch (error) {
