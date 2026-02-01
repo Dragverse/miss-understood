@@ -247,4 +247,75 @@
   .mobile-menu-enter {
     animation: slideDown 0.2s ease-out;
   }
+
+  /* Custom video player progress bar styling - Yellow to Pink gradient */
+
+  /* Livepeer Player progress bar - Target the range input */
+  [data-livepeer-controls] input[type="range"]::-webkit-slider-runnable-track {
+    background: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  [data-livepeer-controls] input[type="range"]::-moz-range-track {
+    background: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  /* Progress fill - Yellow to Pink gradient */
+  [data-livepeer-controls] input[type="range"]::-webkit-slider-runnable-track {
+    background: linear-gradient(
+      to right,
+      #FCD34D 0%,
+      #FBBF24 25%,
+      #F472B6 75%,
+      #EB83EA 100%
+    ) !important;
+  }
+
+  [data-livepeer-controls] input[type="range"]::-moz-range-progress {
+    background: linear-gradient(
+      to right,
+      #FCD34D 0%,
+      #FBBF24 25%,
+      #F472B6 75%,
+      #EB83EA 100%
+    ) !important;
+  }
+
+  /* Progress thumb - Pink */
+  [data-livepeer-controls] input[type="range"]::-webkit-slider-thumb {
+    background: #EB83EA !important;
+    border: 2px solid #ffffff !important;
+  }
+
+  [data-livepeer-controls] input[type="range"]::-moz-range-thumb {
+    background: #EB83EA !important;
+    border: 2px solid #ffffff !important;
+  }
+
+  /* Thumb hover state */
+  [data-livepeer-controls] input[type="range"]:hover::-webkit-slider-thumb {
+    background: #E748E6 !important;
+    transform: scale(1.15);
+  }
+
+  [data-livepeer-controls] input[type="range"]:hover::-moz-range-thumb {
+    background: #E748E6 !important;
+    transform: scale(1.15);
+  }
+
+  /* Additional Livepeer-specific selectors */
+  [data-livepeer-progress-bar] {
+    background: linear-gradient(
+      to right,
+      #FCD34D 0%,
+      #FBBF24 25%,
+      #F472B6 75%,
+      #EB83EA 100%
+    ) !important;
+  }
+
+  /* Loading indicator color */
+  [data-livepeer-loading-indicator] {
+    border-color: #EB83EA !important;
+    border-top-color: transparent !important;
+  }
 }
