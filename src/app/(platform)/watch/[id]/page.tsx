@@ -737,7 +737,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
               </ActionButton>
 
               {/* Tip Button */}
-              {video.source === "ceramic" && !isOwner && (
+              {video.source === "ceramic" && !isOwner && video.creator.walletAddress && (
                 <TipButton creator={video.creator} variant="primary" size="md" />
               )}
             </div>
@@ -843,8 +843,8 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                     Subscribe on YouTube
                   </a>
                 )}
-                {/* Dragverse Follow Button - only for non-YouTube creators */}
-                {!video.creator.youtubeChannelId && (
+                {/* Dragverse Follow Button - only for non-YouTube creators and not own video */}
+                {!video.creator.youtubeChannelId && !isOwner && (
                   <ActionButton
                     onClick={async () => {
                       if (!user?.id) {

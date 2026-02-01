@@ -144,7 +144,7 @@ export async function getVideos(limit = 50): Promise<SupabaseVideoWithCreator[]>
   if (uniqueCreatorIds.length > 0 && supabase) {
     const { data: creatorsData, error: creatorsError } = await supabase
       .from('creators')
-      .select('id, did, handle, display_name, avatar, verified, bluesky_handle, bluesky_did')
+      .select('id, did, handle, display_name, avatar, verified, bluesky_handle, bluesky_did, wallet_address')
       .in('id', uniqueCreatorIds);
 
     if (creatorsError) {
@@ -178,6 +178,7 @@ export interface SupabaseVideoWithCreator extends SupabaseVideo {
     verified: boolean;
     bluesky_handle?: string;
     bluesky_did?: string;
+    wallet_address?: string;
   };
 }
 
@@ -215,7 +216,7 @@ export async function getVideosByCreator(creatorDID: string, limit = 50): Promis
   if (uniqueCreatorIds.length > 0 && supabase) {
     const { data: creatorsData, error: creatorsError } = await supabase
       .from('creators')
-      .select('id, did, handle, display_name, avatar, verified, bluesky_handle, bluesky_did')
+      .select('id, did, handle, display_name, avatar, verified, bluesky_handle, bluesky_did, wallet_address')
       .in('id', uniqueCreatorIds);
 
     if (creatorsError) {

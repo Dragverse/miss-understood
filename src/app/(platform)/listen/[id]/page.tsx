@@ -449,7 +449,7 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
               <span className="text-white font-semibold">Share</span>
             </button>
             {/* Tip Button */}
-            {!isOwner && audio && (
+            {!isOwner && audio && audio.creator.walletAddress && (
               <TipButton creator={audio.creator} variant="primary" size="md" />
             )}
           </div>
