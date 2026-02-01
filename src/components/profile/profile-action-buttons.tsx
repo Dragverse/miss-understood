@@ -67,7 +67,7 @@ export function ProfileActionButtons({
     try {
       // Get user's wallet address - use embedded wallet or linked wallet
       const wallet = user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet');
-      if (wallet && wallet.address) {
+      if (wallet && 'address' in wallet) {
         await fundWallet(wallet.address);
       }
       setShowTipModal(true);
