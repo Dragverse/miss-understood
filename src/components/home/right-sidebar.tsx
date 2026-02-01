@@ -1,12 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import {
-  FiAlertTriangle,
-  FiAward,
-  FiGlobe,
-  FiCompass,
-} from "react-icons/fi";
+import { FiAlertTriangle } from "react-icons/fi";
 
 export function RightSidebar() {
 
@@ -16,12 +11,29 @@ export function RightSidebar() {
       <div className="grid grid-cols-2 gap-4">
         <a
           href="/explore"
-          className="group relative p-6 rounded-[24px] bg-gradient-to-br from-[#34d399]/20 to-[#10b981]/20 border border-[#34d399]/30 hover:border-[#34d399]/60 transition-all overflow-hidden"
+          className="group relative rounded-[24px] overflow-hidden border-2 border-[#34d399]/40 hover:border-[#34d399]/70 transition-all shadow-lg hover:shadow-[#34d399]/20"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-[#34d399]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="relative flex flex-col items-center justify-center h-full">
-            <FiCompass className="w-8 h-8 text-[#34d399] mb-2" />
-            <h3 className="font-bold text-sm uppercase tracking-wide text-white">Explore</h3>
+          <div className="relative aspect-square">
+            <Image
+              src="/dragverse.jpg"
+              alt="Explore"
+              fill
+              className="object-cover group-hover:scale-110 transition-transform duration-500"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-between">
+            <h3 className="font-heading text-lg font-black uppercase tracking-wide text-white">
+              Explore
+            </h3>
+            <svg
+              className="w-6 h-6 text-white transform group-hover:translate-x-1 transition-transform"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
           </div>
         </a>
 
@@ -29,12 +41,29 @@ export function RightSidebar() {
           href="https://hyperfy.io/dragverse/"
           target="_blank"
           rel="noopener noreferrer"
-          className="group relative p-6 rounded-[24px] bg-gradient-to-br from-[#60a5fa]/20 to-[#3b82f6]/20 border border-[#60a5fa]/30 hover:border-[#60a5fa]/60 transition-all overflow-hidden"
+          className="group relative rounded-[24px] overflow-hidden border-2 border-[#60a5fa]/40 hover:border-[#60a5fa]/70 transition-all shadow-lg hover:shadow-[#60a5fa]/20"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-[#60a5fa]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="relative flex flex-col items-center justify-center h-full">
-            <FiGlobe className="w-8 h-8 text-[#60a5fa] mb-2" />
-            <h3 className="font-bold text-sm uppercase tracking-wide text-white">World</h3>
+          <div className="relative aspect-square">
+            <Image
+              src="/dragverse-hall-of-fame.jpg"
+              alt="World"
+              fill
+              className="object-cover group-hover:scale-110 transition-transform duration-500"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-between">
+            <h3 className="font-heading text-lg font-black uppercase tracking-wide text-white">
+              World
+            </h3>
+            <svg
+              className="w-6 h-6 text-white transform group-hover:translate-x-1 transition-transform"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
           </div>
         </a>
       </div>
@@ -57,48 +86,21 @@ export function RightSidebar() {
         </div>
       </div>
 
-      {/* Dragverse Hall of Fame */}
-      <a
-        href="https://world.dragverse.app/"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block rounded-[24px] overflow-hidden border-2 border-[#EB83EA]/40 hover:border-[#EB83EA]/70 transition-all group shadow-lg hover:shadow-[#EB83EA]/20"
-      >
-        <div className="relative h-32 overflow-hidden">
-          <Image
-            src="/dragverse-hall-of-fame.jpg"
-            alt="Dragverse Hall of Fame"
-            fill
-            className="object-cover group-hover:scale-110 transition-transform duration-500"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-        </div>
-        <div className="p-5 bg-gradient-to-br from-[#2a1545] via-[#1f0d33] to-[#1a0b2e]">
-          <div className="flex items-center gap-2 mb-2">
-            <FiAward className="w-5 h-5 text-[#EB83EA]" />
-            <h3 className="font-heading text-base font-black uppercase tracking-wide text-white">
-              Dragverse Hall of Fame
-            </h3>
-          </div>
-          <p className="text-xs text-gray-300 leading-relaxed">
-            Meet all the inductees to the Dragverse Hall of Fame
-          </p>
-        </div>
-      </a>
-
       {/* Sponsored Section */}
-      <div className="rounded-[24px] overflow-hidden border-2 border-[#2f2942] hover:border-[#EB83EA]/40 transition-all group shadow-lg">
-        <div className="px-5 pt-4 pb-2 bg-gradient-to-br from-[#1a0b2e] via-[#1f0d33] to-[#2a1545]">
-          <span className="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-bold">
-            Sponsored
-          </span>
-        </div>
+      <div className="rounded-[24px] overflow-hidden border-2 border-[#2f2942]/60 hover:border-[#2f2942] transition-all group shadow-lg">
         <a
           href="https://salti.printful.me/product/salti-25-premium-sherpa-blanket"
           target="_blank"
           rel="noopener noreferrer"
-          className="block"
+          className="block relative"
         >
+          {/* Sponsored Label - Absolute positioned over image */}
+          <div className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-black/70 backdrop-blur-sm rounded-full border border-white/10">
+            <span className="text-[10px] text-gray-300 uppercase tracking-[0.15em] font-bold">
+              Sponsored
+            </span>
+          </div>
+
           <div className="relative aspect-square overflow-hidden bg-[#0f071a]">
             <Image
               src="/salti-blanket.webp"
