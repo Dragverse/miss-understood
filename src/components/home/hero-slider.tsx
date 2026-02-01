@@ -57,7 +57,7 @@ export function HeroSlider() {
 
   return (
     <div
-      className="relative w-full h-full rounded-[32px] overflow-hidden group shadow-2xl border-2 border-white/5"
+      className="relative w-full h-full rounded-[24px] overflow-hidden group shadow-2xl border-2 border-white/10"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -79,27 +79,37 @@ export function HeroSlider() {
               priority={index === 0}
             />
 
-            {/* Enhanced Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/30" />
+            {/* Multi-layer Gradient Overlay for better contrast */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent" />
 
             {/* Content */}
-            <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10 text-white z-20">
-              <h2 className="font-heading text-3xl md:text-4xl font-black uppercase mb-3 md:mb-4 drop-shadow-2xl tracking-wide leading-tight">
-                {slide.title}
-              </h2>
-              <p className="text-sm md:text-base text-gray-100 mb-5 md:mb-6 max-w-md drop-shadow-lg leading-relaxed">
-                {slide.description}
-              </p>
-              <Link
-                href={slide.link}
-                {...(slide.link.startsWith('http') ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                className="inline-flex items-center gap-2 px-6 py-3 md:px-8 md:py-4 bg-gradient-to-r from-[#EB83EA] via-[#D946EF] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] text-white text-sm md:text-base font-bold rounded-full transition-all shadow-xl hover:shadow-2xl hover:scale-105 transform"
-              >
-                {slide.cta}
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </Link>
+            <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12 text-white z-20">
+              <div className="max-w-2xl">
+                <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl font-black uppercase mb-4 md:mb-5 drop-shadow-2xl tracking-tight leading-none">
+                  {slide.title}
+                </h2>
+                <p className="text-base md:text-lg text-gray-200 mb-6 md:mb-8 max-w-lg drop-shadow-lg leading-relaxed">
+                  {slide.description}
+                </p>
+                <Link
+                  href={slide.link}
+                  {...(slide.link.startsWith('http') ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  className="inline-flex items-center gap-4 group/link"
+                >
+                  <span className="text-base font-black uppercase tracking-wider hover:text-[#EB83EA] transition-colors">
+                    {slide.cta}
+                  </span>
+                  <svg
+                    className="w-8 h-8 text-white group-hover/link:text-[#EB83EA] group-hover/link:translate-x-2 transition-all"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </Link>
+              </div>
             </div>
           </div>
         ))}
@@ -108,29 +118,29 @@ export function HeroSlider() {
       {/* Navigation Arrows */}
       <button
         onClick={goToPrevious}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white transition-all opacity-0 group-hover:opacity-100 border border-white/20"
+        className="absolute left-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/50 backdrop-blur-md hover:bg-black/70 text-white transition-all opacity-0 group-hover:opacity-100 border border-white/30"
         aria-label="Previous slide"
       >
-        <FiChevronLeft className="w-5 h-5" />
+        <FiChevronLeft className="w-6 h-6" />
       </button>
       <button
         onClick={goToNext}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white transition-all opacity-0 group-hover:opacity-100 border border-white/20"
+        className="absolute right-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/50 backdrop-blur-md hover:bg-black/70 text-white transition-all opacity-0 group-hover:opacity-100 border border-white/30"
         aria-label="Next slide"
       >
-        <FiChevronRight className="w-5 h-5" />
+        <FiChevronRight className="w-6 h-6" />
       </button>
 
       {/* Slide Indicators */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2">
+      <div className="absolute bottom-8 left-8 z-30 flex gap-2.5">
         {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}
-            className={`h-1 rounded-full transition-all ${
+            className={`h-1.5 rounded-full transition-all ${
               index === currentSlide
-                ? "bg-white w-8 shadow-lg"
-                : "bg-white/40 hover:bg-white/60 w-6"
+                ? "bg-white w-10 shadow-lg shadow-white/50"
+                : "bg-white/50 hover:bg-white/70 w-6"
             }`}
             aria-label={`Go to slide ${index + 1}`}
           />
