@@ -9,7 +9,6 @@ import { BytesSection } from "@/components/home/bytes-section";
 import { CommunitySection } from "@/components/home/community-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
 import { LiveNowSection } from "@/components/home/live-now-section";
-import { TrendingPhotosSection } from "@/components/home/trending-photos-section";
 import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
@@ -20,7 +19,6 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
-  const [photoPosts, setPhotoPosts] = useState<any[]>([]);
 
   // Fetch videos from Supabase and Bluesky in parallel
   useEffect(() => {
@@ -40,7 +38,7 @@ export default function HomePage() {
 
       // Supabase videos
       const supabasePromise = !USE_MOCK_DATA
-        ? getVideos(50)
+        ? getVideos(200)
             .then((result) => {
               if (result && result.length > 0) {
                 const ceramicVideos = result.map((v: any) => ({
@@ -91,69 +89,25 @@ export default function HomePage() {
             })
         : Promise.resolve([]);
 
-      // Bluesky content (fetch ALL content types: videos, images, text)
-      const blueskyPromise = fetch("/api/bluesky/feed?limit=100&contentType=all")
-        .then((response) => response.json())
-        .then((data) => {
-          const blueskyContent = data.posts || data.videos || [];
-          if (data.success && blueskyContent.length > 0) {
-            console.log(`Loaded ${blueskyContent.length} posts from Bluesky (videos, images, text)`);
+      // Wait for Dragverse content to load
+      const results = await supabasePromise;
 
-            // Extract photo posts
-            const photos = blueskyContent.filter((post: any) =>
-              post.thumbnail &&
-              !post.playbackUrl?.includes("m3u8") &&
-              !post.playbackUrl?.includes("youtube") &&
-              !post.playbackUrl?.includes("vimeo") &&
-              !post.playbackUrl?.includes("tiktok")
-            ).slice(0, 15);
-
-            setPhotoPosts(photos);
-            return blueskyContent;
-          }
-          return [];
-        })
-        .catch((error) => {
-          console.warn("Failed to load videos from Bluesky:", error);
-          failedSources.push("Bluesky");
-          return [];
-        });
-
-      // YouTube drag content (100 videos from curated channels via RSS - no quota limits!)
-      const youtubePromise = fetch("/api/youtube/feed?limit=100&rssOnly=true")
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success && data.videos.length > 0) {
-            console.log(`Loaded ${data.videos.length} videos from YouTube`);
-            return data.videos;
-          }
-          return [];
-        })
-        .catch((error) => {
-          console.warn("Failed to load videos from YouTube:", error);
-          failedSources.push("YouTube");
-          return [];
-        });
-
-      // Wait for all fetches to complete in parallel
-      const results = await Promise.all([supabasePromise, blueskyPromise, youtubePromise]);
-
-      // Notify user if some sources failed (but not all)
-      if (failedSources.length > 0 && failedSources.length < 3) {
-        toast.error(`Some content sources unavailable: ${failedSources.join(", ")}`, {
+      // Notify user if Dragverse content failed to load
+      if (failedSources.includes("Dragverse")) {
+        toast.error("Failed to load Dragverse content", {
           duration: 4000,
         });
       }
 
-      // Combine all videos (no quality filtering - trust curated sources)
-      const allVideos = [...localVideos, ...results.flat()];
+      // Use only Dragverse videos (no external sources)
+      const allVideos = [...localVideos, ...(Array.isArray(results) ? results : [])];
 
       // Sort by date (newest first)
       if (allVideos.length > 0) {
         allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       }
 
-      console.log(`[Homepage] Loaded ${allVideos.length} videos from all sources (no filtering)`);
+      console.log(`[Homepage] Loaded ${allVideos.length} videos from Dragverse only (no external sources)`);
 
       setVideos(allVideos);
       setLoading(false);
@@ -162,47 +116,17 @@ export default function HomePage() {
     loadVideos();
   }, []);
 
-  // PRIORITY 1: Dragverse Bytes (native user uploads) - ALWAYS SHOW THESE FIRST
-  const dragverseBytes = videos.filter((v) =>
+  // Dragverse Bytes (native vertical shorts)
+  const shorts = videos.filter((v) =>
     v.contentType === "short" &&
     ((v as any).source === "ceramic" || !(v as any).source)
   );
 
-  // PRIORITY 2: YouTube Shorts from curated drag channels
-  const youtubeShorts = videos.filter((v) =>
-    v.contentType === "short" &&
-    (v as any).source === "youtube"
-  );
-
-  // PRIORITY 3: Bluesky vertical videos
-  const blueskyShorts = videos.filter((v) =>
-    v.contentType === "short" &&
-    (v as any).source === "bluesky"
-  );
-
-  // Show Dragverse Bytes FIRST (native content always prioritized)
-  // Then fill with YouTube, then Bluesky (up to 15 total)
-  const shorts = [
-    ...dragverseBytes,
-    ...youtubeShorts.slice(0, Math.max(0, 12 - dragverseBytes.length)),
-    ...blueskyShorts.slice(0, Math.max(0, 15 - dragverseBytes.length - Math.min(youtubeShorts.length, 12 - dragverseBytes.length)))
-  ].slice(0, 15);
-
-  // Horizontal videos - prioritize Dragverse first
-  const dragverseVideos = videos.filter((v) =>
+  // Dragverse horizontal videos (native long-form content)
+  const horizontalVideos = videos.filter((v) =>
     v.contentType !== "short" &&
     ((v as any).source === "ceramic" || !(v as any).source)
   );
-  const youtubeVideos = videos.filter((v) =>
-    v.contentType !== "short" &&
-    (v as any).source === "youtube"
-  );
-  const blueskyVideos = videos.filter((v) =>
-    v.contentType !== "short" &&
-    (v as any).source === "bluesky"
-  );
-
-  const horizontalVideos = [...dragverseVideos, ...youtubeVideos, ...blueskyVideos];
 
   const filteredVideos = videos.filter((video) => {
     const matchesSearch =
@@ -306,13 +230,10 @@ export default function HomePage() {
               {/* Live Now Section (shows when creators are streaming) */}
               <LiveNowSection />
 
-              {/* Dragverse Bytes (Shorts) - Show FIRST to highlight native content */}
+              {/* Dragverse Bytes (Shorts) - Native vertical videos */}
               {shorts.length > 0 && <BytesSection shorts={shorts} />}
 
-              {/* Trending Photos - Drag looks and performances from Bluesky */}
-              {photoPosts.length > 0 && <TrendingPhotosSection photos={photoPosts} />}
-
-              {/* Community Videos Section */}
+              {/* Community Videos Section - Native horizontal videos */}
               <CommunitySection videos={horizontalVideos} />
             </>
           )}

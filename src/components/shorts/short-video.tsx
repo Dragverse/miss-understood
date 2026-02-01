@@ -226,7 +226,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
               <iframe
                 ref={iframeRef}
                 src={getYouTubeEmbedUrl(video.playbackUrl) || video.playbackUrl}
-                className="h-full w-full object-contain"
+                className="h-full w-full object-cover"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 title={video.title}
@@ -254,7 +254,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 <Player.Container className="h-full w-full">
                   <Player.Video
                     ref={playerRef}
-                    className="h-full w-full object-contain"
+                    className="h-full w-full object-cover"
                     loop
                     playsInline
                     muted={isMuted}

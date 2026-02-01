@@ -28,20 +28,26 @@ export default function VideosPage() {
     });
   };
 
-  // Sort videos without quality filtering (trust curated sources)
+  // Sort videos - Dragverse priority with ALL content types
   const sortVideos = (dragverseVideos: Video[], externalVideos: Video[]) => {
+    // Dragverse: Show BOTH vertical and horizontal (all content types)
+    const allDragverse = dragverseVideos;
+
+    // External: Only horizontal (supplement)
+    const externalHorizontal = externalVideos.filter(v => v.contentType !== "short");
+
     // Sort by date (newest first)
-    const sortedDragverse = [...dragverseVideos].sort((a, b) =>
+    allDragverse.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    const sortedExternal = [...externalVideos].sort((a, b) =>
+    externalHorizontal.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    console.log(`[Videos] Dragverse: ${dragverseVideos.length} videos, External: ${externalVideos.length} videos (no filtering)`);
+    console.log(`[Videos] Dragverse: ${allDragverse.length} (all types), External: ${externalHorizontal.length} (horizontal only)`);
 
-    // Strong Dragverse priority: show all Dragverse first
-    return [...sortedDragverse, ...sortedExternal];
+    // Return: ALL Dragverse first, then external supplements
+    return [...allDragverse, ...externalHorizontal];
   };
 
   async function loadVideos(isRefresh = false) {
@@ -164,16 +170,11 @@ export default function VideosPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Only show horizontal videos (exclude shorts)
-  const horizontalVideos = videos.filter((v) => {
-    const isHorizontal = v.contentType !== "short";
-    if (!isHorizontal) {
-      console.log(`[Videos] Filtered out short: ${v.title?.substring(0, 30)} (source: ${v.source})`);
-    }
-    return isHorizontal;
-  });
+  // Display all videos (sortVideos already handles filtering)
+  // Dragverse shows all content types, external only shows horizontal
+  const displayVideos = videos;
 
-  const filteredVideos = horizontalVideos.filter((video) => {
+  const filteredVideos = displayVideos.filter((video) => {
     const matchesCategory =
       activeCategory === "All" || video.category === activeCategory;
     const matchesSearch =
