@@ -150,6 +150,28 @@ export default function ProfilePage() {
     }
   }, [isAuthenticated, user?.id]);
 
+  // Sync profile to populate bluesky_handle in database for aggregation
+  useEffect(() => {
+    async function syncProfile() {
+      if (!isAuthenticated || !user?.id) return;
+
+      try {
+        const authToken = await getAccessToken();
+        await fetch("/api/creator/sync-profile", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+        console.log("[Profile] Profile synced for aggregation");
+      } catch (error) {
+        console.error("[Profile] Failed to sync profile:", error);
+      }
+    }
+
+    syncProfile();
+  }, [isAuthenticated, user?.id, getAccessToken]);
+
   // Load videos from Supabase using verified user ID
   useEffect(() => {
     async function loadVideos() {
