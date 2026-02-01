@@ -240,7 +240,7 @@ export default function CreatorsDirectory() {
             {filteredAndSortedCreators.map((creator) => (
               <div
                 key={creator.did}
-                onClick={() => router.push(`/profile/${creator.handle}`)}
+                onClick={() => router.push(`/u/${creator.handle}`)}
                 className="group bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl overflow-hidden border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all cursor-pointer hover:shadow-lg hover:shadow-[#EB83EA]/20"
               >
                 {/* Banner */}

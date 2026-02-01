@@ -774,7 +774,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           {/* Creator Info */}
           <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-2xl p-5 border border-[#EB83EA]/20 shadow-lg">
             <div className="flex items-start justify-between gap-4">
-              <Link href={`/profile/${video.creator.handle}`} className="flex gap-3 flex-1 group">
+              <Link href={`/u/${video.creator.handle}`} className="flex gap-3 flex-1 group">
                 <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-[#EB83EA]/30 group-hover:border-[#EB83EA] transition-all flex-shrink-0">
                   <Image
                     src={video.creator.avatar}

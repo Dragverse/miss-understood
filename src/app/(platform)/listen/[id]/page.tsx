@@ -377,7 +377,7 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
           <div className="text-center mb-6">
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{audio.title}</h1>
             <Link
-              href={`/profile/${audio.creator?.handle || audio.creator?.did}`}
+              href={`/u/${audio.creator?.handle || audio.creator?.did}`}
               className="inline-flex items-center gap-2 group"
             >
               <Image
