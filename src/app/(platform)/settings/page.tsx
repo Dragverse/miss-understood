@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft } from "react-icons/fi";
+import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft, FiAlertTriangle } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import Image from "next/image";
 import toast from "react-hot-toast";
@@ -37,7 +37,7 @@ export default function SettingsPage() {
     unlinkGoogle,
   } = useAuthUser();
 
-  const [activeSection, setActiveSection] = useState<"profile" | "accounts">("profile");
+  const [activeSection, setActiveSection] = useState<"profile" | "accounts" | "danger">("profile");
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -72,6 +72,10 @@ export default function SettingsPage() {
     signerUuid: string | null;
   } | null>(null);
   const [isSettingUpFarcaster, setIsSettingUpFarcaster] = useState(false);
+
+  // Delete account state
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -731,6 +735,60 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") {
+      toast.error('Please type "DELETE" to confirm');
+      return;
+    }
+
+    const finalConfirm = confirm(
+      "Are you absolutely sure? This action cannot be undone. All your content, followers, and data will be permanently deleted."
+    );
+
+    if (!finalConfirm) {
+      return;
+    }
+
+    setIsDeleting(true);
+    const loadingToast = toast.loading("Deleting your account...");
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error("Authentication required. Please log in again.");
+      }
+
+      const response = await fetch("/api/user/delete-account", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      toast.dismiss(loadingToast);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete account");
+      }
+
+      toast.success("Account deleted successfully. Goodbye!");
+
+      // Log out and redirect to home
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 2000);
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      console.error("Account deletion error:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete account"
+      );
+      setIsDeleting(false);
+    }
+  };
+
   // Redirect if not authenticated
   if (!isReady) {
     return (
@@ -795,6 +853,17 @@ export default function SettingsPage() {
             >
               <FiLink2 className="w-5 h-5" />
               Connected Accounts
+            </button>
+            <button
+              onClick={() => setActiveSection("danger")}
+              className={`w-full px-4 py-3 rounded-lg text-left flex items-center gap-3 transition ${
+                activeSection === "danger"
+                  ? "bg-red-500 text-white"
+                  : "bg-[#18122D] text-gray-400 hover:text-white hover:bg-[#2f2942]"
+              }`}
+            >
+              <FiAlertTriangle className="w-5 h-5" />
+              Danger Zone
             </button>
           </nav>
         </div>
@@ -1322,7 +1391,67 @@ export default function SettingsPage() {
                     <strong>Bluesky:</strong> Connect manually using the button above with your Bluesky app password
                   </p>
                 </div>
+              </div>
+            )}
 
+            {activeSection === "danger" && (
+              <div>
+                <h2 className="text-2xl font-bold text-red-400 mb-6 flex items-center gap-2">
+                  <FiAlertTriangle className="w-6 h-6" />
+                  Danger Zone
+                </h2>
+                <p className="text-gray-400 mb-6">
+                  Irreversible and destructive actions
+                </p>
+
+                {/* Delete Account Section */}
+                <div className="border-2 border-red-500/30 rounded-xl p-6 bg-red-500/5">
+                  <h3 className="text-xl font-bold text-red-400 mb-3">
+                    Delete Account
+                  </h3>
+                  <p className="text-gray-300 mb-4">
+                    Once you delete your account, there is no going back. This action will:
+                  </p>
+                  <ul className="list-disc list-inside text-gray-400 mb-6 space-y-2">
+                    <li>Permanently delete all your videos, audio, and posts</li>
+                    <li>Remove all your comments and interactions</li>
+                    <li>Delete your profile and follower connections</li>
+                    <li>Remove all connected social accounts</li>
+                    <li>This action cannot be undone</li>
+                  </ul>
+
+                  <div className="bg-[#0f071a] border border-red-500/30 rounded-lg p-4 mb-4">
+                    <label className="block text-sm font-semibold mb-2 text-red-400">
+                      Type "DELETE" to confirm
+                    </label>
+                    <input
+                      type="text"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      placeholder="DELETE"
+                      disabled={isDeleting}
+                      className="w-full px-4 py-3 bg-[#18122D] border border-red-500/30 rounded-lg focus:outline-none focus:border-red-500 transition text-white disabled:opacity-50"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={isDeleting || deleteConfirmText !== "DELETE"}
+                    className="w-full px-6 py-4 bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <FiAlertTriangle className="w-5 h-5" />
+                    {isDeleting ? "Deleting Account..." : "Delete My Account Forever"}
+                  </button>
+
+                  <p className="text-xs text-gray-500 text-center mt-3">
+                    This action is permanent and cannot be reversed
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeSection === "accounts" && (
+              <div>
                 {/* Bluesky Connection Modal */}
                 {showBlueskyModal && (
                   <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
