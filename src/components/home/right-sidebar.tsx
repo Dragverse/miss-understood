@@ -10,7 +10,7 @@ export function RightSidebar() {
       {/* Explore & World Buttons */}
       <div className="grid grid-cols-2 gap-4">
         <a
-          href="https://world.dragverse.app/"
+          href="https://hyperfy.io/dragverse/"
           target="_blank"
           rel="noopener noreferrer"
           className="group relative rounded-[24px] overflow-hidden border-2 border-[#34d399]/40 hover:border-[#34d399]/70 transition-all shadow-lg hover:shadow-[#34d399]/20"
@@ -40,7 +40,7 @@ export function RightSidebar() {
         </a>
 
         <a
-          href="https://hyperfy.io/dragverse/"
+          href="https://world.dragverse.app/"
           target="_blank"
           rel="noopener noreferrer"
           className="group relative rounded-[24px] overflow-hidden border-2 border-[#60a5fa]/40 hover:border-[#60a5fa]/70 transition-all shadow-lg hover:shadow-[#60a5fa]/20"
