@@ -94,7 +94,7 @@ export function ProfileActionButtons({
       }
 
       // Open Privy's fund wallet modal
-      await fundWallet(wallet.address);
+      await fundWallet({ address: wallet.address as string });
 
       // Note: Actual tip sending would require additional implementation
       // with web3 library to send transaction on Base network
