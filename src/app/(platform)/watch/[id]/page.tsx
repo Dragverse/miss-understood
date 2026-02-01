@@ -694,25 +694,34 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
               )}
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-2 mb-5 pb-5 border-b border-[#EB83EA]/10">
-              {/* Like Button - Only for Dragverse videos */}
-              {video.source === "ceramic" && (
-                <HeartAnimation
-                  initialLiked={isLiked}
-                  onToggle={handleLike}
-                  showCount={true}
-                  count={likes}
-                />
-              )}
-
-              {/* View Count - Only show for Dragverse videos with tracked views */}
-              {video.source === "ceramic" && video.views > 0 && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] border border-[#EB83EA]/20 rounded-xl">
-                  <FiPlay className="w-5 h-5 text-[#EB83EA]" />
-                  <span className="text-sm font-semibold text-white">
+            {/* Stats Row */}
+            {video.source === "ceramic" && video.views > 0 && (
+              <div className="flex items-center gap-4 mb-4 pb-4 border-b border-[#EB83EA]/10">
+                <div className="flex items-center gap-2 text-gray-300">
+                  <FiPlay className="w-4 h-4 text-[#EB83EA]" />
+                  <span className="text-sm font-medium">
                     {video.views >= 1000 ? `${(video.views / 1000).toFixed(1)}K` : video.views} views
                   </span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-300">
+                  <span className="text-sm font-medium">
+                    {likes >= 1000 ? `${(likes / 1000).toFixed(1)}K` : likes} likes
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons - Improved Layout */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 mb-6">
+              {/* Like Button - Only for Dragverse videos */}
+              {video.source === "ceramic" && (
+                <div className="col-span-2 sm:col-span-1">
+                  <HeartAnimation
+                    initialLiked={isLiked}
+                    onToggle={handleLike}
+                    showCount={false}
+                    count={likes}
+                  />
                 </div>
               )}
 
@@ -720,25 +729,26 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
               {video.source === "ceramic" && (
                 <button
                   onClick={() => setCommentModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all text-white hover:text-[#EB83EA]"
+                  className="flex items-center justify-center gap-2 px-5 py-3 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA] hover:scale-105 transform"
                 >
                   <FiMessageCircle className="w-5 h-5" />
                   <span>Comment</span>
                 </button>
               )}
 
-              <ActionButton
+              <button
                 onClick={() => setShareModalOpen(true)}
-                variant="secondary"
-                icon={<FiShare2 className="w-5 h-5" />}
-                size="md"
+                className="flex items-center justify-center gap-2 px-5 py-3 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA] hover:scale-105 transform"
               >
-                Share
-              </ActionButton>
+                <FiShare2 className="w-5 h-5" />
+                <span>Share</span>
+              </button>
 
-              {/* Tip Button */}
+              {/* Tip Button - Prominent */}
               {video.source === "ceramic" && !isOwner && video.creator.walletAddress && (
-                <TipButton creator={video.creator} variant="primary" size="md" />
+                <div className="col-span-2 sm:col-span-1 sm:ml-auto">
+                  <TipButton creator={video.creator} variant="primary" size="md" className="w-full sm:w-auto hover:scale-105 transform transition-transform" />
+                </div>
               )}
             </div>
 

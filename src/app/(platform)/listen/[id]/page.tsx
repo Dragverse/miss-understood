@@ -426,31 +426,35 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
             </div>
           </div>
 
-          {/* Action Buttons - Centered */}
-          <div className="flex items-center justify-center gap-4 pb-6 border-b border-[#EB83EA]/10">
-            <HeartAnimation
-              initialLiked={isLiked}
-              onToggle={handleLike}
-              showCount={true}
-              count={likes}
-            />
+          {/* Action Buttons - Improved Layout */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 pb-6 border-b border-[#EB83EA]/10">
+            <div className="col-span-2 sm:col-span-1 flex justify-center sm:justify-start">
+              <HeartAnimation
+                initialLiked={isLiked}
+                onToggle={handleLike}
+                showCount={true}
+                count={likes}
+              />
+            </div>
             <button
               onClick={() => setCommentModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] rounded-full transition"
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA] hover:scale-105 transform"
             >
-              <FiMessageCircle className="w-5 h-5 text-[#EB83EA]" />
-              <span className="text-white font-semibold">0</span>
+              <FiMessageCircle className="w-5 h-5" />
+              <span>Comment</span>
             </button>
             <button
               onClick={() => setShareModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] rounded-full transition"
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA] hover:scale-105 transform"
             >
-              <FiShare2 className="w-5 h-5 text-[#EB83EA]" />
-              <span className="text-white font-semibold">Share</span>
+              <FiShare2 className="w-5 h-5" />
+              <span>Share</span>
             </button>
-            {/* Tip Button */}
+            {/* Tip Button - Prominent */}
             {!isOwner && audio && audio.creator.walletAddress && (
-              <TipButton creator={audio.creator} variant="primary" size="md" />
+              <div className="col-span-2 sm:col-span-1 sm:ml-auto">
+                <TipButton creator={audio.creator} variant="primary" size="md" className="w-full sm:w-auto hover:scale-105 transform transition-transform" />
+              </div>
             )}
           </div>
 
