@@ -30,8 +30,8 @@ export function BytesSection({ shorts }: BytesSectionProps) {
     return num.toString();
   };
 
-  // Only show section if we have 5 or more shorts
-  if (shorts.length < 5) return null;
+  // Only show section if we have shorts
+  if (shorts.length === 0) return null;
 
   return (
     <section className="space-y-6">

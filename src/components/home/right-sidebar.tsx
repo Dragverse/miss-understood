@@ -1,51 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   FiAlertTriangle,
-  FiUser,
   FiCheck,
   FiCircle,
   FiAward,
   FiGlobe,
-  FiVideo,
 } from "react-icons/fi";
-import { usePrivy } from "@privy-io/react-auth";
-import { useAuthUser } from "@/lib/privy/hooks";
 
 export function RightSidebar() {
-  const { authenticated } = usePrivy();
-  const { userId } = useAuthUser();
-  const [profileStats, setProfileStats] = useState({
-    hasAvatar: false,
-    hasBio: false,
-    hasBanner: false,
-  });
-
-  useEffect(() => {
-    async function fetchProfileStats() {
-      if (!authenticated || !userId) return;
-
-      try {
-        const response = await fetch(`/api/user/me`);
-        const data = await response.json();
-
-        if (data.success && data.creator) {
-          setProfileStats({
-            hasAvatar: !!data.creator.avatar && !data.creator.avatar.includes("defaultpfp"),
-            hasBio: !!data.creator.description && data.creator.description.length > 10,
-            hasBanner: !!data.creator.banner,
-          });
-        }
-      } catch (error) {
-        console.error("Failed to fetch profile stats:", error);
-      }
-    }
-
-    fetchProfileStats();
-  }, [authenticated, userId]);
 
   return (
     <aside className="hidden lg:block space-y-6">
@@ -131,93 +95,24 @@ export function RightSidebar() {
         </div>
       </a>
 
-      {/* Your Profile */}
-      <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
-        <h3 className="font-bold text-lg mb-5 flex items-center gap-3">
-          <FiUser className="text-[#EB83EA] w-5 h-5" />
-          Your Profile
-        </h3>
-
-        {authenticated ? (
-          <div className="space-y-3 mb-6">
-            <div className={`flex items-center gap-3 text-sm ${profileStats.hasAvatar ? "text-gray-400" : "text-white"}`}>
-              {profileStats.hasAvatar ? (
-                <>
-                  <FiCheck className="w-4 h-4 text-green-500" />
-                  <span className="line-through">Upload profile picture</span>
-                </>
-              ) : (
-                <>
-                  <FiCircle className="w-4 h-4 text-gray-500" />
-                  <span>Upload profile picture</span>
-                </>
-              )}
-            </div>
-
-            <div className={`flex items-center gap-3 text-sm ${profileStats.hasBio ? "text-gray-400" : "text-white"}`}>
-              {profileStats.hasBio ? (
-                <>
-                  <FiCheck className="w-4 h-4 text-green-500" />
-                  <span className="line-through">Add profile bio</span>
-                </>
-              ) : (
-                <>
-                  <FiCircle className="w-4 h-4 text-gray-500" />
-                  <span>Add profile bio</span>
-                </>
-              )}
-            </div>
-
-            <div className={`flex items-center gap-3 text-sm ${profileStats.hasBanner ? "text-gray-400" : "text-white"}`}>
-              {profileStats.hasBanner ? (
-                <>
-                  <FiCheck className="w-4 h-4 text-green-500" />
-                  <span className="line-through">Upload banner image</span>
-                </>
-              ) : (
-                <>
-                  <FiCircle className="w-4 h-4 text-gray-500" />
-                  <span>Upload banner image</span>
-                </>
-              )}
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-gray-400 mb-6">
-            Sign in to complete your profile and start creating!
-          </p>
-        )}
-
-        <Link
-          href="/profile"
-          className="block w-full py-3 bg-[#EB83EA] text-white text-sm font-extrabold rounded-full shadow-lg shadow-[#EB83EA]/20 hover:bg-[#E748E6] transition-all text-center uppercase tracking-wider"
-        >
-          {authenticated ? "Update Profile" : "Sign In"}
-        </Link>
-      </div>
-
-      {/* Discover Creators */}
-      <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
-        <div className="flex items-center gap-3 mb-4">
-          <FiVideo className="text-[#EB83EA] w-5 h-5" />
-          <h2 className="font-bold text-lg uppercase tracking-widest">
-            Discover
-          </h2>
+      {/* Ad Section */}
+      <div className="p-6 rounded-[24px] bg-gradient-to-br from-[#1a0b2e] to-[#2a1545] border border-[#2f2942]">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+            Sponsored
+          </span>
         </div>
 
-        <div className="text-center py-6">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
-            <FiVideo className="w-8 h-8 text-[#EB83EA]" />
+        <div className="text-center py-8">
+          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#EB83EA]/10 to-[#7c3aed]/10 border border-[#EB83EA]/20 flex items-center justify-center">
+            <span className="text-3xl">🎯</span>
           </div>
-          <p className="text-sm text-gray-400 mb-4">
-            Discover creators from the Videos feed and Bluesky integration
+          <p className="text-sm text-gray-400 mb-2 font-semibold">
+            Your brand here
           </p>
-          <Link
-            href="/videos"
-            className="inline-block px-6 py-2 bg-[#EB83EA] text-white text-sm font-bold rounded-full hover:bg-[#E748E6] transition-all"
-          >
-            Browse Videos
-          </Link>
+          <p className="text-xs text-gray-500">
+            Reach thousands of engaged creators and viewers
+          </p>
         </div>
       </div>
     </aside>

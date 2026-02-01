@@ -6,7 +6,8 @@ import { FiSearch } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { HeroSection } from "@/components/home/hero-section";
 import { BytesSection } from "@/components/home/bytes-section";
-import { CommunitySection } from "@/components/home/community-section";
+import { HorizontalVideosSection } from "@/components/home/horizontal-videos-section";
+import { AudiosSection } from "@/components/home/audios-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
 import { LiveNowSection } from "@/components/home/live-now-section";
 import { getVideos } from "@/lib/supabase/videos";
@@ -124,7 +125,13 @@ export default function HomePage() {
 
   // Dragverse horizontal videos (native long-form content)
   const horizontalVideos = videos.filter((v) =>
-    v.contentType !== "short" &&
+    v.contentType === "long" &&
+    ((v as any).source === "ceramic" || !(v as any).source)
+  );
+
+  // Dragverse audio content (podcasts and music)
+  const audios = videos.filter((v) =>
+    (v.contentType === "podcast" || v.contentType === "music") &&
     ((v as any).source === "ceramic" || !(v as any).source)
   );
 
@@ -231,10 +238,13 @@ export default function HomePage() {
               <LiveNowSection />
 
               {/* Dragverse Bytes (Shorts) - Native vertical videos */}
-              {shorts.length > 0 && <BytesSection shorts={shorts} />}
+              <BytesSection shorts={shorts} />
 
-              {/* Community Videos Section - Native horizontal videos */}
-              <CommunitySection videos={horizontalVideos} />
+              {/* Horizontal Videos Section - Native long-form videos */}
+              <HorizontalVideosSection videos={horizontalVideos} />
+
+              {/* Audio Section - Podcasts and music with album-style covers */}
+              <AudiosSection audios={audios} />
             </>
           )}
         </div>
