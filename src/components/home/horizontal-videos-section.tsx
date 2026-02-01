@@ -26,13 +26,13 @@ export function HorizontalVideosSection({ videos }: HorizontalVideosSectionProps
   if (videos.length === 0) return null;
 
   return (
-    <section className="space-y-6 pt-4">
+    <section className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-3">
           <FiPlay className="text-[#EB83EA] w-7 h-7" />
           <h2 className="font-bold text-2xl lg:text-3xl uppercase tracking-widest whitespace-nowrap">
-            Horizontal Videos
+            Behind the Scenes
           </h2>
         </div>
         <div className="h-px bg-[#2f2942] w-full" />

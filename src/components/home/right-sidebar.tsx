@@ -21,27 +21,9 @@ export function RightSidebar() {
             Beta
           </span>
         </div>
-        <p className="text-sm text-purple-200 leading-relaxed mb-3">
-          Dragverse is in active development. Some features may be incomplete or change over time.
+        <p className="text-sm text-purple-200 leading-relaxed">
+          Dragverse is in active development. More features will come as we continue to grow.
         </p>
-        <div className="space-y-2 text-xs text-purple-300/80">
-          <div className="flex items-start gap-2">
-            <FiCheck className="w-4 h-4 flex-shrink-0 text-green-400 mt-0.5" />
-            <span>Upload videos & build your profile</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <FiCheck className="w-4 h-4 flex-shrink-0 text-green-400 mt-0.5" />
-            <span>Browse content from Bluesky & YouTube</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <FiCircle className="w-3 h-3 flex-shrink-0 text-purple-500 mt-1 ml-0.5" />
-            <span className="opacity-60">Live streaming (invite-only)</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <FiCircle className="w-3 h-3 flex-shrink-0 text-purple-500 mt-1 ml-0.5" />
-            <span className="opacity-60">Monetization features (coming soon)</span>
-          </div>
-        </div>
       </div>
 
       {/* Dragverse Worlds */}
@@ -96,25 +78,26 @@ export function RightSidebar() {
       </a>
 
       {/* Ad Section */}
-      <div className="p-6 rounded-[24px] bg-gradient-to-br from-[#1a0b2e] to-[#2a1545] border border-[#2f2942]">
-        <div className="flex items-center justify-between mb-4">
+      <a
+        href="https://salti.printful.me/product/salti-25-premium-sherpa-blanket"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block rounded-[24px] overflow-hidden border border-[#2f2942] hover:border-[#EB83EA]/40 transition-all group"
+      >
+        <div className="px-4 pt-4 pb-2 bg-gradient-to-br from-[#1a0b2e] to-[#2a1545]">
           <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
             Sponsored
           </span>
         </div>
-
-        <div className="text-center py-8">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#EB83EA]/10 to-[#7c3aed]/10 border border-[#EB83EA]/20 flex items-center justify-center">
-            <span className="text-3xl">🎯</span>
-          </div>
-          <p className="text-sm text-gray-400 mb-2 font-semibold">
-            Your brand here
-          </p>
-          <p className="text-xs text-gray-500">
-            Reach thousands of engaged creators and viewers
-          </p>
+        <div className="relative aspect-square overflow-hidden">
+          <Image
+            src="/salti-blanket.webp"
+            alt="Salti Premium Sherpa Blanket"
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+          />
         </div>
-      </div>
+      </a>
     </aside>
   );
 }

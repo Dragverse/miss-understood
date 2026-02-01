@@ -9,9 +9,8 @@
 // Allowlist of users who can create livestreams
 // Add Privy user IDs or email addresses here
 const LIVESTREAM_ALLOWLIST: string[] = [
-  // Add founder/admin emails or Privy IDs here
-  // Example: "founder@dragverse.com",
-  // Example: "did:privy:abc123...",
+  // Founder/Admin
+  "privy:cmkgjgjd003ezla0cf5dweu37", // Salti (founder)
 ];
 
 // Environment variable override - comma-separated list of allowed users

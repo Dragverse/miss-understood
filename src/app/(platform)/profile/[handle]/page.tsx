@@ -6,6 +6,7 @@ import Image from "next/image";
 import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiZap, FiHeadphones, FiImage, FiMessageSquare, FiInfo, FiMusic, FiGrid, FiCalendar, FiGlobe, FiShare2, FiCheck, FiStar, FiUser } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
+import { FarcasterBadge } from "@/components/profile/farcaster-badge";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
 import { VerificationBadge } from "@/components/ui/verification-badge";
 import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
@@ -313,6 +314,9 @@ export default function DynamicProfilePage() {
                     {creator.blueskyHandle && (
                       <BlueskyBadge handle={creator.blueskyHandle} />
                     )}
+                    {creator.farcasterHandle && (
+                      <FarcasterBadge username={creator.farcasterHandle} />
+                    )}
                   </div>
                   {/* Stats inline */}
                   <div className="flex gap-6 text-sm md:text-base">
@@ -387,14 +391,14 @@ export default function DynamicProfilePage() {
       {/* Content area */}
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
         {/* Bio and Social Links */}
-        {(creator.description || creator.instagramHandle || creator.tiktokHandle || creator.blueskyHandle || creator.website) && (
+        {(creator.description || creator.instagramHandle || creator.tiktokHandle || creator.blueskyHandle || creator.farcasterHandle || creator.website) && (
           <div className="mb-8">
             {creator.description && (
               <p className="text-gray-200 text-base leading-relaxed mb-4 max-w-3xl">
                 {creator.description}
               </p>
             )}
-            {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle) && (
+            {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle || creator.farcasterHandle) && (
               <div className="flex flex-wrap gap-2">
                 {creator.instagramHandle && (
                   <a
@@ -427,6 +431,21 @@ export default function DynamicProfilePage() {
                   >
                     <SiBluesky className="w-3.5 h-3.5" />
                     <span>Bluesky</span>
+                  </a>
+                )}
+                {creator.farcasterHandle && (
+                  <a
+                    href={`https://warpcast.com/${creator.farcasterHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#8a63d2] to-[#6633cc] hover:from-[#7b54c3] hover:to-[#5522bb] text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 1000 1000" fill="currentColor">
+                      <path d="M257.778 155.556H742.222V844.444H671.111V528.889H670.414C662.554 441.677 589.258 373.333 500 373.333C410.742 373.333 337.446 441.677 329.586 528.889H328.889V844.444H257.778V155.556Z" />
+                      <path d="M128.889 253.333L156.111 155.556H193.333V253.333H128.889Z" />
+                      <path d="M806.667 253.333L833.889 155.556H871.111V253.333H806.667Z" />
+                    </svg>
+                    <span>Farcaster</span>
                   </a>
                 )}
                 {creator.website && (
@@ -830,7 +849,7 @@ export default function DynamicProfilePage() {
                 </div>
 
                 {/* Social Links */}
-                {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle) && (
+                {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle || creator.farcasterHandle) && (
                   <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
                     <h3 className="text-lg font-bold text-[#EB83EA] mb-4 uppercase tracking-wide">Social Links</h3>
                     <div className="space-y-3">

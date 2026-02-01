@@ -9,9 +9,10 @@ import { PostCard as BlueskyPostCard } from "@/components/feed/post-card";
 import { PostCard } from "@/components/posts/post-card";
 import { PostComposer } from "@/components/posts/post-composer";
 import { FeedRightSidebar } from "@/components/feed/feed-right-sidebar";
+import { ConnectionGate } from "@/components/feed/connection-gate";
 
 function FeedContent() {
-  const { isAuthenticated } = useAuthUser();
+  const { isAuthenticated, farcasterHandle } = useAuthUser();
   const searchParams = useSearchParams();
   const filter = searchParams?.get("filter");
   const hashtag = searchParams?.get("hashtag");
@@ -21,13 +22,14 @@ function FeedContent() {
   const [dragversePosts, setDragversePosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasBluesky, setHasBluesky] = useState(false);
+  const [hasFarcaster, setHasFarcaster] = useState(false);
   const [sortBy, setSortBy] = useState<"engagement" | "recent">("engagement");
   const [showComposer, setShowComposer] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [newContentAvailable, setNewContentAvailable] = useState(false);
 
-  // Check Bluesky session status and backfill posts
+  // Check Bluesky session status, Farcaster connection, and backfill posts
   useEffect(() => {
     async function checkBlueskySession() {
       try {
@@ -37,6 +39,11 @@ function FeedContent() {
       } catch (error) {
         console.error("Failed to check Bluesky session:", error);
       }
+    }
+
+    // Check if user has Farcaster connected
+    function checkFarcasterConnection() {
+      setHasFarcaster(!!farcasterHandle);
     }
 
     // Backfill any posts missing creator_id
@@ -53,9 +60,10 @@ function FeedContent() {
 
     if (isAuthenticated) {
       checkBlueskySession();
+      checkFarcasterConnection();
       backfillPosts();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, farcasterHandle]);
 
   // Handle post deletion
   const handlePostDeleted = (postId: string) => {
@@ -212,11 +220,19 @@ function FeedContent() {
     setShowComposer(false);
   };
 
+  // Show connection gate if user doesn't have Bluesky or Farcaster connected
+  const hasConnection = hasBluesky || hasFarcaster;
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
       <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-8">
         {/* Main Content */}
         <div className="col-span-12 lg:col-span-9 space-y-6">
+          {/* Connection Gate */}
+          {!loading && !hasConnection ? (
+            <ConnectionGate hasBluesky={hasBluesky} hasFarcaster={hasFarcaster} />
+          ) : (
+            <>
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
@@ -375,6 +391,8 @@ function FeedContent() {
                 </div>
               )}
             </div>
+          )}
+          </>
           )}
         </div>
 

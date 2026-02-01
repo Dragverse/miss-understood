@@ -151,7 +151,7 @@ export default function HomePage() {
     <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
       <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-8">
         {/* Main Content */}
-        <div className="col-span-12 lg:col-span-9 space-y-10">
+        <div className="col-span-12 lg:col-span-9 space-y-6">
           {/* Categories - Hidden until we have more content
           <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {categories.map((category) => (
@@ -218,7 +218,7 @@ export default function HomePage() {
               <HeroSection />
 
               {/* Loading skeletons while data fetches */}
-              <div className="space-y-10">
+              <div className="space-y-6">
                 {/* Shorts skeleton */}
                 <ShortsSectionSkeleton />
 

@@ -41,9 +41,8 @@ export function BytesSection({ shorts }: BytesSectionProps) {
           <FiZap className="text-[#EB83EA] w-8 h-8" />
           <h2 className="font-bold text-2xl lg:text-3xl uppercase tracking-widest">
             <span className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
-              Bytes
+              Snapshots
             </span>
-            <span className="ml-3 text-sm text-gray-500 font-normal">Vertical Videos</span>
           </h2>
         </div>
         <div className="flex gap-3">

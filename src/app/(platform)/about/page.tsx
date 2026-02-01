@@ -1,213 +1,139 @@
 "use client";
 
 import Link from "next/link";
-import { FiGlobe, FiLock, FiUsers, FiZap } from "react-icons/fi";
+import Image from "next/image";
+import { FiHeart, FiUsers, FiZap, FiGlobe } from "react-icons/fi";
 
 export default function AboutPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
+    <div className="max-w-5xl mx-auto px-4 py-12">
       {/* Header */}
       <div className="text-center mb-16">
-        <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
-          Technology & Ethics
+        <div className="mb-8">
+          <Image
+            src="/logo.svg"
+            alt="Dragverse"
+            width={200}
+            height={80}
+            className="mx-auto"
+          />
+        </div>
+        <h1 className="text-5xl font-bold mb-6">
+          Welcome to{" "}
+          <span className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+            Dragverse
+          </span>
         </h1>
-        <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-          Building a more open, decentralized, and creator-owned future for drag content
+        <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          The home for drag artists to create, connect, and thrive. Built by the community, for the community.
         </p>
       </div>
 
-      {/* Our Mission */}
+      {/* What is Dragverse */}
       <section className="mb-16">
-        <h2 className="text-3xl font-bold mb-6 text-white">Our Mission</h2>
+        <h2 className="text-3xl font-bold mb-6 text-white">What is Dragverse?</h2>
         <p className="text-lg text-gray-300 mb-4 leading-relaxed">
-          Dragverse exists to empower drag artists with technology that puts them first. We believe
-          in a future where creators own their content, control their revenue, and connect directly
-          with their community—without relying on traditional media conglomerates or platforms that
-          take the majority of earnings.
+          Dragverse is a platform designed specifically for drag artists and their fans. We're creating a space where creators can share their art, build their community, and earn directly from their work—without the limitations of traditional platforms.
         </p>
         <p className="text-lg text-gray-300 leading-relaxed">
-          By leveraging emerging technologies like cryptocurrency and AI, we&apos;re building tools that
-          promote open-source collaboration, decentralized ownership, and transparent, ethical
-          practices.
+          Whether you're uploading performance videos, going live, or sharing behind-the-scenes content, Dragverse gives you the tools to showcase your talent and connect with fans who love what you do.
         </p>
       </section>
 
-      {/* How We Use Technology */}
+      {/* Features Grid */}
       <section className="mb-16">
-        <h2 className="text-3xl font-bold mb-8 text-white">How We Use Technology</h2>
-
-        <div className="grid gap-8">
-          {/* Crypto */}
-          <div className="bg-white/5 rounded-2xl p-8 border border-white/10">
+        <h2 className="text-3xl font-bold mb-8 text-white">Why Dragverse?</h2>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-xl">
-                <FiZap className="w-6 h-6 text-white" />
+                <FiHeart className="w-6 h-6 text-white" />
               </div>
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold mb-4 text-white">Cryptocurrency</h3>
-                <p className="text-gray-300 mb-4 leading-relaxed">
-                  We use cryptocurrency (specifically on Base Network, an Ethereum Layer 2) to enable
-                  <strong className="text-white"> direct creator payments</strong> without middlemen.
-                  When fans tip creators, 100% of the funds go straight to the artist&apos;s wallet—no
-                  platform fees, no delays, no gatekeepers.
-                </p>
-                <div className="bg-black/30 rounded-lg p-4 mb-4">
-                  <h4 className="font-semibold text-white mb-2">Why we chose this approach:</h4>
-                  <ul className="space-y-2 text-gray-300">
-                    <li>• <strong className="text-white">Low fees:</strong> ~$0.01 per transaction vs. 30% on traditional platforms</li>
-                    <li>• <strong className="text-white">Instant payments:</strong> Creators receive funds in 2 seconds, not 30 days</li>
-                    <li>• <strong className="text-white">Global access:</strong> Works for creators anywhere in the world</li>
-                    <li>• <strong className="text-white">True ownership:</strong> You control your wallet, not us</li>
-                  </ul>
-                </div>
-                <p className="text-sm text-gray-400 italic">
-                  We also support traditional payment methods (Stripe) for fans who prefer credit/debit
-                  cards, ensuring accessibility for everyone.
+              <div>
+                <h3 className="text-xl font-bold mb-2 text-white">Creator-First</h3>
+                <p className="text-gray-300">
+                  Built for artists by artists. Keep more of what you earn and own your content.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* AI */}
-          <div className="bg-white/5 rounded-2xl p-8 border border-white/10">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-xl">
-                <FiGlobe className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold mb-4 text-white">
-                  Artificial Intelligence (Responsible Use)
-                </h3>
-                <p className="text-gray-300 mb-4 leading-relaxed">
-                  We use AI to <strong className="text-white">enhance</strong> the creator experience,
-                  not replace human creativity. AI helps with technical tasks that would otherwise
-                  require expensive equipment or software.
-                </p>
-                <div className="bg-black/30 rounded-lg p-4 mb-4">
-                  <h4 className="font-semibold text-white mb-2">How we use AI ethically:</h4>
-                  <ul className="space-y-2 text-gray-300">
-                    <li>• <strong className="text-white">Video transcoding:</strong> Automatically optimize videos for all devices (720p, 480p, 360p)</li>
-                    <li>• <strong className="text-white">Thumbnail generation:</strong> Suggest cover images from key moments</li>
-                    <li>• <strong className="text-white">Content moderation:</strong> Flag harmful content while respecting artistic expression</li>
-                    <li>• <strong className="text-white">Search & discovery:</strong> Help fans find creators they&apos;ll love</li>
-                  </ul>
-                </div>
-                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                  <h4 className="font-semibold text-red-300 mb-2">What we DON&apos;T do with AI:</h4>
-                  <ul className="space-y-1 text-gray-300 text-sm">
-                    <li>✗ Generate fake content or deepfakes</li>
-                    <li>✗ Train AI models on creator content without permission</li>
-                    <li>✗ Sell creator data to third parties</li>
-                    <li>✗ Replace human moderators with fully automated systems</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Decentralization */}
-          <div className="bg-white/5 rounded-2xl p-8 border border-white/10">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-xl">
-                <FiLock className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold mb-4 text-white">Decentralized Storage</h3>
-                <p className="text-gray-300 mb-4 leading-relaxed">
-                  Video files are stored on <strong className="text-white">Livepeer</strong> (a
-                  decentralized video network) and metadata is stored on{" "}
-                  <strong className="text-white">Ceramic</strong> (a decentralized data network). This
-                  means:
-                </p>
-                <ul className="space-y-2 text-gray-300 mb-4">
-                  <li>• Your content isn&apos;t controlled by a single company</li>
-                  <li>• Videos remain accessible even if Dragverse goes offline</li>
-                  <li>• You can migrate your content to other platforms if you choose</li>
-                  <li>• No single entity can censor or delete your work arbitrarily</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Open Source */}
-          <div className="bg-white/5 rounded-2xl p-8 border border-white/10">
+          <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-xl">
                 <FiUsers className="w-6 h-6 text-white" />
               </div>
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold mb-4 text-white">Open Source & Collaboration</h3>
-                <p className="text-gray-300 mb-4 leading-relaxed">
-                  Dragverse is built on open-source technologies and we believe in transparency. Our
-                  code is available for review, and we welcome contributions from the community.
+              <div>
+                <h3 className="text-xl font-bold mb-2 text-white">Community Driven</h3>
+                <p className="text-gray-300">
+                  Connect directly with your fans and fellow artists in a supportive space.
                 </p>
-                <div className="bg-black/30 rounded-lg p-4">
-                  <h4 className="font-semibold text-white mb-2">This means:</h4>
-                  <ul className="space-y-2 text-gray-300">
-                    <li>• Anyone can verify how we handle data and payments</li>
-                    <li>• Developers can build compatible tools and integrations</li>
-                    <li>• The community can propose and vote on new features</li>
-                    <li>• If Dragverse ever shuts down, the code lives on</li>
-                  </ul>
-                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-xl">
+                <FiZap className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-2 text-white">Multiple Formats</h3>
+                <p className="text-gray-300">
+                  Share full performances, quick bytes, podcasts, music, and live streams all in one place.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-xl">
+                <FiGlobe className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-2 text-white">Global Reach</h3>
+                <p className="text-gray-300">
+                  Connect with fans and creators from around the world in one vibrant community.
+                </p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Our Commitments */}
+      {/* Our Story (Placeholder) */}
       <section className="mb-16">
-        <h2 className="text-3xl font-bold mb-6 text-white">Our Commitments</h2>
+        <h2 className="text-3xl font-bold mb-6 text-white">Our Story</h2>
         <div className="bg-gradient-to-r from-[#EB83EA]/10 to-[#7c3aed]/10 border border-[#EB83EA]/30 rounded-2xl p-8">
-          <ul className="space-y-4 text-gray-300">
-            <li className="flex items-start gap-3">
-              <span className="text-[#EB83EA] text-xl">✓</span>
-              <span><strong className="text-white">Creator-first economics:</strong> Technology should empower artists, not exploit them</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#EB83EA] text-xl">✓</span>
-              <span><strong className="text-white">Transparency:</strong> Open about how we use technology and where money flows</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#EB83EA] text-xl">✓</span>
-              <span><strong className="text-white">Data privacy:</strong> We don&apos;t sell your data or train AI on your content without consent</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#EB83EA] text-xl">✓</span>
-              <span><strong className="text-white">Accessibility:</strong> Support both crypto AND traditional payment methods</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-[#EB83EA] text-xl">✓</span>
-              <span><strong className="text-white">Community governance:</strong> Creators have a voice in how the platform evolves</span>
-            </li>
-          </ul>
+          <p className="text-lg text-gray-300 leading-relaxed mb-4">
+            Dragverse was born from a simple idea: drag artists deserve a platform that celebrates and supports their unique art form.
+          </p>
+          <p className="text-gray-300 leading-relaxed">
+            We're building more than just another social platform—we're creating a home for the drag community to flourish, free from the constraints and biases of mainstream platforms.
+          </p>
         </div>
       </section>
 
-      {/* Questions */}
-      <section className="mb-16">
-        <h2 className="text-3xl font-bold mb-6 text-white">Questions?</h2>
-        <p className="text-gray-300 mb-6">
-          We&apos;re committed to being transparent about how we build and operate Dragverse. If you have
-          questions about our technology choices, data handling, or anything else, we&apos;d love to hear
-          from you.
+      {/* CTA */}
+      <section className="text-center">
+        <h2 className="text-3xl font-bold mb-6 text-white">Ready to Join?</h2>
+        <p className="text-lg text-gray-300 mb-8">
+          Whether you're a creator or a fan, there's a place for you in the Dragverse.
         </p>
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap justify-center gap-4">
           <Link
             href="/"
-            className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] text-white font-semibold rounded-full transition-all shadow-lg hover:shadow-xl"
+            className="px-8 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] text-white font-semibold rounded-full transition-all shadow-lg hover:shadow-xl"
           >
-            Back to Home
+            Explore Dragverse
           </Link>
-          <a
-            href="https://github.com/Dragverse"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/20 text-white font-semibold rounded-full transition-all"
+          <Link
+            href="/tech-ethics"
+            className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/20 text-white font-semibold rounded-full transition-all"
           >
-            View on GitHub
-          </a>
+            Our Technology & Ethics
+          </Link>
         </div>
       </section>
     </div>
