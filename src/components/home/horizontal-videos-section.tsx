@@ -95,9 +95,6 @@ export function HorizontalVideosSection({ videos }: HorizontalVideosSectionProps
                     size={14}
                   />
                 </div>
-                <div className="text-[11px] text-gray-500 font-medium">
-                  {formatNumber(video.views)} views
-                </div>
               </div>
             </div>
           </Link>

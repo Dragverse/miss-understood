@@ -108,9 +108,6 @@ export function AudiosSection({ audios }: AudiosSectionProps) {
                   />
                 </div>
               </div>
-              <div className="text-[11px] text-gray-500 font-medium">
-                {formatNumber(audio.views)} views
-              </div>
             </div>
           </Link>
         ))}

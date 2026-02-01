@@ -86,7 +86,7 @@ export function HeroSlider() {
             {/* Content */}
             <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12 text-white z-20">
               <div className="max-w-2xl">
-                <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl font-black uppercase mb-4 md:mb-5 drop-shadow-2xl tracking-tight leading-none">
+                <h2 className="font-heading text-2xl md:text-3xl font-black uppercase mb-4 md:mb-5 drop-shadow-2xl tracking-tight leading-none">
                   {slide.title}
                 </h2>
                 <p className="text-base md:text-lg text-gray-200 mb-6 md:mb-8 max-w-lg drop-shadow-lg leading-relaxed">

@@ -231,11 +231,17 @@ export default function HomePage() {
             </>
           ) : (
             <>
-              {/* Hero Section */}
-              <HeroSection />
+              {/* Mobile: LiveNow first if active, else hero first */}
+              <div className="lg:hidden">
+                <LiveNowSection />
+                <HeroSection />
+              </div>
 
-              {/* Live Now Section (shows when creators are streaming) */}
-              <LiveNowSection />
+              {/* Desktop: Hero first, then LiveNow */}
+              <div className="hidden lg:block">
+                <HeroSection />
+                <LiveNowSection />
+              </div>
 
               {/* Dragverse Bytes (Shorts) - Native vertical videos */}
               <BytesSection shorts={shorts} />
@@ -249,8 +255,13 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Right Sidebar */}
-        <div className="col-span-3">
+        {/* Right Sidebar - Desktop only */}
+        <div className="hidden lg:block col-span-3">
+          <RightSidebar />
+        </div>
+
+        {/* Mobile Sidebar at bottom */}
+        <div className="lg:hidden col-span-12 mt-8">
           <RightSidebar />
         </div>
       </div>

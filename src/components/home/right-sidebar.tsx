@@ -6,11 +6,13 @@ import { FiAlertTriangle } from "react-icons/fi";
 export function RightSidebar() {
 
   return (
-    <aside className="hidden lg:block space-y-6 sticky top-6">
+    <aside className="space-y-6 sticky top-6">
       {/* Explore & World Buttons */}
       <div className="grid grid-cols-2 gap-4">
         <a
-          href="/explore"
+          href="https://world.dragverse.app/"
+          target="_blank"
+          rel="noopener noreferrer"
           className="group relative rounded-[24px] overflow-hidden border-2 border-[#34d399]/40 hover:border-[#34d399]/70 transition-all shadow-lg hover:shadow-[#34d399]/20"
         >
           <div className="relative aspect-square">

@@ -119,7 +119,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
             </Link>
           </div>
           <div className="text-xs text-gray-500 mt-1">
-            {formatNumber(video.views)} views • {video.category}
+            {video.category}
           </div>
           <p className="text-xs text-gray-400 mt-2 line-clamp-2">
             {video.description}
@@ -229,12 +229,9 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
                 size={14}
               />
             </Link>
-            <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
-              <span>{formatNumber(video.views)} views</span>
-              <span className="text-gray-700">•</span>
-              <span className="flex items-center gap-1">
-                <FiHeart className="w-3 h-3" /> {formatNumber(video.likes)}
-              </span>
+            <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+              <FiHeart className="w-3 h-3" />
+              <span>{formatNumber(video.likes)}</span>
             </div>
           </div>
         </div>
