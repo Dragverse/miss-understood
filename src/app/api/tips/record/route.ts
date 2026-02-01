@@ -6,7 +6,7 @@ import { checkRateLimit } from "@/lib/utils/rate-limiter";
 export async function POST(request: NextRequest) {
   try {
     const auth = await verifyAuth(request);
-    if (!auth.authenticated) {
+    if (!auth.authenticated || !auth.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
