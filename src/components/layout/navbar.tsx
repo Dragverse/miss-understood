@@ -10,6 +10,10 @@ import {
   FiX,
   FiVideo,
   FiUser,
+  FiBell,
+  FiPlus,
+  FiMessageSquare,
+  FiHeadphones,
 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
@@ -21,9 +25,13 @@ export function Navbar() {
   const { login, logout, authenticated, user } = usePrivy();
   const { setSession, clearAuth } = useAuth();
   const { canStream } = useCanLivestream();
-  const { blueskyProfile } = useAuthUser();
+  const { blueskyProfile, blueskyConnected, farcasterHandle } = useAuthUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+
+  // User has social connection (for create button)
+  const hasConnection = blueskyConnected || !!farcasterHandle;
 
   // Fetch notifications count
   useEffect(() => {
@@ -47,6 +55,21 @@ export function Navbar() {
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [authenticated]);
+
+  // Close create menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showCreateMenu && !target.closest('.create-menu-container')) {
+        setShowCreateMenu(false);
+      }
+    };
+
+    if (showCreateMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showCreateMenu]);
 
   const handleLogin = () => {
     login();
@@ -94,51 +117,120 @@ export function Navbar() {
         </div>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {authenticated ? (
-            <div className="relative group hidden md:block">
-              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#EB83EA] cursor-pointer hover:scale-105 transition-transform">
-                <Image
-                  alt="User Profile"
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-cover"
-                  src={
-                    blueskyProfile?.avatar ||
-                    user?.twitter?.profilePictureUrl ||
-                    "/defaultpfp.png"
-                  }
-                />
+            <>
+              {/* Create Button - Only show if user has social connections */}
+              {hasConnection && (
+                <div className="relative hidden md:block create-menu-container">
+                  <button
+                    onClick={() => setShowCreateMenu(!showCreateMenu)}
+                    className="w-10 h-10 rounded-full bg-[#EB83EA] hover:bg-[#E748E6] flex items-center justify-center transition-all shadow-lg hover:shadow-xl"
+                    title="Create Content"
+                  >
+                    <FiPlus className="w-5 h-5 text-white" />
+                  </button>
+                  {/* Create Dropdown */}
+                  {showCreateMenu && (
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl p-2 z-50">
+                      <Link
+                        href="/upload"
+                        onClick={() => setShowCreateMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                      >
+                        <FiVideo className="w-4 h-4" />
+                        Upload Video
+                      </Link>
+                      <Link
+                        href="/upload?type=audio"
+                        onClick={() => setShowCreateMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                      >
+                        <FiHeadphones className="w-4 h-4" />
+                        Upload Audio
+                      </Link>
+                      <Link
+                        href="/feed/create"
+                        onClick={() => setShowCreateMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                      >
+                        <FiMessageSquare className="w-4 h-4" />
+                        Create Post
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Notifications */}
+              <Link
+                href="/notifications"
+                className="relative w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-all hidden md:flex"
+                title="Notifications"
+              >
+                <FiBell className="w-5 h-5 text-gray-300" />
+                {notificationCount > 0 && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#EB83EA] rounded-full flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-white">
+                      {notificationCount > 9 ? "9+" : notificationCount}
+                    </span>
+                  </div>
+                )}
+              </Link>
+
+              {/* User Avatar with Dropdown */}
+              <div className="relative group hidden md:block">
+                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#EB83EA] cursor-pointer hover:scale-105 transition-transform">
+                  <Image
+                    alt="User Profile"
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover"
+                    src={
+                      blueskyProfile?.avatar ||
+                      user?.twitter?.profilePictureUrl ||
+                      "/defaultpfp.png"
+                    }
+                  />
+                </div>
+                {/* Dropdown */}
+                <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2 z-50">
+                  <Link
+                    href="/dashboard"
+                    className="block w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className="block w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                  >
+                    Profile
+                  </Link>
+                  {canStream && (
+                    <Link
+                      href="/live"
+                      className="block w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                    >
+                      Go Live
+                    </Link>
+                  )}
+                  <div className="my-1 h-px bg-white/10" />
+                  <Link
+                    href="/settings"
+                    className="block w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                  >
+                    Settings
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </div>
               </div>
-              {/* Dropdown */}
-              <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2 z-50">
-                <Link
-                  href="/upload"
-                  className="block w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
-                >
-                  Upload Video
-                </Link>
-                <Link
-                  href="/live"
-                  className="block w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
-                >
-                  Go Live
-                </Link>
-                <div className="my-1 h-px bg-white/10" />
-                <Link
-                  href="/settings"
-                  className="block w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
-                >
-                  Settings
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
-                >
-                  Sign Out
-                </button>
-              </div>
-            </div>
+            </>
           ) : (
             <button
               onClick={handleLogin}

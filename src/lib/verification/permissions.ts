@@ -26,6 +26,19 @@ const ENV_PINK = process.env.NEXT_PUBLIC_PINK_BADGE_USERS?.split(",").map(s => s
 export type BadgeType = "golden" | "pink" | "purple" | null;
 
 /**
+ * Normalize user ID to handle both "privy:..." and "did:privy:..." formats
+ */
+function normalizeUserId(userId: string): string[] {
+  // Return both possible formats
+  if (userId.startsWith("did:privy:")) {
+    return [userId, userId.replace("did:privy:", "privy:")];
+  } else if (userId.startsWith("privy:")) {
+    return [userId, `did:${userId}`];
+  }
+  return [userId];
+}
+
+/**
  * Get the verification badge type for a user
  * Checks in order: Golden -> Pink -> Purple -> None
  */
@@ -39,12 +52,18 @@ export function getUserBadgeType(
 
   // Check Golden (highest tier)
   const goldenList = [...GOLDEN_BADGE_USERS, ...ENV_GOLDEN];
-  if (userId && goldenList.includes(userId)) return "golden";
+  if (userId) {
+    const userIdVariants = normalizeUserId(userId);
+    if (userIdVariants.some(id => goldenList.includes(id))) return "golden";
+  }
   if (userEmail && goldenList.includes(userEmail.toLowerCase())) return "golden";
 
   // Check Pink (mid tier)
   const pinkList = [...PINK_BADGE_USERS, ...ENV_PINK];
-  if (userId && pinkList.includes(userId)) return "pink";
+  if (userId) {
+    const userIdVariants = normalizeUserId(userId);
+    if (userIdVariants.some(id => pinkList.includes(id))) return "pink";
+  }
   if (userEmail && pinkList.includes(userEmail.toLowerCase())) return "pink";
 
   // Check Purple (social connections)
@@ -82,7 +101,10 @@ export function hasPremiumBadge(
   const goldenList = [...GOLDEN_BADGE_USERS, ...ENV_GOLDEN];
   const pinkList = [...PINK_BADGE_USERS, ...ENV_PINK];
 
-  if (userId && (goldenList.includes(userId) || pinkList.includes(userId))) return true;
+  if (userId) {
+    const userIdVariants = normalizeUserId(userId);
+    if (userIdVariants.some(id => goldenList.includes(id) || pinkList.includes(id))) return true;
+  }
   if (userEmail && (goldenList.includes(userEmail.toLowerCase()) || pinkList.includes(userEmail.toLowerCase()))) return true;
 
   return false;

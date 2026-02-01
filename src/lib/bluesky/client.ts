@@ -387,6 +387,7 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
       followingCount: 0,
       createdAt: new Date(),
       verified: false,
+      blueskyHandle: post.author.handle, // Add Bluesky handle for badge verification
     },
     category: "Performance", // Default category for Bluesky drag content
     tags: ["drag", "bluesky"],
@@ -542,6 +543,7 @@ export function blueskyPostToContent(post: BlueskyPost): any | null {
       followingCount: 0,
       createdAt: new Date(),
       verified: false,
+      blueskyHandle: post.author.handle, // Add Bluesky handle for badge verification
     },
     category: "Performance",
     tags: ["drag", "bluesky"],

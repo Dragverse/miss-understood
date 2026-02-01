@@ -22,7 +22,9 @@ export async function GET(request: NextRequest) {
           handle,
           display_name,
           avatar,
-          verified
+          verified,
+          bluesky_handle,
+          farcaster_handle
         )
       `)
       .eq("visibility", "public")
@@ -44,10 +46,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Transform posts to include social handles properly (snake_case to camelCase)
+    const transformedPosts = posts?.map(post => ({
+      ...post,
+      creator: post.creator ? {
+        ...post.creator,
+        blueskyHandle: (post.creator as any).bluesky_handle,
+        farcasterHandle: (post.creator as any).farcaster_handle,
+      } : undefined
+    })) || [];
+
     return NextResponse.json({
       success: true,
-      posts: posts || [],
-      count: posts?.length || 0,
+      posts: transformedPosts,
+      count: transformedPosts.length,
     });
   } catch (error) {
     console.error("Posts feed error:", error);
