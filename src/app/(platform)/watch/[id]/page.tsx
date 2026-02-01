@@ -278,6 +278,8 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
             handle: v.creator.handle,
             displayName: v.creator.display_name,
             avatar: v.creator.avatar || '/defaultpfp.png',
+            verified: v.creator.verified || false,
+            walletAddress: v.creator.wallet_address,
           } : { did: v.creator_did },
           category: v.category || '',
           tags: v.tags || [],

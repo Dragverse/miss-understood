@@ -420,8 +420,8 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 <span className="text-white text-xs font-semibold">Share</span>
               </button>
 
-              {/* Tip Button - Temporarily hidden until tipping feature is implemented */}
-              {false && video.source === "ceramic" && (
+              {/* Tip Button */}
+              {video.source === "ceramic" && !isCreator && video.creator?.walletAddress && (
                 <button
                   onClick={handleTip}
                   className="flex flex-col items-center gap-1"
