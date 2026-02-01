@@ -85,6 +85,12 @@ export function TipButton({ creator, variant = "primary", size = "md", className
       return;
     }
 
+    // Maximum tip cap of $100
+    if (amount > 100) {
+      toast.error("Maximum tip amount is $100");
+      return;
+    }
+
     setIsSendingTip(true);
     try {
       if (!walletAddress) {
@@ -217,12 +223,15 @@ export function TipButton({ creator, variant = "primary", size = "md", className
 
             {/* Amount Input */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold mb-3 text-gray-300">Tip Amount (USD)</label>
+              <label className="block text-sm font-semibold mb-3 text-gray-300">
+                Tip Amount (USD) <span className="text-xs text-gray-500">• Max $100</span>
+              </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-gray-400">$</span>
                 <input
                   type="number"
                   min="1"
+                  max="100"
                   step="1"
                   value={tipAmount}
                   onChange={(e) => setTipAmount(e.target.value)}
