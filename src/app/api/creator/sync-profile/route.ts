@@ -12,14 +12,12 @@ import {
 
 /**
  * POST /api/creator/sync-profile
- * Sync creator profile with latest data from Privy + Bluesky + YouTube
- * Updates existing creator record with real social profile data
+ * Sync creator profile with latest social handles from Privy
+ * ONLY updates social connection data (bluesky_handle, twitter, etc.) for follower aggregation
+ * NEVER overwrites Dragverse profile data (handle, display_name, avatar, description)
  *
- * Priority for handle/display_name:
- * 1. Bluesky (if connected)
- * 2. YouTube (if connected)
- * 3. Twitter/Google from Privy
- * 4. Generic fallback
+ * The user's Dragverse profile is sacred - only they can change it via settings.
+ * This sync only populates social handles for the follower stats feature.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -53,56 +51,42 @@ export async function POST(request: NextRequest) {
 
     console.log("[Sync Profile] Fetched Privy user profile");
 
-    // Check if user already has a profile with custom uploads
+    // Check if user already has a profile
     const existingCreator = await getCreatorByDID(userDID);
 
     // Extract Bluesky session data (if user has connected Bluesky)
     const blueskyData = await extractBlueskyFromSession(request);
 
-    // Extract profile data with priority system
+    // Extract ONLY social handles - do NOT extract or use profile display data
     const socialHandles = extractSocialHandles(privyUser);
 
-    // Priority: Bluesky > Twitter > Others
-    let finalHandle = extractHandle(privyUser, userDID);
-    let finalDisplayName = extractDisplayName(privyUser);
-    let finalAvatar = extractAvatar(privyUser, userDID);
-
-    if (blueskyData) {
-      console.log("[Sync Profile] Using Bluesky profile data (priority #1)");
-      finalHandle = blueskyData.handle;
-      finalDisplayName = blueskyData.displayName || finalDisplayName;
-      finalAvatar = blueskyData.avatar || finalAvatar;
-    }
-
-    // IMPORTANT: Preserve user-uploaded custom content
-    // Only sync avatar/banner if user hasn't uploaded custom ones
-    const hasCustomAvatar = existingCreator?.avatar &&
-      !existingCreator.avatar.includes("defaultpfp") &&
-      !existingCreator.avatar.includes("dicebear") &&
-      existingCreator.avatar.includes("livepeer"); // Custom uploads use Livepeer IPFS
-
-    const hasCustomBanner = existingCreator?.banner &&
-      existingCreator.banner.includes("livepeer"); // Custom uploads use Livepeer IPFS
-
-    const creatorData = {
+    // CRITICAL: Only update social handles, NEVER overwrite Dragverse profile data
+    const creatorData: any = {
       did: userDID,
-      handle: finalHandle,
-      display_name: finalDisplayName,
-      avatar: hasCustomAvatar ? existingCreator.avatar : finalAvatar, // Preserve custom avatar
-      banner: hasCustomBanner ? existingCreator.banner : undefined, // Preserve custom banner
-      description: existingCreator?.description || "", // Keep existing description
-      ...socialHandles,
+      ...socialHandles, // Twitter, Instagram, TikTok handles for follower aggregation
       ...(blueskyData && {
         bluesky_handle: blueskyData.handle,
         bluesky_did: blueskyData.did || "",
       }),
     };
 
-    console.log("[Sync Profile] Updating creator with data:", {
-      handle: creatorData.handle,
-      display_name: creatorData.display_name,
-      avatar: creatorData.avatar,
+    // If this is a brand new user (no existing profile), set initial defaults
+    // Otherwise, DO NOT touch handle, display_name, avatar, banner, or description
+    if (!existingCreator) {
+      console.log("[Sync Profile] New user - setting initial defaults from Privy");
+      creatorData.handle = extractHandle(privyUser, userDID);
+      creatorData.display_name = extractDisplayName(privyUser);
+      creatorData.avatar = extractAvatar(privyUser, userDID);
+      creatorData.description = "";
+    } else {
+      console.log("[Sync Profile] Existing user - preserving Dragverse profile data");
+    }
+
+    console.log("[Sync Profile] Syncing social handles only:", {
       bluesky_handle: creatorData.bluesky_handle,
+      twitter_handle: creatorData.twitter_handle,
+      instagram_handle: creatorData.instagram_handle,
+      preserving_profile: !!existingCreator,
     });
 
     // Update or create creator (upsert will update if exists)
