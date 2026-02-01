@@ -44,10 +44,13 @@ export default function ProfilePage() {
     totalFollowing: number;
     dragverseFollowers: number;
     blueskyFollowers: number;
+    farcasterFollowers: number;
+    farcasterFollowing: number;
     youtubeSubscribers: number;
     platforms: {
       dragverse: boolean;
       bluesky: boolean;
+      farcaster: boolean;
       youtube: boolean;
     };
   } | null>(null);
