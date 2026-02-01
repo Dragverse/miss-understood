@@ -12,6 +12,8 @@ import { getSrc } from "@livepeer/react/external";
 import { getSafeThumbnail, isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
+import { TipButton } from "@/components/shared";
+import { usePrivy } from "@privy-io/react-auth";
 
 interface PostCardProps {
   post: {
@@ -23,6 +25,7 @@ interface PostCardProps {
       did?: string; // Bluesky DID for following
       blueskyHandle?: string; // For badge verification
       farcasterHandle?: string; // For badge verification
+      walletAddress?: string; // For tipping
     };
     description: string;
     thumbnail?: string;
@@ -38,6 +41,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
+  const { user } = usePrivy();
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
@@ -45,6 +49,8 @@ export function PostCard({ post }: PostCardProps) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+
+  const isOwnPost = user?.id && post.creator.did && post.creator.did === user.id;
 
   const formattedDate = new Date(post.createdAt).toLocaleDateString("en-US", {
     month: "short",
@@ -354,6 +360,20 @@ export function PostCard({ post }: PostCardProps) {
           <FiBookmark className={`w-5 h-5 ${isBookmarked ? "fill-current" : ""}`} />
           <span>Save</span>
         </button>
+        {/* Tip Button - Only for Dragverse creators with wallets */}
+        {!isOwnPost && post.creator.walletAddress && post.creator.did && (
+          <TipButton
+            creator={{
+              displayName: post.creator.displayName,
+              handle: post.creator.handle,
+              avatar: post.creator.avatar,
+              did: post.creator.did,
+              walletAddress: post.creator.walletAddress,
+            } as any}
+            variant="secondary"
+            size="sm"
+          />
+        )}
         {(post as any).source === "youtube" && post.externalUrl && (
           <a
             href={post.externalUrl}

@@ -20,7 +20,7 @@ import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 import { usePrivy } from "@privy-io/react-auth";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
-import { HeartAnimation, ActionButton, EmptyState, LoadingShimmer, MoodBadge } from "@/components/shared";
+import { HeartAnimation, ActionButton, EmptyState, LoadingShimmer, MoodBadge, TipButton } from "@/components/shared";
 import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
 import { createMinimalYouTubeVideoWithDetection } from "@/lib/youtube/video-helpers";
 import { getSafeThumbnail, isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
@@ -736,18 +736,10 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 Share
               </ActionButton>
 
-              {/* Tip Button - Hidden until monetization feature is implemented
-              {video.source === "ceramic" && (
-                <ActionButton
-                  onClick={() => setTipModalOpen(true)}
-                  variant="primary"
-                  icon={<ChocolateBar size={20} filled={true} />}
-                  size="md"
-                >
-                  Tip Creator
-                </ActionButton>
+              {/* Tip Button */}
+              {video.source === "ceramic" && !isOwner && (
+                <TipButton creator={video.creator} variant="primary" size="md" />
               )}
-              */}
             </div>
 
             {/* Description */}

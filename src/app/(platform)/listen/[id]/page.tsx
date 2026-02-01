@@ -13,7 +13,7 @@ import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 import { usePrivy } from "@privy-io/react-auth";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { HeartAnimation, LoadingShimmer, MoodBadge } from "@/components/shared";
+import { HeartAnimation, LoadingShimmer, MoodBadge, TipButton } from "@/components/shared";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
 export default function ListenPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: { token?: string } }) {
@@ -448,6 +448,10 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
               <FiShare2 className="w-5 h-5 text-[#EB83EA]" />
               <span className="text-white font-semibold">Share</span>
             </button>
+            {/* Tip Button */}
+            {!isOwner && audio && (
+              <TipButton creator={audio.creator} variant="primary" size="md" />
+            )}
           </div>
 
           {/* Description */}

@@ -67,8 +67,9 @@ export default function CreatePostPage() {
           if (data.success) {
             setSelectedPlatforms({
               dragverse: true,
-              bluesky: data.settings.bluesky && data.connected.bluesky,
-              farcaster: data.settings.farcaster && data.connected.farcaster,
+              // Auto-enable if connected, regardless of saved preference
+              bluesky: data.connected.bluesky,
+              farcaster: data.connected.farcaster,
             });
             setConnectedPlatforms(data.connected);
           }
