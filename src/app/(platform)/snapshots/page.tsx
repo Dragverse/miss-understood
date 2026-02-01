@@ -252,11 +252,11 @@ function SnapshotsContent() {
   };
 
   return (
-    <div className="relative h-[100dvh] md:h-[calc(100vh-4rem)] overflow-hidden bg-black w-full">
+    <div className="relative h-[100dvh] md:h-[calc(100vh-4rem)] overflow-hidden bg-black w-full flex items-center justify-center">
       {/* Vertical Slider */}
       <div
         ref={sliderRef}
-        className="keen-slider h-full w-full"
+        className="keen-slider h-full w-full md:max-w-[500px]"
         style={{ touchAction: 'pan-y' }}
       >
         {snapshots.map((video, idx) => (
