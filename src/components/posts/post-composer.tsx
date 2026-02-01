@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { FiImage, FiX, FiSmile, FiMapPin, FiSend, FiLoader, FiZap, FiHeart, FiActivity, FiFilm, FiAward, FiStar } from "react-icons/fi";
+import { SiBluesky } from "react-icons/si";
 import { usePrivy } from "@privy-io/react-auth";
 
 interface PostComposerProps {
@@ -30,6 +31,50 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
   const [isUploading, setIsUploading] = useState(false);
   const [showMoodPicker, setShowMoodPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Cross-posting state
+  const [selectedPlatforms, setSelectedPlatforms] = useState({
+    dragverse: true, // Always true
+    bluesky: false,
+    farcaster: false,
+  });
+  const [connectedPlatforms, setConnectedPlatforms] = useState({
+    bluesky: false,
+    farcaster: false,
+  });
+  const [showPlatformPicker, setShowPlatformPicker] = useState(false);
+
+  // Load user's default crosspost settings
+  useEffect(() => {
+    async function loadCrosspostSettings() {
+      try {
+        const authToken = await getAccessToken();
+        if (!authToken) return;
+
+        const response = await fetch("/api/user/crosspost-settings", {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setSelectedPlatforms({
+              dragverse: true,
+              bluesky: data.settings.bluesky && data.connected.bluesky,
+              farcaster: data.settings.farcaster && data.connected.farcaster,
+            });
+            setConnectedPlatforms(data.connected);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load crosspost settings:", error);
+      }
+    }
+
+    loadCrosspostSettings();
+  }, [getAccessToken]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -98,6 +143,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
           mediaTypes,
           mood: selectedMood,
           visibility: "public",
+          platforms: selectedPlatforms,
         }),
       });
 
@@ -213,6 +259,115 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
         </div>
       )}
 
+      {/* Platform picker */}
+      {showPlatformPicker && (
+        <div className="mb-4 p-4 bg-[#0f071a]/60 rounded-2xl border-2 border-[#EB83EA]/20">
+          <p className="text-white font-semibold mb-3 flex items-center gap-2">
+            <FiZap className="text-[#EB83EA]" />
+            Where to post?
+          </p>
+          <div className="space-y-3">
+            {/* Dragverse (always on) */}
+            <div className="flex items-center justify-between p-3 bg-[#2f2942] rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center">
+                  <FiZap className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-white font-semibold">Dragverse</span>
+              </div>
+              <span className="text-xs px-3 py-1 bg-[#EB83EA]/20 text-[#EB83EA] rounded-full">
+                Always On
+              </span>
+            </div>
+
+            {/* Bluesky */}
+            <div className="flex items-center justify-between p-3 bg-[#2f2942] rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                  <SiBluesky className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-white font-semibold">Bluesky</span>
+              </div>
+              {connectedPlatforms.bluesky ? (
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedPlatforms.bluesky}
+                    onChange={(e) =>
+                      setSelectedPlatforms((prev) => ({
+                        ...prev,
+                        bluesky: e.target.checked,
+                      }))
+                    }
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#EB83EA]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#EB83EA]"></div>
+                </label>
+              ) : (
+                <span className="text-xs px-3 py-1 bg-gray-600/30 text-gray-400 rounded-full">
+                  Not Connected
+                </span>
+              )}
+            </div>
+
+            {/* Farcaster */}
+            <div className="flex items-center justify-between p-3 bg-[#2f2942] rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">F</span>
+                </div>
+                <span className="text-white font-semibold">Farcaster</span>
+              </div>
+              {connectedPlatforms.farcaster ? (
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedPlatforms.farcaster}
+                    onChange={(e) =>
+                      setSelectedPlatforms((prev) => ({
+                        ...prev,
+                        farcaster: e.target.checked,
+                      }))
+                    }
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#EB83EA]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#EB83EA]"></div>
+                </label>
+              ) : (
+                <span className="text-xs px-3 py-1 bg-gray-600/30 text-gray-400 rounded-full">
+                  Not Connected
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selected platforms display */}
+      {!showPlatformPicker && (selectedPlatforms.bluesky || selectedPlatforms.farcaster) && (
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-gray-400 text-sm">Posting to:</span>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#EB83EA]/20 rounded-full border border-[#EB83EA]/30">
+              <FiZap className="w-4 h-4 text-white" />
+              <span className="text-white text-xs font-semibold">Dragverse</span>
+            </span>
+            {selectedPlatforms.bluesky && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/20 rounded-full border border-blue-500/30">
+                <SiBluesky className="w-4 h-4 text-blue-400" />
+                <span className="text-blue-400 text-xs font-semibold">Bluesky</span>
+              </span>
+            )}
+            {selectedPlatforms.farcaster && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
+                <span className="text-purple-400 text-xs font-bold">F</span>
+                <span className="text-purple-400 text-xs font-semibold">Farcaster</span>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="flex items-center justify-between pt-4 border-t border-[#EB83EA]/10">
         <div className="flex gap-2">
@@ -237,6 +392,19 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
             title="Set the mood"
           >
             <FiSmile size={20} />
+          </button>
+
+          {/* Platform picker toggle */}
+          <button
+            onClick={() => setShowPlatformPicker(!showPlatformPicker)}
+            className={`p-3 rounded-xl transition-all ${
+              showPlatformPicker
+                ? "bg-[#EB83EA] text-white"
+                : "bg-[#2f2942] hover:bg-[#EB83EA]/20 text-[#EB83EA]"
+            }`}
+            title="Choose platforms"
+          >
+            <FiZap size={20} />
           </button>
 
           {/* Location (future feature) */}
