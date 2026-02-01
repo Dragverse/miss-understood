@@ -467,22 +467,22 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   };
 
   return (
-    <div className={`${theaterMode ? "max-w-full" : "max-w-7xl"} mx-auto px-4 py-8 transition-all duration-300`}>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className={`${theaterMode ? "max-w-full bg-black" : "max-w-7xl"} mx-auto px-4 py-6 transition-all duration-300`}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Video */}
         <div className={`${theaterMode ? "lg:col-span-3" : "lg:col-span-2"} transition-all duration-300`}>
           {/* Livepeer Player with theater mode */}
-          <div className="rounded-3xl overflow-hidden mb-6 border-2 border-[#EB83EA]/10 shadow-xl relative group">
+          <div className="rounded-2xl overflow-hidden mb-4 border border-[#EB83EA]/20 shadow-2xl shadow-black/50 relative group bg-black">
             {/* Theater mode toggle */}
             <button
               onClick={() => setTheaterMode(!theaterMode)}
-              className="absolute top-4 right-4 z-10 p-3 bg-black/60 hover:bg-[#EB83EA]/80 rounded-xl transition-all opacity-0 group-hover:opacity-100 border border-[#EB83EA]/20"
+              className="absolute top-3 right-3 z-10 p-2.5 bg-black/70 hover:bg-[#EB83EA] backdrop-blur-sm rounded-lg transition-all opacity-0 group-hover:opacity-100"
               title={theaterMode ? "Exit theater mode" : "Enter theater mode"}
             >
               {theaterMode ? (
-                <FiMinimize2 className="w-5 h-5 text-white" />
+                <FiMinimize2 className="w-4 h-4 text-white" />
               ) : (
-                <FiMaximize2 className="w-5 h-5 text-white" />
+                <FiMaximize2 className="w-4 h-4 text-white" />
               )}
             </button>
 
@@ -617,10 +617,10 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           </div>
 
           {/* Video Info */}
-          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10 mb-6">
-            <div className="flex items-start justify-between mb-4">
+          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-2xl p-5 border border-[#EB83EA]/20 mb-4 shadow-lg">
+            <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
-                <h1 className="text-2xl lg:text-3xl font-bold mb-3 bg-gradient-to-r from-white to-[#EB83EA] bg-clip-text text-transparent">
+                <h1 className="text-xl lg:text-2xl font-bold mb-2 text-white">
                   {video.title}
                 </h1>
                 <div className="flex items-center gap-4 text-sm text-gray-400 mb-3">
@@ -695,7 +695,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3 mb-6 pb-6 border-b border-[#EB83EA]/10">
+            <div className="flex flex-wrap gap-2 mb-5 pb-5 border-b border-[#EB83EA]/10">
               {/* Like Button - Only for Dragverse videos */}
               {video.source === "ceramic" && (
                 <HeartAnimation
@@ -772,10 +772,10 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           </div>
 
           {/* Creator Info */}
-          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10">
+          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-2xl p-5 border border-[#EB83EA]/20 shadow-lg">
             <div className="flex items-start justify-between gap-4">
-              <Link href={`/profile/${video.creator.handle}`} className="flex gap-4 flex-1 group">
-                <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-[#EB83EA]/30 group-hover:border-[#EB83EA] transition-all flex-shrink-0">
+              <Link href={`/profile/${video.creator.handle}`} className="flex gap-3 flex-1 group">
+                <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-[#EB83EA]/30 group-hover:border-[#EB83EA] transition-all flex-shrink-0">
                   <Image
                     src={video.creator.avatar}
                     alt={video.creator.displayName}
@@ -911,49 +911,51 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         {/* Sidebar - Creator Videos & Recommended */}
         {!theaterMode && (
           <div className="lg:col-span-1">
-            <div className="sticky top-8 space-y-6">
+            <div className="sticky top-6 space-y-5">
               {/* More from Creator */}
               {creatorVideos.length > 0 && (
                 <div>
-                  <h3 className="font-bold text-lg uppercase tracking-wide mb-3 flex items-center gap-2">
-                    <span className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
-                      More from {video.creator.displayName}
-                    </span>
+                  <h3 className="font-bold text-sm uppercase tracking-wide mb-3 text-[#EB83EA]">
+                    More from {video.creator.displayName}
                   </h3>
                   <div className="space-y-2">
-                    {creatorVideos.map((v) => (
-                      <Link
-                        key={v.id}
-                        href={`/watch/${v.id}`}
-                        className="flex gap-2 p-2 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] hover:from-[#2f2942] hover:to-[#18122D] rounded-xl border border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all group"
-                      >
-                        <div className="relative w-24 h-16 flex-shrink-0 rounded-lg overflow-hidden">
-                          <Image
-                            src={getSafeThumbnail(v.thumbnail, `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`)}
-                            alt={v.title}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-xs line-clamp-2 mb-1 group-hover:text-[#EB83EA] transition-colors">
-                            {v.title}
-                          </h4>
-                          {v.source === "ceramic" && v.views > 0 && (
-                            <p className="text-xs text-gray-500">
-                              {v.views >= 1000 ? `${(v.views / 1000).toFixed(1)}K` : v.views} views
-                            </p>
-                          )}
-                        </div>
-                      </Link>
-                    ))}
+                    {creatorVideos.map((v) => {
+                      // Determine correct route based on content type
+                      const route = (v.contentType === 'podcast' || v.contentType === 'music') ? `/listen/${v.id}` : `/watch/${v.id}`;
+                      return (
+                        <Link
+                          key={v.id}
+                          href={route}
+                          className="flex gap-2 p-2 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] hover:from-[#2f2942] hover:to-[#18122D] rounded-lg border border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all group"
+                        >
+                          <div className="relative w-24 h-16 flex-shrink-0 rounded overflow-hidden">
+                            <Image
+                              src={getSafeThumbnail(v.thumbnail, `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`)}
+                              alt={v.title}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-xs line-clamp-2 mb-1 group-hover:text-[#EB83EA] transition-colors">
+                              {v.title}
+                            </h4>
+                            {v.source === "ceramic" && v.views > 0 && (
+                              <p className="text-xs text-gray-500">
+                                {v.views >= 1000 ? `${(v.views / 1000).toFixed(1)}K` : v.views} views
+                              </p>
+                            )}
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               {/* Up Next - Related Videos */}
               <div>
-                <h3 className="font-bold text-xl uppercase tracking-wide mb-4 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+                <h3 className="font-bold text-sm uppercase tracking-wide mb-3 text-[#EB83EA]">
                   Up Next
                 </h3>
                 {loadingRelated ? (
@@ -969,36 +971,40 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                     ))}
                   </div>
                 ) : relatedVideos.length > 0 ? (
-                  <div className="space-y-3">
-                    {relatedVideos.map((v) => (
-                      <Link
-                        key={v.id}
-                        href={`/watch/${v.id}`}
-                        className="flex gap-3 p-3 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] hover:from-[#2f2942] hover:to-[#18122D] rounded-2xl border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all shadow-lg hover:shadow-xl hover:shadow-[#EB83EA]/10 group"
-                      >
-                        <div className="relative w-32 h-20 flex-shrink-0 rounded-xl overflow-hidden border border-[#EB83EA]/20">
-                          <Image
-                            src={getSafeThumbnail(v.thumbnail, `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`)}
-                            alt={v.title}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-sm line-clamp-2 mb-1 group-hover:text-[#EB83EA] transition-colors">
-                            {v.title}
-                          </h4>
-                          <p className="text-xs text-gray-400 mb-1">
-                            {v.creator?.displayName || "Unknown"}
-                          </p>
-                          {v.source === "ceramic" && v.views > 0 && (
-                            <p className="text-xs text-[#EB83EA] font-semibold">
-                              {v.views >= 1000 ? `${(v.views / 1000).toFixed(1)}K` : v.views} views
+                  <div className="space-y-2">
+                    {relatedVideos.map((v) => {
+                      // Determine correct route based on content type
+                      const route = (v.contentType === 'podcast' || v.contentType === 'music') ? `/listen/${v.id}` : `/watch/${v.id}`;
+                      return (
+                        <Link
+                          key={v.id}
+                          href={route}
+                          className="flex gap-2 p-2.5 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] hover:from-[#2f2942] hover:to-[#18122D] rounded-lg border border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all group"
+                        >
+                          <div className="relative w-28 h-18 flex-shrink-0 rounded overflow-hidden">
+                            <Image
+                              src={getSafeThumbnail(v.thumbnail, `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`)}
+                              alt={v.title}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-xs line-clamp-2 mb-1 group-hover:text-[#EB83EA] transition-colors">
+                              {v.title}
+                            </h4>
+                            <p className="text-xs text-gray-400 mb-0.5">
+                              {v.creator?.displayName || "Unknown"}
                             </p>
-                          )}
-                        </div>
-                      </Link>
-                    ))}
+                            {v.source === "ceramic" && v.views > 0 && (
+                              <p className="text-xs text-gray-500">
+                                {v.views >= 1000 ? `${(v.views / 1000).toFixed(1)}K` : v.views} views
+                              </p>
+                            )}
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
                 ) : (
                   <EmptyState
