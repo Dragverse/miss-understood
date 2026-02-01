@@ -162,14 +162,37 @@ export function HeroSection() {
             )}
           </div>
         ) : (
-          // Offline placeholder
+          // Offline placeholder with text overlay
           <div className="absolute inset-0">
             <Image
-              src="/Famers/currently-offline.jpg"
+              src="/currently-offline.jpg"
               alt="Stream Currently Offline"
               fill
               className="object-cover"
             />
+            {/* Yellow "CURRENTLY OFFLINE" text overlay */}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+              <div className="text-center px-6">
+                <h2 className="text-5xl md:text-7xl font-bold uppercase tracking-widest mb-2" style={{
+                  background: 'linear-gradient(to right, #FCD34D, #FBBF24)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  textShadow: '0 0 40px rgba(252, 211, 77, 0.5)'
+                }}>
+                  Currently
+                </h2>
+                <h2 className="text-6xl md:text-8xl font-bold uppercase tracking-widest" style={{
+                  background: 'linear-gradient(to right, #FCD34D, #FBBF24)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  textShadow: '0 0 40px rgba(252, 211, 77, 0.5)'
+                }}>
+                  Offline
+                </h2>
+              </div>
+            </div>
           </div>
         )}
         </div>

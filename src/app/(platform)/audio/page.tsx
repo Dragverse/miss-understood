@@ -284,10 +284,9 @@ export default function AudioPage() {
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#EB83EA]/10 to-[#7c3aed]/10 flex items-center justify-center mx-auto mb-6">
               <FiHeadphones className="w-10 h-10 text-[#EB83EA]" />
             </div>
-            <h3 className="text-white text-2xl font-bold mb-3">No Audio Content Available</h3>
+            <h3 className="text-white text-2xl font-bold mb-3 uppercase tracking-wide">The Soundcheck is Silent</h3>
             <p className="text-gray-400 max-w-md mx-auto">
-              We&apos;re currently fetching drag podcasts and music from YouTube.
-              Check back in a few moments, or try refreshing the page!
+              No bangers or podcasts on the airwaves yet. Check back soon for fresh drag music and conversations!
             </p>
           </div>
         ) : (

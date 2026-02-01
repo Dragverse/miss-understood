@@ -290,13 +290,13 @@ export default function VideosPage() {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#EB83EA]/10 to-[#7c3aed]/10 mb-6">
             <FiSearch className="text-3xl text-[#EB83EA]" />
           </div>
-          <h3 className="text-white text-xl font-bold mb-2">
-            {videos.length === 0 ? "No Videos Yet" : "No videos found"}
+          <h3 className="text-white text-xl font-bold mb-2 uppercase tracking-wide">
+            {videos.length === 0 ? "The Stage is Empty" : "No performances found"}
           </h3>
           <p className="text-gray-400 text-sm max-w-md mx-auto mb-6">
             {videos.length === 0
-              ? "Be the first to share your creativity! Upload your drag performances, tutorials, or behind-the-scenes content."
-              : `No videos match your search "${searchQuery}" in ${activeCategory}. Try different keywords or browse all categories.`}
+              ? "The curtain is waiting to rise. Be the first to share your drag performances, tutorials, or backstage moments!"
+              : `No performances match "${searchQuery}" in ${activeCategory}. Try different keywords or browse all categories.`}
           </p>
           {videos.length === 0 && (
             <Link
