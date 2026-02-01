@@ -112,7 +112,7 @@ export default function ProfilePage() {
             followerCount: 0,
             followingCount: 0,
             createdAt: new Date(user.createdAt || Date.now()),
-            verified: isVerified(user.id),
+            verified: false,
           } as Creator);
           setIsLoadingProfile(false);
           return;
@@ -135,7 +135,7 @@ export default function ProfilePage() {
         followerCount: 0,
         followingCount: 0,
         createdAt: new Date(user.createdAt || Date.now()),
-        verified: isVerified(user.id),
+        verified: false,
         instagramHandle: instagramHandle || undefined,
         tiktokHandle: tiktokHandle || undefined,
       });
