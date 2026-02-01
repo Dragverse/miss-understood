@@ -10,6 +10,8 @@ import { SiBluesky } from "react-icons/si";
 import { VideoOptionsMenu } from "./video-options-menu";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
+import { VerificationBadge } from "@/components/profile/verification-badge";
+import { getUserBadgeType } from "@/lib/verification";
 
 interface VideoCardProps {
   video: Video;
@@ -216,12 +218,16 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
               className="text-xs text-gray-400 hover:text-white transition mt-1 flex items-center gap-1"
               onClick={(e) => e.stopPropagation()}
             >
-              {video.creator.displayName}
-              {video.creator.verified && (
-                <svg className="w-3 h-3 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              )}
+              <span>{video.creator.displayName}</span>
+              <VerificationBadge
+                badgeType={getUserBadgeType(
+                  video.creator.did,
+                  undefined,
+                  !!(video.creator as any).blueskyHandle,
+                  !!(video.creator as any).farcasterHandle
+                )}
+                size={14}
+              />
             </Link>
             <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
               <span>{formatNumber(video.views)} views</span>

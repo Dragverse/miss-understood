@@ -73,7 +73,7 @@ export function BytesSection({ shorts }: BytesSectionProps) {
             href={`/shorts?v=${video.id}`}
             className="flex-shrink-0 snap-start"
           >
-            <div className="relative w-[160px] aspect-[9/16] rounded-3xl overflow-hidden group cursor-pointer shadow-lg bg-black">
+            <div className="relative w-[180px] aspect-[9/16] rounded-3xl overflow-hidden group cursor-pointer shadow-lg bg-black">
               <Image
                 src={getSafeThumbnail(video.thumbnail)}
                 alt={video.title}

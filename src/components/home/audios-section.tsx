@@ -5,6 +5,8 @@ import Image from "next/image";
 import type { Video } from "@/types";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 import { FiMusic, FiPlay } from "react-icons/fi";
+import { VerificationBadge } from "@/components/profile/verification-badge";
+import { getUserBadgeType } from "@/lib/verification";
 
 interface AudiosSectionProps {
   audios: Video[];
@@ -39,7 +41,7 @@ export function AudiosSection({ audios }: AudiosSectionProps) {
       </div>
 
       {/* Audio Grid - Square tiles like album covers */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-4 gap-6">
         {audios.map((audio) => (
           <Link
             key={audio.id}
@@ -92,9 +94,16 @@ export function AudiosSection({ audios }: AudiosSectionProps) {
                 </div>
                 <div className="flex items-center gap-1 text-gray-400 text-xs min-w-0">
                   <span className="truncate">{audio.creator.displayName}</span>
-                  {audio.creator.verified && (
-                    <span className="text-[#EB83EA] text-[10px] flex-shrink-0">✓</span>
-                  )}
+                  <VerificationBadge
+                    badgeType={getUserBadgeType(
+                      audio.creator.did,
+                      undefined,
+                      !!(audio.creator as any).blueskyHandle,
+                      !!(audio.creator as any).farcasterHandle
+                    )}
+                    size={14}
+                    className="flex-shrink-0"
+                  />
                 </div>
               </div>
               <div className="text-[11px] text-gray-500 font-medium">

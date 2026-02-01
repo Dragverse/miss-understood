@@ -196,10 +196,19 @@ export default function VideosPage() {
       {/* Page Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-[#FCF1FC] flex items-center gap-3">
-            <div className="w-1.5 h-8 bg-[#EB83EA] rounded-full" />
-            Videos
-          </h1>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center shadow-lg shadow-[#EB83EA]/30">
+              <FiVideo className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl lg:text-4xl font-bold uppercase tracking-widest bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+                EXPLORE
+              </h1>
+              <p className="text-gray-400 text-sm">
+                Discover drag performances and content from across the multiverse
+              </p>
+            </div>
+          </div>
           {/* Manual Refresh Button */}
           <button
             onClick={() => loadVideos(true)}
@@ -211,9 +220,6 @@ export default function VideosPage() {
             <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
-        <p className="text-gray-400 text-sm">
-          Browse all horizontal format videos from creators
-        </p>
       </div>
 
       {/* New Content Available Banner */}

@@ -5,6 +5,8 @@ import Image from "next/image";
 import type { Video } from "@/types";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 import { FiPlay } from "react-icons/fi";
+import { VerificationBadge } from "@/components/profile/verification-badge";
+import { getUserBadgeType } from "@/lib/verification";
 
 interface HorizontalVideosSectionProps {
   videos: Video[];
@@ -81,9 +83,15 @@ export function HorizontalVideosSection({ videos }: HorizontalVideosSectionProps
                 </h3>
                 <div className="flex items-center gap-1.5 text-gray-400 text-xs">
                   <span>{video.creator.displayName}</span>
-                  {video.creator.verified && (
-                    <span className="text-[#EB83EA] text-[10px]">✓</span>
-                  )}
+                  <VerificationBadge
+                    badgeType={getUserBadgeType(
+                      video.creator.did,
+                      undefined,
+                      !!(video.creator as any).blueskyHandle,
+                      !!(video.creator as any).farcasterHandle
+                    )}
+                    size={14}
+                  />
                 </div>
                 <div className="text-[11px] text-gray-500 font-medium">
                   {formatNumber(video.likes)} likes
