@@ -17,6 +17,7 @@ export async function transformVideoWithCreator(supabaseVideo: SupabaseVideo): P
   try {
     const creator = await getCreatorByDID(supabaseVideo.creator_did);
     if (creator) {
+      console.log('[transformVideo] Creator wallet_address from DB:', creator.wallet_address);
       creatorData = {
         did: creator.did,
         handle: creator.handle,
@@ -29,6 +30,7 @@ export async function transformVideoWithCreator(supabaseVideo: SupabaseVideo): P
         verified: creator.verified || false,
         walletAddress: creator.wallet_address,
       };
+      console.log('[transformVideo] CreatorData walletAddress:', creatorData.walletAddress);
     }
   } catch (error) {
     console.warn('[transformVideo] Failed to fetch creator:', error);

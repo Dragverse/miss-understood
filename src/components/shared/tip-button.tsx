@@ -100,6 +100,8 @@ export function TipButton({ creator, variant = "primary", size = "md", className
       }
 
       // Check if creator has a wallet to receive tips
+      console.log('[TipButton] Creator object:', creator);
+      console.log('[TipButton] Creator walletAddress:', creator.walletAddress);
       if (!creator.walletAddress) {
         toast.error("This creator hasn't set up their wallet yet");
         setIsSendingTip(false);
