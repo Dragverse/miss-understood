@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
         twitter_handle,
         instagram_handle,
         tiktok_handle,
-        bluesky_handle
+        bluesky_handle,
+        farcaster_handle
       `);
 
     // Filter by verified status
@@ -108,7 +109,10 @@ export async function GET(request: NextRequest) {
             instagram: creator.instagram_handle,
             tiktok: creator.tiktok_handle,
             bluesky: creator.bluesky_handle,
+            farcaster: (creator as any).farcaster_handle,
           },
+          blueskyHandle: creator.bluesky_handle,
+          farcasterHandle: (creator as any).farcaster_handle,
           joinedAt: creator.created_at,
         };
       })

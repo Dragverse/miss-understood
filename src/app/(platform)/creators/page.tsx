@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FiUsers, FiVideo, FiEye, FiHeart, FiCheck, FiSearch, FiFilter, FiStar } from "react-icons/fi";
-import { isVerified } from "@/config/verified-creators";
+import { VerificationBadge } from "@/components/profile/verification-badge";
+import { getUserBadgeType } from "@/lib/verification";
 
 // Custom loading card component that matches creator card layout
 function CreatorLoadingCard() {
@@ -81,7 +82,10 @@ interface Creator {
     instagram?: string;
     tiktok?: string;
     bluesky?: string;
+    farcaster?: string;
   };
+  blueskyHandle?: string;
+  farcasterHandle?: string;
   joinedAt: string;
 }
 
@@ -276,11 +280,16 @@ export default function CreatorsDirectory() {
                     <h3 className="text-xl font-bold text-white group-hover:text-[#EB83EA] transition-colors truncate">
                       {creator.displayName}
                     </h3>
-                    {(creator.verified || isVerified(creator.did)) && (
-                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#CDB531] flex items-center justify-center" title="Verified Creator">
-                        <FiStar className="w-3 h-3 text-black font-bold" />
-                      </div>
-                    )}
+                    <VerificationBadge
+                      badgeType={getUserBadgeType(
+                        creator.did,
+                        undefined,
+                        !!creator.blueskyHandle,
+                        !!creator.farcasterHandle
+                      )}
+                      size={20}
+                      className="flex-shrink-0"
+                    />
                   </div>
                   <p className="text-gray-400 text-sm mb-4">@{creator.handle}</p>
 

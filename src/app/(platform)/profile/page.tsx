@@ -16,7 +16,8 @@ import { Creator, Video } from "@/types";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 import { StatsCard, LoadingShimmer } from "@/components/shared";
 import { usePrivy } from "@privy-io/react-auth";
-import { isVerified } from "@/config/verified-creators";
+import { VerificationBadge } from "@/components/profile/verification-badge";
+import { getUserBadgeType } from "@/lib/verification";
 import { FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
 import { SiBluesky } from "react-icons/si";
 
@@ -432,11 +433,16 @@ export default function ProfilePage() {
                   <h1 className="text-2xl font-semibold text-white truncate">
                     {creator.handle}
                   </h1>
-                  {creator.verified && (
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#CDB531] flex items-center justify-center" title="Verified Creator">
-                      <FiStar className="w-3 h-3 text-black font-bold" />
-                    </div>
-                  )}
+                  <VerificationBadge
+                    badgeType={getUserBadgeType(
+                      creator.did,
+                      undefined,
+                      !!creator.blueskyHandle,
+                      !!creator.farcasterHandle
+                    )}
+                    size={24}
+                    className="flex-shrink-0"
+                  />
                 </div>
                 <div className="flex gap-2">
                   <button
