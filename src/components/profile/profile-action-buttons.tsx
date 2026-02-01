@@ -57,7 +57,7 @@ export function ProfileActionButtons({
   };
 
   const handleTip = async () => {
-    if (!authenticated) {
+    if (!authenticated || !user) {
       // Redirect to login
       window.location.href = "/auth/login";
       return;
@@ -65,7 +65,11 @@ export function ProfileActionButtons({
 
     // Open Privy's funding modal to fund wallet and send tip
     try {
-      await fundWallet();
+      // Get user's wallet address - use embedded wallet or linked wallet
+      const wallet = user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet');
+      if (wallet && wallet.address) {
+        await fundWallet(wallet.address);
+      }
       setShowTipModal(true);
     } catch (error) {
       console.error("Funding wallet error:", error);
