@@ -7,7 +7,7 @@ import { categories } from "@/lib/utils/mock-data";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
-import { FiSearch, FiRefreshCw } from "react-icons/fi";
+import { FiSearch, FiRefreshCw, FiVideo } from "react-icons/fi";
 
 export default function VideosPage() {
   const [activeCategory, setActiveCategory] = useState("All");
