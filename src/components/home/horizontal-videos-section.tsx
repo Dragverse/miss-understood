@@ -32,12 +32,14 @@ export function HorizontalVideosSection({ videos }: HorizontalVideosSectionProps
       {/* Header */}
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-3">
-          <FiPlay className="text-[#EB83EA] w-7 h-7" />
-          <h2 className="font-bold text-2xl lg:text-3xl uppercase tracking-widest whitespace-nowrap">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+            <FiPlay className="text-[#EB83EA] w-5 h-5" />
+          </div>
+          <h2 className="font-heading text-2xl lg:text-3xl uppercase tracking-wide whitespace-nowrap font-black">
             Behind the Scenes
           </h2>
         </div>
-        <div className="h-px bg-[#2f2942] w-full" />
+        <div className="h-px bg-gradient-to-r from-[#2f2942] to-transparent w-full" />
       </div>
 
       {/* Video Grid */}
@@ -94,7 +96,7 @@ export function HorizontalVideosSection({ videos }: HorizontalVideosSectionProps
                   />
                 </div>
                 <div className="text-[11px] text-gray-500 font-medium">
-                  {formatNumber(video.likes)} likes
+                  {formatNumber(video.views)} views
                 </div>
               </div>
             </div>

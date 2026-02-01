@@ -10,7 +10,7 @@ const navItems = [
   { href: "/", icon: FiHome, label: "Home" },
   { href: "/feed", icon: FiMessageSquare, label: "Feed" },
   { href: "/videos", icon: FiCompass, label: "Explore" },
-  { href: "/shorts", icon: FiZap, label: "Bytes" },
+  { href: "/snapshots", icon: FiZap, label: "Bytes" },
   { href: "/audio", icon: FiHeadphones, label: "Audio" },
   { href: "/creators", icon: FiUsers, label: "Creators" },
   { href: "/hall-of-fame", icon: FiAward, label: "Hall of Fame" },
@@ -28,7 +28,7 @@ const userNavItems = [
 const mobileNavItems = [
   { href: "/", icon: FiHome, label: "Home" },
   { href: "/feed", icon: FiMessageSquare, label: "Feed" },
-  { href: "/shorts", icon: FiZap, label: "Bytes" },
+  { href: "/snapshots", icon: FiZap, label: "Bytes" },
   { href: "/videos", icon: FiCompass, label: "Explore" },
   { href: "/notifications", icon: FiBell, label: "Notifications", hasNotification: true },
 ];

@@ -38,23 +38,23 @@ export function BytesSection({ shorts }: BytesSectionProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <FiZap className="text-[#EB83EA] w-8 h-8" />
-          <h2 className="font-bold text-2xl lg:text-3xl uppercase tracking-widest">
-            <span className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
+          <FiZap className="text-[#EB83EA] w-7 h-7" />
+          <h2 className="font-heading text-2xl lg:text-3xl uppercase tracking-wide">
+            <span className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent font-black">
               Snapshots
             </span>
           </h2>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button
             onClick={() => scroll("left")}
-            className="w-11 h-11 rounded-full border border-[#2f2942] flex items-center justify-center hover:bg-[#EB83EA] hover:border-[#EB83EA] transition-all hover:text-white"
+            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[#EB83EA] hover:border-[#EB83EA] transition-all hover:text-white"
           >
             <FiChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={() => scroll("right")}
-            className="w-11 h-11 rounded-full border border-[#2f2942] flex items-center justify-center hover:bg-[#EB83EA] hover:border-[#EB83EA] transition-all hover:text-white"
+            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[#EB83EA] hover:border-[#EB83EA] transition-all hover:text-white"
           >
             <FiChevronRight className="w-5 h-5" />
           </button>
@@ -70,23 +70,27 @@ export function BytesSection({ shorts }: BytesSectionProps) {
         {shorts.map((video) => (
           <Link
             key={video.id}
-            href={`/shorts?v=${video.id}`}
+            href={`/snapshots?v=${video.id}`}
             className="flex-shrink-0 snap-start"
           >
-            <div className="relative w-[180px] aspect-[9/16] rounded-3xl overflow-hidden group cursor-pointer shadow-lg bg-black">
+            <div className="relative w-[180px] aspect-[9/16] rounded-[24px] overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-shadow bg-black border border-white/5">
               <Image
                 src={getSafeThumbnail(video.thumbnail)}
                 alt={video.title}
                 fill
-                className="object-contain group-hover:scale-110 transition-transform duration-700"
+                className="object-contain group-hover:scale-105 transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-white mb-2">
-                  <FiHeart className="w-4 h-4 text-[#EB83EA]" />
-                  {formatNumber(video.likes)}
-                </div>
-                <p className="text-white text-sm font-semibold line-clamp-2">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
+
+              {/* Likes overlay - Top Left */}
+              <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5 bg-black/60 backdrop-blur-sm rounded-full">
+                <FiHeart className="w-3.5 h-3.5 text-[#EB83EA] fill-[#EB83EA]" />
+                <span className="text-white text-xs font-bold">{formatNumber(video.likes)}</span>
+              </div>
+
+              {/* Title - Bottom */}
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <p className="text-white text-sm font-bold line-clamp-2 leading-tight">
                   {video.title}
                 </p>
               </div>

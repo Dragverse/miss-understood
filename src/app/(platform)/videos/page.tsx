@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
+import { RightSidebar } from "@/components/home/right-sidebar";
 import { categories } from "@/lib/utils/mock-data";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 import { getVideos } from "@/lib/supabase/videos";
@@ -192,128 +193,134 @@ export default function VideosPage() {
   }
 
   return (
-    <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center shadow-lg shadow-[#EB83EA]/30">
-              <FiVideo className="w-7 h-7 text-white" />
+    <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
+      <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-8">
+        {/* Main Content */}
+        <div className="col-span-12 lg:col-span-9 space-y-6">
+          {/* Page Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                  <FiVideo className="w-6 h-6 text-[#EB83EA]" />
+                </div>
+                <h1 className="font-heading text-3xl lg:text-4xl uppercase tracking-wide font-black">
+                  Explore
+                </h1>
+              </div>
+              {/* Manual Refresh Button */}
+              <button
+                onClick={() => loadVideos(true)}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-full font-medium transition-all disabled:opacity-50 border border-white/10"
+                title="Refresh videos"
+              >
+                <FiRefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
             </div>
-            <div>
-              <h1 className="text-3xl lg:text-4xl font-bold uppercase tracking-widest bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
-                EXPLORE
-              </h1>
-              <p className="text-gray-400 text-sm">
-                Discover drag performances and content from across the multiverse
+            <p className="text-gray-300 text-sm">
+              Videos from the Dragverse and around the Internet.
+            </p>
+          </div>
+
+          {/* New Content Available Banner */}
+          {newContentAvailable && (
+            <div className="mb-6 bg-gradient-to-r from-[#EB83EA]/20 to-[#7c3aed]/20 border-2 border-[#EB83EA]/30 rounded-2xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FiVideo className="w-5 h-5 text-[#EB83EA]" />
+                <p className="text-sm font-medium">New videos available! Feed has been updated.</p>
+              </div>
+              <button
+                onClick={() => setNewContentAvailable(false)}
+                className="text-gray-400 hover:text-white transition"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Search Bar */}
+          <div className="mb-6">
+            <div className="relative">
+              <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search videos, creators..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-white/5 border border-transparent focus:border-[#EB83EA]/30 rounded-full text-sm transition-all outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Categories */}
+          <div className="mb-8">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setActiveCategory(category)}
+                  className={`px-5 py-2 rounded-full whitespace-nowrap font-semibold text-sm transition-all ${
+                    activeCategory === category
+                      ? "bg-[#EB83EA] text-white shadow-lg"
+                      : "bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10"
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Results count */}
+          {(searchQuery || activeCategory !== "All") && (
+            <div className="mb-4 text-sm text-gray-400">
+              {filteredVideos.length} {filteredVideos.length === 1 ? "video" : "videos"}
+              {searchQuery && ` matching "${searchQuery}"`}
+              {activeCategory !== "All" && ` in ${activeCategory}`}
+            </div>
+          )}
+
+          {/* Video Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredVideos.map((video) => (
+              <VideoCard key={video.id} video={video} />
+            ))}
+          </div>
+
+          {filteredVideos.length === 0 && (
+            <div className="text-center py-20">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#1a0b2e] mb-4">
+                <FiSearch className="text-2xl text-gray-500" />
+              </div>
+              <p className="text-gray-400 text-lg font-medium">
+                {videos.length === 0 ? "The Stage is Empty" : "No videos found"}
               </p>
+              <p className="text-gray-500 text-sm mt-1">
+                {videos.length === 0
+                  ? "Be the first to share your drag performances!"
+                  : "Try adjusting your search or filters"}
+              </p>
+              {videos.length === 0 && (
+                <Link
+                  href="/upload"
+                  className="inline-flex items-center gap-2 px-6 py-3 mt-6 bg-gradient-to-r from-[#EB83EA] via-[#D946EF] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] rounded-full font-bold transition-all shadow-lg hover:scale-105 transform"
+                >
+                  Upload Video
+                </Link>
+              )}
             </div>
-          </div>
-          {/* Manual Refresh Button */}
-          <button
-            onClick={() => loadVideos(true)}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full font-medium transition-all disabled:opacity-50"
-            title="Refresh videos"
-          >
-            <FiRefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-        </div>
-      </div>
-
-      {/* New Content Available Banner */}
-      {newContentAvailable && (
-        <div className="mb-6 bg-gradient-to-r from-[#EB83EA]/20 to-[#7c3aed]/20 border-2 border-[#EB83EA]/30 rounded-2xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <svg className="w-5 h-5 text-[#EB83EA]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            <p className="text-sm font-medium">New videos available! Feed has been updated.</p>
-          </div>
-          <button
-            onClick={() => setNewContentAvailable(false)}
-            className="text-gray-400 hover:text-white transition"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Search Bar */}
-      <div className="mb-6">
-        <div className="relative max-w-2xl">
-          <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
-          <input
-            type="text"
-            placeholder="Search videos, creators..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-[#18122D] border border-[#2f2942] rounded-xl focus:outline-none focus:border-[#EB83EA] focus:bg-[#18122D] transition placeholder:text-gray-500 text-[#FCF1FC]"
-          />
-        </div>
-      </div>
-
-      {/* Categories */}
-      <div className="mb-8 -mx-4 px-4 sm:mx-0 sm:px-0">
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setActiveCategory(category)}
-              className={`px-4 py-2 rounded-lg whitespace-nowrap font-medium text-sm transition-all ${
-                activeCategory === category
-                  ? "bg-[#EB83EA] text-white shadow-lg"
-                  : "bg-[#18122D] text-gray-300 hover:bg-[#2f2942] border border-[#2f2942]"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Results count */}
-      {(searchQuery || activeCategory !== "All") && (
-        <div className="mb-4 text-sm text-gray-400">
-          {filteredVideos.length} {filteredVideos.length === 1 ? "video" : "videos"}
-          {searchQuery && ` matching "${searchQuery}"`}
-          {activeCategory !== "All" && ` in ${activeCategory}`}
-        </div>
-      )}
-
-      {/* Video Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-4 gap-y-8">
-        {filteredVideos.map((video) => (
-          <VideoCard key={video.id} video={video} />
-        ))}
-      </div>
-
-      {filteredVideos.length === 0 && (
-        <div className="text-center py-20">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#EB83EA]/10 to-[#7c3aed]/10 mb-6">
-            <FiSearch className="text-3xl text-[#EB83EA]" />
-          </div>
-          <h3 className="text-white text-xl font-bold mb-2 uppercase tracking-wide">
-            {videos.length === 0 ? "The Stage is Empty" : "No performances found"}
-          </h3>
-          <p className="text-gray-400 text-sm max-w-md mx-auto mb-6">
-            {videos.length === 0
-              ? "The curtain is waiting to rise. Be the first to share your drag performances, tutorials, or backstage moments!"
-              : `No performances match "${searchQuery}" in ${activeCategory}. Try different keywords or browse all categories.`}
-          </p>
-          {videos.length === 0 && (
-            <Link
-              href="/upload"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30"
-            >
-              Upload Video
-            </Link>
           )}
         </div>
-      )}
+
+        {/* Right Sidebar */}
+        <div className="hidden lg:block col-span-3">
+          <RightSidebar />
+        </div>
+      </div>
     </div>
   );
 }

@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
-import { ShortVideo } from "@/components/shorts/short-video";
-import { ShortOverlayTop } from "@/components/shorts/short-overlay-top";
-import { ShortOverlayBottom } from "@/components/shorts/short-overlay-bottom";
+import { ShortVideo } from "@/components/snapshots/short-video";
+import { ShortOverlayTop } from "@/components/snapshots/short-overlay-top";
+import { ShortOverlayBottom } from "@/components/snapshots/short-overlay-bottom";
 import { FiX, FiChevronUp, FiChevronDown } from "react-icons/fi";
 import type { Video } from "@/types";
 

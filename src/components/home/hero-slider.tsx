@@ -57,7 +57,7 @@ export function HeroSlider() {
 
   return (
     <div
-      className="relative w-full h-full rounded-[24px] overflow-hidden group"
+      className="relative w-full h-full rounded-[32px] overflow-hidden group shadow-2xl border-2 border-white/5"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -79,23 +79,26 @@ export function HeroSlider() {
               priority={index === 0}
             />
 
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+            {/* Enhanced Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/30" />
 
             {/* Content */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 text-white z-20 max-w-lg">
-              <h2 className="text-2xl md:text-3xl font-black uppercase mb-2 md:mb-3 drop-shadow-lg tracking-normal">
+            <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10 text-white z-20">
+              <h2 className="font-heading text-3xl md:text-4xl font-black uppercase mb-3 md:mb-4 drop-shadow-2xl tracking-wide leading-tight">
                 {slide.title}
               </h2>
-              <p className="text-sm md:text-lg text-gray-200 mb-4 md:mb-5 max-w-md drop-shadow-md leading-relaxed">
+              <p className="text-sm md:text-base text-gray-100 mb-5 md:mb-6 max-w-md drop-shadow-lg leading-relaxed">
                 {slide.description}
               </p>
               <Link
                 href={slide.link}
                 {...(slide.link.startsWith('http') ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                className="inline-block px-5 py-2.5 md:px-6 md:py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] text-white text-sm md:text-base font-semibold rounded-full transition-all shadow-lg hover:shadow-xl"
+                className="inline-flex items-center gap-2 px-6 py-3 md:px-8 md:py-4 bg-gradient-to-r from-[#EB83EA] via-[#D946EF] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] text-white text-sm md:text-base font-bold rounded-full transition-all shadow-xl hover:shadow-2xl hover:scale-105 transform"
               >
                 {slide.cta}
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
               </Link>
             </div>
           </div>
@@ -105,29 +108,29 @@ export function HeroSlider() {
       {/* Navigation Arrows */}
       <button
         onClick={goToPrevious}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all opacity-0 group-hover:opacity-100"
+        className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white transition-all opacity-0 group-hover:opacity-100 border border-white/20"
         aria-label="Previous slide"
       >
-        <FiChevronLeft className="w-6 h-6" />
+        <FiChevronLeft className="w-5 h-5" />
       </button>
       <button
         onClick={goToNext}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all opacity-0 group-hover:opacity-100"
+        className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white transition-all opacity-0 group-hover:opacity-100 border border-white/20"
         aria-label="Next slide"
       >
-        <FiChevronRight className="w-6 h-6" />
+        <FiChevronRight className="w-5 h-5" />
       </button>
 
       {/* Slide Indicators */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex gap-2">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2">
         {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}
-            className={`w-2 h-2 rounded-full transition-all ${
+            className={`h-1 rounded-full transition-all ${
               index === currentSlide
-                ? "bg-white w-8"
-                : "bg-white/50 hover:bg-white/70"
+                ? "bg-white w-8 shadow-lg"
+                : "bg-white/40 hover:bg-white/60 w-6"
             }`}
             aria-label={`Go to slide ${index + 1}`}
           />

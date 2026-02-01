@@ -235,10 +235,12 @@ function FeedContent() {
             <>
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">
-                <FiZap className="w-10 h-10 text-[#EB83EA]" />
-                <h1 className="font-bold text-3xl lg:text-4xl uppercase tracking-widest">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                  <FiZap className="w-6 h-6 text-[#EB83EA]" />
+                </div>
+                <h1 className="font-heading text-3xl lg:text-4xl uppercase tracking-wide font-black">
                   {showBookmarks
                     ? "Your Bookmarks"
                     : hashtag
@@ -251,7 +253,7 @@ function FeedContent() {
                 <button
                   onClick={() => loadFeed(true)}
                   disabled={refreshing}
-                  className="flex items-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-full font-medium transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-full font-medium transition-all disabled:opacity-50 border border-white/10"
                   title="Refresh feed"
                 >
                   <FiRefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -260,7 +262,7 @@ function FeedContent() {
                 {isAuthenticated && !showBookmarks && (
                   <button
                     onClick={() => setShowComposer(!showComposer)}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30"
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#EB83EA] via-[#D946EF] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30 hover:scale-105 transform"
                   >
                     <FiPlus className="w-5 h-5" />
                     {showComposer ? "Cancel" : "Share Your Story"}
@@ -268,12 +270,12 @@ function FeedContent() {
                 )}
               </div>
             </div>
-            <p className="text-gray-400 text-sm ml-14">
+            <p className="text-gray-300 text-sm">
               {showBookmarks
                 ? "Posts you've saved to read later"
                 : hashtag
                 ? `Posts tagged with ${hashtag}`
-                : "The latest tea, looks, and moments from your favorite queens"}
+                : "Since you have connected your social accounts, you are able to access the feed! Share yer behind the scenes."}
             </p>
           </div>
 

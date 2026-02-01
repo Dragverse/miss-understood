@@ -8,21 +8,21 @@ import { useSearchParams } from "next/navigation";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
-import { ShortVideo } from "@/components/shorts/short-video";
+import { ShortVideo } from "@/components/snapshots/short-video";
 import { FiChevronUp, FiChevronDown, FiRefreshCw } from "react-icons/fi";
 import { isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
 
-function ShortsContent() {
+function SnapshotsContent() {
   const searchParams = useSearchParams();
   const videoId = searchParams.get("v");
-  const [shorts, setShorts] = useState<Video[]>([]);
+  const [snapshots, setSnapshots] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [sliderReady, setSliderReady] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Deduplicate shorts by ID
-  const deduplicateShorts = (videos: Video[]) => {
+  // Deduplicate snapshots by ID
+  const deduplicateSnapshots = (videos: Video[]) => {
     const seen = new Set<string>();
     return videos.filter(video => {
       const id = video.id || video.externalUrl || `${video.source}-${video.title}`;
@@ -32,24 +32,24 @@ function ShortsContent() {
     });
   };
 
-  // Prioritize and sort shorts (no quality filtering - curated sources)
-  const sortShorts = (dragverseShorts: Video[], externalShorts: Video[]) => {
+  // Prioritize and sort snapshots (no quality filtering - curated sources)
+  const sortSnapshots = (dragverseSnapshots: Video[], externalSnapshots: Video[]) => {
     // Sort by date (newest first)
-    const sortedDragverse = [...dragverseShorts].sort((a, b) =>
+    const sortedDragverse = [...dragverseSnapshots].sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    const sortedExternal = [...externalShorts].sort((a, b) =>
+    const sortedExternal = [...externalSnapshots].sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    console.log(`[Shorts] Dragverse: ${dragverseShorts.length} shorts, External: ${externalShorts.length} shorts (no filtering)`);
+    console.log(`[Snapshots] Dragverse: ${dragverseSnapshots.length} snapshots, External: ${externalSnapshots.length} snapshots (no filtering)`);
 
     // Strong Dragverse priority: show all Dragverse first
     return [...sortedDragverse, ...sortedExternal];
   };
 
-  // Load shorts from various sources
-  async function loadShorts(isRefresh = false) {
+  // Load snapshots from various sources
+  async function loadSnapshots(isRefresh = false) {
     if (isRefresh) {
       setRefreshing(true);
     } else {
@@ -66,8 +66,8 @@ function ShortsContent() {
           .then((res) => (res.ok ? res.json() : { posts: [] }))
           .then((data) => data.posts || [])
           .catch(() => []),
-        // YouTube Shorts (via RSS from curated drag channels)
-        fetch("/api/youtube/feed?limit=100&shortsOnly=true&rssOnly=true")
+        // YouTube Snapshots (via RSS from curated drag channels)
+        fetch("/api/youtube/feed?limit=100&snapshotsOnly=true&rssOnly=true")
           .then((res) => (res.ok ? res.json() : { videos: [] }))
           .then((data) => data.videos || [])
           .catch(() => []),
@@ -112,15 +112,15 @@ function ShortsContent() {
         source: "ceramic" as const,
       })) as Video[];
 
-      // Separate shorts by source
-      const dragverseShorts = transformedSupabase.filter((v) => {
+      // Separate snapshots by source
+      const dragverseSnapshots = transformedSupabase.filter((v) => {
         const isShortDuration = v.duration > 0 && v.duration < 60;
         const isShortType = v.contentType === "short";
         const hasValidUrl = isValidPlaybackUrl(v.playbackUrl);
         return hasValidUrl && (isShortType || isShortDuration);
       });
 
-      const externalShorts = [
+      const externalSnapshots = [
         ...(blueskyVideos || []),
         ...(youtubeVideos || []),
         ...getLocalVideos(),
@@ -132,16 +132,16 @@ function ShortsContent() {
       });
 
       // Deduplicate and apply quality filtering
-      const dedupedDragverse = deduplicateShorts(dragverseShorts);
-      const dedupedExternal = deduplicateShorts(externalShorts);
-      const sortedShorts = sortShorts(dedupedDragverse, dedupedExternal);
+      const dedupedDragverse = deduplicateSnapshots(dragverseSnapshots);
+      const dedupedExternal = deduplicateSnapshots(externalSnapshots);
+      const sortedSnapshots = sortSnapshots(dedupedDragverse, dedupedExternal);
 
-      setShorts(sortedShorts);
+      setSnapshots(sortedSnapshots);
     } catch (error) {
-      console.error("[Shorts] Failed to load shorts:", error);
+      console.error("[Snapshots] Failed to load snapshots:", error);
       // Fallback to local videos only
       const localVideos = getLocalVideos();
-      setShorts(localVideos.filter((v) => v.contentType === "short"));
+      setSnapshots(localVideos.filter((v) => v.contentType === "short"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -150,13 +150,13 @@ function ShortsContent() {
 
   // Initial load
   useEffect(() => {
-    loadShorts();
+    loadSnapshots();
   }, []);
 
   // Auto-refresh every 15 minutes
   useEffect(() => {
     const interval = setInterval(() => {
-      loadShorts(true);
+      loadSnapshots(true);
     }, 15 * 60 * 1000); // 15 minutes
 
     return () => clearInterval(interval);
@@ -180,13 +180,13 @@ function ShortsContent() {
 
   // Jump to specific video if ?v=videoId query param is present
   useEffect(() => {
-    if (videoId && shorts.length > 0 && sliderReady) {
-      const index = shorts.findIndex((s) => s.id === videoId);
+    if (videoId && snapshots.length > 0 && sliderReady) {
+      const index = snapshots.findIndex((s) => s.id === videoId);
       if (index >= 0) {
         instanceRef.current?.moveToIdx(index);
       }
     }
-  }, [videoId, shorts, sliderReady, instanceRef]);
+  }, [videoId, snapshots, sliderReady, instanceRef]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -212,7 +212,7 @@ function ShortsContent() {
     );
   }
 
-  if (shorts.length === 0) {
+  if (snapshots.length === 0) {
     return (
       <div className="h-[100dvh] md:h-[calc(100vh-4rem)] flex items-center justify-center bg-black">
         <div className="text-center px-6 max-w-md">
@@ -236,7 +236,7 @@ function ShortsContent() {
               Upload Your First Short
             </Link>
             <p className="text-xs text-gray-500">
-              Tip: Shorts work best in 9:16 vertical format (1080x1920)
+              Tip: Snapshots work best in 9:16 vertical format (1080x1920)
             </p>
           </div>
         </div>
@@ -246,7 +246,7 @@ function ShortsContent() {
 
   // Handle auto-rotation to next video
   const handleVideoEnded = () => {
-    if (currentSlide < shorts.length - 1) {
+    if (currentSlide < snapshots.length - 1) {
       instanceRef.current?.next();
     }
   };
@@ -259,7 +259,7 @@ function ShortsContent() {
         className="keen-slider h-full w-full"
         style={{ touchAction: 'pan-y' }}
       >
-        {shorts.map((video, idx) => (
+        {snapshots.map((video, idx) => (
           <div key={video.id} className="keen-slider__slide relative">
             <ShortVideo
               video={video}
@@ -283,7 +283,7 @@ function ShortsContent() {
           </button>
           <button
             onClick={() => instanceRef.current?.next()}
-            disabled={currentSlide === shorts.length - 1}
+            disabled={currentSlide === snapshots.length - 1}
             className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <FiChevronDown className="w-6 h-6 text-white" />
@@ -293,17 +293,17 @@ function ShortsContent() {
 
       {/* Refresh Button - Top Right */}
       <button
-        onClick={() => loadShorts(true)}
+        onClick={() => loadSnapshots(true)}
         disabled={refreshing}
         className="fixed top-6 right-6 z-20 w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-50"
-        title="Refresh shorts"
+        title="Refresh snapshots"
       >
         <FiRefreshCw className={`w-6 h-6 text-white ${refreshing ? 'animate-spin' : ''}`} />
       </button>
 
       {/* Slide Indicator */}
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-20">
-        {shorts.map((_, idx) => (
+        {snapshots.map((_, idx) => (
           <div
             key={idx}
             className={`h-1 rounded-full transition-all ${
@@ -318,7 +318,7 @@ function ShortsContent() {
   );
 }
 
-export default function ShortsPage() {
+export default function SnapshotsPage() {
   return (
     <Suspense
       fallback={
@@ -327,7 +327,7 @@ export default function ShortsPage() {
         </div>
       }
     >
-      <ShortsContent />
+      <SnapshotsContent />
     </Suspense>
   );
 }

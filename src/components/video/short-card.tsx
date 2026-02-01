@@ -14,7 +14,7 @@ export function ShortCard({ video }: ShortCardProps) {
   };
 
   return (
-    <Link href={`/shorts?v=${video.id}`}>
+    <Link href={`/snapshots?v=${video.id}`}>
       <div className="group cursor-pointer">
         {/* Vertical video thumbnail */}
         <div className="relative w-full aspect-[9/16] rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-3 shadow-lg">
@@ -24,9 +24,9 @@ export function ShortCard({ video }: ShortCardProps) {
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          {/* Shorts badge */}
+          {/* Snapshot badge */}
           <div className="absolute top-2 left-2 bg-gradient-to-r from-[#EB83EA] to-[#E748E6] px-2.5 py-1 rounded-full text-xs font-bold uppercase shadow-lg">
-            Short
+            Snapshot
           </div>
           {/* Gradient overlay on hover */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

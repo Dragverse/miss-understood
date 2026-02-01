@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { FiZap, FiTrendingUp, FiBookmark } from "react-icons/fi";
+import { FiZap, FiTrendingUp, FiBookmark, FiUpload, FiVideo, FiAlertTriangle } from "react-icons/fi";
+import { useAuthUser } from "@/lib/privy/hooks";
 
 interface TrendingTopic {
   hashtag: string;
@@ -11,8 +12,10 @@ interface TrendingTopic {
 }
 
 export function FeedRightSidebar() {
+  const { user } = useAuthUser();
   const [bookmarkCount, setBookmarkCount] = useState(0);
   const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([]);
+  const [isLivestreamApproved, setIsLivestreamApproved] = useState(false);
 
   useEffect(() => {
     const updateBookmarkCount = () => {
@@ -27,6 +30,22 @@ export function FeedRightSidebar() {
     window.addEventListener("storage", updateBookmarkCount);
     return () => window.removeEventListener("storage", updateBookmarkCount);
   }, []);
+
+  // Check if user is approved for livestreaming
+  useEffect(() => {
+    async function checkLivestreamApproval() {
+      if (!user?.did) return;
+
+      try {
+        const response = await fetch(`/api/creators/${user.did}/livestream-status`);
+        const data = await response.json();
+        setIsLivestreamApproved(data.approved || false);
+      } catch (error) {
+        console.error("Failed to check livestream approval:", error);
+      }
+    }
+    checkLivestreamApproval();
+  }, [user]);
 
   // Fetch trending hashtags from Bluesky
   useEffect(() => {
@@ -51,29 +70,70 @@ export function FeedRightSidebar() {
   }, []);
 
   return (
-    <aside className="space-y-6">
-      {/* Backstage Pass - Featured Story */}
-      <div className="p-6 rounded-[24px] bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/10 border border-[#EB83EA]/30">
-        <div className="flex items-center gap-3 mb-3">
-          <FiZap className="w-5 h-5 text-[#EB83EA]" />
-          <h3 className="font-bold text-lg">Backstage Pass</h3>
+    <aside className="space-y-6 sticky top-6">
+      {/* Beta Warning */}
+      <div className="relative p-6 rounded-[24px] bg-gradient-to-br from-purple-600/20 via-purple-700/15 to-purple-900/20 border-2 border-purple-500/40 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(168,85,247,0.15),transparent_50%)]" />
+        <div className="relative">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 rounded-full bg-purple-500/20">
+              <FiAlertTriangle className="w-5 h-5 text-yellow-300" />
+            </div>
+            <span className="font-heading text-xl font-black text-white uppercase tracking-wider">
+              Beta Warning
+            </span>
+          </div>
+          <p className="text-sm text-purple-100 leading-relaxed">
+            Dragverse is in active development. Please be aware some features might not be working correctly.
+          </p>
         </div>
-        <p className="text-sm text-gray-300 leading-relaxed mb-4">
-          Get exclusive behind-the-scenes moments from your favorite queens. Join the conversation!
-        </p>
-        <Link
-          href="/shorts"
-          className="block w-full py-2.5 bg-[#EB83EA] hover:bg-[#E748E6] rounded-full font-bold text-sm text-center transition uppercase tracking-wider"
-        >
-          Watch Now
-        </Link>
       </div>
 
+      {/* Upload Video or Audio */}
+      <Link
+        href="/feed/create"
+        className="block p-6 rounded-[24px] bg-gradient-to-br from-[#7c3aed]/20 to-[#6b2fd5]/20 border-2 border-[#7c3aed]/40 hover:border-[#7c3aed]/70 transition-all group shadow-lg hover:shadow-[#7c3aed]/20"
+      >
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 rounded-full bg-[#7c3aed]/30">
+            <FiUpload className="w-5 h-5 text-[#c4b5fd]" />
+          </div>
+          <h3 className="font-heading text-lg font-black uppercase tracking-wide text-white">
+            Upload Video or Audio
+          </h3>
+        </div>
+        <p className="text-sm text-purple-200 leading-relaxed">
+          Share your latest performances, tutorials, and behind-the-scenes content.
+        </p>
+      </Link>
+
+      {/* Go Live - Only for approved users */}
+      {isLivestreamApproved && (
+        <Link
+          href="/livestream"
+          className="block p-6 rounded-[24px] bg-gradient-to-br from-red-500/20 to-pink-500/20 border-2 border-red-500/40 hover:border-red-500/70 transition-all group shadow-lg hover:shadow-red-500/20"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 rounded-full bg-red-500/30">
+              <FiVideo className="w-5 h-5 text-red-300" />
+            </div>
+            <h3 className="font-heading text-lg font-black uppercase tracking-wide text-white">
+              Go Live
+            </h3>
+          </div>
+          <p className="text-sm text-red-200 leading-relaxed">
+            Start a livestream and connect with your audience in real-time.
+          </p>
+        </Link>
+      )}
+
       {/* Your Bookmarks */}
-      <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
+      <div className="p-6 rounded-[24px] bg-gradient-to-br from-[#1a0b2e] to-[#2a1545] border-2 border-[#2f2942] shadow-lg">
         <div className="flex items-center gap-3 mb-4">
-          <FiBookmark className="w-5 h-5 text-[#EB83EA]" />
-          <h3 className="font-bold text-lg">Your Bookmarks</h3>
+          <div className="p-2 rounded-full bg-[#EB83EA]/20">
+            <FiBookmark className="w-5 h-5 text-[#EB83EA]" />
+          </div>
+          <h3 className="font-heading text-lg font-black uppercase tracking-wide">Your Bookmarks</h3>
         </div>
         {bookmarkCount > 0 ? (
           <div className="text-center">
@@ -103,10 +163,12 @@ export function FeedRightSidebar() {
       </div>
 
       {/* Trending Topics */}
-      <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
+      <div className="p-6 rounded-[24px] bg-gradient-to-br from-[#1a0b2e] to-[#2a1545] border-2 border-[#2f2942] shadow-lg">
         <div className="flex items-center gap-3 mb-4">
-          <FiTrendingUp className="w-5 h-5 text-[#E748E6]" />
-          <h3 className="font-bold text-lg">The Tea</h3>
+          <div className="p-2 rounded-full bg-[#E748E6]/20">
+            <FiTrendingUp className="w-5 h-5 text-[#E748E6]" />
+          </div>
+          <h3 className="font-heading text-lg font-black uppercase tracking-wide">The Tea</h3>
         </div>
         <div className="space-y-3">
           {trendingTopics.length > 0 ? (
