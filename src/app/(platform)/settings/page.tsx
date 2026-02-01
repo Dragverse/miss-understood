@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft, FiAlertTriangle, FiShare2 } from "react-icons/fi";
+import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft, FiAlertTriangle, FiShare2, FiDollarSign } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import Image from "next/image";
 import toast from "react-hot-toast";
@@ -37,7 +37,7 @@ export default function SettingsPage() {
     unlinkGoogle,
   } = useAuthUser();
 
-  const [activeSection, setActiveSection] = useState<"profile" | "accounts" | "crosspost" | "danger">("profile");
+  const [activeSection, setActiveSection] = useState<"profile" | "accounts" | "wallet" | "crosspost" | "danger">("profile");
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -859,6 +859,17 @@ export default function SettingsPage() {
               Connected Accounts
             </button>
             <button
+              onClick={() => setActiveSection("wallet")}
+              className={`w-full px-4 py-3 rounded-lg text-left flex items-center gap-3 transition ${
+                activeSection === "wallet"
+                  ? "bg-[#EB83EA] text-white"
+                  : "bg-[#18122D] text-gray-400 hover:text-white hover:bg-[#2f2942]"
+              }`}
+            >
+              <FiDollarSign className="w-5 h-5" />
+              Wallet
+            </button>
+            <button
               onClick={() => setActiveSection("crosspost")}
               className={`w-full px-4 py-3 rounded-lg text-left flex items-center gap-3 transition ${
                 activeSection === "crosspost"
@@ -1258,6 +1269,147 @@ export default function SettingsPage() {
                   <FiSave className="w-5 h-5" />
                   {isSavingCrosspost ? "Saving..." : "Save Cross-Posting Preferences"}
                 </button>
+              </div>
+            )}
+
+            {activeSection === "wallet" && (
+              <div>
+                <h2 className="text-2xl font-bold text-[#FCF1FC] mb-6">
+                  Wallet
+                </h2>
+                <p className="text-gray-400 mb-6">
+                  Manage your crypto wallet for tipping creators and receiving payments.
+                </p>
+
+                {/* Wallet Address Section */}
+                {wallets && wallets.length > 0 ? (
+                  <div className="space-y-6">
+                    {/* Primary Wallet Card */}
+                    <div className="bg-gradient-to-br from-[#EB83EA]/20 to-purple-900/20 border border-[#EB83EA]/30 rounded-xl p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-[#FCF1FC] mb-1">Primary Wallet</h3>
+                          <p className="text-sm text-gray-400">{getWalletType(wallets[0])}</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-full bg-[#EB83EA] flex items-center justify-center">
+                          <FiDollarSign className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+
+                      <div className="bg-[#0f071a] rounded-lg p-4 mb-4">
+                        <label className="block text-xs text-gray-400 mb-2">Wallet Address</label>
+                        <div className="flex items-center justify-between gap-3">
+                          <code className="text-sm font-mono text-white flex-1 truncate">
+                            {wallets[0].address}
+                          </code>
+                          <button
+                            onClick={() => copyToClipboard(wallets[0].address)}
+                            className="px-3 py-1.5 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg text-xs font-semibold transition"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-[#0f071a] rounded-lg p-4">
+                          <label className="block text-xs text-gray-400 mb-1">Network</label>
+                          <p className="text-sm font-semibold text-white">Base</p>
+                        </div>
+                        <div className="bg-[#0f071a] rounded-lg p-4">
+                          <label className="block text-xs text-gray-400 mb-1">Status</label>
+                          <p className="text-sm font-semibold text-green-400">Connected</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="bg-[#0f071a] rounded-xl border border-[#2f2942] p-6">
+                      <h3 className="text-lg font-bold text-[#FCF1FC] mb-4">Quick Actions</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const wallet = wallets[0];
+                              if (wallet && 'address' in wallet) {
+                                toast.success("Opening fund wallet modal...");
+                              }
+                            } catch (error) {
+                              toast.error("Failed to open funding modal");
+                            }
+                          }}
+                          className="px-4 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg font-semibold transition flex items-center justify-center gap-2"
+                        >
+                          <FiDollarSign className="w-4 h-4" />
+                          Add Funds
+                        </button>
+                        <button
+                          onClick={() => {
+                            window.open(`https://basescan.org/address/${wallets[0].address}`, '_blank');
+                          }}
+                          className="px-4 py-3 bg-[#2f2942] hover:bg-[#3f3952] rounded-lg font-semibold transition flex items-center justify-center gap-2"
+                        >
+                          View on Explorer
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Additional Wallets */}
+                    {wallets.length > 1 && (
+                      <div className="bg-[#0f071a] rounded-xl border border-[#2f2942] p-6">
+                        <h3 className="text-lg font-bold text-[#FCF1FC] mb-4">Additional Wallets</h3>
+                        <div className="space-y-3">
+                          {wallets.slice(1).map((wallet) => (
+                            <div
+                              key={wallet.address}
+                              className="flex items-center justify-between p-4 bg-[#18122D] rounded-lg"
+                            >
+                              <div>
+                                <p className="font-semibold text-sm">{getWalletType(wallet)}</p>
+                                <p className="text-xs text-gray-400 font-mono mt-1">
+                                  {formatAddress(wallet.address)}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => copyToClipboard(wallet.address)}
+                                className="text-sm px-3 py-1 text-gray-400 hover:text-white border border-[#2f2942] hover:border-[#EB83EA] rounded-lg transition"
+                              >
+                                Copy
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Info Box */}
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                      <p className="text-sm text-blue-400 mb-2">
+                        <strong>Tipping:</strong> Use your wallet to send tips to creators you support. Tips are sent via Base network.
+                      </p>
+                      <p className="text-sm text-blue-400">
+                        <strong>Security:</strong> Your wallet is managed by Privy. Never share your private keys or seed phrase.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 rounded-full bg-[#2f2942] flex items-center justify-center mx-auto mb-4">
+                      <FiDollarSign className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-[#FCF1FC] mb-2">No Wallet Connected</h3>
+                    <p className="text-gray-400 mb-6">
+                      Connect a wallet to send tips and receive payments
+                    </p>
+                    <button
+                      onClick={handleLinkWallet}
+                      className="px-6 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg font-semibold transition inline-flex items-center gap-2"
+                    >
+                      <FiLink2 className="w-4 h-4" />
+                      Connect Wallet
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

@@ -194,7 +194,40 @@ export function Navbar() {
                   />
                 </div>
                 {/* Dropdown */}
-                <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2 z-50">
+                <div className="absolute right-0 top-full mt-2 w-64 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2 z-50">
+                  {/* Wallet Section */}
+                  {user && (user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet')) && (
+                    <>
+                      <div className="px-4 py-3 bg-white/5 rounded-xl mb-2">
+                        <div className="text-xs text-gray-400 mb-1">Wallet</div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-xs font-mono text-white truncate flex-1">
+                            {(() => {
+                              const wallet = user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet');
+                              if (wallet && 'address' in wallet) {
+                                const addr = wallet.address as string;
+                                return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+                              }
+                              return 'No wallet';
+                            })()}
+                          </div>
+                          <button
+                            onClick={() => {
+                              const wallet = user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet');
+                              if (wallet && 'address' in wallet) {
+                                navigator.clipboard.writeText(wallet.address as string);
+                              }
+                            }}
+                            className="text-[#EB83EA] hover:text-[#E748E6] text-xs"
+                            title="Copy address"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                      <div className="my-1 h-px bg-white/10" />
+                    </>
+                  )}
                   <Link
                     href="/dashboard"
                     className="block w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
