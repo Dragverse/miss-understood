@@ -76,26 +76,12 @@ export default function DynamicProfilePage() {
           setCreator(transformSupabaseCreator(ceramicProfile));
           setProfileType("dragverse");
 
-          // Load content for Dragverse user
+          // Load content for Dragverse user (Dragverse data only for performance)
           loadUserContent(ceramicProfile.did);
 
-          // If Dragverse user has Bluesky connected, fetch their Bluesky content and stats
-          if (ceramicProfile.bluesky_handle) {
-            fetchBlueskyContent(ceramicProfile.bluesky_handle);
-            // Fetch Bluesky profile stats for follower aggregation
-            try {
-              const bskyRes = await fetch(`/api/bluesky/profile/${encodeURIComponent(ceramicProfile.bluesky_handle)}`);
-              const bskyData = await bskyRes.json();
-              if (bskyData.success && bskyData.profile) {
-                setConnectedBlueskyStats({
-                  followersCount: bskyData.profile.followersCount,
-                  followsCount: bskyData.profile.followsCount,
-                });
-              }
-            } catch (err) {
-              console.warn("Failed to fetch connected Bluesky stats:", err);
-            }
-          }
+          // Note: We don't fetch external Bluesky content for Dragverse profiles
+          // to keep page load fast. Profile only shows Dragverse-native content.
+          // Bluesky badge will still appear if connected.
           return;
         }
       } catch (error) {
