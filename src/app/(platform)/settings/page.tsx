@@ -1382,6 +1382,40 @@ export default function SettingsPage() {
                       </div>
                     )}
 
+                    {/* Transaction History */}
+                    <div className="bg-[#0f071a] rounded-xl border border-[#2f2942] p-6">
+                      <h3 className="text-lg font-bold text-[#FCF1FC] mb-4">Recent Transactions</h3>
+                      <div className="space-y-3">
+                        {/* Empty State - To be replaced with actual transaction data */}
+                        <div className="text-center py-8">
+                          <div className="w-12 h-12 rounded-full bg-[#2f2942] flex items-center justify-center mx-auto mb-3">
+                            <FiDollarSign className="w-6 h-6 text-gray-400" />
+                          </div>
+                          <p className="text-sm text-gray-400 mb-2">No transactions yet</p>
+                          <p className="text-xs text-gray-500">
+                            Your tipping activity will appear here
+                          </p>
+                        </div>
+
+                        {/* Example transaction items (to be implemented with real data) */}
+                        {/* <div className="flex items-center justify-between p-4 bg-[#18122D] rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                              <span className="text-green-400 text-sm">↓</span>
+                            </div>
+                            <div>
+                              <p className="font-semibold text-sm">Received Tip</p>
+                              <p className="text-xs text-gray-400">From @username</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-green-400">+$10.00</p>
+                            <p className="text-xs text-gray-500">2 hours ago</p>
+                          </div>
+                        </div> */}
+                      </div>
+                    </div>
+
                     {/* Info Box */}
                     <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
                       <p className="text-sm text-blue-400 mb-2">
