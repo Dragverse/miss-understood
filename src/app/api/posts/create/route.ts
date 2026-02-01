@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
+import { postToBluesky } from "@/lib/crosspost/bluesky";
+import { postToFarcaster } from "@/lib/crosspost/farcaster";
 
 /**
  * POST /api/posts/create
@@ -32,6 +34,7 @@ export async function POST(request: NextRequest) {
       location,
       visibility = "public",
       scheduledAt,
+      platforms = { dragverse: true, bluesky: false, farcaster: false },
     } = body;
 
     // Validate: must have either text or media
@@ -111,9 +114,73 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("[Posts] ✅ Dragverse post created:", post.id);
+
+    // Cross-post to other platforms if requested
+    const crosspostResults: Record<string, { success: boolean; error?: string; url?: string }> = {
+      dragverse: { success: true, url: `/posts/${post.id}` },
+    };
+
+    // Cross-post to Bluesky
+    if (platforms.bluesky) {
+      console.log("[Posts] Cross-posting to Bluesky...");
+      try {
+        const blueskyResult = await postToBluesky(request, {
+          text: textContent || "",
+          media: mediaUrls.map((url: string, index: number) => ({
+            url,
+            alt: `Image ${index + 1}`,
+          })),
+        });
+
+        crosspostResults.bluesky = blueskyResult;
+        if (blueskyResult.success) {
+          console.log("[Posts] ✅ Bluesky post created:", blueskyResult.uri);
+        } else {
+          console.error("[Posts] ❌ Bluesky post failed:", blueskyResult.error);
+        }
+      } catch (error) {
+        console.error("[Posts] ❌ Bluesky error:", error);
+        crosspostResults.bluesky = {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    }
+
+    // Cross-post to Farcaster
+    if (platforms.farcaster) {
+      console.log("[Posts] Cross-posting to Farcaster...");
+      try {
+        const farcasterResult = await postToFarcaster({
+          text: textContent || "",
+          media: mediaUrls.map((url: string, index: number) => ({
+            url,
+            alt: `Image ${index + 1}`,
+          })),
+          userId: userDID,
+        });
+
+        crosspostResults.farcaster = farcasterResult;
+        if (farcasterResult.success) {
+          console.log("[Posts] ✅ Farcaster cast created:", farcasterResult.hash);
+        } else {
+          console.error("[Posts] ❌ Farcaster cast failed:", farcasterResult.error);
+        }
+      } catch (error) {
+        console.error("[Posts] ❌ Farcaster error:", error);
+        crosspostResults.farcaster = {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    }
+
+    // Return success even if cross-posting partially fails
     return NextResponse.json({
       success: true,
       post,
+      crosspost: crosspostResults,
     });
   } catch (error) {
     console.error("Post creation error:", error);
