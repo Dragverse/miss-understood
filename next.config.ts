@@ -62,7 +62,7 @@ const nextConfig: NextConfig = {
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         {
           key: "Permissions-Policy",
-          value: "camera=(), microphone=(self), geolocation=(), payment=()",
+          value: "camera=(self), microphone=(self), geolocation=(), payment=()",
         },
         // Content Security Policy for Privy embedded wallets + Cloudflare Turnstile
         {

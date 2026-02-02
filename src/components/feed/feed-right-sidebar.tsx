@@ -110,7 +110,7 @@ export function FeedRightSidebar() {
       {/* Go Live - Only for approved users */}
       {isLivestreamApproved && (
         <Link
-          href="/livestream"
+          href="/dashboard"
           className="block p-6 rounded-[24px] bg-gradient-to-br from-red-500/20 to-pink-500/20 border-2 border-red-500/40 hover:border-red-500/70 transition-all group shadow-lg hover:shadow-red-500/20"
         >
           <div className="flex items-center gap-3 mb-2">
@@ -118,11 +118,11 @@ export function FeedRightSidebar() {
               <FiVideo className="w-5 h-5 text-red-300" />
             </div>
             <h3 className="font-heading text-lg font-black uppercase tracking-wide text-white">
-              Go Live
+              Start Streaming
             </h3>
           </div>
           <p className="text-sm text-red-200 leading-relaxed">
-            Start a livestream and connect with your audience in real-time.
+            Create and manage your livestreams from your dashboard.
           </p>
         </Link>
       )}

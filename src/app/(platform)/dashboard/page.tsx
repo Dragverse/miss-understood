@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
 import { StatsCard, ActionButton, EmptyState, LoadingShimmer } from "@/components/shared";
 import { useCanLivestream } from "@/lib/livestream";
+import { StreamModal } from "@/components/dashboard/stream-modal";
 
 interface StreamRecording {
   id: string;
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   const [recordings, setRecordings] = useState<StreamRecording[]>([]);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingRecording, setDeletingRecording] = useState<string | null>(null);
+  const [showStreamModal, setShowStreamModal] = useState(false);
 
   // Load dashboard data from Supabase
   useEffect(() => {
@@ -306,7 +308,7 @@ export default function DashboardPage() {
             <div className="flex flex-wrap gap-3">
               {canStream && (
                 <button
-                  onClick={() => router.push('/live')}
+                  onClick={() => setShowStreamModal(true)}
                   className="px-8 py-4 text-lg rounded-full font-bold transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02]"
                 >
                   <FiRadio className="w-5 h-5" />
@@ -522,6 +524,11 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Livestream Modal */}
+      {showStreamModal && canStream && (
+        <StreamModal onClose={() => setShowStreamModal(false)} />
+      )}
     </div>
   );
 }

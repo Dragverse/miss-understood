@@ -11,6 +11,7 @@ import { ProfileActionButtons } from "@/components/profile/profile-action-button
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
 import { BytesSlider } from "@/components/profile/bytes-slider";
+import { LivestreamEmbed } from "@/components/profile/livestream-embed";
 import { getCreatorByHandleOrDID } from "@/lib/supabase/creators";
 import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { getVideosByCreator } from "@/lib/supabase/videos";
@@ -475,6 +476,14 @@ export default function DynamicProfilePage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Livestream Embed - Twitch-style above all content */}
+        {creator && (
+          <LivestreamEmbed
+            creatorDID={creator.did}
+            creatorName={creator.displayName}
+          />
         )}
 
         {/* Content Section with Icon Tabs */}
