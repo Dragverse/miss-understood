@@ -113,17 +113,17 @@ function FeedContent() {
       // Fetch from all sources in parallel for maximum content diversity
       const [dragverseRes, blueskyRes, youtubeRes] = await Promise.all([
         // Native Dragverse posts
-        fetch("/api/posts/feed?limit=50").catch(() => null),
+        fetch("/api/posts/feed?limit=20").catch(() => null),
 
         // Bluesky content (or search if hashtag) - fetch ALL content types
         fetch(
           hashtag
-            ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=100&contentType=all`
-            : `/api/bluesky/feed?limit=100&sortBy=${sortBy}&contentType=all`
+            ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30&contentType=all`
+            : `/api/bluesky/feed?limit=30&sortBy=${sortBy}&contentType=all`
         ).catch(() => null),
 
         // YouTube drag content from curated channels (RSS feeds - no quota!)
-        fetch("/api/youtube/feed?limit=100&rssOnly=true").catch(() => null)
+        fetch("/api/youtube/feed?limit=20&rssOnly=true").catch(() => null)
       ]);
 
       // Parse Dragverse posts
@@ -213,7 +213,7 @@ function FeedContent() {
 
   const handlePostCreated = () => {
     // Reload Dragverse posts
-    fetch("/api/posts/feed?limit=50")
+    fetch("/api/posts/feed?limit=20")
       .then((res) => res.json())
       .then((data) => setDragversePosts(data.posts || []))
       .catch((error) => console.error("Failed to reload posts:", error));
