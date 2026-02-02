@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { FiVideo, FiCopy, FiCheck, FiAlertCircle, FiLock } from "react-icons/fi";
+import { FiVideo, FiCopy, FiCheck, FiAlertCircle, FiLock, FiMonitor } from "react-icons/fi";
 import toast from "react-hot-toast";
 // Removed direct Livepeer import - now using secure backend API
 import { useAuthUser } from "@/lib/privy/hooks";
 import { useCanLivestream } from "@/lib/livestream";
 import { usePrivy } from "@privy-io/react-auth";
+import { BrowserStream } from "@/components/live/browser-stream";
 import Link from "next/link";
 
 interface StreamInfo {
@@ -25,6 +26,7 @@ export default function GoLivePage() {
   const [streamInfo, setStreamInfo] = useState<StreamInfo | null>(null);
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState<"key" | "rtmp" | null>(null);
+  const [showBrowserStream, setShowBrowserStream] = useState(false);
 
   const handleCreateStream = async () => {
     if (!streamTitle.trim()) {
@@ -50,6 +52,15 @@ export default function GoLivePage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+
+        // Handle active stream conflict (409)
+        if (response.status === 409 && errorData.activeStream) {
+          toast.error(`You already have an active stream: "${errorData.activeStream.title}". Please end it before creating a new one.`, {
+            duration: 5000
+          });
+          throw new Error("Active stream already exists");
+        }
+
         throw new Error(errorData.error || "Failed to create stream");
       }
 
@@ -58,7 +69,9 @@ export default function GoLivePage() {
       toast.success("Livestream created! You can now start streaming.");
     } catch (error) {
       console.error("Failed to create stream:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to create livestream. Please try again.");
+      if (error instanceof Error && error.message !== "Active stream already exists") {
+        toast.error(error.message || "Failed to create livestream. Please try again.");
+      }
     } finally {
       setCreating(false);
     }
@@ -285,6 +298,21 @@ export default function GoLivePage() {
             </div>
           </div>
 
+          {/* Browser Streaming Option */}
+          <div className="p-6 rounded-[24px] bg-gradient-to-br from-[#EB83EA]/10 to-[#7c3aed]/10 border border-[#EB83EA]/30">
+            <h2 className="text-lg font-bold uppercase tracking-widest mb-3">Stream from Browser</h2>
+            <p className="text-sm text-gray-400 mb-4">
+              Don't have OBS? You can stream directly from your browser using your camera or screen.
+            </p>
+            <button
+              onClick={() => setShowBrowserStream(true)}
+              className="w-full px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] text-white font-bold rounded-full transition-all flex items-center justify-center gap-2"
+            >
+              <FiMonitor className="w-5 h-5" />
+              Start Browser Stream
+            </button>
+          </div>
+
           {/* New Stream Button */}
           <button
             onClick={() => {
@@ -296,6 +324,15 @@ export default function GoLivePage() {
             Create Another Stream
           </button>
         </div>
+      )}
+
+      {/* Browser Stream Modal */}
+      {showBrowserStream && streamInfo && (
+        <BrowserStream
+          streamKey={streamInfo.streamKey}
+          rtmpIngestUrl={streamInfo.rtmpIngestUrl}
+          onClose={() => setShowBrowserStream(false)}
+        />
       )}
     </div>
   );

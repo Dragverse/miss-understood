@@ -47,6 +47,34 @@ export async function POST(request: NextRequest) {
 
     const { name } = validation.data;
 
+    // Check if user already has an active stream (one stream per profile limit)
+    if (userId) {
+      try {
+        const { data: existingStreams, error: checkError } = await supabase
+          .from("streams")
+          .select("id, livepeer_stream_id, title")
+          .eq("creator_did", userId)
+          .eq("is_active", true)
+          .limit(1);
+
+        if (!checkError && existingStreams && existingStreams.length > 0) {
+          return NextResponse.json(
+            {
+              error: "You already have an active stream",
+              activeStream: {
+                id: existingStreams[0].livepeer_stream_id,
+                title: existingStreams[0].title
+              }
+            },
+            { status: 409 } // Conflict
+          );
+        }
+      } catch (error) {
+        console.warn("Could not check for existing streams:", error);
+        // Continue anyway if check fails
+      }
+    }
+
     // Create livestream on Livepeer with multi-bitrate profiles
     const response = await fetch(`${LIVEPEER_API_URL}/stream`, {
       method: "POST",
