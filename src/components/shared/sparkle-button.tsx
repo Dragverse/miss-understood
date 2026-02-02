@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, ButtonHTMLAttributes, useState } from "react";
-import { FiZap } from "react-icons/fi";
+import { FiStar } from "react-icons/fi";
 
 interface SparkleButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
@@ -26,9 +26,9 @@ export function SparkleButton({
       {/* Sparkle effect on hover */}
       {sparkleOnHover && isHovered && (
         <>
-          <FiZap className="absolute top-2 left-4 w-4 h-4 text-yellow-300 animate-ping opacity-75" />
-          <FiZap className="absolute bottom-2 right-6 w-4 h-4 text-yellow-300 animate-ping opacity-75 animation-delay-150" />
-          <FiZap className="absolute top-1/2 right-4 w-4 h-4 text-yellow-300 animate-ping opacity-75 animation-delay-300" />
+          <FiStar className="absolute top-2 left-4 w-4 h-4 text-yellow-300 animate-ping opacity-75" />
+          <FiStar className="absolute bottom-2 right-6 w-4 h-4 text-yellow-300 animate-ping opacity-75 animation-delay-150" />
+          <FiStar className="absolute top-1/2 right-4 w-4 h-4 text-yellow-300 animate-ping opacity-75 animation-delay-300" />
         </>
       )}
 

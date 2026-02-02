@@ -1,6 +1,6 @@
 "use client";
 
-import { FiZap, FiHeart, FiActivity, FiFilm, FiSmile, FiAward, FiStar } from "react-icons/fi";
+import { FiHeart, FiActivity, FiFilm, FiSmile, FiAward, FiStar } from "react-icons/fi";
 
 interface MoodBadgeProps {
   mood: string;
@@ -10,18 +10,18 @@ interface MoodBadgeProps {
 }
 
 const MOOD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  sparkling: FiZap,
+  sparkling: FiStar,
   soft: FiHeart,
   fierce: FiActivity,
   dramatic: FiFilm,
   playful: FiSmile,
   regal: FiAward,
   slay: FiStar,
-  magical: FiZap, // Using FiZap for magical (lightning/sparkle effect)
+  magical: FiSmile,
 };
 
 export function MoodBadge({ mood, emoji, size = "md", onClick }: MoodBadgeProps) {
-  const MoodIcon = MOOD_ICONS[mood.toLowerCase()] || FiZap;
+  const MoodIcon = MOOD_ICONS[mood.toLowerCase()] || FiStar;
 
   const sizeStyles = {
     sm: "px-2 py-1 text-xs gap-1",

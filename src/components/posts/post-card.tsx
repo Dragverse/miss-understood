@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiHeart, FiMessageCircle, FiShare2, FiMoreHorizontal, FiZap, FiActivity, FiFilm, FiSmile, FiAward, FiStar, FiTrash2 } from "react-icons/fi";
+import { FiHeart, FiMessageCircle, FiShare2, FiMoreHorizontal, FiActivity, FiFilm, FiSmile, FiAward, FiStar, FiTrash2 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import toast from "react-hot-toast";
 
@@ -42,14 +42,14 @@ const MOOD_GRADIENTS: Record<string, string> = {
 };
 
 const MOOD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  sparkling: FiZap,
+  sparkling: FiStar,
   soft: FiHeart,
   fierce: FiActivity,
   dramatic: FiFilm,
   playful: FiSmile,
   regal: FiAward,
   slay: FiStar,
-  magical: FiStar,
+  magical: FiSmile,
 };
 
 export function PostCard({ post, onDelete }: PostCardProps) {
