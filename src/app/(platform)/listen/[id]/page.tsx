@@ -350,15 +350,12 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
 
   return (
     <div className="min-h-screen pb-24 px-4 sm:px-6 lg:px-8 py-6">
-      <div className="max-w-[1600px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-          {/* Main Player Area - Sticky on Desktop */}
-          <div className="lg:col-span-5 xl:col-span-4">
-            <div className="lg:sticky lg:top-24">
-              {/* Audio Player Card - Centered Music Player Style */}
-              <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/20 shadow-2xl">
-                {/* Album Art - Large and Centered */}
-                <div className="relative w-full mb-6">
+      <div className="max-w-2xl mx-auto">
+        <div className="space-y-6">
+          {/* Audio Player Card - Centered and Compact */}
+          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/20 shadow-2xl">
+                {/* Album Art - Compact and Centered */}
+                <div className="relative w-full max-w-md mx-auto mb-6">
                   <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-[#EB83EA]/30">
                     <Image
                       src={audio.thumbnail || "/default-thumbnail.jpg"}
@@ -462,9 +459,9 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex flex-wrap gap-3 pb-6 border-b border-[#EB83EA]/10">
-                  <div className="flex-1 min-w-[120px]">
+                {/* Action Buttons - Centered */}
+                <div className="flex items-center justify-center gap-3 pb-6 border-b border-[#EB83EA]/10">
+                  <div className="w-32">
                     <HeartAnimation
                       initialLiked={isLiked}
                       onToggle={handleLike}
@@ -477,14 +474,14 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
                     className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA]"
                   >
                     <FiMessageCircle className="w-5 h-5" />
-                    <span className="hidden sm:inline">Comment</span>
+                    <span>Comment</span>
                   </button>
                   <button
                     onClick={() => setShareModalOpen(true)}
                     className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA]"
                   >
                     <FiShare2 className="w-5 h-5" />
-                    <span className="hidden sm:inline">Share</span>
+                    <span>Share</span>
                   </button>
                 </div>
 
@@ -495,63 +492,58 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
                   </div>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Info & Related Content Sidebar */}
-          <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-            {/* Description */}
-            {audio.description && (
-              <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border border-[#EB83EA]/10">
-                <h2 className="text-xl font-bold text-white mb-3">About</h2>
-                <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{audio.description}</p>
+          {/* Description */}
+          {audio.description && (
+            <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border border-[#EB83EA]/10">
+              <h2 className="text-xl font-bold text-white mb-3">About</h2>
+              <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{audio.description}</p>
 
-                {/* Tags */}
-                {audio.tags && audio.tags.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {audio.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-3 py-1 bg-[#EB83EA]/10 text-[#EB83EA] rounded-full text-sm font-medium"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Related Audio */}
-            {relatedAudio.length > 0 && (
-              <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border border-[#EB83EA]/10">
-                <h2 className="text-xl font-bold text-white mb-6">More Like This</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {relatedAudio.map((relatedTrack) => (
-                    <Link
-                      key={relatedTrack.id}
-                      href={`/listen/${relatedTrack.id}`}
-                      className="group"
+              {/* Tags */}
+              {audio.tags && audio.tags.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {audio.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-3 py-1 bg-[#EB83EA]/10 text-[#EB83EA] rounded-full text-sm font-medium"
                     >
-                      <div className="relative aspect-square rounded-xl overflow-hidden mb-2 bg-black shadow-lg">
-                        <Image
-                          src={relatedTrack.thumbnail || "/default-thumbnail.jpg"}
-                          alt={relatedTrack.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform"
-                        />
-                        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-center justify-center">
-                          <FiPlay className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition" />
-                        </div>
-                      </div>
-                      <h3 className="text-white font-semibold text-sm mb-1 line-clamp-2 leading-tight">{relatedTrack.title}</h3>
-                      <p className="text-gray-400 text-xs truncate">{relatedTrack.creator?.displayName}</p>
-                    </Link>
+                      #{tag}
+                    </span>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Related Audio */}
+          {relatedAudio.length > 0 && (
+            <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border border-[#EB83EA]/10">
+              <h2 className="text-xl font-bold text-white mb-6">More Like This</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {relatedAudio.map((relatedTrack) => (
+                  <Link
+                    key={relatedTrack.id}
+                    href={`/listen/${relatedTrack.id}`}
+                    className="group"
+                  >
+                    <div className="relative aspect-square rounded-xl overflow-hidden mb-2 bg-black shadow-lg">
+                      <Image
+                        src={relatedTrack.thumbnail || "/default-thumbnail.jpg"}
+                        alt={relatedTrack.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform"
+                      />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-center justify-center">
+                        <FiPlay className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition" />
+                      </div>
+                    </div>
+                    <h3 className="text-white font-semibold text-sm mb-1 line-clamp-2 leading-tight">{relatedTrack.title}</h3>
+                    <p className="text-gray-400 text-xs truncate">{relatedTrack.creator?.displayName}</p>
+                  </Link>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
