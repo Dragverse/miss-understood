@@ -118,6 +118,7 @@ export async function GET(request: NextRequest) {
             engagementRate,
             avgViewsPerVideo,
             accountAgeMonths,
+            overallScore: undefined as number | undefined,
           },
           social: {
             twitter: creator.twitter_handle,
