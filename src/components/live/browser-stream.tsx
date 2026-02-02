@@ -114,8 +114,9 @@ export function BrowserStream({ streamKey, rtmpIngestUrl, onClose }: BrowserStre
         tracks: mediaStreamRef.current.getTracks().map(t => t.kind)
       });
 
-      toast.info("Browser streaming is in beta. For best results, use OBS Studio.", {
-        duration: 5000
+      toast("Browser streaming is in beta. For best results, use OBS Studio.", {
+        duration: 5000,
+        icon: "ℹ️"
       });
 
     } catch (error) {
