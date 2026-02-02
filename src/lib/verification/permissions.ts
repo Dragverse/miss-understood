@@ -11,7 +11,8 @@
 // Golden badge - Team and selected accounts
 const GOLDEN_BADGE_USERS: string[] = [
   // Founder/Team
-  "did:privy:cml3lviaf01grjp0cfpxtr9jq", // Dragverse account (salti/golden)
+  "privy:cmkgjgjd003ezla0cf5dweu37", // Salti (founder)
+  "did:privy:cml3lviaf01grjp0cfpxtr9jq", // Dragverse account (golden)
 ];
 
 // Pink badge - Verified creators
