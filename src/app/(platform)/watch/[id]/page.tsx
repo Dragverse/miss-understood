@@ -147,7 +147,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           console.log("[Watch] Loading Bluesky video:", resolvedParams.id);
 
           // Fetch from Bluesky feed API
-          const response = await fetch("/api/bluesky/feed?limit=50");
+          const response = await fetch("/api/bluesky/feed?limit=30");
           const data = await response.json();
 
           if (data.posts) {
@@ -250,11 +250,11 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
 
       // Fetch all sources in parallel for speed
       const [ceramicResult, youtubeData, blueskyData] = await Promise.all([
-        getVideos(20).catch(() => []),
-        fetch("/api/youtube/feed?limit=20&rssOnly=true")
+        getVideos(10).catch(() => []),
+        fetch("/api/youtube/feed?limit=10&rssOnly=true")
           .then(res => res.ok ? res.json() : { videos: [] })
           .catch(() => ({ videos: [] })),
-        fetch("/api/bluesky/feed?limit=10")
+        fetch("/api/bluesky/feed?limit=5")
           .then(res => res.ok ? res.json() : { posts: [] })
           .catch(() => ({ posts: [] })),
       ]);
