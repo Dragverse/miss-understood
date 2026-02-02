@@ -11,7 +11,7 @@
 // Golden badge - Team and selected accounts
 const GOLDEN_BADGE_USERS: string[] = [
   // Founder/Team
-  "privy:cmkgjgjd003ezla0cf5dweu37", // Salti (founder)
+  "did:privy:cmkgjgjd003ezla0cf5dweu37", // Salti (founder)
   "did:privy:cml3lviaf01grjp0cfpxtr9jq", // Dragverse account (golden)
 ];
 
