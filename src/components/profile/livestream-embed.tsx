@@ -22,17 +22,28 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
   useEffect(() => {
     const checkCreatorStream = async () => {
       try {
-        // TODO: Once Ceramic is configured, query streams by creatorDID
-        // For now, this will prepare the structure for when we add Ceramic queries
+        // Query API for active streams by this creator
+        const response = await fetch(`/api/stream/by-creator?creatorDID=${encodeURIComponent(creatorDID)}`);
 
-        // Example future implementation:
-        // const streams = await ceramic.query({
-        //   model: "Livestream",
-        //   where: { creatorDID: creatorDID, isActive: true }
-        // });
+        if (!response.ok) {
+          setStreamData(null);
+          return;
+        }
 
-        // For now, no streams to display (will be connected after Phase 3 Ceramic setup)
-        setStreamData(null);
+        const data = await response.json();
+
+        // Check if there are any active streams
+        if (data.streams && data.streams.length > 0) {
+          const activeStream = data.streams[0]; // Use the first active stream
+          setStreamData({
+            streamId: activeStream.id,
+            title: activeStream.name || `${creatorName} is live!`,
+            playbackUrl: activeStream.playbackUrl,
+            isActive: activeStream.isActive,
+          });
+        } else {
+          setStreamData(null);
+        }
       } catch (error) {
         console.error("Failed to check creator stream:", error);
         setStreamData(null);
@@ -46,7 +57,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
     // Poll for stream status every 30 seconds
     const interval = setInterval(checkCreatorStream, 30000);
     return () => clearInterval(interval);
-  }, [creatorDID]);
+  }, [creatorDID, creatorName]);
 
   if (loading) {
     return null;

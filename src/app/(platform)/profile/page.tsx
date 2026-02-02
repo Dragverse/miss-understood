@@ -9,6 +9,7 @@ import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
 import { BytesSlider } from "@/components/profile/bytes-slider";
 import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
+import { LivestreamEmbed } from "@/components/profile/livestream-embed";
 import { getCreatorByDID } from "@/lib/supabase/creators";
 import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { getVideosByCreator } from "@/lib/supabase/videos";
@@ -631,6 +632,12 @@ export default function ProfilePage() {
             )}
           </div>
         )}
+
+        {/* Livestream Embed - Twitch-style above all content */}
+        <LivestreamEmbed
+          creatorDID={creator.did}
+          creatorName={creator.displayName}
+        />
 
         {/* Content Section with Icon Tabs */}
         <div>

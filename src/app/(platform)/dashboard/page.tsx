@@ -2,7 +2,7 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import { useRouter } from "next/navigation";
-import { FiVideo, FiHeart, FiUsers, FiEye, FiCopy, FiEdit, FiTrash2, FiZap } from "react-icons/fi";
+import { FiVideo, FiHeart, FiUsers, FiEye, FiCopy, FiEdit, FiTrash2, FiZap, FiRadio } from "react-icons/fi";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { getVideosByCreator, type SupabaseVideo } from "@/lib/supabase/videos";
@@ -12,11 +12,13 @@ import { transformVideosWithCreators } from "@/lib/supabase/transform-video";
 import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
 import { StatsCard, ActionButton, EmptyState, LoadingShimmer } from "@/components/shared";
+import { useCanLivestream } from "@/lib/livestream";
 
 export default function DashboardPage() {
   const { isAuthenticated, signIn, user } = useAuthUser();
   const { getAccessToken } = usePrivy();
   const router = useRouter();
+  const { canStream } = useCanLivestream();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -227,13 +229,24 @@ export default function DashboardPage() {
               </h2>
               <p className="text-gray-400">All your fabulous content in one place</p>
             </div>
-            <ActionButton
-              onClick={() => router.push('/upload')}
-              icon={<FiVideo className="w-5 h-5" />}
-              size="lg"
-            >
-              Upload New
-            </ActionButton>
+            <div className="flex flex-wrap gap-3">
+              {canStream && (
+                <button
+                  onClick={() => router.push('/live')}
+                  className="px-8 py-4 text-lg rounded-full font-bold transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02]"
+                >
+                  <FiRadio className="w-5 h-5" />
+                  Go Live
+                </button>
+              )}
+              <ActionButton
+                onClick={() => router.push('/upload')}
+                icon={<FiVideo className="w-5 h-5" />}
+                size="lg"
+              >
+                Upload New
+              </ActionButton>
+            </div>
           </div>
 
           {/* Videos Grid */}
