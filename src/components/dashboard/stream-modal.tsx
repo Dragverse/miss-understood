@@ -285,33 +285,22 @@ export function StreamModal({ onClose }: StreamModalProps) {
       // Step 2: Create RTCPeerConnection with STUN and TURN servers
       const peerConnection = new RTCPeerConnection({
         iceServers: [
-          {
-            urls: "stun:stun.l.google.com:19302"
-          },
+          // Primary STUN servers (fast)
           {
             urls: [
-              "stun:stun1.l.google.com:19302",
-              "stun:stun2.l.google.com:19302"
+              "stun:stun.l.google.com:19302",
+              "stun:stun1.l.google.com:19302"
             ]
           },
-          // Free public TURN servers for NAT traversal
-          {
-            urls: "turn:openrelay.metered.ca:80",
-            username: "openrelayproject",
-            credential: "openrelayproject"
-          },
+          // TURN servers for NAT traversal (fallback, may be slower)
           {
             urls: "turn:openrelay.metered.ca:443",
             username: "openrelayproject",
             credential: "openrelayproject"
-          },
-          {
-            urls: "turn:openrelay.metered.ca:443?transport=tcp",
-            username: "openrelayproject",
-            credential: "openrelayproject"
           }
         ],
-        iceCandidatePoolSize: 10
+        iceCandidatePoolSize: 5,
+        iceTransportPolicy: "all" // Try all candidates (host, srflx, relay)
       });
 
       peerConnectionRef.current = peerConnection;
@@ -366,13 +355,14 @@ export function StreamModal({ onClose }: StreamModalProps) {
       await peerConnection.setLocalDescription(offer);
       console.log("📝 SDP Offer created:", offer.sdp?.substring(0, 200) + "...");
 
-      // Step 5: Wait for ICE gathering to complete
+      // Step 5: Wait for ICE gathering to complete (or timeout gracefully)
       console.log("⏳ Waiting for ICE gathering... Current state:", peerConnection.iceGatheringState);
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve) => {
+        // Proceed after 5 seconds even if gathering not complete (TURN servers may be slow)
         const timeout = setTimeout(() => {
-          console.warn("⚠️ ICE gathering timeout after 10 seconds");
-          reject(new Error("ICE gathering timeout"));
-        }, 10000);
+          console.warn("⚠️ ICE gathering taking longer than expected, proceeding with available candidates");
+          resolve();
+        }, 5000);
 
         if (peerConnection.iceGatheringState === "complete") {
           clearTimeout(timeout);

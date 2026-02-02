@@ -114,33 +114,22 @@ export function BrowserStream({ streamKey, rtmpIngestUrl, onClose }: BrowserStre
       // Step 2: Create RTCPeerConnection with STUN and TURN servers
       const peerConnection = new RTCPeerConnection({
         iceServers: [
-          {
-            urls: "stun:stun.l.google.com:19302"
-          },
+          // Primary STUN servers (fast)
           {
             urls: [
-              "stun:stun1.l.google.com:19302",
-              "stun:stun2.l.google.com:19302"
+              "stun:stun.l.google.com:19302",
+              "stun:stun1.l.google.com:19302"
             ]
           },
-          // Free public TURN servers for NAT traversal
-          {
-            urls: "turn:openrelay.metered.ca:80",
-            username: "openrelayproject",
-            credential: "openrelayproject"
-          },
+          // TURN servers for NAT traversal (fallback, may be slower)
           {
             urls: "turn:openrelay.metered.ca:443",
             username: "openrelayproject",
             credential: "openrelayproject"
-          },
-          {
-            urls: "turn:openrelay.metered.ca:443?transport=tcp",
-            username: "openrelayproject",
-            credential: "openrelayproject"
           }
         ],
-        iceCandidatePoolSize: 10
+        iceCandidatePoolSize: 5,
+        iceTransportPolicy: "all" // Try all candidates (host, srflx, relay)
       });
 
       peerConnectionRef.current = peerConnection;
