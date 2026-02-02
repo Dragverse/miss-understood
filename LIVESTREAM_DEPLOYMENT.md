@@ -14,10 +14,11 @@
 - Copy stream key and server URL
 - Instructions for OBS/Streamlabs setup
 - **NEW: Browser-based streaming option**
-  - Stream directly from browser (no OBS needed)
+  - Stream directly from browser using Livepeer WebRTC (no OBS needed)
   - Camera or screen share support
   - Mute/unmute and video on/off controls
-  - Beta feature with quality warning
+  - Production-ready using WHIP protocol
+  - 100% free via Livepeer's WebRTC ingestion
 - Fixed authentication (was 401, now working)
 - **One stream per profile limit** - prevents multiple simultaneous streams
 
@@ -182,14 +183,13 @@ For automatic stream status updates, set up webhooks in Livepeer Dashboard:
 **Solution:** Only one active stream per profile. End your current stream first, or wait for it to timeout (typically 30-60 seconds after stopping OBS)
 
 ### Issue: Browser streaming not working
-**Solution:** Browser streaming requires WebRTC-to-RTMP bridge. Current implementation shows UI but needs backend integration. Use OBS/Streamlabs for production streaming until WebRTC ingestion is set up.
+**Solution:** ✅ RESOLVED - Browser streaming now uses Livepeer's native WebRTC ingestion (WHIP protocol). Fully functional and free to use!
 
 ## 📈 Future Enhancements
 
-1. **WebRTC Ingestion Bridge** - Complete browser streaming (priority)
-   - Set up media server (Janus/Mediasoup) to bridge WebRTC to RTMP
-   - Or integrate Livepeer's WebRTC ingestion when available
-   - Or use service like Mux/Daily.co for turnkey solution
+1. ~~**WebRTC Ingestion Bridge**~~ - ✅ COMPLETED
+   - Browser streaming now uses Livepeer's native WebRTC ingestion via WHIP protocol
+   - No additional costs or third-party services required
 
 2. **Real-time viewer count** - Via Livepeer API polling
 

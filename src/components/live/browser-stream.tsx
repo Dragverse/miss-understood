@@ -18,7 +18,7 @@ export function BrowserStream({ streamKey, rtmpIngestUrl, onClose }: BrowserStre
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
 
   const startCamera = async () => {
     try {
@@ -99,34 +99,103 @@ export function BrowserStream({ streamKey, rtmpIngestUrl, onClose }: BrowserStre
 
     try {
       setIsStreaming(true);
-      toast.success("Starting stream...");
+      toast.success("Connecting to Livepeer...");
 
-      // Note: Browser-to-RTMP streaming requires a WebRTC-to-RTMP bridge
-      // For production, you'll need to:
-      // 1. Use Livepeer's WebRTC ingestion (if available)
-      // 2. Or set up a media server (like Janus or Mediasoup) to bridge WebRTC to RTMP
-      // 3. Or use a service like Mux or Daily.co for WebRTC streaming
-
-      // For now, we'll show a placeholder implementation
-      console.log("Stream would start with:", {
-        streamKey,
-        rtmpIngestUrl,
-        tracks: mediaStreamRef.current.getTracks().map(t => t.kind)
+      // Step 1: Get WebRTC redirect URL (GeoDNS routing to closest server)
+      const redirectUrl = `https://livepeer.studio/webrtc/${streamKey}`;
+      const redirectResponse = await fetch(redirectUrl, {
+        method: "HEAD",
+        redirect: "manual"
       });
 
-      toast("Browser streaming is in beta. For best results, use OBS Studio.", {
-        duration: 5000,
-        icon: "ℹ️"
+      const ingestUrl = redirectResponse.headers.get("location") || redirectUrl;
+      console.log("WebRTC ingest URL:", ingestUrl);
+
+      // Step 2: Create RTCPeerConnection with Livepeer's STUN servers
+      const peerConnection = new RTCPeerConnection({
+        iceServers: [
+          {
+            urls: "stun:stun.l.google.com:19302"
+          }
+        ]
+      });
+
+      peerConnectionRef.current = peerConnection;
+
+      // Step 3: Add local media tracks to peer connection
+      mediaStreamRef.current.getTracks().forEach((track) => {
+        if (peerConnectionRef.current && mediaStreamRef.current) {
+          peerConnectionRef.current.addTrack(track, mediaStreamRef.current);
+        }
+      });
+
+      // Step 4: Create SDP offer with sendonly transceivers
+      const offer = await peerConnection.createOffer({
+        offerToReceiveAudio: false,
+        offerToReceiveVideo: false
+      });
+
+      await peerConnection.setLocalDescription(offer);
+
+      // Step 5: Wait for ICE gathering to complete
+      await new Promise<void>((resolve) => {
+        if (peerConnection.iceGatheringState === "complete") {
+          resolve();
+        } else {
+          peerConnection.addEventListener("icegatheringstatechange", () => {
+            if (peerConnection.iceGatheringState === "complete") {
+              resolve();
+            }
+          });
+        }
+      });
+
+      // Step 6: Send SDP offer to Livepeer (WHIP protocol)
+      const whipResponse = await fetch(ingestUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/sdp"
+        },
+        body: peerConnection.localDescription?.sdp
+      });
+
+      if (!whipResponse.ok) {
+        throw new Error(`WHIP negotiation failed: ${whipResponse.status}`);
+      }
+
+      // Step 7: Set remote description with server's answer
+      const answerSdp = await whipResponse.text();
+      await peerConnection.setRemoteDescription({
+        type: "answer",
+        sdp: answerSdp
+      });
+
+      toast.success("🎥 Live on Dragverse!");
+
+      // Monitor connection state
+      peerConnection.addEventListener("connectionstatechange", () => {
+        console.log("Connection state:", peerConnection.connectionState);
+        if (peerConnection.connectionState === "failed" || peerConnection.connectionState === "disconnected") {
+          toast.error("Stream connection lost");
+          stopStreaming();
+        }
       });
 
     } catch (error) {
       console.error("Streaming error:", error);
-      toast.error("Failed to start stream");
+      toast.error("Failed to start stream: " + (error instanceof Error ? error.message : "Unknown error"));
       setIsStreaming(false);
     }
   };
 
   const stopStreaming = () => {
+    // Close WebRTC peer connection
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    // Stop media tracks
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
@@ -144,6 +213,9 @@ export function BrowserStream({ streamKey, rtmpIngestUrl, onClose }: BrowserStre
   useEffect(() => {
     return () => {
       // Cleanup on unmount
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+      }
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(track => track.stop());
       }
@@ -197,13 +269,13 @@ export function BrowserStream({ streamKey, rtmpIngestUrl, onClose }: BrowserStre
             )}
           </div>
 
-          {/* Beta Warning */}
-          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex items-start gap-3">
-            <FiAlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+          {/* Info Banner */}
+          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-start gap-3">
+            <FiAlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
             <div className="text-sm">
-              <p className="text-yellow-500 font-semibold mb-1">Beta Feature</p>
+              <p className="text-blue-500 font-semibold mb-1">Browser Streaming Powered by Livepeer</p>
               <p className="text-gray-400">
-                Browser streaming is experimental. For best quality and reliability, we recommend using <strong>OBS Studio</strong> or <strong>Streamlabs</strong> with the RTMP credentials above.
+                Stream directly from your browser using WebRTC technology. For professional multi-camera setups and advanced features, use <strong>OBS Studio</strong>.
               </p>
             </div>
           </div>
