@@ -13,7 +13,13 @@
 - Get RTMP credentials from Livepeer
 - Copy stream key and server URL
 - Instructions for OBS/Streamlabs setup
+- **NEW: Browser-based streaming option**
+  - Stream directly from browser (no OBS needed)
+  - Camera or screen share support
+  - Mute/unmute and video on/off controls
+  - Beta feature with quality warning
 - Fixed authentication (was 401, now working)
+- **One stream per profile limit** - prevents multiple simultaneous streams
 
 ### 3. **Profile Page Display (Twitch-style)**
 - Active livestreams automatically appear at top of creator profiles
@@ -144,11 +150,13 @@ For automatic stream status updates, set up webhooks in Livepeer Dashboard:
 ### Golden Badge Users
 1. ✅ Create livestreams from dashboard
 2. ✅ Get RTMP credentials for OBS/Streamlabs
-3. ✅ Stream live video to platform
-4. ✅ Have streams displayed on their profile (Twitch-style)
-5. ✅ Download recordings after streaming
-6. ✅ Manage and delete old recordings
-7. ✅ View recording analytics (views, duration)
+3. ✅ **Stream directly from browser (camera/screen)**
+4. ✅ Stream live video to platform
+5. ✅ Have streams displayed on their profile (Twitch-style)
+6. ✅ Download recordings after streaming
+7. ✅ Manage and delete old recordings
+8. ✅ View recording analytics (views, duration)
+9. ✅ **One active stream per profile** (prevents conflicts)
 
 ### All Users
 1. ✅ Watch active livestreams on creator profiles
@@ -170,15 +178,36 @@ For automatic stream status updates, set up webhooks in Livepeer Dashboard:
 ### Issue: Database errors in console
 **Solution:** These are warnings that show before migration runs - can be ignored
 
+### Issue: Can't create new stream (already have active stream)
+**Solution:** Only one active stream per profile. End your current stream first, or wait for it to timeout (typically 30-60 seconds after stopping OBS)
+
+### Issue: Browser streaming not working
+**Solution:** Browser streaming requires WebRTC-to-RTMP bridge. Current implementation shows UI but needs backend integration. Use OBS/Streamlabs for production streaming until WebRTC ingestion is set up.
+
 ## 📈 Future Enhancements
 
-1. **Real-time viewer count** - Via Livepeer API polling
-2. **Stream chat integration** - Add live chat component
-3. **Stream scheduling** - Schedule streams in advance
-4. **Multi-stream to social** - Simultaneously stream to YouTube/Twitch
-5. **Stream analytics dashboard** - Detailed metrics and insights
-6. **Mobile streaming** - Native app integration
-7. **Stream alerts** - Notify followers when going live
+1. **WebRTC Ingestion Bridge** - Complete browser streaming (priority)
+   - Set up media server (Janus/Mediasoup) to bridge WebRTC to RTMP
+   - Or integrate Livepeer's WebRTC ingestion when available
+   - Or use service like Mux/Daily.co for turnkey solution
+
+2. **Real-time viewer count** - Via Livepeer API polling
+
+3. **Stream chat integration** - Add live chat component
+
+4. **Stream scheduling** - Schedule streams in advance
+
+5. **Multi-stream to social** - Simultaneously stream to YouTube/Twitch
+
+6. **Stream quality selection** - Let streamers choose bitrate/resolution
+
+7. **Stream analytics dashboard** - Detailed metrics and insights
+
+8. **Mobile streaming** - Native app integration
+
+9. **Stream alerts** - Notify followers when going live
+
+10. **Multiple simultaneous streams** - Allow verified creators to run multiple streams (e.g., main channel + backstage)
 
 ## 🎉 Success Metrics
 
