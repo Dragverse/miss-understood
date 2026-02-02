@@ -111,11 +111,16 @@ export async function POST(request: NextRequest) {
 
         if (dbError) {
           console.error("Failed to save stream to database:", dbError);
+
+          // If table doesn't exist, warn but continue
+          if (dbError.message?.includes("relation") && dbError.message?.includes("does not exist")) {
+            console.warn("⚠️ Streams table does not exist. Run supabase-migration-streams.sql to enable database tracking.");
+          }
           // Continue anyway - stream was created successfully in Livepeer
         }
       } catch (dbError) {
         console.error("Database error:", dbError);
-        // Continue anyway
+        // Continue anyway - stream creation was successful
       }
     }
 

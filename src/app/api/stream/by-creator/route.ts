@@ -32,6 +32,16 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Database query error:", error);
+
+      // If table doesn't exist yet, return empty array instead of error
+      if (error.message?.includes("relation") && error.message?.includes("does not exist")) {
+        console.warn("Streams table does not exist yet. Please run the database migration.");
+        return NextResponse.json({
+          streams: [],
+          warning: "Database not migrated. Please run supabase-migration-streams.sql"
+        });
+      }
+
       return NextResponse.json(
         { error: "Failed to fetch streams" },
         { status: 500 }

@@ -29,6 +29,16 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Database query error:", error);
+
+      // If table doesn't exist yet, return empty array
+      if (error.message?.includes("relation") && error.message?.includes("does not exist")) {
+        console.warn("Stream recordings table does not exist yet. Please run the database migration.");
+        return NextResponse.json({
+          recordings: [],
+          warning: "Database not migrated"
+        });
+      }
+
       return NextResponse.json(
         { error: "Failed to fetch recordings" },
         { status: 500 }

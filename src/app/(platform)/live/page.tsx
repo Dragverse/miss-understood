@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 // Removed direct Livepeer import - now using secure backend API
 import { useAuthUser } from "@/lib/privy/hooks";
 import { useCanLivestream } from "@/lib/livestream";
+import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 
 interface StreamInfo {
@@ -18,6 +19,7 @@ interface StreamInfo {
 export default function GoLivePage() {
   const { isAuthenticated, signIn } = useAuthUser();
   const { canStream, blockedReason } = useCanLivestream();
+  const { getAccessToken } = usePrivy();
 
   const [streamTitle, setStreamTitle] = useState("");
   const [streamInfo, setStreamInfo] = useState<StreamInfo | null>(null);
@@ -33,15 +35,22 @@ export default function GoLivePage() {
     try {
       setCreating(true);
 
+      // Get authentication token
+      const authToken = await getAccessToken();
+
       // Call secure backend API to create stream
       const response = await fetch("/api/stream/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`
+        },
         body: JSON.stringify({ name: streamTitle }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create stream");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to create stream");
       }
 
       const stream = await response.json();
@@ -49,7 +58,7 @@ export default function GoLivePage() {
       toast.success("Livestream created! You can now start streaming.");
     } catch (error) {
       console.error("Failed to create stream:", error);
-      toast.error("Failed to create livestream. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Failed to create livestream. Please try again.");
     } finally {
       setCreating(false);
     }
