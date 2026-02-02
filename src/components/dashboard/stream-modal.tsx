@@ -282,20 +282,49 @@ export function StreamModal({ onClose }: StreamModalProps) {
       const ingestUrl = redirectResponse.headers.get("location") || redirectUrl;
       console.log("WebRTC ingest URL:", ingestUrl);
 
-      // Step 2: Create RTCPeerConnection with Livepeer's STUN servers
+      // Step 2: Create RTCPeerConnection with STUN and TURN servers
       const peerConnection = new RTCPeerConnection({
         iceServers: [
           {
             urls: "stun:stun.l.google.com:19302"
+          },
+          {
+            urls: [
+              "stun:stun1.l.google.com:19302",
+              "stun:stun2.l.google.com:19302"
+            ]
+          },
+          // Free public TURN servers for NAT traversal
+          {
+            urls: "turn:openrelay.metered.ca:80",
+            username: "openrelayproject",
+            credential: "openrelayproject"
+          },
+          {
+            urls: "turn:openrelay.metered.ca:443",
+            username: "openrelayproject",
+            credential: "openrelayproject"
+          },
+          {
+            urls: "turn:openrelay.metered.ca:443?transport=tcp",
+            username: "openrelayproject",
+            credential: "openrelayproject"
           }
-        ]
+        ],
+        iceCandidatePoolSize: 10
       });
 
       peerConnectionRef.current = peerConnection;
 
       // Add comprehensive debugging listeners
       peerConnection.addEventListener("icecandidate", (event) => {
-        console.log("🧊 ICE candidate:", event.candidate ? event.candidate.candidate : "gathering complete");
+        if (event.candidate) {
+          const type = event.candidate.type;
+          const protocol = event.candidate.protocol;
+          console.log(`🧊 ICE candidate [${type}/${protocol}]:`, event.candidate.candidate);
+        } else {
+          console.log("🧊 ICE candidate: gathering complete");
+        }
       });
 
       peerConnection.addEventListener("iceconnectionstatechange", () => {
