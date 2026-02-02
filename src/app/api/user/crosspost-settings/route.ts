@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Fetch creator record with crosspost settings
     const { data: creator, error } = await supabase
       .from("creators")
-      .select("default_crosspost_platforms, bluesky_handle, farcaster_fid")
+      .select("default_crosspost_platforms, bluesky_handle, farcaster_fid, farcaster_signer_uuid")
       .eq("did", userId)
       .single();
 
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     const settings = creator.default_crosspost_platforms || { bluesky: false, farcaster: false };
     const connected = {
       bluesky: !!creator.bluesky_handle,
-      farcaster: !!creator.farcaster_fid
+      farcaster: !!(creator.farcaster_fid && creator.farcaster_signer_uuid) // Require both FID and signer UUID
     };
 
     return NextResponse.json({
