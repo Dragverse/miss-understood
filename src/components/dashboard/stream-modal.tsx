@@ -293,6 +293,34 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
       peerConnectionRef.current = peerConnection;
 
+      // Add comprehensive debugging listeners
+      peerConnection.addEventListener("icecandidate", (event) => {
+        console.log("🧊 ICE candidate:", event.candidate ? event.candidate.candidate : "gathering complete");
+      });
+
+      peerConnection.addEventListener("iceconnectionstatechange", () => {
+        console.log("🔌 ICE connection state:", peerConnection.iceConnectionState);
+      });
+
+      peerConnection.addEventListener("icegatheringstatechange", () => {
+        console.log("🔍 ICE gathering state:", peerConnection.iceGatheringState);
+      });
+
+      peerConnection.addEventListener("connectionstatechange", () => {
+        console.log("📡 Connection state:", peerConnection.connectionState);
+        if (peerConnection.connectionState === "connected") {
+          toast.success("Stream connected!");
+        } else if (peerConnection.connectionState === "failed") {
+          console.error("❌ Connection failed - ICE state:", peerConnection.iceConnectionState);
+          toast.error("Stream connection failed");
+          stopStreaming();
+        } else if (peerConnection.connectionState === "disconnected") {
+          console.warn("⚠️ Connection disconnected");
+          toast.error("Stream connection lost");
+          stopStreaming();
+        }
+      });
+
       // Step 3: Add local media tracks to peer connection
       mediaStreamRef.current.getTracks().forEach((track) => {
         if (peerConnectionRef.current && mediaStreamRef.current) {
@@ -307,14 +335,26 @@ export function StreamModal({ onClose }: StreamModalProps) {
       });
 
       await peerConnection.setLocalDescription(offer);
+      console.log("📝 SDP Offer created:", offer.sdp?.substring(0, 200) + "...");
 
       // Step 5: Wait for ICE gathering to complete
-      await new Promise<void>((resolve) => {
+      console.log("⏳ Waiting for ICE gathering... Current state:", peerConnection.iceGatheringState);
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          console.warn("⚠️ ICE gathering timeout after 10 seconds");
+          reject(new Error("ICE gathering timeout"));
+        }, 10000);
+
         if (peerConnection.iceGatheringState === "complete") {
+          clearTimeout(timeout);
+          console.log("✅ ICE gathering already complete");
           resolve();
         } else {
           peerConnection.addEventListener("icegatheringstatechange", () => {
+            console.log("🔄 ICE gathering state changed to:", peerConnection.iceGatheringState);
             if (peerConnection.iceGatheringState === "complete") {
+              clearTimeout(timeout);
+              console.log("✅ ICE gathering completed");
               resolve();
             }
           });
@@ -322,6 +362,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
       });
 
       // Step 6: Send SDP offer to Livepeer (WHIP protocol)
+      console.log("📤 Sending SDP offer to Livepeer via WHIP...");
       const whipResponse = await fetch(ingestUrl, {
         method: "POST",
         headers: {
@@ -331,27 +372,25 @@ export function StreamModal({ onClose }: StreamModalProps) {
       });
 
       if (!whipResponse.ok) {
-        throw new Error(`WHIP negotiation failed: ${whipResponse.status}`);
+        const errorText = await whipResponse.text();
+        console.error("❌ WHIP negotiation failed:", whipResponse.status, errorText);
+        throw new Error(`WHIP negotiation failed: ${whipResponse.status} - ${errorText}`);
       }
+
+      console.log("✅ WHIP response received:", whipResponse.status);
 
       // Step 7: Set remote description with server's answer
       const answerSdp = await whipResponse.text();
+      console.log("📝 SDP Answer received:", answerSdp.substring(0, 200) + "...");
+
       await peerConnection.setRemoteDescription({
         type: "answer",
         sdp: answerSdp
       });
 
+      console.log("✅ Remote description set, waiting for connection...");
       setStep('streaming');
       toast.success("🎥 Live on Dragverse!");
-
-      // Monitor connection state
-      peerConnection.addEventListener("connectionstatechange", () => {
-        console.log("Connection state:", peerConnection.connectionState);
-        if (peerConnection.connectionState === "failed" || peerConnection.connectionState === "disconnected") {
-          toast.error("Stream connection lost");
-          stopStreaming();
-        }
-      });
 
     } catch (error) {
       console.error("Streaming error:", error);
