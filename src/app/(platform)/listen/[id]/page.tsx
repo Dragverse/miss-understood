@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiMessageCircle, FiShare2, FiPlay, FiPause, FiSkipForward, FiSkipBack, FiVolume2 } from "react-icons/fi";
+import { FiMessageCircle, FiShare2, FiPlay, FiPause, FiVolume2, FiVolumeX, FiSkipForward, FiSkipBack } from "react-icons/fi";
 import { ShareModal } from "@/components/video/share-modal";
 import { VideoCommentModal } from "@/components/video/video-comment-modal";
 import { VideoOptionsMenu } from "@/components/video/video-options-menu";
@@ -34,6 +34,7 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
   const [duration, setDuration] = useState(0);
   const [accessDenied, setAccessDenied] = useState(false);
   const [relatedAudio, setRelatedAudio] = useState<Video[]>([]);
+  const [volume, setVolume] = useState(0.8);
 
   const isOwner = !!(user?.id && audio?.creator?.did && audio.creator.did === user.id);
 
@@ -210,6 +211,14 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
     }
   };
 
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+  };
+
   const formatTime = (seconds: number) => {
     if (!isFinite(seconds)) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -340,181 +349,210 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
   }
 
   return (
-    <div className="min-h-screen pb-24">
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        {/* Audio Player Card - Centered Music Player Style */}
-        <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-8 border-2 border-[#EB83EA]/20 mb-8">
-          {/* Album Art - Large and Centered */}
-          <div className="relative w-full max-w-md mx-auto mb-8">
-            <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-[#EB83EA]/30">
-              <Image
-                src={audio.thumbnail || "/default-thumbnail.jpg"}
-                alt={audio.title}
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+    <div className="min-h-screen pb-24 px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-[1600px] mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+          {/* Main Player Area - Sticky on Desktop */}
+          <div className="lg:col-span-5 xl:col-span-4">
+            <div className="lg:sticky lg:top-24">
+              {/* Audio Player Card - Centered Music Player Style */}
+              <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/20 shadow-2xl">
+                {/* Album Art - Large and Centered */}
+                <div className="relative w-full mb-6">
+                  <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-[#EB83EA]/30">
+                    <Image
+                      src={audio.thumbnail || "/default-thumbnail.jpg"}
+                      alt={audio.title}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-              {/* Content Type Badge */}
-              <div className="absolute top-4 left-4">
-                <MoodBadge mood={audio.contentType === 'podcast' ? 'podcast' : 'music'} />
-              </div>
+                    {/* Content Type Badge */}
+                    <div className="absolute top-4 left-4">
+                      <MoodBadge mood={audio.contentType === 'podcast' ? 'podcast' : 'music'} />
+                    </div>
 
-              {/* Options Menu */}
-              <div className="absolute top-4 right-4 z-10">
-                <VideoOptionsMenu
-                  video={audio}
-                  isOwner={isOwner}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onShare={handleShare}
-                />
-              </div>
-            </div>
-          </div>
+                    {/* Options Menu */}
+                    <div className="absolute top-4 right-4 z-10">
+                      <VideoOptionsMenu
+                        video={audio}
+                        isOwner={isOwner}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onShare={handleShare}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-          {/* Track Info - Centered */}
-          <div className="text-center mb-6">
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{audio.title}</h1>
-            <Link
-              href={`/u/${audio.creator?.handle || audio.creator?.did}`}
-              className="inline-flex items-center gap-2 group"
-            >
-              <Image
-                src={audio.creator?.avatar || "/default-avatar.jpg"}
-                alt={audio.creator?.displayName || "Creator"}
-                width={32}
-                height={32}
-                className="rounded-full border-2 border-[#EB83EA]/30"
-              />
-              <span className="text-[#EB83EA] font-semibold group-hover:underline">
-                {audio.creator?.displayName}
-              </span>
-            </Link>
-          </div>
+                {/* Track Info - Centered */}
+                <div className="text-center mb-6">
+                  <h1 className="text-2xl md:text-3xl font-bold text-white mb-3 line-clamp-2">{audio.title}</h1>
+                  <Link
+                    href={`/u/${audio.creator?.handle || audio.creator?.did}`}
+                    className="inline-flex items-center gap-2 group"
+                  >
+                    <Image
+                      src={audio.creator?.avatar || "/default-avatar.jpg"}
+                      alt={audio.creator?.displayName || "Creator"}
+                      width={32}
+                      height={32}
+                      className="rounded-full border-2 border-[#EB83EA]/30"
+                    />
+                    <span className="text-[#EB83EA] font-semibold group-hover:underline">
+                      {audio.creator?.displayName}
+                    </span>
+                  </Link>
+                </div>
 
-          {/* Playback Controls - Music Player Style */}
-          <div className="space-y-6 mb-6">
-            {/* Progress Bar */}
-            <div className="space-y-2">
-              <input
-                type="range"
-                min="0"
-                max={duration || 100}
-                value={currentTime}
-                onChange={handleSeek}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#EB83EA]"
-              />
-              <div className="flex justify-between text-sm text-gray-400">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </div>
+                {/* Playback Controls - Music Player Style */}
+                <div className="space-y-4 mb-6">
+                  {/* Progress Bar */}
+                  <div className="space-y-2">
+                    <input
+                      type="range"
+                      min="0"
+                      max={duration || 100}
+                      value={currentTime}
+                      onChange={handleSeek}
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#EB83EA]"
+                    />
+                    <div className="flex justify-between text-sm text-gray-400">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  </div>
 
-            {/* Play/Pause Button - Centered */}
-            <div className="flex items-center justify-center">
-              <button
-                onClick={handlePlayPause}
-                className="w-16 h-16 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-[#EB83EA]/50"
-              >
-                {isPlaying ? (
-                  <FiPause className="w-8 h-8 text-white" />
-                ) : (
-                  <FiPlay className="w-8 h-8 text-white ml-1" />
+                  {/* Control Buttons - Centered */}
+                  <div className="flex items-center justify-center gap-4">
+                    <button
+                      onClick={handlePlayPause}
+                      className="w-16 h-16 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-[#EB83EA]/50"
+                    >
+                      {isPlaying ? (
+                        <FiPause className="w-8 h-8 text-white" />
+                      ) : (
+                        <FiPlay className="w-8 h-8 text-white ml-1" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Volume Control */}
+                  <div className="flex items-center gap-3 px-4">
+                    <button
+                      onClick={() => {
+                        const newVolume = volume > 0 ? 0 : 0.8;
+                        setVolume(newVolume);
+                        if (audioRef.current) audioRef.current.volume = newVolume;
+                      }}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
+                      {volume === 0 ? <FiVolumeX className="w-5 h-5" /> : <FiVolume2 className="w-5 h-5" />}
+                    </button>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={volume}
+                      onChange={handleVolumeChange}
+                      className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#EB83EA]"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-3 pb-6 border-b border-[#EB83EA]/10">
+                  <div className="flex-1 min-w-[120px]">
+                    <HeartAnimation
+                      initialLiked={isLiked}
+                      onToggle={handleLike}
+                      showCount={true}
+                      count={likes}
+                    />
+                  </div>
+                  <button
+                    onClick={() => setCommentModalOpen(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA]"
+                  >
+                    <FiMessageCircle className="w-5 h-5" />
+                    <span className="hidden sm:inline">Comment</span>
+                  </button>
+                  <button
+                    onClick={() => setShareModalOpen(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA]"
+                  >
+                    <FiShare2 className="w-5 h-5" />
+                    <span className="hidden sm:inline">Share</span>
+                  </button>
+                </div>
+
+                {/* Tip Button */}
+                {!isOwner && audio && audio.creator.walletAddress && (
+                  <div className="mt-4">
+                    <TipButton creator={audio.creator} variant="primary" size="md" className="w-full" />
+                  </div>
                 )}
-              </button>
+              </div>
             </div>
           </div>
 
-          {/* Action Buttons - Improved Layout */}
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 pb-6 border-b border-[#EB83EA]/10">
-            <div className="col-span-2 sm:col-span-1 flex justify-center sm:justify-start">
-              <HeartAnimation
-                initialLiked={isLiked}
-                onToggle={handleLike}
-                showCount={true}
-                count={likes}
-              />
-            </div>
-            <button
-              onClick={() => setCommentModalOpen(true)}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA] hover:scale-105 transform"
-            >
-              <FiMessageCircle className="w-5 h-5" />
-              <span>Comment</span>
-            </button>
-            <button
-              onClick={() => setShareModalOpen(true)}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA] hover:scale-105 transform"
-            >
-              <FiShare2 className="w-5 h-5" />
-              <span>Share</span>
-            </button>
-            {/* Tip Button - Prominent */}
-            {!isOwner && audio && audio.creator.walletAddress && (
-              <div className="col-span-2 sm:col-span-1 sm:ml-auto">
-                <TipButton creator={audio.creator} variant="primary" size="md" className="w-full sm:w-auto hover:scale-105 transform transition-transform" />
+          {/* Info & Related Content Sidebar */}
+          <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+            {/* Description */}
+            {audio.description && (
+              <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border border-[#EB83EA]/10">
+                <h2 className="text-xl font-bold text-white mb-3">About</h2>
+                <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{audio.description}</p>
+
+                {/* Tags */}
+                {audio.tags && audio.tags.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {audio.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-3 py-1 bg-[#EB83EA]/10 text-[#EB83EA] rounded-full text-sm font-medium"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Related Audio */}
+            {relatedAudio.length > 0 && (
+              <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border border-[#EB83EA]/10">
+                <h2 className="text-xl font-bold text-white mb-6">More Like This</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {relatedAudio.map((relatedTrack) => (
+                    <Link
+                      key={relatedTrack.id}
+                      href={`/listen/${relatedTrack.id}`}
+                      className="group"
+                    >
+                      <div className="relative aspect-square rounded-xl overflow-hidden mb-2 bg-black shadow-lg">
+                        <Image
+                          src={relatedTrack.thumbnail || "/default-thumbnail.jpg"}
+                          alt={relatedTrack.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform"
+                        />
+                        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-center justify-center">
+                          <FiPlay className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition" />
+                        </div>
+                      </div>
+                      <h3 className="text-white font-semibold text-sm mb-1 line-clamp-2 leading-tight">{relatedTrack.title}</h3>
+                      <p className="text-gray-400 text-xs truncate">{relatedTrack.creator?.displayName}</p>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-
-          {/* Description */}
-          {audio.description && (
-            <div className="mt-6">
-              <h2 className="text-lg font-bold text-white mb-2">About</h2>
-              <p className="text-gray-300 leading-relaxed">{audio.description}</p>
-            </div>
-          )}
-
-          {/* Tags */}
-          {audio.tags && audio.tags.length > 0 && (
-            <div className="mt-6 flex flex-wrap gap-2 justify-center">
-              {audio.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-3 py-1 bg-[#EB83EA]/10 text-[#EB83EA] rounded-full text-sm font-medium"
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
-
-        {/* Related Audio */}
-        {relatedAudio.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-2xl font-bold text-white mb-6">More Like This</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {relatedAudio.map((relatedTrack) => (
-                <Link
-                  key={relatedTrack.id}
-                  href={`/listen/${relatedTrack.id}`}
-                  className="group bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-2xl p-4 border border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition"
-                >
-                  <div className="relative aspect-square rounded-xl overflow-hidden mb-3">
-                    <Image
-                      src={relatedTrack.thumbnail || "/default-thumbnail.jpg"}
-                      alt={relatedTrack.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform"
-                    />
-                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-center justify-center">
-                      <FiPlay className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition" />
-                    </div>
-                  </div>
-                  <h3 className="text-white font-semibold mb-1 line-clamp-2">{relatedTrack.title}</h3>
-                  <p className="text-gray-400 text-sm">{relatedTrack.creator?.displayName}</p>
-                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-2">
-                    <span>{relatedTrack.views?.toLocaleString() || 0} views</span>
-                    <span>•</span>
-                    <span>{Math.floor(relatedTrack.duration / 60)}:{String(relatedTrack.duration % 60).padStart(2, '0')}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Modals */}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { FiHeadphones, FiPlay, FiClock, FiTrendingUp, FiMusic, FiMic } from "react-icons/fi";
+import { FiHeadphones, FiPlay, FiClock, FiTrendingUp, FiMusic, FiMic, FiUser } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
@@ -217,8 +217,8 @@ export default function AudioPage() {
         </div>
       )}
 
-      <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8 pb-24">
+        <div className="max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-3">
@@ -226,11 +226,11 @@ export default function AudioPage() {
               <FiHeadphones className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl lg:text-4xl font-bold uppercase tracking-widest bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent">
-                Audio
+              <h1 className="font-heading text-3xl lg:text-4xl uppercase tracking-wide font-black">
+                Bangers & Podcasts
               </h1>
               <p className="text-gray-400 text-sm">
-                Drag podcasts, music, and performances
+                Listen to music or podcasts from our creators and around the Internet.
               </p>
             </div>
           </div>
@@ -272,11 +272,11 @@ export default function AudioPage() {
           </button>
         </div>
 
-        {/* Audio Grid */}
+        {/* Audio Grid - Improved Album Style */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <LoadingShimmer key={i} aspectRatio="square" className="h-72" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+            {[...Array(12)].map((_, i) => (
+              <LoadingShimmer key={i} aspectRatio="square" className="h-auto" />
             ))}
           </div>
         ) : filteredContent.length === 0 ? (
@@ -290,7 +290,7 @@ export default function AudioPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {filteredContent.map((content) => (
               <button
                 key={content.id}
@@ -302,86 +302,69 @@ export default function AudioPage() {
                     handlePlayTrack(content);
                   }
                 }}
-                className="group bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl overflow-hidden border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all cursor-pointer hover:shadow-lg hover:shadow-[#EB83EA]/20 text-left w-full"
+                className="group text-left w-full"
               >
-                {/* Thumbnail */}
-                <div className="relative aspect-square">
+                {/* Album Art - Square with hover effect */}
+                <div className="relative aspect-square rounded-2xl overflow-hidden mb-3 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] shadow-lg">
                   <Image
                     src={content.thumbnail}
                     alt={content.title}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
                   {/* Play Button Overlay */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="w-16 h-16 rounded-full bg-[#EB83EA]/90 flex items-center justify-center">
-                      <FiPlay className="w-8 h-8 text-white ml-1" />
+                    <div className="w-14 h-14 rounded-full bg-[#EB83EA] flex items-center justify-center shadow-xl">
+                      <FiPlay className="w-6 h-6 text-white ml-1" />
                     </div>
                   </div>
 
-                  {/* Duration Badge */}
-                  <div className="absolute bottom-3 right-3 px-3 py-1 bg-black/80 text-white text-xs font-bold rounded-lg flex items-center gap-1">
-                    <FiClock className="w-3 h-3" />
-                    {formatDuration(content.duration)}
-                  </div>
-
                   {/* Type Badge */}
-                  <div className="absolute top-3 left-3 px-3 py-1 bg-[#EB83EA] text-white text-xs font-bold rounded-full uppercase flex items-center gap-1">
+                  <div className="absolute top-2 left-2 px-2 py-1 bg-[#EB83EA]/90 backdrop-blur-sm text-white text-[10px] font-bold rounded-full uppercase flex items-center gap-1">
                     {content.type === "podcast" ? (
                       <>
-                        <FiMic className="w-3 h-3" />
-                        PODCAST
+                        <FiMic className="w-2.5 h-2.5" />
+                        POD
                       </>
                     ) : (
                       <>
-                        <FiMusic className="w-3 h-3" />
+                        <FiMusic className="w-2.5 h-2.5" />
                         MUSIC
                       </>
                     )}
                   </div>
+
+                  {/* Duration Badge */}
+                  {content.duration > 0 && (
+                    <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 backdrop-blur-sm text-white text-[10px] font-bold rounded-lg flex items-center gap-1">
+                      <FiClock className="w-2.5 h-2.5" />
+                      {formatDuration(content.duration)}
+                    </div>
+                  )}
                 </div>
 
-                {/* Content Info */}
-                <div className="p-5">
-                  {/* Creator */}
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-[#EB83EA]/20">
-                      <Image
-                        src={content.creator.avatar}
-                        alt={content.creator.displayName}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">
-                        {content.creator.displayName}
-                      </p>
-                      <p className="text-xs text-gray-400 truncate">
-                        @{content.creator.handle}
-                      </p>
-                    </div>
-                  </div>
-
+                {/* Track Info */}
+                <div className="space-y-1">
                   {/* Title */}
-                  <h3 className="font-bold text-lg mb-2 text-white group-hover:text-[#EB83EA] transition-colors line-clamp-2">
+                  <h3 className="font-bold text-sm text-white group-hover:text-[#EB83EA] transition-colors line-clamp-2 leading-tight">
                     {content.title}
                   </h3>
 
-                  {/* Description */}
-                  <p className="text-gray-400 text-sm line-clamp-2 mb-4">
-                    {content.description}
+                  {/* Creator */}
+                  <p className="text-xs text-gray-400 truncate flex items-center gap-1">
+                    <FiUser className="w-3 h-3 flex-shrink-0" />
+                    {content.creator.displayName}
                   </p>
 
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 text-sm text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <FiTrendingUp className="w-4 h-4" />
-                      <span>{content.views.toLocaleString()} views</span>
-                    </div>
-                  </div>
+                  {/* Views */}
+                  {content.views > 0 && (
+                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <FiTrendingUp className="w-3 h-3" />
+                      {content.views.toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </button>
             ))}

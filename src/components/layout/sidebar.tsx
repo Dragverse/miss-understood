@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { FiHome, FiCompass, FiZap, FiUser, FiSettings, FiAward, FiBarChart2, FiMessageSquare, FiUsers, FiHeadphones, FiBell, FiGlobe, FiInfo } from "react-icons/fi";
+import { FiHome, FiCompass, FiZap, FiUser, FiSettings, FiAward, FiBarChart2, FiMessageSquare, FiUsers, FiHeadphones, FiBell } from "react-icons/fi";
 
 const navItems = [
   { href: "/", icon: FiHome, label: "Home" },
@@ -14,8 +14,6 @@ const navItems = [
   { href: "/audio", icon: FiHeadphones, label: "Audio" },
   { href: "/creators", icon: FiUsers, label: "Creators" },
   { href: "/hall-of-fame", icon: FiAward, label: "Hall of Fame" },
-  { href: "/about", icon: FiInfo, label: "About" },
-  { href: "/tech-ethics", icon: FiGlobe, label: "Tech & Ethics" },
 ];
 
 // Authenticated user items (shown at bottom)
@@ -121,7 +119,7 @@ export function Sidebar() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#1a0b2e] border-t border-[#2f2942] z-40 md:hidden">
-        <div className="flex items-center justify-around px-2 py-2 safe-area-bottom">
+        <div className="flex items-center justify-around px-4 py-3 pb-safe">
           {mobileNavItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -130,19 +128,21 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all ${
+                className={`flex flex-col items-center justify-center gap-1.5 px-4 py-2 rounded-xl transition-all min-w-[60px] ${
                   isActive
                     ? "text-[#EB83EA]"
                     : "text-gray-400"
                 }`}
               >
                 <div className="relative">
-                  <Icon className={`w-6 h-6 ${isActive ? "scale-110" : ""} transition-transform`} />
+                  <Icon className={`w-7 h-7 ${isActive ? "scale-110" : ""} transition-transform`} />
                   {item.hasNotification && notificationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#EB83EA] rounded-full border border-[#1a0b2e]" />
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#EB83EA] rounded-full border-2 border-[#1a0b2e] flex items-center justify-center">
+                      <span className="text-[8px] font-bold text-white">{notificationCount > 9 ? '9+' : notificationCount}</span>
+                    </span>
                   )}
                 </div>
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[11px] font-medium">{item.label}</span>
               </Link>
             );
           })}

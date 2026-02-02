@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { FiUsers, FiVideo, FiEye, FiHeart, FiCheck, FiSearch, FiFilter, FiStar } from "react-icons/fi";
+import { FiUsers, FiVideo, FiEye, FiHeart, FiCheck, FiSearch, FiFilter, FiStar, FiCalendar, FiActivity, FiClock, FiTrendingUp, FiMic } from "react-icons/fi";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
 
@@ -66,6 +66,11 @@ interface CreatorStats {
   totalLikes: number;
   daysSinceJoin: number;
   isNew: boolean;
+  videosPerMonth: number;
+  engagementRate: number;
+  avgViewsPerVideo: number;
+  accountAgeMonths: number;
+  overallScore?: number;
 }
 
 interface Creator {
@@ -94,9 +99,28 @@ export default function CreatorsDirectory() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"followers" | "views" | "videos" | "recent">("followers");
+  const [sortBy, setSortBy] = useState<"best" | "followers" | "engagement" | "consistency" | "views" | "videos" | "recent">("best");
   const [showVerifiedOnly, setShowVerifiedOnly] = useState(false);
   const [showNewOnly, setShowNewOnly] = useState(false);
+
+  // Format account age in human-readable format
+  const formatAccountAge = (months: number): string => {
+    if (months >= 12) {
+      const years = Math.floor(months / 12);
+      const remainingMonths = months % 12;
+      return remainingMonths > 0
+        ? `${years}y ${remainingMonths}mo`
+        : `${years}y`;
+    }
+    return `${months}mo`;
+  };
+
+  // Format videos per month with precision
+  const formatVideosPerMonth = (rate: number): string => {
+    if (rate >= 10) return Math.round(rate).toString();
+    if (rate >= 1) return rate.toFixed(1);
+    return rate.toFixed(2);
+  };
 
   useEffect(() => {
     loadCreators();
@@ -184,12 +208,15 @@ export default function CreatorsDirectory() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                className="w-full lg:w-48 px-4 py-3 bg-[#2f2942] border-2 border-[#EB83EA]/20 rounded-xl text-white focus:outline-none focus:border-[#EB83EA]/40 transition-all appearance-none cursor-pointer"
+                className="w-full lg:w-56 px-4 py-3 bg-[#2f2942] border-2 border-[#EB83EA]/20 rounded-xl text-white focus:outline-none focus:border-[#EB83EA]/40 transition-all appearance-none cursor-pointer"
               >
-                <option value="followers">Most Followers</option>
-                <option value="views">Most Views</option>
-                <option value="videos">Most Videos</option>
-                <option value="recent">Recently Joined</option>
+                <option value="best">⭐ Best Overall</option>
+                <option value="engagement">💖 Most Engaging</option>
+                <option value="consistency">📊 Most Consistent</option>
+                <option value="videos">🎬 Most Videos</option>
+                <option value="recent">🆕 Recently Joined</option>
+                <option value="followers">👥 Most Followers</option>
+                <option value="views">👁️ Most Views</option>
               </select>
               <FiFilter className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
             </div>
@@ -300,43 +327,42 @@ export default function CreatorsDirectory() {
                     </p>
                   )}
 
-                  {/* Stats Grid */}
+                  {/* Stats Grid - Reordered with primary metrics emphasized */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-[#2f2942]/40 rounded-xl p-3">
-                      <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
-                        <FiUsers className="w-3 h-3" />
-                        <span>Followers</span>
-                      </div>
-                      <div className="text-white font-bold text-lg">
-                        {creator.stats.followers.toLocaleString()}
-                      </div>
+                    {/* PRIMARY METRICS - Top row with colored backgrounds */}
+                    <div className="flex flex-col items-center p-3 bg-[#2f2942] rounded-xl border border-[#EB83EA]/10">
+                      <FiCalendar className="w-4 h-4 text-[#EB83EA] mb-1" />
+                      <span className="font-bold text-white text-lg">
+                        {formatAccountAge(creator.stats.accountAgeMonths)}
+                      </span>
+                      <span className="text-xs text-gray-400">Active</span>
                     </div>
-                    <div className="bg-[#2f2942]/40 rounded-xl p-3">
-                      <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
-                        <FiVideo className="w-3 h-3" />
-                        <span>Videos</span>
-                      </div>
-                      <div className="text-white font-bold text-lg">
-                        {creator.stats.videos.toLocaleString()}
-                      </div>
+
+                    <div className="flex flex-col items-center p-3 bg-[#2f2942] rounded-xl border border-[#EB83EA]/10">
+                      <FiActivity className="w-4 h-4 text-[#EB83EA] mb-1" />
+                      <span className="font-bold text-white text-lg">
+                        {formatVideosPerMonth(creator.stats.videosPerMonth)}
+                      </span>
+                      <span className="text-xs text-gray-400">Videos/mo</span>
                     </div>
-                    <div className="bg-[#2f2942]/40 rounded-xl p-3">
-                      <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
-                        <FiEye className="w-3 h-3" />
-                        <span>Views</span>
-                      </div>
-                      <div className="text-white font-bold text-lg">
-                        {creator.stats.totalViews.toLocaleString()}
-                      </div>
+
+                    {/* SECONDARY METRICS - Bottom row, de-emphasized */}
+                    <div className="flex flex-col items-center p-3 bg-white/5 rounded-xl">
+                      <FiVideo className="w-4 h-4 text-gray-400 mb-1" />
+                      <span className="font-semibold text-white">
+                        {creator.stats.videos}
+                      </span>
+                      <span className="text-xs text-gray-500">Videos</span>
                     </div>
-                    <div className="bg-[#2f2942]/40 rounded-xl p-3">
-                      <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
-                        <FiHeart className="w-3 h-3" />
-                        <span>Likes</span>
-                      </div>
-                      <div className="text-white font-bold text-lg">
-                        {creator.stats.totalLikes.toLocaleString()}
-                      </div>
+
+                    <div className="flex flex-col items-center p-3 bg-white/5 rounded-xl">
+                      <FiUsers className="w-4 h-4 text-gray-400 mb-1" />
+                      <span className="font-semibold text-white">
+                        {creator.stats.followers >= 1000
+                          ? `${(creator.stats.followers / 1000).toFixed(1)}k`
+                          : creator.stats.followers}
+                      </span>
+                      <span className="text-xs text-gray-500">Followers</span>
                     </div>
                   </div>
 

@@ -252,6 +252,10 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 }}
               >
                 <Player.Container className="h-full w-full">
+                  <Player.Poster
+                    className="object-cover"
+                    src={getSafeThumbnail(video.thumbnail, video.livepeerAssetId)}
+                  />
                   <Player.Video
                     ref={playerRef}
                     className="h-full w-full object-cover"

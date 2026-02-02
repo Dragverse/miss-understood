@@ -14,6 +14,8 @@ import {
   FiPlus,
   FiMessageSquare,
   FiHeadphones,
+  FiInfo,
+  FiGlobe,
 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
@@ -260,6 +262,20 @@ export function Navbar() {
                     </Link>
                   )}
                   <div className="my-1 h-px bg-white/10" />
+                  <Link
+                    href="/about"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                  >
+                    <FiInfo className="w-4 h-4" />
+                    About
+                  </Link>
+                  <Link
+                    href="/tech-ethics"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                  >
+                    <FiGlobe className="w-4 h-4" />
+                    Tech & Ethics
+                  </Link>
                   <Link
                     href="/settings"
                     className="block w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"

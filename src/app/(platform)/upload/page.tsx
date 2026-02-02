@@ -325,9 +325,25 @@ function UploadPageContent() {
       const isValid = await validateMediaFile(file, formData.mediaType, formData.contentType);
       if (isValid) {
         setFormData((prev) => ({ ...prev, video: file }));
+
+        // Auto-extract first frame as thumbnail for videos
+        if (formData.mediaType === "video" && !formData.thumbnail) {
+          toast("Extracting thumbnail from video...");
+          const thumbnailFile = await extractFirstFrame(file);
+          if (thumbnailFile) {
+            // Create preview URL
+            const previewUrl = URL.createObjectURL(thumbnailFile);
+            setFormData((prev) => ({
+              ...prev,
+              thumbnail: thumbnailFile,
+              thumbnailPreview: previewUrl,
+            }));
+            toast.success("Thumbnail extracted!");
+          }
+        }
       }
     }
-  }, [formData.mediaType, formData.contentType, validateMediaFile]);
+  }, [formData.mediaType, formData.contentType, formData.thumbnail, validateMediaFile, extractFirstFrame]);
 
   const handleThumbnailChange = (file: File | null) => {
     if (file) {

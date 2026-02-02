@@ -516,7 +516,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                     {/* Poster/Thumbnail while loading */}
                     <Player.Poster
                       className="object-cover"
-                      src={video.thumbnail || `https://image.lp-playback.studio/image/${video.livepeerAssetId}/thumbnail.webp`}
+                      src={getSafeThumbnail(video.thumbnail, video.livepeerAssetId)}
                     />
                     {/* Loading indicator */}
                     <Player.LoadingIndicator className="w-full h-full flex items-center justify-center bg-black/50">

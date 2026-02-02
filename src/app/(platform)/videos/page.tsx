@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
 import { RightSidebar } from "@/components/home/right-sidebar";
+import { BytesSection } from "@/components/home/bytes-section";
+import { AudiosSection } from "@/components/home/audios-section";
 import { categories } from "@/lib/utils/mock-data";
 import { getLocalVideos } from "@/lib/utils/local-storage";
 import { getVideos } from "@/lib/supabase/videos";
@@ -172,11 +174,15 @@ export default function VideosPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Display all videos (sortVideos already handles filtering)
-  // Dragverse shows all content types, external only shows horizontal
-  const displayVideos = videos;
+  // Separate content by type
+  const shorts = videos.filter((v) => v.contentType === "short");
+  const longVideos = videos.filter((v) => v.contentType === "long");
+  const audios = videos.filter((v) =>
+    v.contentType === "podcast" || v.contentType === "music"
+  );
 
-  const filteredVideos = displayVideos.filter((video) => {
+  // Apply filters to long videos only (shorts and audio have their own sections)
+  const filteredLongVideos = longVideos.filter((video) => {
     const matchesCategory =
       activeCategory === "All" || video.category === activeCategory;
     const matchesSearch =
@@ -184,6 +190,9 @@ export default function VideosPage() {
       (video.creator?.displayName || "").toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  // Check if filtering is active
+  const isFiltering = searchQuery.length > 0 || activeCategory !== "All";
 
   if (loading) {
     return (
@@ -285,44 +294,62 @@ export default function VideosPage() {
             </div>
           </div>
 
-          {/* Results count */}
-          {(searchQuery || activeCategory !== "All") && (
-            <div className="mb-4 text-sm text-gray-400">
-              {filteredVideos.length} {filteredVideos.length === 1 ? "video" : "videos"}
-              {searchQuery && ` matching "${searchQuery}"`}
-              {activeCategory !== "All" && ` in ${activeCategory}`}
-            </div>
+          {/* Bytes Section (Shorts) - Always show unless empty */}
+          {shorts.length > 0 && !isFiltering && (
+            <BytesSection shorts={shorts} />
           )}
 
-          {/* Video Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredVideos.map((video) => (
-              <VideoCard key={video.id} video={video} />
-            ))}
-          </div>
-
-          {filteredVideos.length === 0 && (
-            <div className="text-center py-20">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#1a0b2e] mb-4">
-                <FiSearch className="text-2xl text-gray-500" />
-              </div>
-              <p className="text-gray-400 text-lg font-medium">
-                {videos.length === 0 ? "The Stage is Empty" : "No videos found"}
-              </p>
-              <p className="text-gray-500 text-sm mt-1">
-                {videos.length === 0
-                  ? "Be the first to share your drag performances!"
-                  : "Try adjusting your search or filters"}
-              </p>
-              {videos.length === 0 && (
-                <Link
-                  href="/upload"
-                  className="inline-flex items-center gap-2 px-6 py-3 mt-6 bg-gradient-to-r from-[#EB83EA] via-[#D946EF] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] rounded-full font-bold transition-all shadow-lg hover:scale-105 transform"
-                >
-                  Upload Video
-                </Link>
+          {/* Long-form Videos Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-heading text-2xl uppercase tracking-wide font-bold">
+                Videos
+              </h2>
+              {/* Results count when filtering */}
+              {isFiltering && (
+                <div className="text-sm text-gray-400">
+                  {filteredLongVideos.length} {filteredLongVideos.length === 1 ? "video" : "videos"}
+                  {searchQuery && ` matching "${searchQuery}"`}
+                  {activeCategory !== "All" && ` in ${activeCategory}`}
+                </div>
               )}
             </div>
+
+            {/* Video Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredLongVideos.map((video) => (
+                <VideoCard key={video.id} video={video} />
+              ))}
+            </div>
+
+            {filteredLongVideos.length === 0 && (
+              <div className="text-center py-20">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#1a0b2e] mb-4">
+                  <FiSearch className="text-2xl text-gray-500" />
+                </div>
+                <p className="text-gray-400 text-lg font-medium">
+                  {longVideos.length === 0 ? "No videos yet" : "No videos found"}
+                </p>
+                <p className="text-gray-500 text-sm mt-1">
+                  {longVideos.length === 0
+                    ? "Be the first to share your drag performances!"
+                    : "Try adjusting your search or filters"}
+                </p>
+                {longVideos.length === 0 && (
+                  <Link
+                    href="/upload"
+                    className="inline-flex items-center gap-2 px-6 py-3 mt-6 bg-gradient-to-r from-[#EB83EA] via-[#D946EF] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] rounded-full font-bold transition-all shadow-lg hover:scale-105 transform"
+                  >
+                    Upload Video
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Audio Section - Always show unless empty or filtering */}
+          {audios.length > 0 && !isFiltering && (
+            <AudiosSection audios={audios} />
           )}
         </div>
 
