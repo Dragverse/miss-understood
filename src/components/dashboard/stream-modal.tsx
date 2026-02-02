@@ -282,7 +282,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
       const ingestUrl = redirectResponse.headers.get("location") || redirectUrl;
       console.log("WebRTC ingest URL:", ingestUrl);
 
-      // Step 2: Create RTCPeerConnection with STUN and TURN servers
+      // Step 2: Create RTCPeerConnection with optimized config for Livepeer
       const peerConnection = new RTCPeerConnection({
         iceServers: [
           // Primary STUN servers (fast)
@@ -299,8 +299,9 @@ export function StreamModal({ onClose }: StreamModalProps) {
             credential: "openrelayproject"
           }
         ],
-        iceCandidatePoolSize: 5,
-        iceTransportPolicy: "all" // Try all candidates (host, srflx, relay)
+        bundlePolicy: "max-bundle",
+        rtcpMuxPolicy: "require",
+        iceCandidatePoolSize: 0 // Don't gather candidates early, let them trickle
       });
 
       peerConnectionRef.current = peerConnection;
@@ -353,22 +354,20 @@ export function StreamModal({ onClose }: StreamModalProps) {
       });
 
       await peerConnection.setLocalDescription(offer);
-      console.log("📝 SDP Offer created:", offer.sdp?.substring(0, 200) + "...");
 
-      // Step 5: Wait for ICE gathering to complete (or timeout gracefully)
+      // IMPORTANT: For WHIP protocol with ice-lite servers, we should wait for
+      // ICE gathering to complete so all candidates are in the SDP offer
       console.log("⏳ Waiting for ICE gathering... Current state:", peerConnection.iceGatheringState);
       await new Promise<void>((resolve) => {
-        // Proceed after 5 seconds even if gathering not complete (TURN servers may be slow)
-        const timeout = setTimeout(() => {
-          console.warn("⚠️ ICE gathering taking longer than expected, proceeding with available candidates");
-          resolve();
-        }, 5000);
-
         if (peerConnection.iceGatheringState === "complete") {
-          clearTimeout(timeout);
           console.log("✅ ICE gathering already complete");
           resolve();
         } else {
+          const timeout = setTimeout(() => {
+            console.warn("⚠️ ICE gathering timeout, proceeding anyway");
+            resolve();
+          }, 10000); // Longer timeout to get all candidates
+
           peerConnection.addEventListener("icegatheringstatechange", () => {
             console.log("🔄 ICE gathering state changed to:", peerConnection.iceGatheringState);
             if (peerConnection.iceGatheringState === "complete") {
@@ -379,6 +378,12 @@ export function StreamModal({ onClose }: StreamModalProps) {
           });
         }
       });
+
+      // Log the final SDP with all gathered candidates
+      console.log("📝 Final SDP Offer with ICE candidates:");
+      const candidateCount = (peerConnection.localDescription?.sdp?.match(/a=candidate/g) || []).length;
+      console.log(`📊 SDP contains ${candidateCount} ICE candidates`);
+      console.log(peerConnection.localDescription?.sdp);
 
       // Step 6: Send SDP offer to Livepeer (WHIP protocol)
       console.log("📤 Sending SDP offer to Livepeer via WHIP...");
@@ -400,7 +405,11 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
       // Step 7: Set remote description with server's answer
       const answerSdp = await whipResponse.text();
-      console.log("📝 SDP Answer received:", answerSdp.substring(0, 200) + "...");
+      console.log("📝 SDP Answer received (full):", answerSdp);
+
+      // Check for Livepeer's ICE candidates
+      const serverCandidates = (answerSdp.match(/a=candidate/g) || []).length;
+      console.log(`📊 Server provided ${serverCandidates} ICE candidates (ice-lite: ${answerSdp.includes('ice-lite')})`);
 
       await peerConnection.setRemoteDescription({
         type: "answer",
