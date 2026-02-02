@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { FiZap, FiPlus, FiRefreshCw } from "react-icons/fi";
+import { FiMessageSquare, FiTrendingUp, FiPlus, FiRefreshCw } from "react-icons/fi";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuthUser } from "@/lib/privy/hooks";
@@ -226,57 +226,54 @@ function FeedContent() {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
-      <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-8">
+      <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-8">
         {/* Main Content */}
-        <div className="col-span-12 lg:col-span-9 space-y-6">
+        <div className="lg:col-span-9 space-y-6">
           {/* Connection Gate */}
           {!loading && !hasConnection ? (
             <ConnectionGate hasBluesky={hasBluesky} hasFarcaster={hasFarcaster} />
           ) : (
             <>
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                  <FiZap className="w-6 h-6 text-[#EB83EA]" />
-                </div>
-                <h1 className="font-heading text-3xl lg:text-4xl uppercase tracking-wide font-black">
-                  {showBookmarks
-                    ? "Your Bookmarks"
-                    : hashtag
-                    ? hashtag
-                    : "What's Happening Backstage"}
-                </h1>
-              </div>
-              <div className="flex items-center gap-3">
-                {/* Manual Refresh Button */}
+          {/* Header - Compact on mobile */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h1 className="flex items-center gap-2 text-2xl md:text-3xl lg:text-4xl font-heading uppercase tracking-wide font-black">
+                <FiMessageSquare className="w-5 h-5 md:w-6 md:h-6 text-[#EB83EA]" />
+                {showBookmarks
+                  ? "Bookmarks"
+                  : hashtag
+                  ? hashtag
+                  : "What's Happening"}
+              </h1>
+              <div className="flex items-center gap-2">
+                {/* Manual Refresh Button - Icon only on mobile */}
                 <button
                   onClick={() => loadFeed(true)}
                   disabled={refreshing}
-                  className="flex items-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-full font-medium transition-all disabled:opacity-50 border border-white/10"
+                  className="p-3 md:px-4 md:py-3 bg-white/5 hover:bg-white/10 rounded-full font-medium transition-all disabled:opacity-50 border border-white/10 flex items-center gap-2"
                   title="Refresh feed"
                 >
                   <FiRefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Refresh</span>
+                  <span className="hidden md:inline">Refresh</span>
                 </button>
                 {isAuthenticated && !showBookmarks && (
                   <button
                     onClick={() => setShowComposer(!showComposer)}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#EB83EA] via-[#D946EF] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30 hover:scale-105 transform"
+                    className="flex items-center gap-2 px-4 py-3 md:px-6 bg-gradient-to-r from-[#EB83EA] via-[#D946EF] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30 hover:scale-105 transform"
                   >
                     <FiPlus className="w-5 h-5" />
-                    {showComposer ? "Cancel" : "Share Your Story"}
+                    <span className="hidden sm:inline">{showComposer ? "Cancel" : "Share Your Story"}</span>
+                    <span className="sm:hidden">{showComposer ? "Cancel" : "Post"}</span>
                   </button>
                 )}
               </div>
             </div>
-            <p className="text-gray-300 text-sm">
+            <p className="hidden md:block text-gray-400 text-sm">
               {showBookmarks
                 ? "Posts you've saved to read later"
                 : hashtag
                 ? `Posts tagged with ${hashtag}`
-                : "Since you have connected your social accounts, you are able to access the feed! Share yer behind the scenes."}
+                : "Share what's happening behind the scenes"}
             </p>
           </div>
 
@@ -284,7 +281,7 @@ function FeedContent() {
           {newContentAvailable && (
             <div className="mb-6 bg-gradient-to-r from-[#EB83EA]/20 to-[#7c3aed]/20 border-2 border-[#EB83EA]/30 rounded-2xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <FiZap className="w-5 h-5 text-[#EB83EA]" />
+                <FiTrendingUp className="w-5 h-5 text-[#EB83EA]" />
                 <p className="text-sm font-medium">New content available! Feed has been updated.</p>
               </div>
               <button
@@ -305,30 +302,32 @@ function FeedContent() {
             </div>
           )}
 
-          {/* Sort Selector */}
+          {/* Sort Selector - Compact on mobile */}
           {!showBookmarks && (
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-sm text-gray-400">Sort by:</span>
+            <div className="flex items-center gap-2 md:gap-3 mb-6">
+              <span className="hidden sm:inline text-sm text-gray-400">Sort by:</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setSortBy("engagement")}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
                     sortBy === "engagement"
                       ? "bg-[#EB83EA] text-white"
                       : "bg-white/5 text-gray-400 hover:bg-white/10"
                   }`}
                 >
-                  Trending
+                  <span className="hidden sm:inline">Trending</span>
+                  <span className="sm:hidden">🔥</span>
                 </button>
                 <button
                   onClick={() => setSortBy("recent")}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
                     sortBy === "recent"
                       ? "bg-[#EB83EA] text-white"
                       : "bg-white/5 text-gray-400 hover:bg-white/10"
                   }`}
                 >
-                  Recent
+                  <span className="hidden sm:inline">Recent</span>
+                  <span className="sm:hidden">🕐</span>
                 </button>
               </div>
             </div>
@@ -378,7 +377,7 @@ function FeedContent() {
               {dragversePosts.length === 0 && posts.length === 0 && !searchError && (
                 <div className="text-center py-20">
                   <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
-                    <FiZap className="w-10 h-10 text-[#EB83EA]" />
+                    <FiMessageSquare className="w-10 h-10 text-[#EB83EA]" />
                   </div>
                   <h2 className="text-2xl font-bold mb-3">
                     {showBookmarks ? "No Bookmarks Yet" : "The Stage is Set"}
