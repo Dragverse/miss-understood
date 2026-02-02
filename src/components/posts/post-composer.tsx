@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { FiImage, FiX, FiSmile, FiMapPin, FiSend, FiLoader, FiZap, FiHeart, FiActivity, FiFilm, FiAward, FiStar } from "react-icons/fi";
+import { FiImage, FiX, FiSmile, FiMapPin, FiSend, FiLoader, FiHeart, FiActivity, FiFilm, FiAward, FiStar, FiShare, FiMessageSquare } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import { usePrivy } from "@privy-io/react-auth";
 
@@ -12,14 +12,14 @@ interface PostComposerProps {
 }
 
 const MOODS = [
-  { icon: FiZap, label: "Sparkling", value: "sparkling" },
+  { icon: FiStar, label: "Sparkling", value: "sparkling" },
   { icon: FiHeart, label: "Soft", value: "soft" },
   { icon: FiActivity, label: "Fierce", value: "fierce" },
   { icon: FiFilm, label: "Dramatic", value: "dramatic" },
   { icon: FiSmile, label: "Playful", value: "playful" },
   { icon: FiAward, label: "Regal", value: "regal" },
   { icon: FiStar, label: "Slay", value: "slay" },
-  { icon: FiZap, label: "Magical", value: "magical" },
+  { icon: FiSmile, label: "Magical", value: "magical" }, // Using FiSmile as alternative to sparkle emoji
 ];
 
 export function PostComposer({ onPostCreated, placeholder = "Share your story..." }: PostComposerProps) {
@@ -171,7 +171,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center overflow-hidden">
-          <FiZap className="w-6 h-6 text-white" />
+          <FiSmile className="w-6 h-6 text-white" />
         </div>
         <div>
           <p className="text-white font-bold">What's your story, babe?</p>
@@ -263,7 +263,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
       {showPlatformPicker && (
         <div className="mb-4 p-4 bg-[#0f071a]/60 rounded-2xl border-2 border-[#EB83EA]/20">
           <p className="text-white font-semibold mb-3 flex items-center gap-2">
-            <FiZap className="text-[#EB83EA]" />
+            <FiShare className="text-[#EB83EA]" />
             Where to post?
           </p>
           <div className="space-y-3">
@@ -271,7 +271,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
             <div className="flex items-center justify-between p-3 bg-[#2f2942] rounded-xl">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center">
-                  <FiZap className="w-4 h-4 text-white" />
+                  <FiMessageSquare className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-white font-semibold">Dragverse</span>
               </div>
@@ -349,7 +349,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
           <span className="text-gray-400 text-sm">Posting to:</span>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#EB83EA]/20 rounded-full border border-[#EB83EA]/30">
-              <FiZap className="w-4 h-4 text-white" />
+              <FiMessageSquare className="w-4 h-4 text-white" />
               <span className="text-white text-xs font-semibold">Dragverse</span>
             </span>
             {selectedPlatforms.bluesky && (
@@ -404,7 +404,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
             }`}
             title="Choose platforms"
           >
-            <FiZap size={20} />
+            <FiShare size={20} />
           </button>
 
           {/* Location (future feature) */}
