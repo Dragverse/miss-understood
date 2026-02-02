@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react";
 import { ActionButton } from "./action-button";
-import { FiZap } from "react-icons/fi";
+import { FiStar } from "react-icons/fi";
 
 interface EmptyStateProps {
   icon: ReactNode;
@@ -49,9 +49,9 @@ export function EmptyState({
 
       {/* Decorative sparkles */}
       <div className="relative mt-8 flex items-center gap-4">
-        <FiZap className="w-6 h-6 text-yellow-300/30 animate-pulse" />
-        <FiZap className="w-5 h-5 text-yellow-300/20 animate-pulse animation-delay-200" />
-        <FiZap className="w-6 h-6 text-yellow-300/30 animate-pulse animation-delay-400" />
+        <FiStar className="w-6 h-6 text-yellow-300/30 animate-pulse" />
+        <FiStar className="w-5 h-5 text-yellow-300/20 animate-pulse animation-delay-200" />
+        <FiStar className="w-6 h-6 text-yellow-300/30 animate-pulse animation-delay-400" />
       </div>
     </div>
   );
