@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 import { validateBody, createStreamSchema } from "@/lib/validation/schemas";
+import { createClient } from "@supabase/supabase-js";
 
 const LIVEPEER_API_URL = "https://livepeer.studio/api";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
   try {
     // Verify authentication
+    let userId: string | undefined;
     if (isPrivyConfigured()) {
       const auth = await verifyAuth(request);
       if (!auth.authenticated) {
@@ -15,6 +22,7 @@ export async function POST(request: NextRequest) {
           { status: 401 }
         );
       }
+      userId = auth.userId;
     }
 
     const apiKey = process.env.LIVEPEER_API_KEY;
@@ -84,13 +92,40 @@ export async function POST(request: NextRequest) {
 
     const stream = await response.json();
 
+    const playbackUrl = `https://livepeercdn.studio/hls/${stream.playbackId}/index.m3u8`;
+    const rtmpIngestUrl = `rtmp://rtmp.livepeer.com/live/${stream.streamKey}`;
+
+    // Save stream metadata to database
+    if (userId) {
+      try {
+        const { error: dbError } = await supabase.from("streams").insert({
+          creator_did: userId,
+          livepeer_stream_id: stream.id,
+          stream_key: stream.streamKey,
+          playback_id: stream.playbackId,
+          playback_url: playbackUrl,
+          rtmp_ingest_url: rtmpIngestUrl,
+          title: name,
+          is_active: false, // Stream starts inactive until user goes live
+        });
+
+        if (dbError) {
+          console.error("Failed to save stream to database:", dbError);
+          // Continue anyway - stream was created successfully in Livepeer
+        }
+      } catch (dbError) {
+        console.error("Database error:", dbError);
+        // Continue anyway
+      }
+    }
+
     // Return stream details
     return NextResponse.json({
       id: stream.id,
       streamKey: stream.streamKey,
       playbackId: stream.playbackId,
-      playbackUrl: `https://livepeercdn.studio/hls/${stream.playbackId}/index.m3u8`,
-      rtmpIngestUrl: `rtmp://rtmp.livepeer.com/live/${stream.streamKey}`,
+      playbackUrl,
+      rtmpIngestUrl,
     });
   } catch (error) {
     console.error("Stream creation error:", error);

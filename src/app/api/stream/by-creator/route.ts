@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-const LIVEPEER_API_URL = "https://livepeer.studio/api";
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 /**
  * GET /api/stream/by-creator?creatorDID={did}
  * Fetches active streams for a specific creator
- *
- * Note: This is a placeholder implementation. Once we implement stream management
- * in the database (storing stream metadata including creatorDID), we'll query
- * Supabase instead of Livepeer directly.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -22,18 +22,36 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // TODO: In the future, query Supabase for streams associated with this creator
-    // For now, return empty array since we don't have a streams table yet
-    // Example future implementation:
-    // const { data: streams } = await supabase
-    //   .from("streams")
-    //   .select("*")
-    //   .eq("creator_did", creatorDID)
-    //   .eq("is_active", true);
+    // Query Supabase for active streams by this creator
+    const { data: streams, error } = await supabase
+      .from("streams")
+      .select("*")
+      .eq("creator_did", creatorDID)
+      .eq("is_active", true)
+      .order("started_at", { ascending: false });
+
+    if (error) {
+      console.error("Database query error:", error);
+      return NextResponse.json(
+        { error: "Failed to fetch streams" },
+        { status: 500 }
+      );
+    }
+
+    // Transform database records to API format
+    const formattedStreams = (streams || []).map((stream) => ({
+      id: stream.livepeer_stream_id,
+      name: stream.title,
+      isActive: stream.is_active,
+      playbackUrl: stream.playback_url,
+      playbackId: stream.playback_id,
+      startedAt: stream.started_at,
+      peakViewers: stream.peak_viewers,
+      totalViews: stream.total_views,
+    }));
 
     return NextResponse.json({
-      streams: [],
-      message: "Stream management database not yet implemented",
+      streams: formattedStreams,
     });
   } catch (error) {
     console.error("Stream fetch error:", error);
