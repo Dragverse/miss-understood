@@ -111,37 +111,36 @@ export function BrowserStream({ streamKey, rtmpIngestUrl, onClose }: BrowserStre
       const ingestUrl = redirectResponse.headers.get("location") || redirectUrl;
       console.log("WebRTC ingest URL:", ingestUrl);
 
-      // Step 2: Create RTCPeerConnection with STUN and TURN servers
+      // Step 2: Extract hostname from ingest URL for Livepeer's STUN/TURN servers
+      const ingestHostname = new URL(ingestUrl).hostname;
+      console.log("📡 Using Livepeer's ICE servers:", ingestHostname);
+
+      // Step 3: Create RTCPeerConnection with Livepeer's ICE servers
       const peerConnection = new RTCPeerConnection({
         iceServers: [
-          // Primary STUN servers (fast)
           {
-            urls: [
-              "stun:stun.l.google.com:19302",
-              "stun:stun1.l.google.com:19302"
-            ]
+            urls: `stun:${ingestHostname}`
           },
-          // TURN servers for NAT traversal (fallback, may be slower)
           {
-            urls: "turn:openrelay.metered.ca:443",
-            username: "openrelayproject",
-            credential: "openrelayproject"
+            urls: `turn:${ingestHostname}`,
+            username: "livepeer",
+            credential: "livepeer"
           }
         ],
-        iceCandidatePoolSize: 5,
-        iceTransportPolicy: "all" // Try all candidates (host, srflx, relay)
+        bundlePolicy: "max-bundle",
+        rtcpMuxPolicy: "require"
       });
 
       peerConnectionRef.current = peerConnection;
 
-      // Step 3: Add local media tracks to peer connection
+      // Step 4: Add local media tracks to peer connection
       mediaStreamRef.current.getTracks().forEach((track) => {
         if (peerConnectionRef.current && mediaStreamRef.current) {
           peerConnectionRef.current.addTrack(track, mediaStreamRef.current);
         }
       });
 
-      // Step 4: Create SDP offer with sendonly transceivers
+      // Step 5: Create SDP offer with sendonly transceivers
       const offer = await peerConnection.createOffer({
         offerToReceiveAudio: false,
         offerToReceiveVideo: false
@@ -149,7 +148,7 @@ export function BrowserStream({ streamKey, rtmpIngestUrl, onClose }: BrowserStre
 
       await peerConnection.setLocalDescription(offer);
 
-      // Step 5: Wait for ICE gathering to complete
+      // Step 6: Wait for ICE gathering to complete
       await new Promise<void>((resolve) => {
         if (peerConnection.iceGatheringState === "complete") {
           resolve();
@@ -162,7 +161,7 @@ export function BrowserStream({ streamKey, rtmpIngestUrl, onClose }: BrowserStre
         }
       });
 
-      // Step 6: Send SDP offer to Livepeer (WHIP protocol)
+      // Step 7: Send SDP offer to Livepeer (WHIP protocol)
       const whipResponse = await fetch(ingestUrl, {
         method: "POST",
         headers: {
@@ -175,7 +174,7 @@ export function BrowserStream({ streamKey, rtmpIngestUrl, onClose }: BrowserStre
         throw new Error(`WHIP negotiation failed: ${whipResponse.status}`);
       }
 
-      // Step 7: Set remote description with server's answer
+      // Step 8: Set remote description with server's answer
       const answerSdp = await whipResponse.text();
       await peerConnection.setRemoteDescription({
         type: "answer",
