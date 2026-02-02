@@ -2,7 +2,7 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import { useRouter } from "next/navigation";
-import { FiVideo, FiHeart, FiUsers, FiEye, FiCopy, FiEdit, FiTrash2, FiZap, FiRadio } from "react-icons/fi";
+import { FiVideo, FiHeart, FiUsers, FiEye, FiCopy, FiEdit, FiTrash2, FiZap, FiRadio, FiDownload, FiUpload } from "react-icons/fi";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { getVideosByCreator, type SupabaseVideo } from "@/lib/supabase/videos";
@@ -13,6 +13,19 @@ import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
 import { StatsCard, ActionButton, EmptyState, LoadingShimmer } from "@/components/shared";
 import { useCanLivestream } from "@/lib/livestream";
+
+interface StreamRecording {
+  id: string;
+  title: string;
+  recorded_at: string;
+  duration_seconds: number;
+  status: string;
+  is_published: boolean;
+  download_url?: string;
+  playback_url?: string;
+  thumbnail?: string;
+  views: number;
+}
 
 export default function DashboardPage() {
   const { isAuthenticated, signIn, user } = useAuthUser();
@@ -27,7 +40,9 @@ export default function DashboardPage() {
     totalFollowers: 0,
   });
   const [videos, setVideos] = useState<Video[]>([]);
+  const [recordings, setRecordings] = useState<StreamRecording[]>([]);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deletingRecording, setDeletingRecording] = useState<string | null>(null);
 
   // Load dashboard data from Supabase
   useEffect(() => {
@@ -87,6 +102,24 @@ export default function DashboardPage() {
           totalLikes,
           totalFollowers,
         });
+
+        // Fetch stream recordings if user can livestream
+        if (canStream) {
+          try {
+            const recordingsResponse = await fetch("/api/stream/recordings", {
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+              },
+            });
+
+            if (recordingsResponse.ok) {
+              const recordingsData = await recordingsResponse.json();
+              setRecordings(recordingsData.recordings || []);
+            }
+          } catch (error) {
+            console.warn("Could not fetch recordings:", error);
+          }
+        }
       } catch (error) {
         console.error("Failed to load dashboard data:", error);
         // Keep zeros if data fetch fails
@@ -98,7 +131,7 @@ export default function DashboardPage() {
     if (isAuthenticated) {
       loadDashboardData();
     }
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, canStream]);
 
   if (!isAuthenticated) {
     return (
@@ -147,6 +180,47 @@ export default function DashboardPage() {
     } finally {
       setDeleting(null);
     }
+  };
+
+  const handleDeleteRecording = async (recordingId: string) => {
+    if (!confirm("Are you sure you want to delete this recording? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletingRecording(recordingId);
+    try {
+      const authToken = await getAccessToken();
+      const response = await fetch(`/api/stream/recordings?id=${recordingId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete recording");
+      }
+
+      // Remove recording from state
+      setRecordings(recordings.filter(r => r.id !== recordingId));
+      toast.success("Recording deleted successfully");
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error("Failed to delete recording");
+    } finally {
+      setDeletingRecording(null);
+    }
+  };
+
+  const handleDownloadRecording = (downloadUrl: string, title: string) => {
+    if (!downloadUrl) {
+      toast.error("Download URL not available");
+      return;
+    }
+
+    // Open download URL in new tab
+    window.open(downloadUrl, "_blank");
+    toast.success(`Downloading: ${title}`);
   };
 
   if (loading) {
@@ -343,6 +417,110 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* Stream Recordings Section - Only show if user can livestream */}
+        {canStream && recordings.length > 0 && (
+          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/10 shadow-xl mt-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+              <div>
+                <h2 className="text-2xl lg:text-3xl font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
+                  <FiRadio className="w-6 h-6 text-red-500" />
+                  Stream Recordings
+                </h2>
+                <p className="text-gray-400">Manage your recorded livestreams</p>
+              </div>
+            </div>
+
+            {/* Recordings Grid */}
+            <div className="space-y-4">
+              {recordings.map((recording) => (
+                <div
+                  key={recording.id}
+                  className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-5 border-2 border-red-500/10 hover:border-red-500/30 transition-all hover:shadow-lg hover:shadow-red-500/10 group"
+                >
+                  <div className="flex flex-col sm:flex-row gap-5">
+                    {/* Thumbnail */}
+                    <div className="relative w-full sm:w-48 h-28 rounded-xl overflow-hidden flex-shrink-0 border-2 border-red-500/20 group-hover:border-red-500/40 transition-all">
+                      <Image
+                        src={recording.thumbnail || '/default-thumbnail.jpg'}
+                        alt={recording.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute top-2 right-2 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
+                        <FiRadio className="w-3 h-3" />
+                        {recording.status === 'ready' ? 'RECORDED' : recording.status.toUpperCase()}
+                      </div>
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-xl mb-3 text-white group-hover:text-red-400 transition-colors">
+                        {recording.title}
+                      </h3>
+
+                      {/* Stats */}
+                      <div className="flex flex-wrap gap-4 text-sm mb-4">
+                        <span className="flex items-center gap-1.5 text-gray-400">
+                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                            <FiEye className="w-4 h-4 text-blue-400" />
+                          </div>
+                          <span className="font-semibold">{(recording.views || 0).toLocaleString()}</span>
+                          <span className="text-xs">views</span>
+                        </span>
+                        <span className="flex items-center gap-1.5 text-gray-400">
+                          <span className="text-xs">Recorded {new Date(recording.recorded_at).toLocaleDateString()}</span>
+                        </span>
+                        {recording.duration_seconds && (
+                          <span className="flex items-center gap-1.5 text-gray-400">
+                            <span className="text-xs">{Math.floor(recording.duration_seconds / 60)} minutes</span>
+                          </span>
+                        )}
+                        {recording.is_published && (
+                          <span className="px-2 py-0.5 bg-green-500/10 text-green-400 text-xs rounded-full flex items-center gap-1">
+                            <FiUpload className="w-3 h-3" />
+                            Published
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex flex-wrap gap-2">
+                        {recording.download_url && recording.status === 'ready' && (
+                          <button
+                            onClick={() => handleDownloadRecording(recording.download_url!, recording.title)}
+                            className="px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-white hover:text-[#EB83EA]"
+                          >
+                            <FiDownload className="w-4 h-4" />
+                            Download
+                          </button>
+                        )}
+                        {recording.playback_url && (
+                          <button
+                            onClick={() => window.open(recording.playback_url, '_blank')}
+                            className="px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-white hover:text-[#EB83EA]"
+                          >
+                            <FiEye className="w-4 h-4" />
+                            Watch
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteRecording(recording.id)}
+                          disabled={deletingRecording === recording.id}
+                          className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                          {deletingRecording === recording.id ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
