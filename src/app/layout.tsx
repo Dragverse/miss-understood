@@ -21,8 +21,23 @@ export const metadata: Metadata = {
   title: "Dragverse - Creator Platform",
   description:
     "Stream, share, and discover amazing drag content. Upload shorts, long videos, podcasts, and music.",
+  manifest: "/manifest.json",
   icons: {
-    icon: "/logo.svg",
+    icon: "/dragverse-app-icon.jpg",
+    apple: "/dragverse-app-icon.jpg",
+    shortcut: "/dragverse-app-icon.jpg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Dragverse",
+  },
+  themeColor: "#EB83EA",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
   },
 };
 

@@ -1,0 +1,44 @@
+{
+  "name": "Dragverse - Creator Platform",
+  "short_name": "Dragverse",
+  "description": "Stream, share, and discover amazing drag content. Upload shorts, long videos, podcasts, and music.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a0b2e",
+  "theme_color": "#EB83EA",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/dragverse-app-icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/dragverse-app-icon.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/dragverse-app-icon.jpg",
+      "sizes": "144x144",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Go Live",
+      "short_name": "Stream",
+      "description": "Start streaming now",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/dragverse-app-icon.jpg",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
