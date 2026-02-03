@@ -262,6 +262,14 @@ export default function DynamicProfilePage() {
   // Render profile - Hybrid Style (Banner + Instagram tabs)
   return (
     <div className="min-h-screen">
+      {/* Livestream Embed - Full width at top (Twitch-style) */}
+      {creator && (
+        <LivestreamEmbed
+          creatorDID={creator.did}
+          creatorName={creator.displayName}
+        />
+      )}
+
       {/* Back Button - Fixed top left */}
       <button
         onClick={() => router.back()}
@@ -476,14 +484,6 @@ export default function DynamicProfilePage() {
               </div>
             )}
           </div>
-        )}
-
-        {/* Livestream Embed - Twitch-style above all content */}
-        {creator && (
-          <LivestreamEmbed
-            creatorDID={creator.did}
-            creatorName={creator.displayName}
-          />
         )}
 
         {/* Content Section with Icon Tabs */}
