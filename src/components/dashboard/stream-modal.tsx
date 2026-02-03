@@ -282,7 +282,14 @@ export function StreamModal({ onClose }: StreamModalProps) {
         redirect: "manual"
       });
 
-      if (!redirectResponse.ok && redirectResponse.status !== 307) {
+      // Status 0 is expected with redirect: "manual" (opaque response for CORS redirects)
+      // Status 307 is an explicit redirect
+      // Any 2xx status is success
+      const isValidResponse = redirectResponse.status === 0 ||
+                             redirectResponse.status === 307 ||
+                             redirectResponse.ok;
+
+      if (!isValidResponse && redirectResponse.status >= 400) {
         console.error("❌ Failed to get WebRTC redirect:", redirectResponse.status);
         throw new Error(`Failed to connect to Livepeer (${redirectResponse.status}). Please check your stream key.`);
       }
