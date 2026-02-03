@@ -40,7 +40,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
   const [showRTMPDetails, setShowRTMPDetails] = useState(false);
 
   // Refs for WebRTC
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const setupVideoRef = useRef<HTMLVideoElement>(null);
+  const streamingVideoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
 
@@ -119,7 +120,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
         });
         if (response.ok) {
           const data = await response.json();
-          setUserHandle(data.handle || "");
+          setUserHandle(data.creator?.handle || "");
         }
       } catch (error) {
         console.error("Failed to fetch user handle:", error);
@@ -199,8 +200,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
       });
 
       mediaStreamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+      if (setupVideoRef.current) {
+        setupVideoRef.current.srcObject = stream;
       }
       setStreamType("camera");
       toast.success("Camera access granted");
@@ -223,8 +224,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
       });
 
       mediaStreamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+      if (setupVideoRef.current) {
+        setupVideoRef.current.srcObject = stream;
       }
       setStreamType("screen");
       toast.success("Screen sharing started");
@@ -274,13 +275,20 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
       // Step 1: Get WebRTC redirect URL (GeoDNS routing to closest server)
       const redirectUrl = `https://livepeer.studio/webrtc/${streamInfo.streamKey}`;
+      console.log("📍 Getting WebRTC ingest URL from:", redirectUrl);
+
       const redirectResponse = await fetch(redirectUrl, {
         method: "HEAD",
         redirect: "manual"
       });
 
+      if (!redirectResponse.ok && redirectResponse.status !== 307) {
+        console.error("❌ Failed to get WebRTC redirect:", redirectResponse.status);
+        throw new Error(`Failed to connect to Livepeer (${redirectResponse.status}). Please check your stream key.`);
+      }
+
       const ingestUrl = redirectResponse.headers.get("location") || redirectUrl;
-      console.log("WebRTC ingest URL:", ingestUrl);
+      console.log("✅ WebRTC ingest URL:", ingestUrl);
 
       // Step 2: Extract hostname from ingest URL for Livepeer's STUN/TURN servers
       const ingestHostname = new URL(ingestUrl).hostname;
@@ -416,12 +424,42 @@ export function StreamModal({ onClose }: StreamModalProps) {
       });
 
       console.log("✅ Remote description set, waiting for connection...");
+
+      // Monitor connection establishment with timeout
+      const connectionTimeout = setTimeout(() => {
+        if (peerConnection.connectionState !== "connected") {
+          console.error("❌ Connection timeout - state:", peerConnection.connectionState, "ICE:", peerConnection.iceConnectionState);
+          toast.error("Connection timeout. Please try again or use OBS/Streamlabs.");
+          stopStreaming();
+        }
+      }, 30000); // 30 second timeout
+
+      // Clear timeout when connection succeeds
+      peerConnection.addEventListener("connectionstatechange", () => {
+        if (peerConnection.connectionState === "connected") {
+          clearTimeout(connectionTimeout);
+        }
+      }, { once: true });
+
       setStep('streaming');
       toast.success("🎥 Live on Dragverse!");
 
     } catch (error) {
-      console.error("Streaming error:", error);
-      toast.error("Failed to start stream: " + (error instanceof Error ? error.message : "Unknown error"));
+      console.error("❌ Streaming error:", error);
+
+      // Provide more specific error guidance
+      let errorMessage = "Failed to start stream";
+      if (error instanceof Error) {
+        if (error.message.includes("WHIP negotiation failed")) {
+          errorMessage = "Failed to connect to Livepeer. Please check your internet connection.";
+        } else if (error.message.includes("stream key")) {
+          errorMessage = "Invalid stream configuration. Please try creating a new stream.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      toast.error(errorMessage);
       setIsStreaming(false);
     }
   };
@@ -440,8 +478,11 @@ export function StreamModal({ onClose }: StreamModalProps) {
       mediaStreamRef.current = null;
     }
 
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
+    if (setupVideoRef.current) {
+      setupVideoRef.current.srcObject = null;
+    }
+    if (streamingVideoRef.current) {
+      streamingVideoRef.current.srcObject = null;
     }
 
     setIsStreaming(false);
@@ -484,6 +525,13 @@ export function StreamModal({ onClose }: StreamModalProps) {
       }
     };
   }, []);
+
+  // Attach MediaStream to streaming video when step changes
+  useEffect(() => {
+    if (step === 'streaming' && mediaStreamRef.current && streamingVideoRef.current) {
+      streamingVideoRef.current.srcObject = mediaStreamRef.current;
+    }
+  }, [step]);
 
   // Copy to clipboard helper
   const copyToClipboard = (text: string, label: string) => {
@@ -572,7 +620,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
               {/* Video Preview */}
               <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
                 <video
-                  ref={videoRef}
+                  ref={setupVideoRef}
                   autoPlay
                   muted
                   playsInline
@@ -692,7 +740,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
               {/* Video Preview with LIVE Badge */}
               <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
                 <video
-                  ref={videoRef}
+                  ref={streamingVideoRef}
                   autoPlay
                   muted
                   playsInline
