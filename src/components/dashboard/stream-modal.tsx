@@ -691,7 +691,16 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
     try {
       const authToken = await getAccessToken();
-      const response = await fetch(`/api/stream/status/${streamInfo.id}`, {
+      const url = `/api/stream/status/${streamInfo.id}`;
+
+      console.log(`📡 Updating stream status:`, {
+        url,
+        streamId: streamInfo.id,
+        isActive,
+        hasAuth: !!authToken
+      });
+
+      const response = await fetch(url, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -700,17 +709,26 @@ export function StreamModal({ onClose }: StreamModalProps) {
         body: JSON.stringify({ is_active: isActive })
       });
 
+      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+
       if (!response.ok) {
-        throw new Error(`Failed to update stream status: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`❌ API Error Response:`, errorText);
+        throw new Error(`Failed to update stream status: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
       console.log('✅ Stream status updated in database:', data);
 
     } catch (error) {
-      console.error('Failed to update stream status:', error);
+      console.error('❌ Failed to update stream status:', error);
       // Don't block streaming on this error, but log it
-      toast.error('Warning: Stream may not appear on profile immediately');
+      // Only show toast if it's not a 404 (which might be a deployment issue)
+      if (error instanceof Error && !error.message.includes('404')) {
+        toast.error('Warning: Stream may not appear on profile immediately');
+      } else {
+        console.warn('⚠️ Stream status API returned 404. Stream will still work, but may not appear on profile until deployment completes.');
+      }
     }
   };
 
