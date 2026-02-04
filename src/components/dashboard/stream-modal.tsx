@@ -368,27 +368,17 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
       peerConnection.addEventListener("connectionstatechange", () => {
         console.log("📡 Connection state:", peerConnection.connectionState);
+        console.log("🔌 ICE connection state:", peerConnection.iceConnectionState);
+
         if (peerConnection.connectionState === "connected") {
           toast.success("Stream connected!");
         } else if (peerConnection.connectionState === "failed") {
           console.error("❌ Connection failed - ICE state:", peerConnection.iceConnectionState);
-
-          // Provide specific error message based on ICE state
-          let errorMessage = "Stream connection failed. ";
-          if (peerConnection.iceConnectionState === "disconnected") {
-            errorMessage += "Network connectivity issue. Check your firewall or try a different network.";
-          } else if (peerConnection.iceConnectionState === "failed") {
-            errorMessage += "Unable to establish peer connection. Your network may be blocking WebRTC.";
-          } else {
-            errorMessage += "Try OBS/Streamlabs or check your network settings.";
-          }
-
-          toast.error(errorMessage, { duration: 5000 });
-          stopStreaming();
+          // Don't immediately stop - the sendKeepalive function will detect this
+          // and attempt reconnection via attemptReconnection()
         } else if (peerConnection.connectionState === "disconnected") {
           console.warn("⚠️ Connection disconnected - ICE state:", peerConnection.iceConnectionState);
-          toast.error("Stream connection lost");
-          stopStreaming();
+          // Don't immediately stop - give reconnection logic a chance to work
         }
       });
 
