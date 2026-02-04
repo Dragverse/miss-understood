@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/lib/supabase/client";
-import { getPrivyUser } from "@/lib/auth/privy";
+import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
+import { createClient } from "@supabase/supabase-js";
 
 const LIVEPEER_API_URL = "https://livepeer.studio/api";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(
   request: NextRequest,
@@ -66,8 +71,18 @@ export async function PUT(
   { params }: { params: Promise<{ streamId: string }> }
 ) {
   try {
-    const user = await getPrivyUser();
-    if (!user) {
+    // Verify authentication
+    let userId: string | undefined;
+    if (isPrivyConfigured()) {
+      const auth = await verifyAuth(request);
+      if (!auth.authenticated) {
+        return NextResponse.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+      userId = auth.userId;
+    } else {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -80,8 +95,6 @@ export async function PUT(
         { status: 400 }
       );
     }
-
-    const supabase = getSupabaseClient();
 
     // Verify stream ownership before updating
     const { data: stream, error: fetchError } = await supabase
@@ -97,7 +110,7 @@ export async function PUT(
       );
     }
 
-    if (stream.creator_did !== user.id) {
+    if (stream.creator_did !== userId) {
       return NextResponse.json(
         { error: "Not authorized to update this stream" },
         { status: 403 }
