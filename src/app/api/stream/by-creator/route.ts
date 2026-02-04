@@ -22,13 +22,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Query Supabase for active streams by this creator
+    // Query Supabase for streams by this creator (not just active ones)
+    // We'll check Livepeer API for actual live status
     const { data: streams, error } = await supabase
       .from("streams")
       .select("*")
       .eq("creator_did", creatorDID)
-      .eq("is_active", true)
-      .order("started_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(10); // Get recent streams, not just active
 
     if (error) {
       console.error("Database query error:", error);
@@ -48,20 +49,83 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Transform database records to API format
-    const formattedStreams = (streams || []).map((stream) => ({
-      id: stream.livepeer_stream_id,
-      name: stream.title,
-      isActive: stream.is_active,
-      playbackUrl: stream.playback_url,
-      playbackId: stream.playback_id,
-      startedAt: stream.started_at,
-      peakViewers: stream.peak_viewers,
-      totalViews: stream.total_views,
-    }));
+    // Check Livepeer API for actual live status of each stream
+    const LIVEPEER_API_KEY = process.env.LIVEPEER_API_KEY;
+    const activeStreams = [];
+
+    if (streams && streams.length > 0 && LIVEPEER_API_KEY) {
+      for (const stream of streams) {
+        try {
+          // Query Livepeer API for stream status
+          const livepeerResponse = await fetch(
+            `https://livepeer.studio/api/stream/${stream.livepeer_stream_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${LIVEPEER_API_KEY}`,
+              },
+            }
+          );
+
+          if (livepeerResponse.ok) {
+            const livepeerData = await livepeerResponse.json();
+
+            // Stream is active if Livepeer reports it as active
+            if (livepeerData.isActive) {
+              activeStreams.push({
+                id: stream.livepeer_stream_id,
+                name: stream.title,
+                isActive: true, // Use Livepeer's status, not database
+                playbackUrl: stream.playback_url,
+                playbackId: stream.playback_id,
+                startedAt: stream.started_at,
+                peakViewers: stream.peak_viewers,
+                totalViews: stream.total_views,
+              });
+
+              // Update database if it's out of sync
+              if (!stream.is_active) {
+                console.log(`📡 Syncing stream ${stream.id} to active state`);
+                await supabase
+                  .from("streams")
+                  .update({
+                    is_active: true,
+                    started_at: new Date().toISOString()
+                  })
+                  .eq("id", stream.id);
+              }
+            } else if (stream.is_active) {
+              // Stream is no longer active, update database
+              console.log(`📡 Syncing stream ${stream.id} to inactive state`);
+              await supabase
+                .from("streams")
+                .update({
+                  is_active: false,
+                  ended_at: new Date().toISOString()
+                })
+                .eq("id", stream.id);
+            }
+          }
+        } catch (err) {
+          console.error(`Failed to check stream ${stream.livepeer_stream_id}:`, err);
+          // Fallback to database status if Livepeer check fails
+          if (stream.is_active) {
+            activeStreams.push({
+              id: stream.livepeer_stream_id,
+              name: stream.title,
+              isActive: stream.is_active,
+              playbackUrl: stream.playback_url,
+              playbackId: stream.playback_id,
+              startedAt: stream.started_at,
+              peakViewers: stream.peak_viewers,
+              totalViews: stream.total_views,
+            });
+          }
+        }
+      }
+    }
 
     return NextResponse.json({
-      streams: formattedStreams,
+      streams: activeStreams,
     });
   } catch (error) {
     console.error("Stream fetch error:", error);
