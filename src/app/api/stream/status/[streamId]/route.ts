@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseClient } from "@/lib/supabase/client";
+import { getPrivyUser } from "@/lib/auth/privy";
 
 const LIVEPEER_API_URL = "https://livepeer.studio/api";
 
@@ -52,6 +54,84 @@ export async function GET(
     });
   } catch (error) {
     console.error("Stream status error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ streamId: string }> }
+) {
+  try {
+    const user = await getPrivyUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { streamId } = await params;
+    const { is_active } = await request.json();
+
+    if (typeof is_active !== 'boolean') {
+      return NextResponse.json(
+        { error: "is_active must be a boolean" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Verify stream ownership before updating
+    const { data: stream, error: fetchError } = await supabase
+      .from("streams")
+      .select("creator_did")
+      .eq("id", streamId)
+      .single();
+
+    if (fetchError || !stream) {
+      return NextResponse.json(
+        { error: "Stream not found" },
+        { status: 404 }
+      );
+    }
+
+    if (stream.creator_did !== user.id) {
+      return NextResponse.json(
+        { error: "Not authorized to update this stream" },
+        { status: 403 }
+      );
+    }
+
+    // Update is_active status
+    const { data, error } = await supabase
+      .from("streams")
+      .update({
+        is_active,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", streamId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Failed to update stream status:", error);
+      return NextResponse.json(
+        { error: "Failed to update stream status" },
+        { status: 500 }
+      );
+    }
+
+    console.log(`✅ Stream ${streamId} status updated: is_active=${is_active}`);
+
+    return NextResponse.json({
+      success: true,
+      stream: data
+    });
+
+  } catch (error) {
+    console.error("Stream status update error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

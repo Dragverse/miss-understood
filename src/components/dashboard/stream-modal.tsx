@@ -47,6 +47,13 @@ export function StreamModal({ onClose }: StreamModalProps) {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
 
+  // Connection monitoring state and refs
+  const [connectionQuality, setConnectionQuality] = useState<'good' | 'fair' | 'poor'>('good');
+  const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const keepaliveIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectAttempts = 3;
+
   // User handle for viewer URL
   const [userHandle, setUserHandle] = useState<string>("");
 
@@ -493,6 +500,22 @@ export function StreamModal({ onClose }: StreamModalProps) {
       setStep('streaming');
       toast.success("🎥 Live on Dragverse!");
 
+      // Update database status to active
+      await updateStreamStatus(true);
+      console.log('✅ Database updated: is_active = true');
+
+      // Start connection monitoring
+      reconnectAttemptsRef.current = 0;
+      monitorMediaTracks();
+
+      // Monitor connection quality every 5 seconds
+      statsIntervalRef.current = setInterval(monitorConnectionStats, 5000);
+
+      // Send keepalive every 15 seconds (prevents NAT timeout)
+      keepaliveIntervalRef.current = setInterval(sendKeepalive, 15000);
+
+      console.log('✅ Connection monitoring active');
+
     } catch (error) {
       console.error("❌ Streaming error:", error);
 
@@ -513,8 +536,194 @@ export function StreamModal({ onClose }: StreamModalProps) {
     }
   };
 
+  // Monitor connection statistics
+  const monitorConnectionStats = async () => {
+    if (!peerConnectionRef.current) return;
+
+    try {
+      const stats = await peerConnectionRef.current.getStats();
+      let bytesReceived = 0;
+      let bytesSent = 0;
+      let packetsLost = 0;
+      let totalPackets = 0;
+
+      stats.forEach((report) => {
+        if (report.type === 'inbound-rtp') {
+          bytesReceived += report.bytesReceived || 0;
+          packetsLost += report.packetsLost || 0;
+          totalPackets += report.packetsReceived || 0;
+        }
+        if (report.type === 'outbound-rtp') {
+          bytesSent += report.bytesSent || 0;
+        }
+      });
+
+      // Calculate connection quality
+      const packetLossRate = totalPackets > 0 ? packetsLost / totalPackets : 0;
+
+      if (packetLossRate > 0.1 || bytesSent === 0) {
+        setConnectionQuality('poor');
+        console.warn('Poor connection quality detected', { packetLossRate, bytesSent });
+      } else if (packetLossRate > 0.05) {
+        setConnectionQuality('fair');
+      } else {
+        setConnectionQuality('good');
+      }
+
+      // Log stats for debugging
+      console.log('WebRTC Stats:', {
+        bytesSent,
+        bytesReceived,
+        packetsLost,
+        totalPackets,
+        packetLossRate: (packetLossRate * 100).toFixed(2) + '%'
+      });
+
+    } catch (error) {
+      console.error('Failed to get connection stats:', error);
+    }
+  };
+
+  // Send keepalive and check connection health
+  const sendKeepalive = async () => {
+    if (!peerConnectionRef.current) return;
+
+    const state = peerConnectionRef.current.connectionState;
+
+    if (state === 'connected') {
+      // Connection is healthy, keepalive via stats polling
+      await monitorConnectionStats();
+    } else if (state === 'connecting' || state === 'new') {
+      console.log('Connection still establishing...');
+    } else if (state === 'disconnected') {
+      console.warn('Connection disconnected, attempting reconnection...');
+      await attemptReconnection();
+    } else if (state === 'failed') {
+      console.error('Connection failed permanently');
+      toast.error('Stream connection failed. Please try again.');
+      stopStreaming();
+    }
+  };
+
+  // Attempt to reconnect the stream
+  const attemptReconnection = async () => {
+    if (!peerConnectionRef.current || !mediaStreamRef.current || !streamInfo) return;
+
+    reconnectAttemptsRef.current++;
+
+    if (reconnectAttemptsRef.current > maxReconnectAttempts) {
+      toast.error('Unable to maintain connection. Stream stopped.');
+      stopStreaming();
+      return;
+    }
+
+    toast('Reconnecting...', { icon: '🔄' });
+
+    try {
+      // Attempt ICE restart
+      const offer = await peerConnectionRef.current.createOffer({ iceRestart: true });
+      await peerConnectionRef.current.setLocalDescription(offer);
+
+      // Re-negotiate with Livepeer
+      const ingestUrl = `https://livepeer.studio/webrtc/${streamInfo.streamKey}`;
+      const whipResponse = await fetch(ingestUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/sdp" },
+        body: peerConnectionRef.current.localDescription?.sdp
+      });
+
+      if (whipResponse.ok) {
+        const answerSdp = await whipResponse.text();
+        await peerConnectionRef.current.setRemoteDescription({
+          type: "answer",
+          sdp: answerSdp
+        });
+
+        reconnectAttemptsRef.current = 0; // Reset on success
+        toast.success('Reconnected successfully');
+      } else {
+        throw new Error('Reconnection failed');
+      }
+    } catch (error) {
+      console.error('Reconnection attempt failed:', error);
+      // Will retry on next keepalive interval
+    }
+  };
+
+  // Monitor media track state
+  const monitorMediaTracks = () => {
+    if (!mediaStreamRef.current) return;
+
+    mediaStreamRef.current.getTracks().forEach(track => {
+      track.addEventListener('ended', () => {
+        console.warn(`Track ended: ${track.kind}`);
+
+        if (track.kind === 'video' && streamType === 'screen') {
+          // User stopped screen share via browser UI
+          toast('Screen sharing stopped');
+          stopStreaming();
+        } else {
+          toast.error(`${track.kind === 'video' ? 'Camera' : 'Microphone'} disconnected`);
+          // Could attempt to re-acquire device here
+        }
+      });
+
+      track.addEventListener('mute', () => {
+        console.warn(`Track muted: ${track.kind}`);
+        toast(`${track.kind === 'video' ? 'Camera' : 'Microphone'} muted by system`,
+              { icon: '⚠️' });
+      });
+    });
+  };
+
+  // Update stream status in database
+  const updateStreamStatus = async (isActive: boolean) => {
+    if (!streamInfo?.id) {
+      console.error('Cannot update stream status: no stream ID');
+      return;
+    }
+
+    try {
+      const authToken = await getAccessToken();
+      const response = await fetch(`/api/stream/status/${streamInfo.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ is_active: isActive })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update stream status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Stream status updated in database:', data);
+
+    } catch (error) {
+      console.error('Failed to update stream status:', error);
+      // Don't block streaming on this error, but log it
+      toast.error('Warning: Stream may not appear on profile immediately');
+    }
+  };
+
   // Stop streaming
-  const stopStreaming = () => {
+  const stopStreaming = async () => {
+    // Clear monitoring intervals
+    if (statsIntervalRef.current) {
+      clearInterval(statsIntervalRef.current);
+      statsIntervalRef.current = null;
+    }
+    if (keepaliveIntervalRef.current) {
+      clearInterval(keepaliveIntervalRef.current);
+      keepaliveIntervalRef.current = null;
+    }
+
+    // Update database status to inactive
+    await updateStreamStatus(false);
+    console.log('✅ Database updated: is_active = false');
+
     // Close WebRTC peer connection
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
@@ -567,6 +776,11 @@ export function StreamModal({ onClose }: StreamModalProps) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Cleanup intervals
+      if (statsIntervalRef.current) clearInterval(statsIntervalRef.current);
+      if (keepaliveIntervalRef.current) clearInterval(keepaliveIntervalRef.current);
+
+      // Cleanup WebRTC
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
       }
@@ -909,6 +1123,16 @@ export function StreamModal({ onClose }: StreamModalProps) {
                 <div className="absolute top-4 left-4 px-3 py-1 bg-red-500 text-white text-sm font-bold rounded-full flex items-center gap-2">
                   <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
                   LIVE
+                </div>
+                {/* Connection Quality Indicator */}
+                <div className={`absolute top-4 right-4 px-3 py-1 text-white text-xs font-semibold rounded-full ${
+                  connectionQuality === 'good' ? 'bg-green-500/80' :
+                  connectionQuality === 'fair' ? 'bg-yellow-500/80' :
+                  'bg-red-500/80'
+                }`}>
+                  {connectionQuality === 'good' ? '🟢 Good' :
+                   connectionQuality === 'fair' ? '🟡 Fair' :
+                   '🔴 Poor'}
                 </div>
               </div>
 
