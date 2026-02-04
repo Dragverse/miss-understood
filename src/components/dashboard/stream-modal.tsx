@@ -301,7 +301,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
       const ingestHostname = new URL(ingestUrl).hostname;
       console.log("📡 Using Livepeer's ICE servers:", ingestHostname);
 
-      // Step 3: Create RTCPeerConnection with Livepeer's ICE servers
+      // Step 3: Create RTCPeerConnection with Livepeer's ICE servers + Google fallback
       const peerConnection = new RTCPeerConnection({
         iceServers: [
           {
@@ -311,10 +311,18 @@ export function StreamModal({ onClose }: StreamModalProps) {
             urls: `turn:${ingestHostname}`,
             username: "livepeer",
             credential: "livepeer"
+          },
+          // Add Google STUN as fallback
+          {
+            urls: "stun:stun.l.google.com:19302"
+          },
+          {
+            urls: "stun:stun1.l.google.com:19302"
           }
         ],
         bundlePolicy: "max-bundle",
-        rtcpMuxPolicy: "require"
+        rtcpMuxPolicy: "require",
+        iceCandidatePoolSize: 10
       });
 
       peerConnectionRef.current = peerConnection;
@@ -328,6 +336,16 @@ export function StreamModal({ onClose }: StreamModalProps) {
         } else {
           console.log("🧊 ICE candidate: gathering complete");
         }
+      });
+
+      peerConnection.addEventListener("icecandidateerror", (event) => {
+        console.error("❌ ICE candidate error:", {
+          errorCode: event.errorCode,
+          errorText: event.errorText,
+          url: event.url,
+          address: event.address,
+          port: event.port
+        });
       });
 
       peerConnection.addEventListener("iceconnectionstatechange", () => {
@@ -344,10 +362,21 @@ export function StreamModal({ onClose }: StreamModalProps) {
           toast.success("Stream connected!");
         } else if (peerConnection.connectionState === "failed") {
           console.error("❌ Connection failed - ICE state:", peerConnection.iceConnectionState);
-          toast.error("Stream connection failed");
+
+          // Provide specific error message based on ICE state
+          let errorMessage = "Stream connection failed. ";
+          if (peerConnection.iceConnectionState === "disconnected") {
+            errorMessage += "Network connectivity issue. Check your firewall or try a different network.";
+          } else if (peerConnection.iceConnectionState === "failed") {
+            errorMessage += "Unable to establish peer connection. Your network may be blocking WebRTC.";
+          } else {
+            errorMessage += "Try OBS/Streamlabs or check your network settings.";
+          }
+
+          toast.error(errorMessage, { duration: 5000 });
           stopStreaming();
         } else if (peerConnection.connectionState === "disconnected") {
-          console.warn("⚠️ Connection disconnected");
+          console.warn("⚠️ Connection disconnected - ICE state:", peerConnection.iceConnectionState);
           toast.error("Stream connection lost");
           stopStreaming();
         }
@@ -433,20 +462,31 @@ export function StreamModal({ onClose }: StreamModalProps) {
       console.log("✅ Remote description set, waiting for connection...");
 
       // Monitor connection establishment with timeout
+      let isConnectionResolved = false;
       const connectionTimeout = setTimeout(() => {
-        if (peerConnection.connectionState !== "connected") {
-          console.error("❌ Connection timeout - state:", peerConnection.connectionState, "ICE:", peerConnection.iceConnectionState);
-          toast.error("Connection timeout. Please try again or use OBS/Streamlabs.");
+        if (!isConnectionResolved && peerConnection.connectionState !== "connected") {
+          isConnectionResolved = true;
+          console.error("❌ Connection timeout after 30s - state:", peerConnection.connectionState, "ICE:", peerConnection.iceConnectionState);
+          toast.error("Connection timeout. Please check your network or try OBS/Streamlabs.");
           stopStreaming();
         }
       }, 30000); // 30 second timeout
 
-      // Clear timeout when connection succeeds
-      peerConnection.addEventListener("connectionstatechange", () => {
-        if (peerConnection.connectionState === "connected") {
+      // Clear timeout when any terminal state is reached
+      const clearTimeoutOnTerminalState = () => {
+        if (!isConnectionResolved) {
+          isConnectionResolved = true;
           clearTimeout(connectionTimeout);
         }
-      }, { once: true });
+      };
+
+      peerConnection.addEventListener("connectionstatechange", () => {
+        if (peerConnection.connectionState === "connected") {
+          clearTimeoutOnTerminalState();
+        } else if (peerConnection.connectionState === "failed" || peerConnection.connectionState === "closed") {
+          clearTimeoutOnTerminalState();
+        }
+      });
 
       setStep('streaming');
       toast.success("🎥 Live on Dragverse!");
