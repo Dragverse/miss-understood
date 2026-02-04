@@ -12,6 +12,7 @@ interface StreamData {
   streamId: string;
   title: string;
   playbackUrl: string;
+  playbackId: string;
   isActive: boolean;
 }
 
@@ -39,6 +40,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
             streamId: activeStream.id,
             title: activeStream.name || `${creatorName} is live!`,
             playbackUrl: activeStream.playbackUrl,
+            playbackId: activeStream.playbackId,
             isActive: activeStream.isActive,
           });
         } else {
