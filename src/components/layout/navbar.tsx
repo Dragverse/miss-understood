@@ -162,6 +162,16 @@ export function Navbar() {
                   {/* Create Dropdown */}
                   {showCreateMenu && (
                     <div className="absolute right-0 top-full mt-2 w-56 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl p-2 z-50">
+                      {canStream && (
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setShowCreateMenu(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                        >
+                          <FiVideo className="w-4 h-4" />
+                          Go Live
+                        </Link>
+                      )}
                       <Link
                         href="/upload"
                         onClick={() => setShowCreateMenu(false)}

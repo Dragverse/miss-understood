@@ -441,10 +441,14 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen">
       {/* Livestream Embed - Full width at top (Twitch-style) */}
-      <LivestreamEmbed
-        creatorDID={creator.did}
-        creatorName={creator.displayName}
-      />
+      <div className="px-4 md:px-8 pt-4">
+        <div className="max-w-5xl mx-auto">
+          <LivestreamEmbed
+            creatorDID={creator.did}
+            creatorName={creator.displayName}
+          />
+        </div>
+      </div>
 
       {/* Hero Banner - Full width */}
       <div className="relative w-full h-[40vh] md:h-[50vh] bg-gradient-to-br from-[#EB83EA]/20 via-[#7c3aed]/20 to-[#1a0b2e]">

@@ -59,18 +59,15 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
     return () => clearInterval(interval);
   }, [creatorDID, creatorName]);
 
-  if (loading) {
-    return null;
-  }
-
-  if (!streamData || !streamData.isActive) {
+  // Don't show anything while loading or if no active stream
+  if (loading || !streamData || !streamData.isActive) {
     return null;
   }
 
   return (
-    <div className="mb-8 bg-[#1a0b2e] border border-[#2f2942] rounded-[24px] overflow-hidden">
+    <div className="w-full mb-8 bg-[#1a0b2e] border border-[#2f2942] rounded-[24px] overflow-hidden">
       {/* Live Badge */}
-      <div className="px-6 py-4 border-b border-[#2f2942] flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-[#2f2942] flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1 bg-red-500 rounded-full">
             <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
@@ -85,7 +82,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
       </div>
 
       {/* Video Player */}
-      <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+      <div className="relative w-full bg-black" style={{ paddingBottom: "56.25%" }}>
         <iframe
           src={`https://lvpr.tv/?v=${streamData.playbackUrl.split("/")[4]}`}
           className="absolute top-0 left-0 w-full h-full"

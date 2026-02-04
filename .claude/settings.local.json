@@ -81,7 +81,8 @@
       "Bash(python3:*)",
       "Bash(if [ -n \"$YOUTUBE_API_KEY\" ])",
       "Bash(then echo \"YouTube API Key is set\")",
-      "Bash(else echo \"YouTube API Key is NOT set\")"
+      "Bash(else echo \"YouTube API Key is NOT set\")",
+      "Bash(head:*)"
     ]
   }
 }
