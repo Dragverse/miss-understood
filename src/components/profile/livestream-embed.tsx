@@ -84,7 +84,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
       {/* Video Player */}
       <div className="relative w-full bg-black" style={{ paddingBottom: "56.25%" }}>
         <iframe
-          src={`https://lvpr.tv/?v=${streamData.playbackUrl.split("/")[4]}`}
+          src={`https://lvpr.tv/?v=${streamData.playbackUrl.split("/")[4]}&lowLatency=force&autoplay=true`}
           className="absolute top-0 left-0 w-full h-full"
           allow="autoplay; encrypted-media; picture-in-picture"
           allowFullScreen
