@@ -124,18 +124,23 @@ export async function POST(request: NextRequest) {
     const rtmpIngestUrl = `rtmp://rtmp.livepeer.com/live/${stream.streamKey}`;
 
     // Save stream metadata to database
+    let databaseId: string | null = null;
     if (userId) {
       try {
-        const { error: dbError } = await supabase.from("streams").insert({
-          creator_did: userId,
-          livepeer_stream_id: stream.id,
-          stream_key: stream.streamKey,
-          playback_id: stream.playbackId,
-          playback_url: playbackUrl,
-          rtmp_ingest_url: rtmpIngestUrl,
-          title: name,
-          is_active: false, // Stream starts inactive until user goes live
-        });
+        const { data: insertedStream, error: dbError } = await supabase
+          .from("streams")
+          .insert({
+            creator_did: userId,
+            livepeer_stream_id: stream.id,
+            stream_key: stream.streamKey,
+            playback_id: stream.playbackId,
+            playback_url: playbackUrl,
+            rtmp_ingest_url: rtmpIngestUrl,
+            title: name,
+            is_active: false, // Stream starts inactive until user goes live
+          })
+          .select("id")
+          .single();
 
         if (dbError) {
           console.error("Failed to save stream to database:", dbError);
@@ -145,6 +150,9 @@ export async function POST(request: NextRequest) {
             console.warn("⚠️ Streams table does not exist. Run supabase-migration-streams.sql to enable database tracking.");
           }
           // Continue anyway - stream was created successfully in Livepeer
+        } else if (insertedStream) {
+          databaseId = insertedStream.id;
+          console.log(`✅ Stream saved to database with ID: ${databaseId}`);
         }
       } catch (dbError) {
         console.error("Database error:", dbError);
@@ -152,9 +160,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Return stream details
+    // Return stream details with database ID (if available) or fallback to Livepeer ID
     return NextResponse.json({
-      id: stream.id,
+      id: databaseId || stream.id, // Use database UUID if available, fallback to Livepeer ID
+      livepeerStreamId: stream.id, // Also include Livepeer ID for reference
       streamKey: stream.streamKey,
       playbackId: stream.playbackId,
       playbackUrl,
