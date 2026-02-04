@@ -53,6 +53,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
   const keepaliveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 3;
+  const streamStartTimeRef = useRef<number>(0);
 
   // User handle for viewer URL
   const [userHandle, setUserHandle] = useState<string>("");
@@ -506,6 +507,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
       // Start connection monitoring
       reconnectAttemptsRef.current = 0;
+      streamStartTimeRef.current = Date.now(); // Track when stream started
       monitorMediaTracks();
 
       // Monitor connection quality every 5 seconds
@@ -561,9 +563,13 @@ export function StreamModal({ onClose }: StreamModalProps) {
       // Calculate connection quality
       const packetLossRate = totalPackets > 0 ? packetsLost / totalPackets : 0;
 
-      if (packetLossRate > 0.1 || bytesSent === 0) {
+      // Grace period: Don't check bytesSent for first 10 seconds after stream starts
+      const streamDuration = Date.now() - streamStartTimeRef.current;
+      const hasGracePeriodPassed = streamDuration > 10000;
+
+      if (packetLossRate > 0.1 || (hasGracePeriodPassed && bytesSent === 0)) {
         setConnectionQuality('poor');
-        console.warn('Poor connection quality detected', { packetLossRate, bytesSent });
+        console.warn('Poor connection quality detected', { packetLossRate, bytesSent, streamDuration });
       } else if (packetLossRate > 0.05) {
         setConnectionQuality('fair');
       } else {
@@ -746,6 +752,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
     setIsStreaming(false);
     setStreamType(null);
     setStreamingMethod(null);
+    setConnectionQuality('good'); // Reset connection quality
+    streamStartTimeRef.current = 0; // Reset stream start time
     setStep('method');
     toast.success("Stream stopped");
   };
