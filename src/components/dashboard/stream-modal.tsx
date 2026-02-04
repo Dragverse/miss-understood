@@ -338,13 +338,32 @@ export function StreamModal({ onClose }: StreamModalProps) {
       peerConnectionRef.current = peerConnection;
 
       // Add comprehensive debugging listeners
+      let hostCandidateCount = 0;
+      let srflxCandidateCount = 0;
+      let relayCandidateCount = 0;
+
       peerConnection.addEventListener("icecandidate", (event) => {
         if (event.candidate) {
           const type = event.candidate.type;
           const protocol = event.candidate.protocol;
+
+          // Track candidate types for diagnostics
+          if (type === 'host') hostCandidateCount++;
+          else if (type === 'srflx') srflxCandidateCount++;
+          else if (type === 'relay') relayCandidateCount++;
+
           console.log(`🧊 ICE candidate [${type}/${protocol}]:`, event.candidate.candidate);
         } else {
-          console.log("🧊 ICE candidate: gathering complete");
+          console.log("🧊 ICE candidate gathering complete:", {
+            host: hostCandidateCount,
+            srflx: srflxCandidateCount,
+            relay: relayCandidateCount
+          });
+
+          // Warn if no server reflexive or relay candidates (may indicate STUN/TURN issues)
+          if (srflxCandidateCount === 0 && relayCandidateCount === 0) {
+            console.warn("⚠️ No srflx or relay candidates found. Connection may fail behind restrictive NAT/firewall.");
+          }
         }
       });
 
@@ -372,8 +391,10 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
         if (peerConnection.connectionState === "connected") {
           toast.success("Stream connected!");
+          streamStartTimeRef.current = Date.now(); // Start tracking from actual connection
         } else if (peerConnection.connectionState === "failed") {
           console.error("❌ Connection failed - ICE state:", peerConnection.iceConnectionState);
+          toast.error("Connection failed. This may be due to firewall or network restrictions. Try OBS with RTMP instead.");
           // Don't immediately stop - the sendKeepalive function will detect this
           // and attempt reconnection via attemptReconnection()
         } else if (peerConnection.connectionState === "disconnected") {
@@ -553,16 +574,24 @@ export function StreamModal({ onClose }: StreamModalProps) {
       // Calculate connection quality
       const packetLossRate = totalPackets > 0 ? packetsLost / totalPackets : 0;
 
-      // Grace period: Don't check bytesSent for first 10 seconds after stream starts
+      // Grace period: Don't check bytesSent for first 30 seconds after stream starts
+      // This gives time for ICE negotiation and initial connection establishment
       const streamDuration = Date.now() - streamStartTimeRef.current;
-      const hasGracePeriodPassed = streamDuration > 10000;
+      const hasGracePeriodPassed = streamDuration > 30000;
 
-      if (packetLossRate > 0.1 || (hasGracePeriodPassed && bytesSent === 0)) {
+      // Only check connection quality if connection is actually established
+      const connectionState = peerConnectionRef.current.connectionState;
+      const isConnected = connectionState === 'connected';
+
+      if (packetLossRate > 0.1) {
         setConnectionQuality('poor');
-        console.warn('Poor connection quality detected', { packetLossRate, bytesSent, streamDuration });
+        console.warn('Poor connection quality detected - high packet loss', { packetLossRate, bytesSent, streamDuration });
+      } else if (hasGracePeriodPassed && isConnected && bytesSent === 0) {
+        setConnectionQuality('poor');
+        console.warn('Poor connection quality detected - no data sent', { packetLossRate, bytesSent, streamDuration, connectionState });
       } else if (packetLossRate > 0.05) {
         setConnectionQuality('fair');
-      } else {
+      } else if (isConnected && bytesSent > 0) {
         setConnectionQuality('good');
       }
 
