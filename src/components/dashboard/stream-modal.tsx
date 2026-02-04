@@ -9,7 +9,8 @@ interface StreamModalProps {
   onClose: () => void;
 }
 
-type StreamStep = 'create' | 'setup' | 'streaming';
+type StreamStep = 'create' | 'method' | 'setup' | 'streaming';
+type StreamingMethod = 'browser' | 'obs' | null;
 
 interface StreamInfo {
   id: string;
@@ -26,6 +27,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
   // Step management
   const [step, setStep] = useState<StreamStep>('create');
   const [streamInfo, setStreamInfo] = useState<StreamInfo | null>(null);
+  const [streamingMethod, setStreamingMethod] = useState<StreamingMethod>(null);
 
   // Stream creation
   const [streamTitle, setStreamTitle] = useState("");
@@ -94,7 +96,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
               title: activeStream.name
             });
 
-            setStep('setup');
+            setStep('method');
             toast("You have an active stream", {
               icon: "ℹ️"
             });
@@ -175,7 +177,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
         title: streamTitle
       });
 
-      setStep('setup');
+      setStep('method');
       toast.success("Stream created successfully!");
     } catch (error) {
       console.error("Stream creation error:", error);
@@ -534,7 +536,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
     setIsStreaming(false);
     setStreamType(null);
-    setStep('setup');
+    setStreamingMethod(null);
+    setStep('method');
     toast.success("Stream stopped");
   };
 
@@ -600,6 +603,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
         <div className="flex items-center justify-between p-6 border-b border-[#2f2942]">
           <h2 className="text-2xl font-bold text-white">
             {step === 'create' && "Create Livestream"}
+            {step === 'method' && `Stream: ${streamInfo?.title || "Choose Method"}`}
             {step === 'setup' && `Stream: ${streamInfo?.title || "Setup"}`}
             {step === 'streaming' && (
               <span className="flex items-center gap-2">
@@ -661,8 +665,70 @@ export function StreamModal({ onClose }: StreamModalProps) {
             </div>
           )}
 
+          {/* STEP 1.5: Choose Streaming Method */}
+          {step === 'method' && streamInfo && (
+            <div className="space-y-6">
+              <p className="text-gray-300 text-center mb-6">
+                Choose how you want to stream. Browser streaming is quick and easy, while OBS/Streamlabs offers professional features.
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Browser Streaming Option */}
+                <button
+                  onClick={() => {
+                    setStreamingMethod('browser');
+                    setStep('setup');
+                  }}
+                  className="p-8 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/60 rounded-2xl transition-all group relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="relative">
+                    <FiVideo className="w-12 h-12 text-[#EB83EA] mx-auto mb-4 group-hover:scale-110 transition" />
+                    <h3 className="font-bold text-white text-lg mb-2">Browser Streaming</h3>
+                    <p className="text-sm text-gray-400 mb-3">Stream from your camera or screen</p>
+                    <ul className="text-xs text-gray-500 space-y-1 text-left">
+                      <li>• Quick & easy setup</li>
+                      <li>• No software needed</li>
+                      <li>• Camera or screen share</li>
+                      <li>• Lower latency</li>
+                    </ul>
+                  </div>
+                </button>
+
+                {/* OBS/Streamlabs Option */}
+                <button
+                  onClick={() => {
+                    setStreamingMethod('obs');
+                    setStep('setup');
+                  }}
+                  className="p-8 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/60 rounded-2xl transition-all group relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#7c3aed]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="relative">
+                    <FiMonitor className="w-12 h-12 text-[#7c3aed] mx-auto mb-4 group-hover:scale-110 transition" />
+                    <h3 className="font-bold text-white text-lg mb-2">OBS / Streamlabs</h3>
+                    <p className="text-sm text-gray-400 mb-3">Professional streaming software</p>
+                    <ul className="text-xs text-gray-500 space-y-1 text-left">
+                      <li>• Multi-camera setup</li>
+                      <li>• Scenes & overlays</li>
+                      <li>• Advanced controls</li>
+                      <li>• Professional quality</li>
+                    </ul>
+                  </div>
+                </button>
+              </div>
+
+              <button
+                onClick={() => setStep('create')}
+                className="w-full px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full transition"
+              >
+                Back
+              </button>
+            </div>
+          )}
+
           {/* STEP 2: Setup Stream */}
-          {step === 'setup' && streamInfo && (
+          {step === 'setup' && streamInfo && streamingMethod === 'browser' && (
             <div className="space-y-6">
               {/* Video Preview */}
               <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
@@ -685,7 +751,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
               {/* Browser Streaming Options */}
               {!streamType && (
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-3">Browser Streaming</h3>
+                  <h3 className="text-lg font-bold text-white mb-3">Choose Video Source</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <button
                       onClick={startCamera}
@@ -710,73 +776,120 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
               {/* Controls when source selected */}
               {streamType && !isStreaming && (
-                <div className="flex justify-center">
+                <div className="flex flex-col gap-3">
                   <button
                     onClick={startStreaming}
                     className="px-8 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded-full font-bold transition-all shadow-lg"
                   >
                     Go Live
                   </button>
+                  <button
+                    onClick={() => setStep('method')}
+                    className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full transition text-sm"
+                  >
+                    Change Streaming Method
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STEP 2B: Setup Stream - OBS/Streamlabs */}
+          {step === 'setup' && streamInfo && streamingMethod === 'obs' && (
+            <div className="space-y-6">
+              {/* Info Banner */}
+              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                <h3 className="text-blue-400 font-semibold mb-2">Professional Streaming Setup</h3>
+                <p className="text-sm text-gray-400">
+                  Copy these credentials into OBS Studio or Streamlabs. Once you start streaming from your software, your stream will automatically appear on your profile.
+                </p>
+              </div>
+
+              {/* RTMP Credentials */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-400 mb-2">
+                    Server URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value="rtmp://rtmp.livepeer.com/live/"
+                      readOnly
+                      className="flex-1 px-4 py-3 bg-[#2f2942] border border-[#EB83EA]/20 rounded-lg text-white"
+                    />
+                    <button
+                      onClick={() => copyToClipboard("rtmp://rtmp.livepeer.com/live/", "Server URL")}
+                      className="p-3 bg-[#EB83EA]/20 hover:bg-[#EB83EA]/30 rounded-lg transition"
+                    >
+                      <FiCopy className="w-5 h-5 text-[#EB83EA]" />
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-400 mb-2">
+                    Stream Key
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={streamInfo.streamKey}
+                      readOnly
+                      className="flex-1 px-4 py-3 bg-[#2f2942] border border-[#EB83EA]/20 rounded-lg text-white font-mono"
+                    />
+                    <button
+                      onClick={() => copyToClipboard(streamInfo.streamKey, "Stream key")}
+                      className="p-3 bg-[#EB83EA]/20 hover:bg-[#EB83EA]/30 rounded-lg transition"
+                    >
+                      <FiCopy className="w-5 h-5 text-[#EB83EA]" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">Keep your stream key private!</p>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="p-4 bg-[#2f2942] rounded-xl">
+                <h4 className="font-bold text-white mb-3">Setup Instructions:</h4>
+                <ol className="text-sm text-gray-300 space-y-2 list-decimal list-inside">
+                  <li>Open OBS Studio or Streamlabs</li>
+                  <li>Go to Settings → Stream</li>
+                  <li>Select "Custom" as the service</li>
+                  <li>Paste the Server URL and Stream Key above</li>
+                  <li>Click "Start Streaming" in your software</li>
+                </ol>
+              </div>
+
+              {/* Viewer URL */}
+              {userHandle && (
+                <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+                  <h4 className="text-green-400 font-semibold mb-2">Your stream will appear at:</h4>
+                  <a
+                    href={`/u/${userHandle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#EB83EA] hover:underline break-all"
+                  >
+                    {`${typeof window !== "undefined" ? window.location.origin : ""}/u/${userHandle}`}
+                  </a>
                 </div>
               )}
 
-              {/* RTMP Credentials (Collapsible) */}
-              <div className="border-t border-[#2f2942] pt-6">
+              {/* Actions */}
+              <div className="flex flex-col gap-3">
                 <button
-                  onClick={() => setShowRTMPDetails(!showRTMPDetails)}
-                  className="flex items-center justify-between w-full text-left"
+                  onClick={() => setStep('method')}
+                  className="w-full px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full transition"
                 >
-                  <h3 className="text-lg font-bold text-white">OBS/Streamlabs Credentials</h3>
-                  {showRTMPDetails ? (
-                    <FiChevronUp className="w-5 h-5 text-gray-400" />
-                  ) : (
-                    <FiChevronDown className="w-5 h-5 text-gray-400" />
-                  )}
+                  Change Streaming Method
                 </button>
-
-                {showRTMPDetails && (
-                  <div className="mt-4 space-y-4">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-400 mb-2">
-                        Server URL
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value="rtmp://rtmp.livepeer.com/live/"
-                          readOnly
-                          className="flex-1 px-4 py-2 bg-[#2f2942] border border-[#EB83EA]/20 rounded-lg text-white text-sm"
-                        />
-                        <button
-                          onClick={() => copyToClipboard("rtmp://rtmp.livepeer.com/live/", "Server URL")}
-                          className="p-2 bg-[#EB83EA]/20 hover:bg-[#EB83EA]/30 rounded-lg transition"
-                        >
-                          <FiCopy className="w-5 h-5 text-[#EB83EA]" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-bold text-gray-400 mb-2">
-                        Stream Key
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="password"
-                          value={streamInfo.streamKey}
-                          readOnly
-                          className="flex-1 px-4 py-2 bg-[#2f2942] border border-[#EB83EA]/20 rounded-lg text-white text-sm"
-                        />
-                        <button
-                          onClick={() => copyToClipboard(streamInfo.streamKey, "Stream key")}
-                          className="p-2 bg-[#EB83EA]/20 hover:bg-[#EB83EA]/30 rounded-lg transition"
-                        >
-                          <FiCopy className="w-5 h-5 text-[#EB83EA]" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <button
+                  onClick={onClose}
+                  className="w-full px-6 py-3 border-2 border-white/10 hover:border-white/20 text-white font-semibold rounded-full transition"
+                >
+                  Close (Keep Stream Active)
+                </button>
               </div>
             </div>
           )}
