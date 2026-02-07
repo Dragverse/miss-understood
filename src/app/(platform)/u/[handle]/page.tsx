@@ -602,7 +602,7 @@ export default function DynamicProfilePage() {
                       onClick={() => router.push(`/watch/${video.id}`)}
                     >
                       <Image
-                        src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackUrl, video.livepeerAssetId)}
+                        src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg')}
                         alt={video.title}
                         fill
                         className="object-cover group-hover:opacity-80 transition-opacity"
@@ -654,7 +654,7 @@ export default function DynamicProfilePage() {
                         }}
                       >
                         <Image
-                          src={getSafeThumbnail(byte.thumbnail, '/default-thumbnail.jpg', byte.playbackUrl, byte.livepeerAssetId)}
+                          src={getSafeThumbnail(byte.thumbnail, '/default-thumbnail.jpg')}
                           alt={byte.title}
                           fill
                           className="object-cover group-hover:opacity-80 transition-opacity"
@@ -709,7 +709,7 @@ export default function DynamicProfilePage() {
                       onClick={() => router.push(`/listen/${audio.id}`)}
                     >
                       <Image
-                        src={getSafeThumbnail(audio.thumbnail, '/default-thumbnail.jpg', audio.playbackUrl, audio.livepeerAssetId)}
+                        src={getSafeThumbnail(audio.thumbnail, '/default-thumbnail.jpg')}
                         alt={audio.title}
                         fill
                         className="object-cover group-hover:opacity-80 transition-opacity"

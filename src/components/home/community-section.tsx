@@ -45,7 +45,7 @@ export function CommunitySection({ videos }: CommunitySectionProps) {
             {/* Thumbnail */}
             <div className="relative aspect-video rounded-2xl overflow-hidden mb-3 shadow-md">
               <Image
-                src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackUrl, video.livepeerAssetId)}
+                src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg')}
                 alt={video.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"

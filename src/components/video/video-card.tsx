@@ -93,7 +93,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
       >
         <div className="relative w-48 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-gray-800">
           <Image
-            src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackUrl, video.livepeerAssetId)}
+            src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg')}
             alt={video.title}
             fill
             className="object-cover"
@@ -141,7 +141,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
     >
         <div className={`relative w-full ${aspectRatioClass} rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-3 shadow-lg`}>
           <Image
-            src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackUrl, video.livepeerAssetId)}
+            src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg')}
             alt={video.title}
             fill
             className={`${objectFit} group-hover:scale-105 transition-transform duration-300`}

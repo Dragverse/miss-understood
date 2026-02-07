@@ -53,7 +53,7 @@ export function AudiosSection({ audios }: AudiosSectionProps) {
             {/* Square Album Cover */}
             <div className="relative aspect-square rounded-2xl overflow-hidden mb-3 shadow-lg">
               <Image
-                src={getSafeThumbnail(audio.thumbnail, '/default-thumbnail.jpg', audio.playbackUrl, audio.livepeerAssetId)}
+                src={getSafeThumbnail(audio.thumbnail, '/default-thumbnail.jpg')}
                 alt={audio.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"
