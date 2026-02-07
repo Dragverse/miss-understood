@@ -654,7 +654,7 @@ export default function DynamicProfilePage() {
                         }}
                       >
                         <Image
-                          src={getSafeThumbnail(byte.thumbnail, '/default-thumbnail.jpg', byte.playbackId)}
+                          src={getSafeThumbnail(byte.thumbnail, '/default-thumbnail.jpg', (byte as any).playbackId)}
                           alt={byte.title}
                           fill
                           className="object-cover group-hover:opacity-80 transition-opacity"

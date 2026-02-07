@@ -21,7 +21,7 @@ export default function HomePage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch videos from Supabase and Bluesky in parallel
+  // Fetch videos from Supabase, YouTube, and Bluesky in parallel
   useEffect(() => {
     async function loadVideos() {
       setLoading(true);
@@ -33,7 +33,7 @@ export default function HomePage() {
         console.log(`Loaded ${localVideos.length} videos from local storage`);
       }
 
-      // Fetch Supabase and Bluesky in parallel (non-blocking)
+      // Fetch Supabase, YouTube, and Bluesky in parallel (non-blocking)
       // Track failed sources to notify user
       const failedSources: string[] = [];
 
@@ -90,25 +90,66 @@ export default function HomePage() {
             })
         : Promise.resolve([]);
 
-      // Wait for Dragverse content to load
-      const results = await supabasePromise;
+      // YouTube videos
+      const youtubePromise = fetch("/api/youtube/feed?limit=30&rssOnly=true")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.videos && data.videos.length > 0) {
+            console.log(`Loaded ${data.videos.length} videos from YouTube`);
+            return data.videos;
+          }
+          return [];
+        })
+        .catch((error) => {
+          console.warn("Failed to load videos from YouTube:", error);
+          failedSources.push("YouTube");
+          return [];
+        });
 
-      // Notify user if Dragverse content failed to load
-      if (failedSources.includes("Dragverse")) {
-        toast.error("Failed to load Dragverse content", {
+      // Bluesky videos
+      const blueskyPromise = fetch("/api/bluesky/feed?limit=30&sortBy=latest&contentType=all")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.videos && data.videos.length > 0) {
+            console.log(`Loaded ${data.videos.length} videos from Bluesky`);
+            return data.videos;
+          }
+          return [];
+        })
+        .catch((error) => {
+          console.warn("Failed to load videos from Bluesky:", error);
+          failedSources.push("Bluesky");
+          return [];
+        });
+
+      // Wait for all sources to load
+      const [supabaseVideos, youtubeVideos, blueskyVideos] = await Promise.all([
+        supabasePromise,
+        youtubePromise,
+        blueskyPromise,
+      ]);
+
+      // Notify user if any source failed to load
+      if (failedSources.length > 0) {
+        toast.error(`Failed to load content from: ${failedSources.join(", ")}`, {
           duration: 4000,
         });
       }
 
-      // Use only Dragverse videos (no external sources)
-      const allVideos = [...localVideos, ...(Array.isArray(results) ? results : [])];
+      // Merge all videos
+      const allVideos = [
+        ...localVideos,
+        ...(Array.isArray(supabaseVideos) ? supabaseVideos : []),
+        ...(Array.isArray(youtubeVideos) ? youtubeVideos : []),
+        ...(Array.isArray(blueskyVideos) ? blueskyVideos : []),
+      ];
 
       // Sort by date (newest first)
       if (allVideos.length > 0) {
         allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       }
 
-      console.log(`[Homepage] Loaded ${allVideos.length} videos from Dragverse only (no external sources)`);
+      console.log(`[Homepage] Loaded ${allVideos.length} total videos (Dragverse: ${supabaseVideos.length}, YouTube: ${youtubeVideos.length}, Bluesky: ${blueskyVideos.length})`);
 
       setVideos(allVideos);
       setLoading(false);
@@ -117,22 +158,15 @@ export default function HomePage() {
     loadVideos();
   }, []);
 
-  // Dragverse Bytes (native vertical shorts)
-  const shorts = videos.filter((v) =>
-    v.contentType === "short" &&
-    ((v as any).source === "ceramic" || !(v as any).source)
-  );
+  // Bytes/Shorts (vertical videos from all sources)
+  const shorts = videos.filter((v) => v.contentType === "short");
 
-  // Dragverse horizontal videos (native long-form content)
-  const horizontalVideos = videos.filter((v) =>
-    v.contentType === "long" &&
-    ((v as any).source === "ceramic" || !(v as any).source)
-  );
+  // Horizontal videos (long-form content from all sources)
+  const horizontalVideos = videos.filter((v) => v.contentType === "long");
 
-  // Dragverse audio content (podcasts and music)
+  // Audio content (podcasts and music from all sources)
   const audios = videos.filter((v) =>
-    (v.contentType === "podcast" || v.contentType === "music") &&
-    ((v as any).source === "ceramic" || !(v as any).source)
+    v.contentType === "podcast" || v.contentType === "music"
   );
 
   const filteredVideos = videos.filter((video) => {
