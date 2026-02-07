@@ -213,7 +213,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
 
   return (
     <div className="keen-slider__slide flex justify-center items-center focus-visible:outline-none">
-      <div className="bg-gray-950 flex h-full w-full md:aspect-[9/16] md:h-auto md:max-h-[90vh] md:rounded-3xl items-center overflow-hidden relative md:shadow-2xl md:shadow-black/50">
+      <div className="bg-gray-950 flex h-full w-full md:w-[420px] md:max-h-[90vh] md:rounded-3xl items-center overflow-hidden relative md:shadow-2xl md:shadow-black/50">
         {hasValidPlaybackUrl ? (
           <div className="w-full h-full relative" style={{ pointerEvents: 'none' }}>
             <div

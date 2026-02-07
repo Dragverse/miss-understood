@@ -87,7 +87,7 @@ export function AudiosSection({ audios }: AudiosSectionProps) {
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 border border-[#EB83EA]/20">
                   <Image
-                    src={audio.creator.avatar}
+                    src={getSafeThumbnail(audio.creator.avatar, "/defaultpfp.png")}
                     alt={audio.creator.displayName}
                     width={24}
                     height={24}

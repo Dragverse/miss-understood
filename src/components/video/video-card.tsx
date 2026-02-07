@@ -201,7 +201,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
           {/* Creator avatar */}
           <div className="flex-shrink-0">
             <Image
-              src={video.creator.avatar}
+              src={getSafeThumbnail(video.creator.avatar, "/defaultpfp.png")}
               alt={video.creator.displayName}
               width={36}
               height={36}

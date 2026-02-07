@@ -72,7 +72,7 @@ export function HorizontalVideosSection({ videos }: HorizontalVideosSectionProps
             <div className="flex gap-3">
               <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border-2 border-[#EB83EA]/20">
                 <Image
-                  src={video.creator.avatar}
+                  src={getSafeThumbnail(video.creator.avatar, "/defaultpfp.png")}
                   alt={video.creator.displayName}
                   width={36}
                   height={36}
