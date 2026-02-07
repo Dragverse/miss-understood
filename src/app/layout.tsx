@@ -49,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${rammettoOne.variable} ${parkinsans.variable} font-parkinsans antialiased`}>
+      <body className={`${rammettoOne.variable} ${parkinsans.variable} font-parkinsans antialiased`} suppressHydrationWarning>
         <Providers>
           <Layout>{children}</Layout>
         </Providers>

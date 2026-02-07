@@ -259,7 +259,7 @@ function SnapshotsContent() {
       {/* Vertical Slider */}
       <div
         ref={sliderRef}
-        className="keen-slider h-full w-full md:max-w-[500px]"
+        className="keen-slider h-full w-full md:max-w-[420px] md:mx-auto"
         style={{ touchAction: 'pan-y' }}
       >
         {snapshots.map((video, idx) => (
