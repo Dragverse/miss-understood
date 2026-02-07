@@ -265,7 +265,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           id: v.id,
           title: v.title,
           description: v.description || '',
-          thumbnail: v.thumbnail || '',
+          thumbnail: v.thumbnail || null,
           duration: v.duration || 0,
           views: v.views,
           likes: v.likes,
