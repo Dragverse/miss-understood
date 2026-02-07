@@ -602,7 +602,7 @@ export default function DynamicProfilePage() {
                       onClick={() => router.push(`/watch/${video.id}`)}
                     >
                       <Image
-                        src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackId)}
+                        src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', (video as any).playbackId)}
                         alt={video.title}
                         fill
                         className="object-cover group-hover:opacity-80 transition-opacity"
