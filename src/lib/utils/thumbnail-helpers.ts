@@ -73,3 +73,18 @@ export function getYouTubeThumbnail(videoId: string): string {
   if (!videoId) return '/default-thumbnail.jpg';
   return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 }
+
+/**
+ * Validate playback URL - simple check for valid URL
+ */
+export function isValidPlaybackUrl(url: string | null | undefined): boolean {
+  if (!url || url.trim() === '') return false;
+  if (url === 'null' || url === 'undefined') return false;
+
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
