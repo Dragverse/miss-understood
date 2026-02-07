@@ -294,6 +294,80 @@ handle: "dragdetectives",
 displayName: "The Drag Detectives",
 description: "Fans analyze Drag Race edits, theories, and controversies with humor",
 },
+
+// === NEW ADDITIONS 2026-02-06 ===
+{
+  channelId: "UC8rkCF5kyJT7YYR46xCecqw",
+  handle: "jaymesmansfield",
+  displayName: "Jaymes Mansfield",
+  description: "Season 9 queen, wig styling tutorials, LGBTQ+ history",
+},
+{
+  channelId: "UCLuk2l_hPJW907XX74BSq8Q",
+  handle: "monetxchange",
+  displayName: "Monet X Change",
+  description: "Winner of All Stars 4, comedian, podcaster",
+},
+{
+  channelId: "UCtlU7bUDxz2Lv6EJrgKfUzg",
+  handle: "aquaria",
+  displayName: "Aquaria",
+  description: "Winner of Season 10, fashion icon",
+},
+{
+  channelId: "UCSwl9DAdv_x90Ywsf7b3lnQ",
+  handle: "plastiquetiara",
+  displayName: "Plastique Tiara",
+  description: "Season 11 finalist, beauty and fashion content",
+},
+{
+  channelId: "UCr2gApA6rOjLJVU1ESicAyQ",
+  handle: "trinitythetuck",
+  displayName: "Trinity The Tuck",
+  description: "Winner of All Stars 4, pageant queen",
+},
+{
+  channelId: "UCFtHBuMwoQFxVM7RmCrK4Fw",
+  handle: "denali",
+  displayName: "Denali",
+  description: "Season 13 queen, ice skater, performance artist",
+},
+{
+  channelId: "UCDTtixbys-bb2WtJwqWoeMw",
+  handle: "jackfed",
+  displayName: "JackFed",
+  description: "Drag Race reviews and sensual commentary",
+},
+{
+  channelId: "UCdJAxOAT62RkCI7s7X8S8WA",
+  handle: "runnereye",
+  displayName: "RunnerEye",
+  description: "Absurd tier lists and drag race entertainment",
+},
+{
+  channelId: "UCnf9PTuVou0nOwxOSFnc7ag",
+  handle: "pressedconference",
+  displayName: "Pressed Conference",
+  description: "Drag Race recap and discussion",
+},
+{
+  channelId: "UCNaNtF7f4kZrFyl7M4rDNcQ",
+  handle: "moviebitches",
+  displayName: "Movie Bitches",
+  description: "Pop culture and drag commentary",
+},
+{
+  channelId: "UCuiK2XdDcyAd7TS9ioMqx6A",
+  handle: "logotv",
+  displayName: "Logo TV",
+  description: "Official Logo TV drag content",
+},
+{
+  channelId: "UCxNG8iqKTjJu8uPlbCc1kyA",
+  handle: "reinasalti",
+  displayName: "Reina Salti",
+  description: "Drag content creator",
+},
 ];
 
 /**
