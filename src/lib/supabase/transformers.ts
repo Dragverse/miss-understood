@@ -47,7 +47,8 @@ export function transformSupabaseVideo(video: SupabaseVideo, creator?: Creator):
     likes: video.likes,
     createdAt: new Date(video.created_at),
     playbackUrl: video.playback_url || '',
-    livepeerAssetId: video.livepeer_asset_id || '',
+    // Use playback_id first (this is the actual playback ID), fallback to livepeer_asset_id
+    livepeerAssetId: video.playback_id || video.livepeer_asset_id || '',
     contentType: video.content_type as any || 'long',
     creator: creator || ({} as Creator),
     category: video.category || '',
