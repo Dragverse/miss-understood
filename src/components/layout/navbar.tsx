@@ -24,7 +24,7 @@ import { useAuthUser } from "@/lib/privy/hooks";
 import { SearchDropdown } from "./search-dropdown";
 import { useReadContract } from "wagmi";
 import { formatUnits } from "viem";
-import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
+import { getSafeAvatar } from "@/lib/utils/thumbnail-helpers";
 
 export function Navbar() {
   const { login, logout, authenticated, user } = usePrivy();
@@ -226,7 +226,7 @@ export function Navbar() {
                     width={40}
                     height={40}
                     className="w-full h-full object-cover"
-                    src={getSafeThumbnail(
+                    src={getSafeAvatar(
                       blueskyProfile?.avatar || user?.twitter?.profilePictureUrl,
                       "/defaultpfp.png"
                     )}

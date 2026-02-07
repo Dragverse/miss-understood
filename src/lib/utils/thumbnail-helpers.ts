@@ -94,3 +94,44 @@ export function isValidPlaybackUrl(url: string | null | undefined): boolean {
     return false;
   }
 }
+
+/**
+ * Get safe avatar URL with simpler validation for profile pictures
+ * Only rejects obviously broken URLs, keeps valid ones
+ */
+export function getSafeAvatar(
+  avatar: string | null | undefined,
+  fallback: string = '/defaultpfp.png'
+): string {
+  // If no avatar provided, use fallback
+  if (!avatar || avatar.trim() === '') {
+    return fallback;
+  }
+
+  // Reject blob URLs (from old broken uploads)
+  if (avatar.startsWith('blob:')) {
+    console.warn('[Avatar] Rejecting blob URL:', avatar);
+    return fallback;
+  }
+
+  // Data URLs are valid embedded images - allow them
+  if (avatar.startsWith('data:')) {
+    return avatar;
+  }
+
+  // Reject Supabase .blob files (failed uploads that stored filename instead of URL)
+  if (avatar.includes('.blob') && avatar.includes('supabase')) {
+    console.warn('[Avatar] Rejecting broken Supabase .blob URL:', avatar);
+    return fallback;
+  }
+
+  // Try to validate as URL
+  try {
+    new URL(avatar);
+    return avatar; // Valid URL, use it
+  } catch {
+    // Invalid URL format, use fallback
+    console.warn('[Avatar] Invalid URL format:', avatar);
+    return fallback;
+  }
+}

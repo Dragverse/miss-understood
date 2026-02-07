@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Video } from "@/types";
-import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
+import { getSafeThumbnail, getSafeAvatar } from "@/lib/utils/thumbnail-helpers";
 import { FiMusic, FiPlay } from "react-icons/fi";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
@@ -87,7 +87,7 @@ export function AudiosSection({ audios }: AudiosSectionProps) {
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 border border-[#EB83EA]/20">
                   <Image
-                    src={getSafeThumbnail(audio.creator.avatar, "/defaultpfp.png")}
+                    src={getSafeAvatar(audio.creator.avatar, "/defaultpfp.png")}
                     alt={audio.creator.displayName}
                     width={24}
                     height={24}

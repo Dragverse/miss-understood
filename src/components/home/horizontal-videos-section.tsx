@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Video } from "@/types";
-import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
+import { getSafeThumbnail, getSafeAvatar } from "@/lib/utils/thumbnail-helpers";
 import { FiPlay } from "react-icons/fi";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
@@ -72,7 +72,7 @@ export function HorizontalVideosSection({ videos }: HorizontalVideosSectionProps
             <div className="flex gap-3">
               <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border-2 border-[#EB83EA]/20">
                 <Image
-                  src={getSafeThumbnail(video.creator.avatar, "/defaultpfp.png")}
+                  src={getSafeAvatar(video.creator.avatar, "/defaultpfp.png")}
                   alt={video.creator.displayName}
                   width={36}
                   height={36}

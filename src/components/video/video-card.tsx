@@ -9,7 +9,7 @@ import { FiHeart, FiExternalLink } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import { VideoOptionsMenu } from "./video-options-menu";
 import { useAuthUser } from "@/lib/privy/hooks";
-import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
+import { getSafeThumbnail, getSafeAvatar } from "@/lib/utils/thumbnail-helpers";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
 
@@ -201,7 +201,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
           {/* Creator avatar */}
           <div className="flex-shrink-0">
             <Image
-              src={getSafeThumbnail(video.creator.avatar, "/defaultpfp.png")}
+              src={getSafeAvatar(video.creator.avatar, "/defaultpfp.png")}
               alt={video.creator.displayName}
               width={36}
               height={36}

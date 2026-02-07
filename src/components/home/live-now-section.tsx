@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FiVideo } from "react-icons/fi";
-import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
+import { getSafeAvatar } from "@/lib/utils/thumbnail-helpers";
 
 interface LiveStream {
   streamId: string;
@@ -104,7 +104,7 @@ export function LiveNowSection() {
               </h3>
               <div className="flex items-center gap-3">
                 <Image
-                  src={getSafeThumbnail(stream.creatorAvatar, "/defaultpfp.png")}
+                  src={getSafeAvatar(stream.creatorAvatar, "/defaultpfp.png")}
                   alt={stream.creatorName}
                   width={32}
                   height={32}
