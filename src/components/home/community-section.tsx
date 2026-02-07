@@ -28,7 +28,7 @@ export function CommunitySection({ videos }: CommunitySectionProps) {
     <section className="space-y-6 pt-4">
       {/* Header */}
       <div className="flex items-center gap-6">
-        <h2 className="font-bold text-2xl lg:text-3xl uppercase tracking-widest whitespace-nowrap">
+        <h2 className="font-heading font-black text-2xl lg:text-3xl uppercase tracking-wide whitespace-nowrap">
           From the Community
         </h2>
         <div className="h-px bg-[#2f2942] w-full" />
@@ -45,7 +45,7 @@ export function CommunitySection({ videos }: CommunitySectionProps) {
             {/* Thumbnail */}
             <div className="relative aspect-video rounded-2xl overflow-hidden mb-3 shadow-md">
               <Image
-                src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackId)}
+                src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', (video as any).playbackId)}
                 alt={video.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"

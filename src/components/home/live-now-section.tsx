@@ -69,7 +69,7 @@ export function LiveNowSection() {
           <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
           <span className="text-white text-sm font-bold uppercase">LIVE</span>
         </div>
-        <h2 className="text-2xl font-bold">Live Now</h2>
+        <h2 className="font-heading text-2xl font-black uppercase tracking-wide">Live Now</h2>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

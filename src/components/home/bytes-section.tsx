@@ -75,7 +75,7 @@ export function BytesSection({ shorts }: BytesSectionProps) {
           >
             <div className="relative w-[140px] sm:w-[160px] md:w-[180px] aspect-[9/16] rounded-[24px] overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-shadow bg-black border border-white/5">
               <Image
-                src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackId)}
+                src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', (video as any).playbackId)}
                 alt={video.title}
                 fill
                 className="object-contain group-hover:scale-105 transition-transform duration-500"

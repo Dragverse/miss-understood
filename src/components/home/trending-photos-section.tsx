@@ -54,7 +54,7 @@ export function TrendingPhotosSection({ photos }: { photos: PhotoPost[] }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <FiImage className="text-[#EB83EA] w-8 h-8" />
-          <h2 className="font-bold text-2xl lg:text-3xl uppercase tracking-widest">
+          <h2 className="font-heading font-black text-2xl lg:text-3xl uppercase tracking-wide">
             Trending Photos
           </h2>
         </div>
