@@ -403,6 +403,123 @@ export const CURATED_DRAG_ACCOUNTS: CuratedBlueskyAccount[] = [
     displayName: "Jaymes Mansfield",
     description: "Season 9 queen known for vintage beauty and makeup",
   },
+
+  // === NEW ADDITIONS 2026-02-06 ===
+  {
+    handle: "upuntil-dawn.bsky.social",
+    displayName: "Up Until Dawn",
+    description: "Drag content creator and performer",
+  },
+  {
+    handle: "bhytes.bsky.social",
+    displayName: "Bhytes",
+    description: "Drag performer and artist",
+  },
+  {
+    handle: "courtneyact.bsky.social",
+    displayName: "Courtney Act",
+    description: "Season 6 finalist, singer, TV personality",
+  },
+  {
+    handle: "thekandymuse.bsky.social",
+    displayName: "Kandy Muse",
+    description: "Season 13 finalist, Haus of Aja",
+  },
+  {
+    handle: "amandatorimeating.bsky.social",
+    displayName: "Amanda Tori Meating",
+    description: "Drag performer and content creator",
+  },
+  {
+    handle: "misterjoeblack.bsky.social",
+    displayName: "Mr. Joe Black",
+    description: "UK Drag Race performer, vintage drag icon",
+  },
+  {
+    handle: "divinadecampo.bsky.social",
+    displayName: "Divina De Campo",
+    description: "UK Drag Race finalist, singer, West End performer",
+  },
+  {
+    handle: "thebiancadelrio.bsky.social",
+    displayName: "Bianca Del Rio",
+    description: "Winner of Season 6, insult comic queen",
+  },
+  {
+    handle: "thepandoraboxx.bsky.social",
+    displayName: "Pandora Boxx",
+    description: "Season 2 queen, comedy and performance",
+  },
+  {
+    handle: "daxclamation.bsky.social",
+    displayName: "Dax ExclamationPoint",
+    description: "Season 8 queen, cosplay and performance",
+  },
+  {
+    handle: "jaymesmansfield.bsky.social",
+    displayName: "Jaymes Mansfield",
+    description: "Season 9 queen, wig stylist, vintage drag",
+  },
+  {
+    handle: "sapphiracristal.bsky.social",
+    displayName: "Sapphira Cristál",
+    description: "Season 16 winner, opera-trained vocalist",
+  },
+  {
+    handle: "kimchichic.bsky.social",
+    displayName: "Kim Chi",
+    description: "Fashion and beauty queen from Season 8",
+  },
+  {
+    handle: "xunamimuse.bsky.social",
+    displayName: "Xunami Muse",
+    description: "Drag performer and content creator",
+  },
+  {
+    handle: "gothykendoll.bsky.social",
+    displayName: "Gottmik",
+    description: "First trans man on Drag Race, makeup artist",
+  },
+  {
+    handle: "michellevisage.bsky.social",
+    displayName: "Michelle Visage",
+    description: "Drag Race judge, icon, and LGBTQ+ advocate",
+  },
+  {
+    handle: "honeydavenport.bsky.social",
+    displayName: "Honey Davenport",
+    description: "Season 11 queen, activist, performer",
+  },
+  {
+    handle: "thesashacolby.bsky.social",
+    displayName: "Sasha Colby",
+    description: "Winner of Season 15, pageant legend",
+  },
+  {
+    handle: "kerricolby.bsky.social",
+    displayName: "Kerri Colby",
+    description: "Season 14 queen, trans icon, runway excellence",
+  },
+  {
+    handle: "cynthialeefontaine.bsky.social",
+    displayName: "Cynthia Lee Fontaine",
+    description: "Miss Congeniality Season 8, cucu icon",
+  },
+  {
+    handle: "mistressibrooks.bsky.social",
+    displayName: "Mistress Isabelle Brooks",
+    description: "Season 15 finalist, pageant powerhouse",
+  },
+  {
+    handle: "mariahbalenciaga.bsky.social",
+    displayName: "Mariah Balenciaga",
+    description: "Season 3 and All Stars 5, Haus of Balenciaga",
+  },
+  {
+    handle: "maddymorphosis.bsky.social",
+    displayName: "Maddy Morphosis",
+    description: "Season 14 queen, first straight contestant",
+  },
 ];
 
 /**
