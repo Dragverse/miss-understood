@@ -158,13 +158,24 @@ export default function HomePage() {
     loadVideos();
   }, []);
 
-  // Bytes/Shorts (vertical videos from all sources)
-  const shorts = videos.filter((v) => v.contentType === "short");
+  // Bytes/Shorts - ONLY Dragverse vertical videos (native content only)
+  const shorts = videos.filter((v) =>
+    v.contentType === "short" &&
+    ((v as any).source === "ceramic" || !(v as any).source)
+  );
 
-  // Horizontal videos (long-form content from all sources)
-  const horizontalVideos = videos.filter((v) => v.contentType === "long");
+  // Behind the Scenes - Prioritize Dragverse, include some YouTube horizontal videos
+  const dragverseHorizontal = videos.filter((v) =>
+    v.contentType === "long" &&
+    ((v as any).source === "ceramic" || !(v as any).source)
+  );
+  const youtubeHorizontal = videos.filter((v) =>
+    v.contentType === "long" &&
+    (v as any).source === "youtube"
+  ).slice(0, 6); // Limit YouTube to 6 videos
+  const horizontalVideos = [...dragverseHorizontal, ...youtubeHorizontal];
 
-  // Audio content (podcasts and music from all sources)
+  // Bangers and Podcasts - Audio content from all sources (Dragverse, YouTube, Bluesky)
   const audios = videos.filter((v) =>
     v.contentType === "podcast" || v.contentType === "music"
   );
