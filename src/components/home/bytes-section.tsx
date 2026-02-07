@@ -73,7 +73,7 @@ export function BytesSection({ shorts }: BytesSectionProps) {
             href={`/snapshots?v=${video.id}`}
             className="flex-shrink-0 snap-start"
           >
-            <div className="relative w-[180px] aspect-[9/16] rounded-[24px] overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-shadow bg-black border border-white/5">
+            <div className="relative w-[140px] sm:w-[160px] md:w-[180px] aspect-[9/16] rounded-[24px] overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-shadow bg-black border border-white/5">
               <Image
                 src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackUrl, video.livepeerAssetId)}
                 alt={video.title}

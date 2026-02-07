@@ -13,6 +13,7 @@ import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
 import { BytesSlider } from "@/components/profile/bytes-slider";
 import { LivestreamEmbed } from "@/components/profile/livestream-embed";
 import { getCreatorByHandleOrDID } from "@/lib/supabase/creators";
+import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { getVideosByCreator } from "@/lib/supabase/videos";
 import { useBlueskyProfileByHandle } from "@/lib/bluesky/hooks";
@@ -601,7 +602,7 @@ export default function DynamicProfilePage() {
                       onClick={() => router.push(`/watch/${video.id}`)}
                     >
                       <Image
-                        src={video.thumbnail || "/default-thumbnail.jpg"}
+                        src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackUrl, video.livepeerAssetId)}
                         alt={video.title}
                         fill
                         className="object-cover group-hover:opacity-80 transition-opacity"
@@ -653,7 +654,7 @@ export default function DynamicProfilePage() {
                         }}
                       >
                         <Image
-                          src={byte.thumbnail || "/default-thumbnail.jpg"}
+                          src={getSafeThumbnail(byte.thumbnail, '/default-thumbnail.jpg', byte.playbackUrl, byte.livepeerAssetId)}
                           alt={byte.title}
                           fill
                           className="object-cover group-hover:opacity-80 transition-opacity"
@@ -708,7 +709,7 @@ export default function DynamicProfilePage() {
                       onClick={() => router.push(`/listen/${audio.id}`)}
                     >
                       <Image
-                        src={audio.thumbnail || "/default-thumbnail.jpg"}
+                        src={getSafeThumbnail(audio.thumbnail, '/default-thumbnail.jpg', audio.playbackUrl, audio.livepeerAssetId)}
                         alt={audio.title}
                         fill
                         className="object-cover group-hover:opacity-80 transition-opacity"
@@ -755,7 +756,7 @@ export default function DynamicProfilePage() {
                         className="group relative aspect-square bg-black overflow-hidden cursor-pointer"
                       >
                         <Image
-                          src={photo.thumbnail}
+                          src={getSafeThumbnail(photo.thumbnail, '/default-thumbnail.jpg')}
                           alt={photo.description || "Photo"}
                           fill
                           className="object-cover group-hover:opacity-80 transition-opacity"
