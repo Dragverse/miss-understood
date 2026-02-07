@@ -584,17 +584,63 @@ function UploadPageContent() {
         setProcessingProgress(Math.round(progress * 100));
       });
 
+      toast.success("Video processing complete! 🎉");
+
       // Save video metadata to Supabase via backend API
       try {
+        // Upload extracted thumbnail to Supabase if exists
+        let thumbnailUrl: string | null = null;
 
-        // For audio files or if thumbnail is too large, use Livepeer's auto-generated thumbnail
-        // Base64 thumbnails can exceed API body size limits
-        const useLivepeerThumbnail = formData.mediaType === "audio" ||
-                                     (formData.thumbnailPreview && formData.thumbnailPreview.length > 500000);
+        if (formData.thumbnail && formData.mediaType !== "audio") {
+          toast("Uploading thumbnail...");
+          try {
+            let thumbnailToUpload = formData.thumbnail;
 
-        const thumbnailUrl = useLivepeerThumbnail
-          ? `https://image.lp-playback.studio/image/${readyAsset.playbackId}/thumbnail.webp`
-          : formData.thumbnailPreview || `https://image.lp-playback.studio/image/${readyAsset.playbackId}/thumbnail.webp`;
+            // Compress if > 1MB (same logic as update function)
+            if (formData.thumbnail.size > 1024 * 1024) {
+              console.log("[Upload] Compressing thumbnail...");
+              const imageCompression = (await import("browser-image-compression")).default;
+              thumbnailToUpload = await imageCompression(formData.thumbnail, {
+                maxSizeMB: 1,
+                maxWidthOrHeight: 1920,
+                useWebWorker: true,
+              });
+              console.log("[Upload] Thumbnail compressed:", {
+                originalSize: `${(formData.thumbnail.size / 1024).toFixed(1)}KB`,
+                compressedSize: `${(thumbnailToUpload.size / 1024).toFixed(1)}KB`,
+              });
+            }
+
+            // Upload to Supabase Storage
+            const thumbnailFormData = new FormData();
+            thumbnailFormData.append("file", thumbnailToUpload);
+
+            const uploadResponse = await fetch("/api/upload/image-v2", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${authToken}` },
+              body: thumbnailFormData,
+            });
+
+            if (uploadResponse.ok) {
+              const uploadResult = await uploadResponse.json();
+              if (uploadResult.success && uploadResult.url) {
+                thumbnailUrl = uploadResult.url;
+                console.log("[Upload] Thumbnail uploaded to Supabase:", thumbnailUrl);
+                toast.success("Thumbnail uploaded!");
+              }
+            } else {
+              console.error("[Upload] Thumbnail upload failed:", await uploadResponse.text());
+            }
+          } catch (error) {
+            console.error("[Upload] Thumbnail upload error:", error);
+          }
+        }
+
+        // Fallback to Livepeer auto-generated thumbnail if no uploaded thumbnail
+        if (!thumbnailUrl) {
+          thumbnailUrl = `https://image.lp-playback.studio/image/${readyAsset.playbackId}/thumbnail.webp`;
+          console.log("[Upload] Using Livepeer auto-generated thumbnail");
+        }
 
         const metadataResponse = await fetch("/api/video/create", {
           method: "POST",
