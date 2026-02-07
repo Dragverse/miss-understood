@@ -38,6 +38,12 @@ export function getSafeThumbnail(
     else if (thumbnail.startsWith('data:')) {
       return thumbnail;
     }
+    // Reject stored Livepeer URLs (regenerate them dynamically instead)
+    // Stored Livepeer URLs might return 502 if thumbnail isn't ready or service has issues
+    else if (thumbnail.includes('image.lp-playback.studio/image/') && thumbnail.includes('/thumbnail.webp')) {
+      console.warn('[Thumbnail] Skipping stored Livepeer URL - will regenerate dynamically');
+      // Continue to fallback chain to regenerate with current playbackId
+    }
     // Reject Supabase .blob files (failed uploads that stored filename instead of URL)
     else if (thumbnail.includes('.blob') && thumbnail.includes('supabase')) {
       console.warn('[Thumbnail] Rejecting broken Supabase .blob URL:', thumbnail);
