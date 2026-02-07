@@ -8,8 +8,8 @@
   --font-sans: var(--font-parkinsans);
   --font-mono: var(--font-geist-mono);
   --font-parkinsans: var(--font-parkinsans);
-  --font-donut-hole: var(--font-donut-hole);
-  --font-heading: var(--font-donut-hole), var(--font-parkinsans);
+  --font-rammetto: var(--font-rammetto);
+  --font-heading: var(--font-rammetto), var(--font-parkinsans);
 
   /* Custom border radius for video containers */
   --radius-large: 1rem;
@@ -219,17 +219,17 @@
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading) !important;
-  }
-  h1, h3 {
     text-transform: uppercase;
   }
 
   /* Utility classes for explicit font control */
   .font-heading {
     font-family: var(--font-heading) !important;
+    text-transform: uppercase;
   }
-  .font-donut {
-    font-family: var(--font-donut-hole) !important;
+  .font-rammetto {
+    font-family: var(--font-rammetto) !important;
+    text-transform: uppercase;
   }
 
   /* Mobile menu slide animation */

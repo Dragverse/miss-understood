@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Parkinsans } from "next/font/google";
-import localFont from "next/font/local";
+import { Parkinsans, Rammetto_One } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Layout } from "@/components/layout";
 
-const donutHole = localFont({
-  src: "../../public/fonts/DonutHole.otf",
-  variable: "--font-donut-hole",
+const rammettoOne = Rammetto_One({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-rammetto",
   display: "swap",
 });
 
@@ -49,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${donutHole.variable} ${parkinsans.variable} font-parkinsans antialiased`}>
+      <body className={`${rammettoOne.variable} ${parkinsans.variable} font-parkinsans antialiased`}>
         <Providers>
           <Layout>{children}</Layout>
         </Providers>
