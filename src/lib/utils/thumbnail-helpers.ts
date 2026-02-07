@@ -39,6 +39,11 @@ export function getSafeThumbnail(
       console.warn('[Thumbnail] Rejecting data URL (too large or invalid)');
       // Continue to fallback chain
     }
+    // Reject Supabase .blob files (failed uploads that stored filename instead of URL)
+    else if (thumbnail.includes('.blob') && thumbnail.includes('supabase')) {
+      console.warn('[Thumbnail] Rejecting broken Supabase .blob URL:', thumbnail);
+      // Continue to fallback chain
+    }
     // Try to use the thumbnail URL
     else {
       try {
