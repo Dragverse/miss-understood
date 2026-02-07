@@ -709,7 +709,7 @@ export default function DynamicProfilePage() {
                       onClick={() => router.push(`/listen/${audio.id}`)}
                     >
                       <Image
-                        src={getSafeThumbnail(audio.thumbnail, '/default-thumbnail.jpg', audio.playbackId)}
+                        src={getSafeThumbnail(audio.thumbnail, '/default-thumbnail.jpg', (audio as any).playbackId)}
                         alt={audio.title}
                         fill
                         className="object-cover group-hover:opacity-80 transition-opacity"
@@ -756,7 +756,7 @@ export default function DynamicProfilePage() {
                         className="group relative aspect-square bg-black overflow-hidden cursor-pointer"
                       >
                         <Image
-                          src={getSafeThumbnail(photo.thumbnail, '/default-thumbnail.jpg', photo.playbackId)}
+                          src={getSafeThumbnail(photo.thumbnail, '/default-thumbnail.jpg', (photo as any).playbackId)}
                           alt={photo.description || "Photo"}
                           fill
                           className="object-cover group-hover:opacity-80 transition-opacity"
