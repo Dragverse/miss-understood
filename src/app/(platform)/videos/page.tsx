@@ -94,7 +94,7 @@ export default function VideosPage() {
         id: v.id,
         title: v.title,
         description: v.description || "",
-        thumbnail: v.thumbnail || "/default-thumbnail.jpg",
+        thumbnail: v.thumbnail || null,
         duration: v.duration || 0,
         views: v.views,
         likes: v.likes,
