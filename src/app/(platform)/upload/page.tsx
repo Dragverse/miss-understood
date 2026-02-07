@@ -636,10 +636,10 @@ function UploadPageContent() {
           }
         }
 
-        // Fallback to Livepeer auto-generated thumbnail if no uploaded thumbnail
+        // Don't store Livepeer URLs - let getSafeThumbnail() generate them dynamically
+        // This prevents storing URLs that might return 502 errors if thumbnail isn't ready
         if (!thumbnailUrl) {
-          thumbnailUrl = `https://image.lp-playback.studio/image/${readyAsset.playbackId}/thumbnail.webp`;
-          console.log("[Upload] Using Livepeer auto-generated thumbnail");
+          console.log("[Upload] No thumbnail uploaded - will use dynamic Livepeer fallback");
         }
 
         const metadataResponse = await fetch("/api/video/create", {
