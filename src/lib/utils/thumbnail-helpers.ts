@@ -24,27 +24,46 @@ function extractPlaybackId(playbackUrl: string): string | null {
 export function getSafeThumbnail(
   thumbnail: string | null | undefined,
   fallback: string = '/default-thumbnail.jpg',
-  playbackUrl?: string
+  playbackUrl?: string,
+  playbackId?: string
 ): string {
   // 1. Try provided thumbnail if valid
   if (thumbnail && thumbnail.trim() !== '' && !thumbnail.includes('default-thumbnail')) {
-    try {
-      new URL(thumbnail);
-      return thumbnail;
-    } catch {
-      // Invalid URL, continue to fallback chain
+    // Reject blob URLs (from old broken uploads)
+    if (thumbnail.startsWith('blob:')) {
+      console.warn('[Thumbnail] Rejecting blob URL:', thumbnail);
+      // Continue to fallback chain
+    }
+    // Reject data URLs that are too large or invalid
+    else if (thumbnail.startsWith('data:')) {
+      console.warn('[Thumbnail] Rejecting data URL (too large or invalid)');
+      // Continue to fallback chain
+    }
+    // Try to use the thumbnail URL
+    else {
+      try {
+        new URL(thumbnail);
+        return thumbnail;
+      } catch {
+        // Invalid URL, continue to fallback chain
+      }
     }
   }
 
-  // 2. Try Livepeer auto-generated thumbnail if playbackUrl provided
+  // 2. Try Livepeer auto-generated thumbnail if playbackId provided directly
+  if (playbackId && playbackId.trim() !== '') {
+    return `https://image.lp-playback.studio/image/${playbackId}/thumbnail.webp`;
+  }
+
+  // 3. Try Livepeer auto-generated thumbnail if playbackUrl provided
   if (playbackUrl) {
-    const playbackId = extractPlaybackId(playbackUrl);
-    if (playbackId) {
-      return `https://image.lp-playback.studio/image/${playbackId}/thumbnail.webp`;
+    const extractedPlaybackId = extractPlaybackId(playbackUrl);
+    if (extractedPlaybackId) {
+      return `https://image.lp-playback.studio/image/${extractedPlaybackId}/thumbnail.webp`;
     }
   }
 
-  // 3. Final fallback
+  // 4. Final fallback
   return fallback;
 }
 

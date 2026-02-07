@@ -53,7 +53,7 @@ export function HorizontalVideosSection({ videos }: HorizontalVideosSectionProps
             {/* Thumbnail */}
             <div className="relative aspect-video rounded-2xl overflow-hidden mb-3 shadow-md">
               <Image
-                src={getSafeThumbnail(video.thumbnail)}
+                src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackUrl, video.livepeerAssetId)}
                 alt={video.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"
