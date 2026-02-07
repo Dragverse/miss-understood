@@ -90,15 +90,15 @@ export default function HomePage() {
             })
         : Promise.resolve([]);
 
-      // YouTube videos
+      // YouTube videos (RSS feeds - no API quota)
       const youtubePromise = fetch("/api/youtube/feed?limit=30&rssOnly=true")
-        .then((res) => res.json())
+        .then((res) => (res.ok ? res.json() : { videos: [] }))
         .then((data) => {
-          if (data.videos && data.videos.length > 0) {
-            console.log(`Loaded ${data.videos.length} videos from YouTube`);
-            return data.videos;
+          const videos = data.videos || [];
+          if (videos.length > 0) {
+            console.log(`Loaded ${videos.length} videos from YouTube RSS`);
           }
-          return [];
+          return videos;
         })
         .catch((error) => {
           console.warn("Failed to load videos from YouTube:", error);
@@ -106,18 +106,18 @@ export default function HomePage() {
           return [];
         });
 
-      // Bluesky videos
+      // Bluesky videos (curated accounts)
       const blueskyPromise = fetch("/api/bluesky/feed?limit=30&sortBy=latest&contentType=all")
-        .then((res) => res.json())
+        .then((res) => (res.ok ? res.json() : { posts: [], videos: [] }))
         .then((data) => {
-          if (data.videos && data.videos.length > 0) {
-            console.log(`Loaded ${data.videos.length} videos from Bluesky`);
-            return data.videos;
+          const posts = data.posts || data.videos || [];
+          if (posts.length > 0) {
+            console.log(`Loaded ${posts.length} posts from Bluesky`);
           }
-          return [];
+          return posts;
         })
         .catch((error) => {
-          console.warn("Failed to load videos from Bluesky:", error);
+          console.warn("Failed to load content from Bluesky:", error);
           failedSources.push("Bluesky");
           return [];
         });
