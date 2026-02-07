@@ -126,7 +126,7 @@ export async function transformVideosWithCreators(supabaseVideos: SupabaseVideo[
       likes: v.likes,
       createdAt: new Date(v.created_at),
       playbackUrl: v.playback_url || '',
-      livepeerAssetId: v.livepeer_asset_id || '',
+      livepeerAssetId: v.playback_id || v.livepeer_asset_id || '',
       contentType: v.content_type || 'long',
       creator,
       category: v.category || 'Other',

@@ -100,7 +100,7 @@ export default function VideosPage() {
         likes: v.likes,
         createdAt: new Date(v.created_at),
         playbackUrl: v.playback_url || "",
-        livepeerAssetId: v.livepeer_asset_id || "",
+        livepeerAssetId: v.playback_id || v.livepeer_asset_id || "",
         contentType: (v.content_type as any) || "long",
         creator: v.creator ? {
           did: v.creator.did,

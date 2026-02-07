@@ -52,7 +52,7 @@ export default function HomePage() {
                   likes: v.likes || 0,
                   createdAt: new Date(v.created_at),
                   playbackUrl: v.playback_url || "",
-                  livepeerAssetId: v.livepeer_asset_id,
+                  livepeerAssetId: v.playback_id || v.livepeer_asset_id || "",
                   contentType: v.content_type,
                   creator: v.creator ? {
                     did: v.creator.did,
