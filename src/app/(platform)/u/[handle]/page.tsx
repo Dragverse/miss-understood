@@ -602,7 +602,7 @@ export default function DynamicProfilePage() {
                       onClick={() => router.push(`/watch/${video.id}`)}
                     >
                       <Image
-                        src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg')}
+                        src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackId)}
                         alt={video.title}
                         fill
                         className="object-cover group-hover:opacity-80 transition-opacity"
@@ -654,7 +654,7 @@ export default function DynamicProfilePage() {
                         }}
                       >
                         <Image
-                          src={getSafeThumbnail(byte.thumbnail, '/default-thumbnail.jpg')}
+                          src={getSafeThumbnail(byte.thumbnail, '/default-thumbnail.jpg', byte.playbackId)}
                           alt={byte.title}
                           fill
                           className="object-cover group-hover:opacity-80 transition-opacity"
@@ -709,7 +709,7 @@ export default function DynamicProfilePage() {
                       onClick={() => router.push(`/listen/${audio.id}`)}
                     >
                       <Image
-                        src={getSafeThumbnail(audio.thumbnail, '/default-thumbnail.jpg')}
+                        src={getSafeThumbnail(audio.thumbnail, '/default-thumbnail.jpg', audio.playbackId)}
                         alt={audio.title}
                         fill
                         className="object-cover group-hover:opacity-80 transition-opacity"
@@ -756,7 +756,7 @@ export default function DynamicProfilePage() {
                         className="group relative aspect-square bg-black overflow-hidden cursor-pointer"
                       >
                         <Image
-                          src={getSafeThumbnail(photo.thumbnail, '/default-thumbnail.jpg')}
+                          src={getSafeThumbnail(photo.thumbnail, '/default-thumbnail.jpg', photo.playbackId)}
                           alt={photo.description || "Photo"}
                           fill
                           className="object-cover group-hover:opacity-80 transition-opacity"

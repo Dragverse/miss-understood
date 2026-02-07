@@ -254,7 +254,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 <Player.Container className="h-full w-full">
                   <Player.Poster
                     className="object-cover"
-                    src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg')}
+                    src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.playbackId)}
                   />
                   <Player.Video
                     ref={playerRef}

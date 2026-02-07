@@ -323,7 +323,7 @@ export function PostCard({ post }: PostCardProps) {
         // Fallback to thumbnail image if no valid playback URL
         <div className="relative w-full rounded-xl overflow-hidden mb-4 bg-[#0f071a] group cursor-pointer">
           <Image
-            src={getSafeThumbnail(post.thumbnail)}
+            src={getSafeThumbnail(post.thumbnail, '/default-thumbnail.jpg', (post as any).playbackId)}
             alt="Post image"
             width={800}
             height={600}

@@ -6,33 +6,42 @@
 /**
  * Get safe thumbnail URL - trusts valid URLs, falls back for broken ones
  * Simple rule: if it looks like a valid URL, use it. Otherwise, use fallback.
+ *
+ * Optional: Pass playbackId to generate Livepeer thumbnail as fallback
  */
 export function getSafeThumbnail(
   thumbnail: string | null | undefined,
-  fallback: string = '/default-thumbnail.jpg'
+  fallback: string = '/default-thumbnail.jpg',
+  playbackId?: string | null
 ): string {
-  // No thumbnail provided
-  if (!thumbnail || thumbnail.trim() === '') {
-    return fallback;
+  // 1. Try provided thumbnail if valid
+  if (thumbnail && thumbnail.trim() !== '') {
+    // Reject obviously broken URLs
+    if (thumbnail.startsWith('blob:')) {
+      // Fall through to Livepeer or default fallback
+    }
+    // Data URLs are valid (base64-encoded images)
+    else if (thumbnail.startsWith('data:')) {
+      return thumbnail;
+    }
+    // Try to validate as URL
+    else {
+      try {
+        new URL(thumbnail);
+        return thumbnail;
+      } catch {
+        // Invalid URL, fall through
+      }
+    }
   }
 
-  // Reject obviously broken URLs
-  if (thumbnail.startsWith('blob:')) {
-    return fallback;
+  // 2. Try Livepeer auto-generated thumbnail if playbackId provided
+  if (playbackId && playbackId.trim() !== '') {
+    return `https://image.lp-playback.studio/image/${playbackId}/thumbnail.webp`;
   }
 
-  // Data URLs are valid (base64-encoded images)
-  if (thumbnail.startsWith('data:')) {
-    return thumbnail;
-  }
-
-  // Try to validate as URL
-  try {
-    new URL(thumbnail);
-    return thumbnail;
-  } catch {
-    return fallback;
-  }
+  // 3. Final fallback
+  return fallback;
 }
 
 /**
