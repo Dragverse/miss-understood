@@ -163,8 +163,8 @@ async function rssVideoToVideo(rssVideo: RSSVideo): Promise<Video> {
 
   // Detect shorts based on title/description keywords and YouTube patterns
   // YouTube Shorts often have "#shorts" hashtag or specific keywords
-  const titleLower = title.toLowerCase();
-  const descLower = description.toLowerCase();
+  const titleLower = (title || "").toString().toLowerCase();
+  const descLower = (description || "").toString().toLowerCase();
   const isLikelyShort =
     titleLower.includes("#shorts") ||
     titleLower.includes("#short") ||
@@ -219,13 +219,18 @@ export async function fetchCuratedDragContent(limit: number = 50): Promise<Video
   try {
     console.log(`[YouTube RSS] Fetching from ${CURATED_DRAG_CHANNELS.length} curated channels...`);
 
-    // Fetch RSS feeds from all channels in parallel
-    const feedPromises = CURATED_DRAG_CHANNELS.map(channel =>
-      fetchChannelRSS(channel.channelId)
-    );
+    // Fetch RSS feeds in batches of 10 to avoid overwhelming the system
+    const BATCH_SIZE = 10;
+    const allVideos: RSSVideo[] = [];
 
-    const allFeeds = await Promise.all(feedPromises);
-    const allVideos = allFeeds.flat();
+    for (let i = 0; i < CURATED_DRAG_CHANNELS.length; i += BATCH_SIZE) {
+      const batch = CURATED_DRAG_CHANNELS.slice(i, i + BATCH_SIZE);
+      console.log(`[YouTube RSS] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(CURATED_DRAG_CHANNELS.length / BATCH_SIZE)} (${batch.length} channels)`);
+
+      const feedPromises = batch.map(channel => fetchChannelRSS(channel.channelId));
+      const batchFeeds = await Promise.all(feedPromises);
+      allVideos.push(...batchFeeds.flat());
+    }
 
     console.log(`[YouTube RSS] Fetched ${allVideos.length} total videos from RSS feeds`);
 
@@ -269,13 +274,16 @@ export async function fetchCuratedMusicPlaylists(limit: number = 50): Promise<Vi
     const { DRAG_MUSIC_PLAYLISTS } = await import("./channels");
     console.log(`[YouTube RSS] Fetching from ${DRAG_MUSIC_PLAYLISTS.length} music playlists...`);
 
-    // Fetch RSS feeds from all playlists in parallel
-    const playlistPromises = DRAG_MUSIC_PLAYLISTS.map(playlist =>
-      fetchPlaylistRSS(playlist.playlistId)
-    );
+    // Fetch RSS feeds in batches of 5 to avoid overwhelming the system
+    const BATCH_SIZE = 5;
+    const allVideos: RSSVideo[] = [];
 
-    const allFeeds = await Promise.all(playlistPromises);
-    const allVideos = allFeeds.flat();
+    for (let i = 0; i < DRAG_MUSIC_PLAYLISTS.length; i += BATCH_SIZE) {
+      const batch = DRAG_MUSIC_PLAYLISTS.slice(i, i + BATCH_SIZE);
+      const playlistPromises = batch.map(playlist => fetchPlaylistRSS(playlist.playlistId));
+      const batchFeeds = await Promise.all(playlistPromises);
+      allVideos.push(...batchFeeds.flat());
+    }
 
     console.log(`[YouTube RSS] Fetched ${allVideos.length} videos from music playlists`);
 
