@@ -68,7 +68,7 @@ function SnapshotsContent() {
           .then((data) => data.posts || [])
           .catch(() => []),
         // YouTube Snapshots (via RSS from curated drag channels)
-        fetch("/api/youtube/feed?limit=100&snapshotsOnly=true&rssOnly=true")
+        fetch("/api/youtube/feed?limit=100&shortsOnly=true&rssOnly=true")
           .then((res) => (res.ok ? res.json() : { videos: [] }))
           .then((data) => data.videos || [])
           .catch(() => []),
@@ -129,6 +129,14 @@ function SnapshotsContent() {
         const isShortDuration = v.duration > 0 && v.duration < 60;
         const isShortType = v.contentType === "short";
         const hasValidUrl = isValidPlaybackUrl(v.playbackUrl);
+        const isExternalVideo = (v as any).source === "youtube" || (v as any).source === "bluesky";
+
+        // For external videos (YouTube/Bluesky), allow if marked as short OR if it has external URL
+        if (isExternalVideo) {
+          return isShortType || (v as any).externalUrl || hasValidUrl;
+        }
+
+        // For local videos, require valid playback URL
         return hasValidUrl && (isShortType || isShortDuration);
       });
 
