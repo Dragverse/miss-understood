@@ -30,6 +30,21 @@ function FeedContent() {
   const [refreshing, setRefreshing] = useState(false);
   const [newContentAvailable, setNewContentAvailable] = useState(false);
 
+  // Suppress YouTube tracking errors (blocked by ad blockers)
+  useEffect(() => {
+    const originalError = console.error;
+    console.error = (...args) => {
+      const msg = args[0]?.toString() || '';
+      if (msg.includes('youtube.com/youtubei') || msg.includes('ERR_BLOCKED_BY_CLIENT')) {
+        return; // Suppress YouTube tracking errors
+      }
+      originalError.apply(console, args);
+    };
+    return () => {
+      console.error = originalError;
+    };
+  }, []);
+
   // Check Bluesky session status, Farcaster connection, and backfill posts
   useEffect(() => {
     async function checkBlueskySession() {
@@ -364,12 +379,19 @@ function FeedContent() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Dragverse Native Posts */}
+              {/* Dragverse Native Posts - Use BlueskyPostCard for audio player support */}
               {dragversePosts.map((post) => (
-                <PostCard key={`dragverse-${post.id}`} post={post} onDelete={handlePostDeleted} />
+                <BlueskyPostCard
+                  key={`dragverse-${post.id}`}
+                  post={{
+                    ...post,
+                    description: post.text_content || post.description || "",
+                    createdAt: post.created_at || post.createdAt,
+                  }}
+                />
               ))}
 
-              {/* Bluesky Posts */}
+              {/* External Bluesky Posts */}
               {posts.map((post) => (
                 <BlueskyPostCard key={`bluesky-${post.id}`} post={post} />
               ))}
