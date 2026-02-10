@@ -135,12 +135,23 @@ function SnapshotsContent() {
       );
 
       console.log(`[Snapshots] Filtered ${sortedSnapshots.length} snapshots from ${transformedSupabase.length} total videos`);
-      console.log(`[Snapshots] Sample video:`, sortedSnapshots[0] ? {
-        title: sortedSnapshots[0].title,
-        playbackUrl: sortedSnapshots[0].playbackUrl,
-        contentType: sortedSnapshots[0].contentType,
-        duration: sortedSnapshots[0].duration
-      } : 'No videos');
+
+      if (sortedSnapshots[0]) {
+        console.log(`[Snapshots] First 3 videos with full details:`);
+        sortedSnapshots.slice(0, 3).forEach((v, i) => {
+          console.log(`  Video ${i + 1}:`, {
+            id: v.id,
+            title: v.title,
+            playbackUrl: v.playbackUrl,
+            livepeerAssetId: v.livepeerAssetId,
+            contentType: v.contentType,
+            duration: v.duration,
+            thumbnail: v.thumbnail
+          });
+        });
+      } else {
+        console.log(`[Snapshots] No videos found!`);
+      }
 
       setSnapshots(sortedSnapshots);
     } catch (error) {
