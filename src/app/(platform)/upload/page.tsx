@@ -13,6 +13,7 @@ import { saveLocalVideo } from "@/lib/utils/local-storage";
 import { getVideo } from "@/lib/supabase/videos";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 import imageCompression from "browser-image-compression";
+import { FarcasterIcon } from "@/components/profile/farcaster-badge";
 
 function UploadPageContent() {
   const { isAuthenticated, signIn, user } = useAuthUser();
@@ -1321,9 +1322,7 @@ function UploadPageContent() {
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm2-1a1 1 0 00-1 1v12a1 1 0 001 1h16a1 1 0 001-1V6a1 1 0 00-1-1H4z"/>
-                  </svg>
+                  <FarcasterIcon className="w-5 h-5" />
                   <span className="font-semibold text-white">Cross-post to Farcaster</span>
                 </div>
                 <p className="text-sm text-gray-400 mt-1">

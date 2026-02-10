@@ -5,6 +5,7 @@ import { FiX, FiCopy, FiCheck, FiClock, FiEye, FiTwitter, FiFacebook } from "rea
 import { FaWhatsapp } from "react-icons/fa";
 import { SiBluesky, SiThreads } from "react-icons/si";
 import toast from "react-hot-toast";
+import { FarcasterIcon } from "@/components/profile/farcaster-badge";
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -248,11 +249,7 @@ export function ShareModal({
                 onClick={() => shareToSocial("farcaster")}
                 className="flex flex-col items-center gap-2 p-4 bg-[#0f071a] hover:bg-[#8465CB]/10 border border-[#2f2942] hover:border-[#8465CB]/50 rounded-xl transition"
               >
-                <svg className="w-6 h-6 text-[#8465CB]" viewBox="0 0 1000 1000" fill="currentColor">
-                  <path d="M257.778 155.556H742.222V844.444H671.111V528.889H670.414C662.554 441.677 589.258 373.333 500 373.333C410.742 373.333 337.446 441.677 329.586 528.889H328.889V844.444H257.778V155.556Z"/>
-                  <path d="M128.889 253.333L0 382.222V1000H155.556V462.778L184.444 433.889H219.444V382.222H128.889V253.333Z"/>
-                  <path d="M871.111 253.333L1000 382.222V1000H844.444V462.778L815.556 433.889H780.556V382.222H871.111V253.333Z"/>
-                </svg>
+                <FarcasterIcon className="w-6 h-6" />
                 <span className="text-xs">Farcaster</span>
               </button>
               <button

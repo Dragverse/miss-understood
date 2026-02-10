@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { FiExternalLink } from "react-icons/fi";
 
 interface FarcasterBadgeProps {
@@ -18,12 +19,14 @@ export function FarcasterBadge({ username, className = "" }: FarcasterBadgeProps
       title="Connected to Farcaster"
       className={`inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 transition group ${className}`}
     >
-      {/* Farcaster icon (simplified) */}
-      <svg className="w-4 h-4" viewBox="0 0 1000 1000" fill="currentColor">
-        <path d="M257.778 155.556H742.222V844.444H671.111V528.889H670.414C662.554 441.677 589.258 373.333 500 373.333C410.742 373.333 337.446 441.677 329.586 528.889H328.889V844.444H257.778V155.556Z" />
-        <path d="M128.889 253.333L156.111 155.556H193.333V253.333H128.889Z" />
-        <path d="M806.667 253.333L833.889 155.556H871.111V253.333H806.667Z" />
-      </svg>
+      {/* Farcaster icon */}
+      <Image
+        src="/farcaster-transparent-white.svg"
+        alt="Farcaster"
+        width={16}
+        height={16}
+        className="w-4 h-4"
+      />
       <FiExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition" />
     </a>
   );
@@ -36,12 +39,30 @@ export function FarcasterBadge({ username, className = "" }: FarcasterBadgeProps
 export function FarcasterIndicator({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-1 text-xs text-purple-400 ${className}`}>
-      <svg className="w-3 h-3" viewBox="0 0 1000 1000" fill="currentColor">
-        <path d="M257.778 155.556H742.222V844.444H671.111V528.889H670.414C662.554 441.677 589.258 373.333 500 373.333C410.742 373.333 337.446 441.677 329.586 528.889H328.889V844.444H257.778V155.556Z" />
-        <path d="M128.889 253.333L156.111 155.556H193.333V253.333H128.889Z" />
-        <path d="M806.667 253.333L833.889 155.556H871.111V253.333H806.667Z" />
-      </svg>
+      <Image
+        src="/farcaster-transparent-white.svg"
+        alt="Farcaster"
+        width={12}
+        height={12}
+        className="w-3 h-3"
+      />
       <span>from Farcaster</span>
     </span>
+  );
+}
+
+/**
+ * Farcaster Icon Component
+ * Reusable Farcaster icon for use throughout the app
+ */
+export function FarcasterIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <Image
+      src="/farcaster-transparent-white.svg"
+      alt="Farcaster"
+      width={20}
+      height={20}
+      className={className}
+    />
   );
 }

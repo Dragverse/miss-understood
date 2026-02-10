@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft, FiAlertTriangle, FiShare2, FiDollarSign } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import Image from "next/image";
+import { FarcasterIcon } from "@/components/profile/farcaster-badge";
 import toast from "react-hot-toast";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { usePrivy, useFundWallet } from "@privy-io/react-auth";
@@ -1194,8 +1195,8 @@ export default function SettingsPage() {
                   <div className="p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
-                          <span className="text-white font-bold text-lg">F</span>
+                        <div className="w-10 h-10 rounded-full bg-purple-600/20 flex items-center justify-center">
+                          <FarcasterIcon className="w-6 h-6" />
                         </div>
                         <div>
                           <p className="font-semibold">Farcaster</p>
@@ -1585,8 +1586,8 @@ export default function SettingsPage() {
                   <div className="p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
-                          <span className="text-white font-bold text-lg">F</span>
+                        <div className="w-10 h-10 rounded-full bg-purple-600/20 flex items-center justify-center">
+                          <FarcasterIcon className="w-6 h-6" />
                         </div>
                         <div>
                           <p className="font-semibold">Farcaster</p>

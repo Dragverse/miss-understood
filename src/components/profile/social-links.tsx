@@ -2,6 +2,7 @@ import { FiLink2, FiGlobe } from "react-icons/fi";
 import { FaInstagram, FaTiktok } from "react-icons/fa";
 import { SiBluesky } from "react-icons/si";
 import { Creator } from "@/types";
+import { FarcasterIcon } from "@/components/profile/farcaster-badge";
 
 interface SocialLinksProps {
   creator: Creator;
@@ -27,7 +28,7 @@ export function SocialLinks({ creator }: SocialLinksProps) {
       name: "Farcaster",
       handle: creator.farcasterHandle,
       url: creator.farcasterHandle ? `https://warpcast.com/${creator.farcasterHandle}` : null,
-      icon: <span className="text-sm font-bold">F</span>,
+      icon: <FarcasterIcon className="w-5 h-5" />,
       color: "text-purple-500",
     },
     {
