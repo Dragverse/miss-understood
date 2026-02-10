@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     // Request upload URL from Livepeer with extended timeout
     console.log("🔄 Requesting upload URL from Livepeer...");
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout (Livepeer can be slow)
 
     try {
       const response = await fetch(`${LIVEPEER_API_URL}/asset/request-upload`, {
