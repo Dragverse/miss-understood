@@ -121,12 +121,27 @@ export async function POST(request: NextRequest) {
       dragverse: { success: true, url: `/posts/${post.id}` },
     };
 
+    // Fetch creator info for username in crosspost message
+    const { data: creator } = await supabase
+      .from("creators")
+      .select("username, handle")
+      .eq("did", userDID)
+      .single();
+
+    const username = creator?.username || creator?.handle || "a creator";
+    const postUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.dragverse.app'}/posts/${post.id}`;
+
+    // Format crosspost message: "Watch @username at the Dragverse: [link]"
+    const crosspostText = textContent
+      ? `${textContent}\n\nWatch @${username} at the Dragverse: ${postUrl}`
+      : `Check out this post from @${username} at the Dragverse: ${postUrl}`;
+
     // Cross-post to Bluesky
     if (platforms.bluesky) {
       console.log("[Posts] Cross-posting to Bluesky...");
       try {
         const blueskyResult = await postToBluesky(request, {
-          text: textContent || "",
+          text: crosspostText,
           media: mediaUrls.map((url: string, index: number) => ({
             url,
             alt: `Image ${index + 1}`,
@@ -153,7 +168,7 @@ export async function POST(request: NextRequest) {
       console.log("[Posts] Cross-posting to Farcaster...");
       try {
         const farcasterResult = await postToFarcaster({
-          text: textContent || "",
+          text: crosspostText,
           media: mediaUrls.map((url: string, index: number) => ({
             url,
             alt: `Image ${index + 1}`,
