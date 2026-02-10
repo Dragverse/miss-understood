@@ -88,9 +88,13 @@ export async function POST(request: NextRequest) {
       asset: data.asset,
     });
   } catch (error) {
-    console.error("Upload request error:", error);
+    console.error("❌ Upload request error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : String(error),
+        stack: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : undefined) : undefined
+      },
       { status: 500 }
     );
   }
