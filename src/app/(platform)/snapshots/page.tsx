@@ -67,6 +67,12 @@ function SnapshotsContent() {
         const playbackId = v.playback_id || v.livepeer_asset_id || "";
         let playbackUrl = v.playback_url || "";
 
+        // Fix incomplete URLs missing /index.m3u8 suffix (database has truncated URLs)
+        if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
+          console.log(`[Snapshots] Fixing incomplete URL for "${v.title}": ${playbackUrl} -> ${playbackUrl}/index.m3u8`);
+          playbackUrl = `${playbackUrl}/index.m3u8`;
+        }
+
         // If no playback_url but we have a playback_id, construct the Livepeer URL
         if (!playbackUrl && playbackId) {
           playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
