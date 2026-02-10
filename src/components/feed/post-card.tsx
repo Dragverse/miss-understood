@@ -79,11 +79,12 @@ export function PostCard({ post }: PostCardProps) {
     }
   }, [post.id, post.creator.did]);
 
-  // Detect and fetch audio from /listen/ links in description
+  // Detect and fetch audio from /listen/ links in description or text_content
   useEffect(() => {
     const detectAndFetchAudio = async () => {
-      // Check if description contains a /listen/ link
-      const listenLinkMatch = post.description.match(/\/listen\/([a-zA-Z0-9-]+)/);
+      // Check if description or text_content contains a /listen/ link
+      const textToCheck = post.description || (post as any).text_content || "";
+      const listenLinkMatch = textToCheck.match(/\/listen\/([a-zA-Z0-9-]+)/);
       if (!listenLinkMatch) return;
 
       const audioId = listenLinkMatch[1];
@@ -114,7 +115,7 @@ export function PostCard({ post }: PostCardProps) {
     };
 
     detectAndFetchAudio();
-  }, [post.description]);
+  }, [post.description, (post as any).text_content]);
 
   const toggleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -317,7 +318,7 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* Content */}
       <div className="text-gray-200 mb-4 whitespace-pre-wrap leading-relaxed">
-        {parseTextWithLinks(post.description)}
+        {parseTextWithLinks(post.description || (post as any).text_content || "")}
       </div>
 
       {/* Video Player or Thumbnail */}
