@@ -43,8 +43,10 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
   };
 
   const handleClick = () => {
-    // Always navigate to Dragverse watch page (embedded players will show external content)
-    router.push(`/watch/${video.id}`);
+    // Navigate to correct page based on content type
+    const isAudio = video.contentType === 'podcast' || video.contentType === 'music';
+    const targetPage = isAudio ? 'listen' : 'watch';
+    router.push(`/${targetPage}/${video.id}`);
   };
 
   const handleEdit = () => {
@@ -76,7 +78,9 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
   };
 
   const handleShare = () => {
-    const url = `${window.location.origin}/watch/${video.id}`;
+    const isAudio = video.contentType === 'podcast' || video.contentType === 'music';
+    const targetPage = isAudio ? 'listen' : 'watch';
+    const url = `${window.location.origin}/${targetPage}/${video.id}`;
     if (navigator.share) {
       navigator.share({ title: video.title, url });
     } else {

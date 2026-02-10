@@ -741,57 +741,68 @@ function UploadPageContent() {
           );
           // TODO: Implement sync retry mechanism
         } else {
-          toast.success("Video uploaded successfully!");
+          const mediaLabel = formData.mediaType === 'video' ? 'Video' : 'Audio';
+          toast.success(`${mediaLabel} uploaded successfully!`);
 
-          // Cross-post to other platforms if enabled using unified endpoint
-          if ((formData.crossPostBluesky || formData.crossPostFarcaster) && metadataResult.video?.id) {
+          // Create feed post (which also handles crossposting automatically)
+          if (metadataResult.video?.id) {
             try {
-              toast("Sharing to other platforms...");
+              toast("Creating feed post...");
 
               const token = await getAccessToken();
-              const crosspostResponse = await fetch("/api/crosspost/video", {
+              const videoUrl = `${window.location.origin}/${formData.mediaType === 'audio' ? 'listen' : 'watch'}/${metadataResult.video.id}`;
+
+              // Create post text with title, description, and link
+              const postText = `${formData.title}${formData.description ? `\n\n${formData.description}` : ''}\n\n${formData.mediaType === 'video' ? '🎬' : '🎵'} ${videoUrl}`;
+
+              // Use thumbnail or default
+              const postThumbnail = thumbnailUrl || `${window.location.origin}/default-thumbnail.jpg`;
+
+              const feedPostResponse = await fetch("/api/posts/create", {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                   Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                  videoId: metadataResult.video.id,
-                  title: formData.title,
-                  description: formData.description,
-                  thumbnailUrl: thumbnailUrl,
+                  textContent: postText,
+                  mediaUrls: [postThumbnail],
+                  mediaTypes: ["image"],
+                  visibility: formData.visibility,
                   platforms: {
+                    dragverse: true,
                     bluesky: formData.crossPostBluesky,
                     farcaster: formData.crossPostFarcaster,
                   },
                 }),
               });
 
-              if (crosspostResponse.ok) {
-                const crosspostData = await crosspostResponse.json();
+              if (feedPostResponse.ok) {
+                const feedData = await feedPostResponse.json();
+                toast.success("Posted to Dragverse feed!");
 
-                // Handle Bluesky result
-                if (crosspostData.results.bluesky?.success) {
+                // Handle crosspost results
+                if (feedData.crosspost?.bluesky?.success) {
                   toast.success("Shared to Bluesky!");
-                } else if (crosspostData.results.bluesky?.error) {
-                  console.warn("[Upload] Bluesky failed:", crosspostData.results.bluesky.error);
-                  toast.error(`Bluesky: ${crosspostData.results.bluesky.error}`);
+                } else if (feedData.crosspost?.bluesky?.error) {
+                  console.warn("[Upload] Bluesky failed:", feedData.crosspost.bluesky.error);
+                  toast.error(`Bluesky: ${feedData.crosspost.bluesky.error}`);
                 }
 
-                // Handle Farcaster result
-                if (crosspostData.results.farcaster?.success) {
+                if (feedData.crosspost?.farcaster?.success) {
                   toast.success("Shared to Farcaster /dragverse!");
-                } else if (crosspostData.results.farcaster?.error) {
-                  console.warn("[Upload] Farcaster failed:", crosspostData.results.farcaster.error);
-                  toast.error(`Farcaster: ${crosspostData.results.farcaster.error}`);
+                } else if (feedData.crosspost?.farcaster?.error) {
+                  console.warn("[Upload] Farcaster failed:", feedData.crosspost.farcaster.error);
+                  toast.error(`Farcaster: ${feedData.crosspost.farcaster.error}`);
                 }
               } else {
-                const error = await crosspostResponse.json();
-                toast.error(`Couldn't share: ${error.error || "Unknown error"}`);
+                const error = await feedPostResponse.json();
+                console.error("[Upload] Feed post failed:", error);
+                toast.error(`Couldn't create feed post: ${error.error || "Unknown error"}`);
               }
-            } catch (crosspostError) {
-              console.error("[Upload] Crosspost error:", crosspostError);
-              toast.error("Couldn't share to other platforms. You can share manually later.");
+            } catch (feedPostError) {
+              console.error("[Upload] Feed post error:", feedPostError);
+              toast.error("Couldn't create feed post. Your upload was saved.");
             }
           }
         }
