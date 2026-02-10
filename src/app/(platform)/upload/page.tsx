@@ -1225,22 +1225,28 @@ function UploadPageContent() {
         {/* Thumbnail */}
         <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
           <div className="mb-4">
-            <label className="block text-lg font-bold uppercase tracking-widest">
+            <label className="block text-lg font-bold uppercase tracking-widest flex items-center gap-2">
               {editId ? "Cover Image (Click to change)" : "Cover Image"}
+              {!editId && (
+                <span className="text-xs font-normal px-2 py-1 bg-[#EB83EA]/20 text-[#EB83EA] rounded-full">
+                  Recommended
+                </span>
+              )}
             </label>
             {!editId && (
-              <p className="text-sm text-gray-400 mt-1">
-                Upload a custom thumbnail or we'll use a default cover image
+              <p className="text-sm mt-2">
+                <span className="text-[#EB83EA] font-semibold">⚠️ Custom thumbnails get 3x more clicks!</span>
+                <span className="text-gray-400"> Upload your own or we'll use a default cover image.</span>
               </p>
             )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <label className="flex flex-col items-center justify-center w-full px-4 py-8 border-2 border-dashed border-[#2f2942] rounded-2xl hover:border-[#EB83EA]/50 cursor-pointer transition">
+            <label className="flex flex-col items-center justify-center w-full px-4 py-8 border-2 border-dashed border-[#EB83EA]/30 rounded-2xl hover:border-[#EB83EA] hover:bg-[#EB83EA]/5 cursor-pointer transition-all">
               <FiUploadCloud className="w-8 h-8 text-[#EB83EA] mb-2" />
-              <span className="text-sm font-medium">
-                {formData.thumbnail ? formData.thumbnail.name : "Upload thumbnail"}
+              <span className="text-sm font-semibold text-[#EB83EA]">
+                {formData.thumbnail ? formData.thumbnail.name : "Click to Upload Thumbnail"}
               </span>
-              <span className="text-xs text-gray-500 mt-1">
+              <span className="text-xs text-gray-400 mt-1">
                 PNG, JPG - 1280x720px recommended
               </span>
               <input
