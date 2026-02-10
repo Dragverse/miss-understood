@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       textContent,
       mediaUrls = [],
       mediaTypes = [],
+      crosspostThumbnail, // Thumbnail for crossposting only (not stored in Dragverse post)
       mood,
       backgroundColor,
       textAlignment = "left",
@@ -153,7 +154,7 @@ export async function POST(request: NextRequest) {
         // Extract video URL and metadata for external embed
         let blueskyParams: any = { text: crosspostText };
 
-        if (isVideoPost && mediaUrls.length > 0) {
+        if (isVideoPost && (crosspostThumbnail || mediaUrls.length > 0)) {
           // Extract video URL from text
           const urlMatch = textContent.match(/https?:\/\/[^\s]+\/(watch|listen)\/[^\s]+/);
           const videoUrl = urlMatch ? urlMatch[0] : postUrl;
@@ -168,9 +169,9 @@ export async function POST(request: NextRequest) {
             uri: videoUrl,
             title: title,
             description: description,
-            thumb: mediaUrls[0], // Use first media URL as thumbnail
+            thumb: crosspostThumbnail || mediaUrls[0], // Use crosspost thumbnail or first media URL
           };
-        } else {
+        } else if (mediaUrls.length > 0) {
           // Use image embeds for regular posts
           blueskyParams.media = mediaUrls.map((url: string, index: number) => ({
             url,
@@ -199,12 +200,17 @@ export async function POST(request: NextRequest) {
     if (platforms.farcaster) {
       console.log("[Posts] Cross-posting to Farcaster...");
       try {
+        // Use crosspostThumbnail for video/audio posts, otherwise use mediaUrls
+        const farcasterMedia = crosspostThumbnail
+          ? [{ url: crosspostThumbnail, alt: "Thumbnail" }]
+          : mediaUrls.map((url: string, index: number) => ({
+              url,
+              alt: `Image ${index + 1}`,
+            }));
+
         const farcasterResult = await postToFarcaster({
           text: crosspostText,
-          media: mediaUrls.map((url: string, index: number) => ({
-            url,
-            alt: `Image ${index + 1}`,
-          })),
+          media: farcasterMedia,
           userId: userDID,
         });
 

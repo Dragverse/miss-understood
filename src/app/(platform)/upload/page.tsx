@@ -773,7 +773,7 @@ function UploadPageContent() {
 
               console.log("[Upload] Feed post data:", {
                 textContent: postText.substring(0, 50) + "...",
-                mediaUrls: [postThumbnail],
+                crosspostThumbnail: postThumbnail,
                 platforms: {
                   dragverse: true,
                   bluesky: formData.crossPostBluesky,
@@ -789,8 +789,10 @@ function UploadPageContent() {
                 },
                 body: JSON.stringify({
                   textContent: postText,
-                  mediaUrls: [postThumbnail],
-                  mediaTypes: ["image"],
+                  // Don't include media for video/audio posts in Dragverse feed
+                  // This keeps them as text posts so the inline player can work
+                  // But pass thumbnail for crossposting to other platforms
+                  crosspostThumbnail: postThumbnail,
                   visibility: formData.visibility,
                   platforms: {
                     dragverse: true,

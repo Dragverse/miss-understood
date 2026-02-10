@@ -116,14 +116,21 @@ export async function postToBluesky(
         }
       }
 
+      // Build external embed object
+      const externalEmbed: any = {
+        uri: params.external.uri,
+        title: params.external.title,
+        description: params.external.description,
+      };
+
+      // Only include thumb if upload succeeded
+      if (thumbBlob) {
+        externalEmbed.thumb = thumbBlob;
+      }
+
       embeds.push({
         $type: "app.bsky.embed.external",
-        external: {
-          uri: params.external.uri,
-          title: params.external.title,
-          description: params.external.description,
-          thumb: thumbBlob,
-        },
+        external: externalEmbed,
       });
     }
     // Image embeds (for regular photo posts)
