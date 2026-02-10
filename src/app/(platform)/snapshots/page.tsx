@@ -58,21 +58,8 @@ function SnapshotsContent() {
     }
 
     try {
-      // Fetch from ALL sources in parallel (faster!)
-      const [supabaseVideos, blueskyVideos, youtubeVideos] = await Promise.all([
-        // Supabase/Dragverse videos
-        getVideos(100).catch(() => []),
-        // Bluesky videos (videos, images, text - all vertical content)
-        fetch("/api/bluesky/feed?limit=100&contentType=all")
-          .then((res) => (res.ok ? res.json() : { posts: [] }))
-          .then((data) => data.posts || [])
-          .catch(() => []),
-        // YouTube Snapshots (via RSS from curated drag channels)
-        fetch("/api/youtube/feed?limit=100&shortsOnly=true&rssOnly=true")
-          .then((res) => (res.ok ? res.json() : { videos: [] }))
-          .then((data) => data.videos || [])
-          .catch(() => []),
-      ]);
+      // Fetch ONLY Dragverse videos (simplified for reliability)
+      const supabaseVideos = await getVideos(100).catch(() => []);
 
       // Transform Supabase videos to Video type
       const transformedSupabase = (supabaseVideos || []).map((v: any) => ({
@@ -113,7 +100,7 @@ function SnapshotsContent() {
         source: "ceramic" as const,
       })) as Video[];
 
-      // Separate snapshots by source
+      // Filter for Dragverse snapshots only (shorts under 60 seconds)
       const dragverseSnapshots = transformedSupabase.filter((v) => {
         const isShortDuration = v.duration > 0 && v.duration < 60;
         const isShortType = v.contentType === "short";
@@ -121,37 +108,12 @@ function SnapshotsContent() {
         return hasValidUrl && (isShortType || isShortDuration);
       });
 
-      const externalSnapshots = [
-        ...(blueskyVideos || []),
-        ...(youtubeVideos || []),
-        ...getLocalVideos(),
-      ].filter((v) => {
-        const isShortDuration = v.duration > 0 && v.duration < 60;
-        const isShortType = v.contentType === "short";
-        const hasValidUrl = isValidPlaybackUrl(v.playbackUrl);
-        const isYouTube = (v as any).source === "youtube";
-        const isBluesky = (v as any).source === "bluesky";
+      // Sort by date (newest first)
+      const sortedSnapshots = dragverseSnapshots.sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
 
-        // YouTube videos: always allow if marked as short (have watch URLs that work in iframe)
-        if (isYouTube) {
-          return isShortType && hasValidUrl;
-        }
-
-        // Bluesky videos: require valid playback URL (HLS stream from av.bsky.social)
-        // This filters out image posts and text-only posts that have empty playbackUrl
-        if (isBluesky) {
-          return hasValidUrl && isShortType;
-        }
-
-        // Local videos: require valid playback URL
-        return hasValidUrl && (isShortType || isShortDuration);
-      });
-
-      // Deduplicate and apply quality filtering
-      const dedupedDragverse = deduplicateSnapshots(dragverseSnapshots);
-      const dedupedExternal = deduplicateSnapshots(externalSnapshots);
-      const sortedSnapshots = sortSnapshots(dedupedDragverse, dedupedExternal);
-
+      console.log(`[Snapshots] Loaded ${sortedSnapshots.length} Dragverse snapshots`);
       setSnapshots(sortedSnapshots);
     } catch (error) {
       console.error("[Snapshots] Failed to load snapshots:", error);
