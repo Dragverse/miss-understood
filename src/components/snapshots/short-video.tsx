@@ -221,7 +221,22 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
               style={{ pointerEvents: 'auto' }}
               onClick={!isYouTubeVideo ? handleVideoClick : undefined}
             />
-            {isYouTubeVideo ? (
+            {playbackError ? (
+              // Show error UI when playback fails
+              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-[#EB83EA]/20 flex items-center justify-center mb-4">
+                  <FiAlertCircle className="w-8 h-8 text-[#EB83EA]" />
+                </div>
+                <p className="text-gray-300 font-semibold mb-2">{video.title || "Video Unavailable"}</p>
+                <p className="text-gray-400 text-sm mb-4">This video cannot be played</p>
+                <button
+                  onClick={() => onNext?.()}
+                  className="px-4 py-2 bg-[#EB83EA] hover:bg-[#E748E6] text-white text-sm font-medium rounded-full transition"
+                >
+                  Next Video
+                </button>
+              </div>
+            ) : isYouTubeVideo ? (
               // YouTube iframe embed for external content
               <iframe
                 ref={iframeRef}
@@ -238,17 +253,15 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 aspectRatio={9 / 16}
                 volume={isMuted ? 0 : 1}
                 onError={(error) => {
-                  // Log error but don't show overlay for Livepeer playback issues
-                  // These are often transient (still processing, CORS, etc)
-                  console.warn("[ShortVideo] Livepeer playback error (non-blocking):", {
+                  console.error("[ShortVideo] Livepeer playback error:", {
                     error,
                     videoId: video.id,
                     title: video.title?.substring(0, 50),
                     playbackUrl: video.playbackUrl?.substring(0, 100),
                     source: video.source
                   });
-                  // Only show error overlay for persistent issues
-                  // Don't block playback for transient Livepeer errors
+                  // Show error UI after failed playback attempt
+                  setPlaybackError(true);
                 }}
               >
                 <Player.Container className="h-full w-full">
