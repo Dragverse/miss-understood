@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, SessionData } from "@/lib/session/config";
 import { validateBlueskyCredentials } from "@/lib/session/bluesky";
+import { verifyAuth } from "@/lib/auth/verify";
+import { createClient } from "@supabase/supabase-js";
 
 /**
  * POST /api/bluesky/connect
@@ -55,6 +57,35 @@ export async function POST(request: NextRequest) {
 
     session.bluesky = validation.data!;
     await session.save();
+
+    // Sync connection to database for consistent status checking across all pages
+    try {
+      const auth = await verifyAuth(request);
+      if (auth.authenticated && auth.userId) {
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { error: updateError } = await supabase
+          .from("creators")
+          .update({
+            bluesky_handle: validation.data!.handle,
+            bluesky_did: validation.data!.did || "",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("did", auth.userId);
+
+        if (updateError) {
+          console.error("[Bluesky Connect] Database sync failed:", updateError);
+        } else {
+          console.log("[Bluesky Connect] ✅ Synced connection to database");
+        }
+      }
+    } catch (syncError) {
+      // Non-fatal error - session is already saved, database sync is supplementary
+      console.error("[Bluesky Connect] Database sync error:", syncError);
+    }
 
     return response;
   } catch (error) {

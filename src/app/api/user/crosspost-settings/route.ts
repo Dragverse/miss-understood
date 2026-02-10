@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth/verify";
 import { createClient } from "@supabase/supabase-js";
+import { getIronSession } from "iron-session";
+import { sessionOptions, SessionData } from "@/lib/session/config";
+import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,15 +41,61 @@ export async function GET(request: NextRequest) {
     }
 
     const settings = creator.default_crosspost_platforms || { bluesky: false, farcaster: false };
+
+    // Cross-check with iron-session for Bluesky (session is source of truth)
+    const response = NextResponse.json({ success: true });
+    const session = await getIronSession<SessionData>(request, response, sessionOptions);
+
+    // Bluesky connected if EITHER session OR database has handle
+    let blueskyConnected = !!(creator.bluesky_handle || session.bluesky?.handle);
+
+    // Self-healing: If session exists but database doesn't, sync them
+    if (session.bluesky?.handle && !creator.bluesky_handle) {
+      console.log("[Crosspost Settings] Self-healing: Syncing session to database");
+      try {
+        await supabase
+          .from("creators")
+          .update({
+            bluesky_handle: session.bluesky.handle,
+            bluesky_did: session.bluesky.did || "",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("did", userId);
+        blueskyConnected = true;
+      } catch (syncError) {
+        console.error("[Crosspost Settings] Self-healing sync failed:", syncError);
+      }
+    }
+
+    // Farcaster: Check if signer exists AND is approved
+    let farcasterConnected = !!(creator.farcaster_fid && creator.farcaster_signer_uuid);
+
+    if (farcasterConnected && process.env.NEYNAR_API_KEY) {
+      try {
+        const neynar = new NeynarAPIClient({ apiKey: process.env.NEYNAR_API_KEY });
+        const signer = await neynar.lookupSigner({
+          signerUuid: creator.farcaster_signer_uuid,
+        });
+        farcasterConnected = signer.status === "approved";
+
+        if (signer.status !== "approved") {
+          console.log(`[Crosspost Settings] Farcaster signer not approved: ${signer.status}`);
+        }
+      } catch (signerError) {
+        console.warn("[Crosspost Settings] Failed to check Farcaster signer status:", signerError);
+        // Keep farcasterConnected true, let post attempt fail with better error
+      }
+    }
+
     const connected = {
-      bluesky: !!creator.bluesky_handle,
-      farcaster: !!(creator.farcaster_fid && creator.farcaster_signer_uuid) // Require both FID and signer UUID
+      bluesky: blueskyConnected,
+      farcaster: farcasterConnected,
     };
 
     return NextResponse.json({
       success: true,
       settings,
-      connected
+      connected,
     });
   } catch (error) {
     console.error("[Crosspost Settings API] Error:", error);

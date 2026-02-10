@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, SessionData } from "@/lib/session/config";
+import { verifyAuth } from "@/lib/auth/verify";
+import { createClient } from "@supabase/supabase-js";
 
 /**
  * GET /api/bluesky/session
@@ -52,6 +54,35 @@ export async function DELETE(request: NextRequest) {
     // Clear Bluesky session data
     delete session.bluesky;
     await session.save();
+
+    // Clear database connection status for consistency across all pages
+    try {
+      const auth = await verifyAuth(request);
+      if (auth.authenticated && auth.userId) {
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { error: updateError } = await supabase
+          .from("creators")
+          .update({
+            bluesky_handle: null,
+            bluesky_did: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("did", auth.userId);
+
+        if (updateError) {
+          console.error("[Bluesky Disconnect] Database clear failed:", updateError);
+        } else {
+          console.log("[Bluesky Disconnect] ✅ Cleared connection from database");
+        }
+      }
+    } catch (syncError) {
+      // Non-fatal error - session is already cleared, database sync is supplementary
+      console.error("[Bluesky Disconnect] Database clear error:", syncError);
+    }
 
     return response;
   } catch (error) {

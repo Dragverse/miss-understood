@@ -1,0 +1,110 @@
+import { NextRequest, NextResponse } from "next/server";
+import { verifyAuth } from "@/lib/auth/verify";
+import { postToBluesky } from "@/lib/crosspost/bluesky";
+import { postToFarcaster } from "@/lib/crosspost/farcaster";
+
+/**
+ * POST /api/crosspost/video
+ * Unified server-side crossposting for video uploads
+ *
+ * Request body:
+ * - videoId: string
+ * - title: string
+ * - description?: string
+ * - thumbnailUrl?: string
+ * - platforms: { bluesky?: boolean, farcaster?: boolean }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await verifyAuth(request);
+    if (!auth.authenticated) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { videoId, title, description, thumbnailUrl, platforms } = body;
+
+    if (!videoId || !title) {
+      return NextResponse.json(
+        { error: "videoId and title required" },
+        { status: 400 }
+      );
+    }
+
+    const videoUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/watch/${videoId}`;
+    const truncatedDesc = description
+      ? description.slice(0, 200) + (description.length > 200 ? "..." : "")
+      : "";
+    const postText = `${title}\n\n${truncatedDesc}\n\nWatch on Dragverse: ${videoUrl}`;
+
+    const results: any = {
+      dragverse: { success: true, videoId },
+    };
+
+    // Crosspost to Bluesky
+    if (platforms.bluesky) {
+      console.log("[Crosspost Video] Posting to Bluesky...");
+      try {
+        const blueskyResult = await postToBluesky(request, {
+          text: postText,
+          media:
+            thumbnailUrl?.startsWith("http")
+              ? [{ url: thumbnailUrl, alt: title }]
+              : [],
+        });
+        results.bluesky = blueskyResult;
+
+        if (blueskyResult.success) {
+          console.log("[Crosspost Video] ✅ Posted to Bluesky:", blueskyResult.uri);
+        } else {
+          console.error("[Crosspost Video] ❌ Bluesky failed:", blueskyResult.error);
+        }
+      } catch (error) {
+        console.error("[Crosspost Video] Bluesky error:", error);
+        results.bluesky = {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    }
+
+    // Crosspost to Farcaster
+    if (platforms.farcaster) {
+      console.log("[Crosspost Video] Posting to Farcaster...");
+      try {
+        const farcasterResult = await postToFarcaster({
+          text: postText,
+          media:
+            thumbnailUrl?.startsWith("http")
+              ? [{ url: thumbnailUrl, alt: title }]
+              : [],
+          userId: auth.userId,
+        });
+        results.farcaster = farcasterResult;
+
+        if (farcasterResult.success) {
+          console.log("[Crosspost Video] ✅ Posted to Farcaster:", farcasterResult.hash);
+        } else {
+          console.error("[Crosspost Video] ❌ Farcaster failed:", farcasterResult.error);
+        }
+      } catch (error) {
+        console.error("[Crosspost Video] Farcaster error:", error);
+        results.farcaster = {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      results,
+    });
+  } catch (error) {
+    console.error("[Crosspost Video] Error:", error);
+    return NextResponse.json(
+      { error: "Crosspost failed" },
+      { status: 500 }
+    );
+  }
+}

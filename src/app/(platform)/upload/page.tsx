@@ -7,6 +7,7 @@ import { uploadVideoToLivepeer, waitForAssetReady } from "@/lib/livepeer/client-
 import { useAuthUser } from "@/lib/privy/hooks";
 import { usePrivy } from "@privy-io/react-auth";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { saveLocalVideo } from "@/lib/utils/local-storage";
 import { getVideo } from "@/lib/supabase/videos";
@@ -34,6 +35,12 @@ function UploadPageContent() {
     crossPostBluesky: false,
     crossPostFarcaster: false,
   });
+
+  const [connectedPlatforms, setConnectedPlatforms] = useState({
+    bluesky: false,
+    farcaster: false,
+  });
+  const [isLoadingConnections, setIsLoadingConnections] = useState(true);
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -108,6 +115,45 @@ function UploadPageContent() {
       }
     }
   }, [editId, user, router]);
+
+  // Load crosspost connection status
+  useEffect(() => {
+    async function loadConnectionStatus() {
+      if (!isAuthenticated || !ready) {
+        setIsLoadingConnections(false);
+        return;
+      }
+
+      try {
+        const token = await getAccessToken();
+        const response = await fetch("/api/user/crosspost-settings", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setConnectedPlatforms(data.connected);
+
+            // Auto-enable crosspost for connected platforms with saved preferences
+            setFormData((prev) => ({
+              ...prev,
+              crossPostBluesky:
+                data.connected.bluesky && data.settings.bluesky,
+              crossPostFarcaster:
+                data.connected.farcaster && data.settings.farcaster,
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load connection status:", error);
+      } finally {
+        setIsLoadingConnections(false);
+      }
+    }
+
+    loadConnectionStatus();
+  }, [isAuthenticated, ready, getAccessToken]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -687,101 +733,55 @@ function UploadPageContent() {
         } else {
           toast.success("Video uploaded successfully!");
 
-          // Cross-post to Bluesky if enabled and video was saved successfully
-          if (formData.crossPostBluesky && metadataResult.video?.id) {
+          // Cross-post to other platforms if enabled using unified endpoint
+          if ((formData.crossPostBluesky || formData.crossPostFarcaster) && metadataResult.video?.id) {
             try {
-              toast("Sharing to Bluesky...");
-              const videoUrl = `${window.location.origin}/watch/${metadataResult.video.id}`;
-              const postText = `${formData.title}\n\n${formData.description ? formData.description.slice(0, 200) + (formData.description.length > 200 ? '...' : '') : ''}\n\nWatch on Dragverse: ${videoUrl}`;
+              toast("Sharing to other platforms...");
 
-              const blueskyResponse = await fetch("/api/bluesky/post", {
+              const token = await getAccessToken();
+              const crosspostResponse = await fetch("/api/crosspost/video", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
                 body: JSON.stringify({
-                  text: postText,
-                  images: thumbnailUrl?.startsWith('http') ? [thumbnailUrl] : [],
+                  videoId: metadataResult.video.id,
+                  title: formData.title,
+                  description: formData.description,
+                  thumbnailUrl: thumbnailUrl,
+                  platforms: {
+                    bluesky: formData.crossPostBluesky,
+                    farcaster: formData.crossPostFarcaster,
+                  },
                 }),
               });
 
-              if (blueskyResponse.ok) {
-                toast.success("Shared to Bluesky!");
-              } else {
-                const blueskyError = await blueskyResponse.json();
-                if (blueskyError.requiresConnection) {
-                  toast.error("Bluesky not connected. Connect in Settings to cross-post.");
-                } else {
-                  console.warn("[Upload] Bluesky cross-post failed:", blueskyError);
-                  toast.error("Couldn't share to Bluesky. You can share manually later.");
+              if (crosspostResponse.ok) {
+                const crosspostData = await crosspostResponse.json();
+
+                // Handle Bluesky result
+                if (crosspostData.results.bluesky?.success) {
+                  toast.success("Shared to Bluesky!");
+                } else if (crosspostData.results.bluesky?.error) {
+                  console.warn("[Upload] Bluesky failed:", crosspostData.results.bluesky.error);
+                  toast.error(`Bluesky: ${crosspostData.results.bluesky.error}`);
                 }
-              }
-            } catch (blueskyError) {
-              console.error("[Upload] Bluesky cross-post error:", blueskyError);
-              // Don't show error toast - video upload was successful
-            }
-          }
 
-          // Cross-post to Farcaster if enabled and video was saved successfully
-          if (formData.crossPostFarcaster && metadataResult.video?.id) {
-            try {
-              toast("Sharing to Farcaster...");
-              const videoUrl = `${window.location.origin}/watch/${metadataResult.video.id}`;
-              const postText = `${formData.title}\n\n${formData.description ? formData.description.slice(0, 200) + (formData.description.length > 200 ? '...' : '') : ''}\n\nWatch on Dragverse: ${videoUrl}`;
-
-              const farcasterResponse = await fetch("/api/farcaster/post", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  text: postText,
-                  videoUrl: videoUrl,
-                  imageUrl: thumbnailUrl?.startsWith('http') ? thumbnailUrl : undefined,
-                }),
-              });
-
-              if (farcasterResponse.ok) {
-                toast.success("Shared to Farcaster /dragverse channel!");
-              } else {
-                const farcasterError = await farcasterResponse.json();
-                if (farcasterError.error === "Farcaster not connected") {
-                  toast.error("Farcaster not connected. Connect in Settings to cross-post.");
-                } else if (farcasterError.requiresSignerRegistration) {
-                  // Auto-register signer for user
-                  toast("Setting up Farcaster posting...");
-                  try {
-                    const token = await getAccessToken();
-                    const registerResponse = await fetch("/api/farcaster/register-signer", {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`,
-                      },
-                    });
-
-                    if (registerResponse.ok) {
-                      const registerData = await registerResponse.json();
-                      if (registerData.signerApprovalUrl) {
-                        toast.success("Opening Warpcast to approve posting permissions...");
-                        window.open(registerData.signerApprovalUrl, "_blank");
-                        toast("After approving in Warpcast, you can share your video to Farcaster!", {
-                          duration: 8000,
-                        });
-                      } else {
-                        toast.error("Farcaster setup incomplete. Please try again from Settings.");
-                      }
-                    } else {
-                      toast.error("Couldn't setup Farcaster. Please connect in Settings.");
-                    }
-                  } catch (registerError) {
-                    console.error("[Upload] Farcaster registration error:", registerError);
-                    toast.error("Farcaster setup failed. Please try from Settings.");
-                  }
-                } else {
-                  console.warn("[Upload] Farcaster cross-post failed:", farcasterError);
-                  toast.error("Couldn't share to Farcaster. You can share manually later.");
+                // Handle Farcaster result
+                if (crosspostData.results.farcaster?.success) {
+                  toast.success("Shared to Farcaster /dragverse!");
+                } else if (crosspostData.results.farcaster?.error) {
+                  console.warn("[Upload] Farcaster failed:", crosspostData.results.farcaster.error);
+                  toast.error(`Farcaster: ${crosspostData.results.farcaster.error}`);
                 }
+              } else {
+                const error = await crosspostResponse.json();
+                toast.error(`Couldn't share: ${error.error || "Unknown error"}`);
               }
-            } catch (farcasterError) {
-              console.error("[Upload] Farcaster cross-post error:", farcasterError);
-              // Don't show error toast - video upload was successful
+            } catch (crosspostError) {
+              console.error("[Upload] Crosspost error:", crosspostError);
+              toast.error("Couldn't share to other platforms. You can share manually later.");
             }
           }
         }
@@ -1263,12 +1263,13 @@ function UploadPageContent() {
             <label className="block text-lg font-bold uppercase tracking-widest mb-4">
               Share to Social
             </label>
-            <label className="flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-[#0085ff]/50 transition">
+            <label className={`flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl ${!connectedPlatforms.bluesky || isLoadingConnections ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-[#0085ff]/50'} transition`}>
               <input
                 type="checkbox"
                 checked={formData.crossPostBluesky}
                 onChange={(e) => setFormData({ ...formData, crossPostBluesky: e.target.checked })}
-                className="mt-1 w-5 h-5 accent-[#0085ff] rounded"
+                disabled={!connectedPlatforms.bluesky || isLoadingConnections}
+                className="mt-1 w-5 h-5 accent-[#0085ff] rounded disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -1280,15 +1281,24 @@ function UploadPageContent() {
                 <p className="text-sm text-gray-400 mt-1">
                   Share a link to this video on your connected Bluesky account
                 </p>
+                {!connectedPlatforms.bluesky && !isLoadingConnections && (
+                  <p className="text-sm text-red-400 mt-2">
+                    Not connected -{" "}
+                    <Link href="/settings" className="underline hover:text-red-300">
+                      connect in Settings
+                    </Link>
+                  </p>
+                )}
               </div>
             </label>
 
-            <label className="flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-purple-500/50 transition mt-3">
+            <label className={`flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl ${!connectedPlatforms.farcaster || isLoadingConnections ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-purple-500/50'} transition mt-3`}>
               <input
                 type="checkbox"
                 checked={formData.crossPostFarcaster}
                 onChange={(e) => setFormData({ ...formData, crossPostFarcaster: e.target.checked })}
-                className="mt-1 w-5 h-5 accent-purple-500 rounded"
+                disabled={!connectedPlatforms.farcaster || isLoadingConnections}
+                className="mt-1 w-5 h-5 accent-purple-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -1300,6 +1310,14 @@ function UploadPageContent() {
                 <p className="text-sm text-gray-400 mt-1">
                   Share this video to /dragverse channel on your connected Farcaster account
                 </p>
+                {!connectedPlatforms.farcaster && !isLoadingConnections && (
+                  <p className="text-sm text-red-400 mt-2">
+                    Not connected -{" "}
+                    <Link href="/settings" className="underline hover:text-red-300">
+                      connect in Settings
+                    </Link>
+                  </p>
+                )}
               </div>
             </label>
           </div>
