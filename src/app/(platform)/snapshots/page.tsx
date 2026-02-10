@@ -6,6 +6,7 @@ import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
 import { useSearchParams } from "next/navigation";
 import { getLocalVideos } from "@/lib/utils/local-storage";
+import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/snapshots/short-video";
 import { FiChevronUp, FiChevronDown, FiRefreshCw } from "react-icons/fi";
@@ -20,7 +21,7 @@ function SnapshotsContent() {
   const [sliderReady, setSliderReady] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load ONLY Dragverse snapshots (no YouTube, no external sources)
+  // Load ONLY Dragverse snapshots (matching homepage pattern for reliability)
   async function loadSnapshots(isRefresh = false) {
     if (isRefresh) {
       setRefreshing(true);
@@ -29,39 +30,60 @@ function SnapshotsContent() {
     }
 
     try {
-      // Fetch ONLY Dragverse shorts from dedicated API endpoint
-      const response = await fetch("/api/videos/shorts");
-      const data = await response.json();
+      // Fetch videos directly from Supabase (same as homepage)
+      const supabaseVideos = await getVideos(100);
 
-      if (!data.success || !data.videos) {
-        console.warn("[Snapshots] API returned no videos");
-        setSnapshots([]);
-        return;
-      }
+      // Manual transformation (matching homepage pattern - NO URL fixing)
+      const allVideos = supabaseVideos.map((v: any) => ({
+        id: v.id,
+        title: v.title,
+        description: v.description || "",
+        thumbnail: v.thumbnail || null,
+        duration: v.duration || 0,
+        views: v.views || 0,
+        likes: v.likes || 0,
+        createdAt: new Date(v.created_at),
+        playbackUrl: v.playback_url || "",
+        livepeerAssetId: v.playback_id || v.livepeer_asset_id || "",
+        contentType: v.content_type,
+        creator: v.creator ? {
+          did: v.creator.did,
+          handle: v.creator.handle,
+          displayName: v.creator.display_name,
+          avatar: v.creator.avatar || "/defaultpfp.png",
+          description: "",
+          followerCount: 0,
+          followingCount: 0,
+          createdAt: new Date(),
+          verified: v.creator.verified || false,
+        } : {
+          did: v.creator_did,
+          handle: "creator",
+          displayName: "Creator",
+          avatar: "/defaultpfp.png",
+          description: "",
+          followerCount: 0,
+          followingCount: 0,
+          createdAt: new Date(),
+          verified: false,
+        },
+        category: v.category || "Other",
+        tags: Array.isArray(v.tags) ? v.tags : (v.tags ? v.tags.split(',') : []),
+      }));
 
-      // Videos are already filtered and sorted by the API
-      const sortedSnapshots = data.videos;
+      // Filter for shorts only (matching homepage)
+      const shorts = allVideos.filter((v) => v.contentType === "short");
 
-      console.log(`[Snapshots] Loaded ${sortedSnapshots.length} DRAGVERSE shorts (no YouTube!)`);
+      // Sort by date (newest first)
+      shorts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-      if (sortedSnapshots.length > 0) {
-        console.log(`[Snapshots] First 3 videos:`);
-        sortedSnapshots.slice(0, 3).forEach((v: Video, i: number) => {
-          console.log(`  Video ${i + 1}:`, {
-            id: v.id,
-            title: v.title,
-            playbackUrl: v.playbackUrl,
-            contentType: v.contentType,
-            duration: v.duration,
-            thumbnail: v.thumbnail
-          });
-        });
-      }
+      // Simple, efficient logging (no verbose playbackUrl)
+      console.log(`[Snapshots] Loaded ${shorts.length} Dragverse shorts`);
 
-      setSnapshots(sortedSnapshots);
+      setSnapshots(shorts);
     } catch (error) {
-      console.error("[Snapshots] Failed to load snapshots:", error);
-      // Fallback to local videos only
+      console.error("[Snapshots] Failed to load:", error);
+      // Fallback to local videos
       const localVideos = getLocalVideos();
       setSnapshots(localVideos.filter((v) => v.contentType === "short"));
     } finally {
