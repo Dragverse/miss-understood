@@ -20,10 +20,15 @@ function UploadPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
+  const typeParam = searchParams.get("type"); // Get type from URL (e.g., ?type=audio)
+
+  // Auto-select media type based on URL parameter
+  const initialMediaType = typeParam === "audio" ? "audio" : "video";
+  const initialContentType = typeParam === "audio" ? "podcast" : "short";
 
   const [formData, setFormData] = useState({
-    mediaType: "video" as "video" | "audio",
-    contentType: "short" as "short" | "long" | "podcast" | "music",
+    mediaType: initialMediaType as "video" | "audio",
+    contentType: initialContentType as "short" | "long" | "podcast" | "music",
     title: "",
     description: "",
     category: "",
