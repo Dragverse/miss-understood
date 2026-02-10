@@ -18,7 +18,7 @@ import { clearBlueskyCache } from "@/lib/bluesky/hooks";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { getAccessToken, linkFarcaster, unlinkFarcaster } = usePrivy();
+  const { getAccessToken, linkFarcaster, unlinkFarcaster, logout } = usePrivy();
   const { fundWallet } = useFundWallet();
   const {
     isAuthenticated,
