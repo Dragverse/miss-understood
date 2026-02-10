@@ -32,30 +32,178 @@ function containsBlockedContent(text: string): boolean {
   return BLOCKED_TERMS.some(term => lowerText.includes(term.toLowerCase()));
 }
 
-// Create an authenticated agent
-// Note: Bluesky now requires auth even for public content
-export async function getBlueskyAgent(): Promise<BskyAgent> {
+/**
+ * Session cache to prevent excessive login attempts
+ * Bluesky JWTs typically last 2+ hours, so we cache and reuse the authenticated agent
+ */
+interface SessionCache {
+  agent: BskyAgent | null;
+  lastAuthTime: number;
+  credentials: {
+    identifier: string;
+    password: string;
+  } | null;
+}
+
+const sessionCache: SessionCache = {
+  agent: null,
+  lastAuthTime: 0,
+  credentials: null,
+};
+
+// Session duration: 2 hours (Bluesky JWT expiry)
+const SESSION_DURATION_MS = 2 * 60 * 60 * 1000;
+
+// Session refresh threshold: refresh if less than 30 minutes remaining
+const SESSION_REFRESH_THRESHOLD_MS = 30 * 60 * 1000;
+
+/**
+ * Check if current session is still valid
+ */
+function isSessionValid(): boolean {
+  if (!sessionCache.agent || !sessionCache.lastAuthTime) {
+    return false;
+  }
+
+  const sessionAge = Date.now() - sessionCache.lastAuthTime;
+  return sessionAge < SESSION_DURATION_MS;
+}
+
+/**
+ * Check if session should be refreshed proactively
+ */
+function shouldRefreshSession(): boolean {
+  if (!sessionCache.agent || !sessionCache.lastAuthTime) {
+    return false;
+  }
+
+  const sessionAge = Date.now() - sessionCache.lastAuthTime;
+  const timeRemaining = SESSION_DURATION_MS - sessionAge;
+  return timeRemaining < SESSION_REFRESH_THRESHOLD_MS;
+}
+
+/**
+ * Authenticate with Bluesky and cache the session
+ */
+async function authenticateAndCache(identifier: string, password: string): Promise<BskyAgent> {
+  console.log("[Bluesky] 🔐 Authenticating with Bluesky...");
+
   const agent = new BskyAgent({ service: BLUESKY_SERVICE });
 
+  try {
+    await agent.login({ identifier, password });
+
+    // Cache the authenticated agent and credentials
+    sessionCache.agent = agent;
+    sessionCache.lastAuthTime = Date.now();
+    sessionCache.credentials = { identifier, password };
+
+    const expiryTime = new Date(Date.now() + SESSION_DURATION_MS).toLocaleTimeString();
+    console.log(`[Bluesky] ✅ Authentication successful - session valid until ${expiryTime}`);
+
+    return agent;
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("[Bluesky] ❌ Authentication failed:", errorMsg);
+
+    // Clear cache on auth failure
+    sessionCache.agent = null;
+    sessionCache.lastAuthTime = 0;
+    sessionCache.credentials = null;
+
+    throw new Error(`Bluesky authentication failed: ${errorMsg}`);
+  }
+}
+
+/**
+ * Refresh session proactively before it expires
+ */
+async function refreshSession(): Promise<void> {
+  if (!sessionCache.credentials) {
+    return;
+  }
+
+  console.log("[Bluesky] 🔄 Refreshing session proactively...");
+
+  try {
+    await authenticateAndCache(
+      sessionCache.credentials.identifier,
+      sessionCache.credentials.password
+    );
+  } catch (error) {
+    console.error("[Bluesky] ⚠️  Session refresh failed:", error);
+    // Don't throw - let the old session continue until it expires
+  }
+}
+
+/**
+ * Get authenticated Bluesky agent with session caching
+ *
+ * This function implements smart session management:
+ * - Reuses existing sessions when valid (prevents excessive login attempts)
+ * - Automatically refreshes sessions before expiry
+ * - Retries once on authentication errors
+ *
+ * Benefits:
+ * - Reduces login attempts from 1000s/hour to ~1/2hours
+ * - Prevents rate limiting and app password "expiry" issues
+ * - Improves API response times (no extra round-trip)
+ */
+export async function getBlueskyAgent(): Promise<BskyAgent> {
   // Check if we have Bluesky credentials in environment
   const identifier = process.env.BLUESKY_IDENTIFIER; // e.g., "yourhandle.bsky.social"
   const password = process.env.BLUESKY_APP_PASSWORD; // App password from Bluesky settings
 
-  if (identifier && password) {
-    try {
-      await agent.login({ identifier, password });
-      console.log("[Bluesky] ✅ Authentication successful");
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error("[Bluesky] ❌ Authentication failed:", errorMsg);
-      throw new Error(`Bluesky authentication failed: ${errorMsg}`);
-    }
-  } else {
+  if (!identifier || !password) {
     console.warn("[Bluesky] ⚠️  No credentials provided - agent will be unauthenticated");
     throw new Error("Bluesky credentials not configured");
   }
 
-  return agent;
+  // Check if credentials have changed
+  const credentialsChanged =
+    sessionCache.credentials &&
+    (sessionCache.credentials.identifier !== identifier ||
+     sessionCache.credentials.password !== password);
+
+  if (credentialsChanged) {
+    console.log("[Bluesky] 🔄 Credentials changed - invalidating cache");
+    sessionCache.agent = null;
+    sessionCache.lastAuthTime = 0;
+    sessionCache.credentials = null;
+  }
+
+  // Return cached agent if session is still valid
+  if (isSessionValid() && sessionCache.agent) {
+    const sessionAge = Math.floor((Date.now() - sessionCache.lastAuthTime) / 1000 / 60);
+    console.log(`[Bluesky] ♻️  Reusing cached session (age: ${sessionAge} minutes)`);
+
+    // Proactively refresh if nearing expiry
+    if (shouldRefreshSession()) {
+      // Fire and forget - don't await
+      refreshSession().catch(() => {
+        // Ignore refresh errors
+      });
+    }
+
+    return sessionCache.agent;
+  }
+
+  // Session expired or doesn't exist - authenticate
+  if (sessionCache.agent) {
+    console.log("[Bluesky] ⏰ Session expired - re-authenticating");
+  }
+
+  return authenticateAndCache(identifier, password);
+}
+
+/**
+ * Clear the session cache (useful for testing or forcing re-authentication)
+ */
+export function clearBlueskySession(): void {
+  console.log("[Bluesky] 🗑️  Clearing session cache");
+  sessionCache.agent = null;
+  sessionCache.lastAuthTime = 0;
+  sessionCache.credentials = null;
 }
 
 export interface BlueskyPost {
@@ -97,6 +245,45 @@ export interface BlueskyPost {
 }
 
 /**
+ * Execute a Bluesky API call with automatic retry on authentication errors
+ * Handles session expiry by clearing cache and retrying once
+ */
+async function executeWithRetry<T>(
+  operation: (agent: BskyAgent) => Promise<T>,
+  operationName: string
+): Promise<T> {
+  try {
+    const agent = await getBlueskyAgent();
+    return await operation(agent);
+  } catch (error: any) {
+    // Check if it's an authentication error
+    const isAuthError =
+      error?.message?.includes("Invalid") ||
+      error?.message?.includes("AuthenticationRequired") ||
+      error?.status === 401 ||
+      error?.error === "AuthenticationRequired";
+
+    if (isAuthError) {
+      console.log(`[Bluesky] 🔄 Authentication error in ${operationName} - clearing cache and retrying...`);
+
+      // Clear the session cache and retry once
+      clearBlueskySession();
+
+      try {
+        const agent = await getBlueskyAgent();
+        return await operation(agent);
+      } catch (retryError) {
+        console.error(`[Bluesky] ❌ Retry failed for ${operationName}:`, retryError);
+        throw retryError;
+      }
+    }
+
+    // Not an auth error - throw immediately
+    throw error;
+  }
+}
+
+/**
  * Get posts from the "What's Hot" feed (popular posts)
  * Uses search API to find drag-related content with videos
  */
@@ -104,7 +291,6 @@ export async function searchDragContent(
   limit: number = 50
 ): Promise<BlueskyPost[]> {
   try {
-    const agent = await getBlueskyAgent();
     const allPosts: BlueskyPost[] = [];
 
     // Search for drag-related posts using diverse keywords
@@ -140,10 +326,13 @@ export async function searchDragContent(
     // Search with each term and collect results
     for (const term of searchTerms) {
       try {
-        const searchResults = await agent.app.bsky.feed.searchPosts({
-          q: term,
-          limit: Math.ceil(limit / searchTerms.length),
-        });
+        const searchResults = await executeWithRetry(
+          (agent) => agent.app.bsky.feed.searchPosts({
+            q: term,
+            limit: Math.ceil(limit / searchTerms.length),
+          }),
+          `searchDragContent("${term}")`
+        );
 
         if (searchResults.data.posts && searchResults.data.posts.length > 0) {
           const posts = searchResults.data.posts.map((post: any) => ({
@@ -216,21 +405,27 @@ export async function getDragAccountsPosts(
   limit: number = 20
 ): Promise<BlueskyPost[]> {
   try {
-    const agent = await getBlueskyAgent();
     const allPosts: BlueskyPost[] = [];
 
     for (const handle of handles) {
       try {
-        // Resolve handle to DID
-        const profile = await agent.getProfile({ actor: handle });
-        const did = profile.data.did;
+        // Resolve handle to DID and get feed with retry on auth errors
+        const result = await executeWithRetry(
+          async (agent) => {
+            const profile = await agent.getProfile({ actor: handle });
+            const did = profile.data.did;
 
-        // Get author's feed - fetch more posts per account to include older content
-        // Bluesky API allows up to 100 posts per request
-        const feed = await agent.getAuthorFeed({
-          actor: did,
-          limit: Math.min(50, Math.ceil(limit / handles.length * 3)), // Fetch 3x more per account for historical content
-        });
+            const feed = await agent.getAuthorFeed({
+              actor: did,
+              limit: Math.min(50, Math.ceil(limit / handles.length * 3)),
+            });
+
+            return feed;
+          },
+          `getDragAccountsPosts("${handle}")`
+        );
+
+        const feed = result;
 
         if (feed.data.feed) {
           const posts = feed.data.feed.map((item: any) => ({

@@ -6,9 +6,19 @@ import { verifyAuth } from "@/lib/auth/verify";
  * DELETE /api/admin/cleanup-test-users
  * Remove test users from the database
  * Only keeps real Privy users (DIDs starting with "did:privy:")
+ * REQUIRES AUTHENTICATION
  */
 export async function DELETE(request: NextRequest) {
   try {
+    // Verify authentication - only authenticated users can access admin routes
+    const auth = await verifyAuth(request);
+    if (!auth.authenticated || !auth.userId) {
+      return NextResponse.json(
+        { error: "Unauthorized - Admin access required" },
+        { status: 401 }
+      );
+    }
+
     const supabase = getSupabaseServerClient();
 
     // Get all creators
@@ -113,9 +123,19 @@ export async function DELETE(request: NextRequest) {
 /**
  * GET /api/admin/cleanup-test-users
  * Preview which users would be deleted (dry run)
+ * REQUIRES AUTHENTICATION
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Verify authentication - only authenticated users can access admin routes
+    const auth = await verifyAuth(request);
+    if (!auth.authenticated || !auth.userId) {
+      return NextResponse.json(
+        { error: "Unauthorized - Admin access required" },
+        { status: 401 }
+      );
+    }
+
     const supabase = getSupabaseServerClient();
 
     // Get all creators

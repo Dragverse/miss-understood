@@ -17,7 +17,6 @@ export async function transformVideoWithCreator(supabaseVideo: SupabaseVideo): P
   try {
     const creator = await getCreatorByDID(supabaseVideo.creator_did);
     if (creator) {
-      console.log('[transformVideo] Creator wallet_address from DB:', creator.wallet_address);
       creatorData = {
         did: creator.did,
         handle: creator.handle,
@@ -30,7 +29,6 @@ export async function transformVideoWithCreator(supabaseVideo: SupabaseVideo): P
         verified: creator.verified || false,
         walletAddress: creator.wallet_address,
       };
-      console.log('[transformVideo] CreatorData walletAddress:', creatorData.walletAddress);
     }
   } catch (error) {
     console.warn('[transformVideo] Failed to fetch creator:', error);
@@ -55,21 +53,20 @@ export async function transformVideoWithCreator(supabaseVideo: SupabaseVideo): P
   let playbackUrl = supabaseVideo.playback_url || '';
   const playbackId = supabaseVideo.playback_id || supabaseVideo.livepeer_asset_id || '';
 
-  console.log(`[Transform] BEFORE fix - Video: ${supabaseVideo.title?.substring(0, 30)}, URL: ${playbackUrl}`);
-
   // Append /index.m3u8 if URL is incomplete (database has truncated URLs)
   if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
     playbackUrl = `${playbackUrl}/index.m3u8`;
-    console.log(`[Transform] ✅ FIXED URL - Added /index.m3u8: ${playbackUrl}`);
   }
 
   // Construct from playback_id if no URL at all
   if (!playbackUrl && playbackId) {
     playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
-    console.log(`[Transform] ✅ CONSTRUCTED URL from playbackId: ${playbackUrl}`);
   }
 
-  console.log(`[Transform] AFTER fix - Final URL: ${playbackUrl}`);
+  // Only log errors, not every successful transformation
+  if (!playbackUrl && !playbackId) {
+    console.warn(`[Transform] Warning: No playback URL or ID for video: ${supabaseVideo.title}`);
+  }
 
   return {
     id: supabaseVideo.id,
@@ -140,21 +137,20 @@ export async function transformVideosWithCreators(supabaseVideos: SupabaseVideo[
     let playbackUrl = v.playback_url || '';
     const playbackId = v.playback_id || v.livepeer_asset_id || '';
 
-    console.log(`[TransformBatch] BEFORE fix - Video: ${v.title?.substring(0, 30)}, URL: ${playbackUrl}`);
-
     // Append /index.m3u8 if URL is incomplete (database has truncated URLs)
     if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
       playbackUrl = `${playbackUrl}/index.m3u8`;
-      console.log(`[TransformBatch] ✅ FIXED URL - Added /index.m3u8: ${playbackUrl}`);
     }
 
     // Construct from playback_id if no URL at all
     if (!playbackUrl && playbackId) {
       playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
-      console.log(`[TransformBatch] ✅ CONSTRUCTED URL from playbackId: ${playbackUrl}`);
     }
 
-    console.log(`[TransformBatch] AFTER fix - Final URL: ${playbackUrl}`);
+    // Only log errors for missing URLs
+    if (!playbackUrl && !playbackId) {
+      console.warn(`[TransformBatch] Warning: No playback URL or ID for video: ${v.title}`);
+    }
 
     return {
       id: v.id,

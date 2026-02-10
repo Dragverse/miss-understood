@@ -4,6 +4,10 @@ import { useState } from "react";
 import { FiX, FiDollarSign, FiCheck } from "react-icons/fi";
 import { SiEthereum } from "react-icons/si";
 import toast from "react-hot-toast";
+import { usePrivy, useFundWallet } from "@privy-io/react-auth";
+import { useWalletClient, usePublicClient, useReadContract } from "wagmi";
+import { parseUnits, parseEther } from "viem";
+import { base } from "wagmi/chains";
 
 interface TipModalProps {
   isOpen: boolean;
@@ -17,27 +21,81 @@ interface TipModalProps {
 type PaymentMethod = "crypto" | "card";
 type CryptoCurrency = "ETH" | "USDC";
 
+// USDC contract on Base network
+const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+const USDC_ABI = [
+  {
+    constant: true,
+    inputs: [{ name: "_owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    type: "function",
+  },
+  {
+    constant: false,
+    inputs: [
+      { name: "_to", type: "address" },
+      { name: "_value", type: "uint256" },
+    ],
+    name: "transfer",
+    outputs: [{ name: "", type: "bool" }],
+    type: "function",
+  },
+] as const;
+
 export function TipModal({
   isOpen,
   onClose,
   creatorName,
   creatorDID,
+  creatorWallet,
   videoId,
 }: TipModalProps) {
+  const { user, authenticated, login } = usePrivy();
+  const { fundWallet } = useFundWallet();
+  const { data: walletClient } = useWalletClient({ chainId: base.id });
+  const publicClient = usePublicClient({ chainId: base.id });
+
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("crypto");
-  const [cryptoCurrency, setCryptoCurrency] = useState<CryptoCurrency>("ETH");
+  const [cryptoCurrency, setCryptoCurrency] = useState<CryptoCurrency>("USDC");
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
   const [processing, setProcessing] = useState(false);
   const [tipSent, setTipSent] = useState(false);
 
+  // Get user's wallet address
+  const wallet = user?.wallet || user?.linkedAccounts?.find((account: any) => account.type === "wallet");
+  const walletAddress = wallet && "address" in wallet ? (wallet.address as `0x${string}`) : undefined;
+
+  // Fetch USDC balance
+  const { data: usdcBalance } = useReadContract({
+    address: USDC_ADDRESS,
+    abi: USDC_ABI,
+    functionName: "balanceOf",
+    args: walletAddress ? [walletAddress] : undefined,
+    chainId: base.id,
+  });
+
   const presetAmounts = paymentMethod === "crypto"
-    ? ["0.001", "0.005", "0.01", "0.05"]
+    ? cryptoCurrency === "USDC"
+      ? ["5", "10", "25", "50"]
+      : ["0.001", "0.005", "0.01", "0.05"]
     : ["5", "10", "25", "50"];
 
   const handleTipSubmit = async () => {
+    if (!authenticated) {
+      login();
+      return;
+    }
+
     if (!amount || parseFloat(amount) <= 0) {
       toast.error("Please enter a valid amount");
+      return;
+    }
+
+    // Validate wallet connection
+    if (!wallet || !("address" in wallet)) {
+      toast.error("Please connect a wallet in settings first");
       return;
     }
 
@@ -60,47 +118,115 @@ export function TipModal({
         setMessage("");
         onClose();
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Tip error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to send tip");
+      if (error.message?.includes("User rejected") || error.message?.includes("rejected")) {
+        toast.error("Transaction cancelled");
+      } else {
+        toast.error(error instanceof Error ? error.message : "Failed to send tip");
+      }
     } finally {
       setProcessing(false);
     }
   };
 
   const handleCryptoTip = async () => {
-    // TODO: Implement Web3 wallet integration with Wagmi
-    // For now, show placeholder message
+    if (!authenticated || !user || !walletAddress) {
+      throw new Error("Please sign in and connect your wallet");
+    }
 
-    // Example future implementation:
-    // import { useAccount, useSendTransaction } from 'wagmi';
-    // const { sendTransaction } = useSendTransaction();
-    //
-    // if (!creatorWallet) {
-    //   throw new Error("Creator has not set up their wallet");
-    // }
-    //
-    // const amountInWei = parseEther(amount);
-    // await sendTransaction({
-    //   to: creatorWallet,
-    //   value: amountInWei,
-    // });
+    // Check if creator has a wallet to receive tips
+    if (!creatorWallet) {
+      throw new Error("This creator hasn't set up their wallet yet");
+    }
 
-    // Save tip to backend
-    await fetch("/api/tips/crypto", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        toDID: creatorDID,
-        amount: parseFloat(amount),
-        currency: cryptoCurrency,
-        videoId,
-        message,
-        txHash: `mock-tx-${Date.now()}`, // Will be real txHash once Web3 is integrated
-      }),
-    });
+    const amountValue = parseFloat(amount);
+    if (isNaN(amountValue) || amountValue <= 0) {
+      throw new Error("Please enter a valid amount");
+    }
 
-    console.log(`Sending ${amount} ${cryptoCurrency} to ${creatorName}`);
+    // Maximum tip cap of $100 for USDC, 0.1 ETH for ETH
+    const maxAmount = cryptoCurrency === "USDC" ? 100 : 0.1;
+    if (amountValue > maxAmount) {
+      throw new Error(`Maximum tip amount is ${maxAmount} ${cryptoCurrency}`);
+    }
+
+    if (!walletClient) {
+      throw new Error("Wallet not ready. Please try again.");
+    }
+
+    let txHash: string;
+    const loadingToast = toast.loading("Sending tip...");
+
+    try {
+      if (cryptoCurrency === "USDC") {
+        // Send USDC transaction
+        const amountInUsdc = parseUnits(amountValue.toString(), 6);
+
+        // Check USDC balance
+        const balance = usdcBalance as bigint | undefined;
+        if (!balance || balance < amountInUsdc) {
+          toast.dismiss(loadingToast);
+          toast.error("Insufficient USDC balance. Opening funding modal...");
+          await fundWallet({
+            address: walletAddress,
+            options: {
+              chain: { id: 8453 },
+              asset: "USDC",
+              amount: amountValue.toString(),
+            }
+          });
+          throw new Error("Please fund your wallet and try again");
+        }
+
+        txHash = await walletClient.writeContract({
+          address: USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: "transfer",
+          args: [creatorWallet as `0x${string}`, amountInUsdc],
+          chain: base,
+        });
+      } else {
+        // Send ETH transaction
+        const amountInWei = parseEther(amountValue.toString());
+
+        txHash = await walletClient.sendTransaction({
+          to: creatorWallet as `0x${string}`,
+          value: amountInWei,
+          chain: base,
+        });
+      }
+
+      // Wait for confirmation
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
+      }
+
+      // Record transaction in database
+      const recordResponse = await fetch("/api/tips/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: walletAddress,
+          to: creatorWallet,
+          amount: amountValue,
+          amountUSD: amountValue, // For USDC 1:1, for ETH this should be converted
+          txHash,
+          token: cryptoCurrency,
+        }),
+      });
+
+      if (!recordResponse.ok) {
+        console.warn("Failed to record tip in database:", await recordResponse.text());
+        // Don't throw - tip was sent successfully, just logging failed
+      }
+
+      toast.dismiss(loadingToast);
+      console.log(`✅ Sent ${amount} ${cryptoCurrency} to ${creatorName} - tx: ${txHash}`);
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      throw error;
+    }
   };
 
   const handleStripeTip = async () => {
@@ -288,12 +414,36 @@ export function TipModal({
               )}
             </button>
 
-            {/* Info Text */}
-            <p className="text-xs text-gray-500 text-center mt-4">
-              {paymentMethod === "crypto"
-                ? "Tips are sent directly to the creator's wallet on Base Network"
-                : "Secure payment processing by Stripe"}
-            </p>
+            {/* Wallet Status & Info Text */}
+            {paymentMethod === "crypto" && (
+              <div className="mt-4 space-y-2">
+                {!authenticated ? (
+                  <p className="text-xs text-yellow-400 text-center">
+                    ⚠️ Please sign in to send tips
+                  </p>
+                ) : !walletAddress ? (
+                  <p className="text-xs text-yellow-400 text-center">
+                    ⚠️ Please connect a wallet in settings to send tips
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-xs text-gray-500 text-center">
+                      Tips are sent directly to the creator's wallet on Base Network
+                    </p>
+                    {cryptoCurrency === "USDC" && usdcBalance !== undefined && (
+                      <p className="text-xs text-gray-400 text-center">
+                        Your USDC balance: ${(Number(usdcBalance) / 1e6).toFixed(2)}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            {paymentMethod === "card" && (
+              <p className="text-xs text-gray-500 text-center mt-4">
+                Secure payment processing by Stripe
+              </p>
+            )}
           </>
         )}
       </div>
