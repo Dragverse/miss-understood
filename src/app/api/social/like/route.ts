@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth/verify';
 import { likeVideo, unlikeVideo, hasLikedVideo } from '@/lib/supabase/social';
 import { createNotification } from '@/lib/supabase/notifications';
 import { getVideo } from '@/lib/supabase/videos';
@@ -6,14 +7,26 @@ import { getCreatorByDID } from '@/lib/supabase/creators';
 
 export async function POST(request: Request) {
   try {
-    const { userDID, videoId, action } = await request.json();
+    // SECURITY: Verify authentication to prevent user spoofing
+    const auth = await verifyAuth(request);
+    if (!auth.authenticated || !auth.userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
-    if (!userDID || !videoId) {
+    const { videoId, action } = await request.json();
+
+    if (!videoId) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
+
+    // Use authenticated user's DID, not client-provided value
+    const userDID = auth.userId;
 
     if (action === 'like') {
       await likeVideo(userDID, videoId);
@@ -56,16 +69,25 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  // SECURITY: Require authentication to prevent relationship enumeration
+  const auth = await verifyAuth(request);
+  if (!auth.authenticated || !auth.userId) {
+    return NextResponse.json(
+      { error: 'Authentication required' },
+      { status: 401 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
-  const userDID = searchParams.get('userDID');
   const videoId = searchParams.get('videoId');
 
-  if (!userDID || !videoId) {
+  if (!videoId) {
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
   }
 
   try {
-    const liked = await hasLikedVideo(userDID, videoId);
+    // Only allow checking current user's likes
+    const liked = await hasLikedVideo(auth.userId, videoId);
     return NextResponse.json({ liked });
   } catch (error) {
     console.error('Check liked error:', error);

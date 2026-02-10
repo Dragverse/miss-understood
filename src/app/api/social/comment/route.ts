@@ -7,37 +7,28 @@ import { verifyAuth, isPrivyConfigured } from '@/lib/auth/verify';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify authentication
-    let authenticatedUserDID: string | null = null;
+    console.log("[Comment API] Creating comment...");
 
-    if (isPrivyConfigured()) {
-      const auth = await verifyAuth(request);
-      if (!auth.authenticated || !auth.userId) {
-        return NextResponse.json(
-          { error: 'Authentication required to comment' },
-          { status: 401 }
-        );
-      }
-      authenticatedUserDID = auth.userId;
+    // SECURITY: ALWAYS require authentication (fail-closed)
+    const auth = await verifyAuth(request);
+    if (!auth.authenticated || !auth.userId) {
+      return NextResponse.json(
+        { error: 'Authentication required to comment' },
+        { status: 401 }
+      );
     }
 
-    const { videoId, authorDID, content, parentCommentId } = await request.json();
+    const { videoId, content, parentCommentId } = await request.json();
 
-    if (!videoId || !authorDID || !content) {
+    if (!videoId || !content) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Security: Verify authorDID matches authenticated user (prevent spoofing)
-    if (authenticatedUserDID && authorDID !== authenticatedUserDID) {
-      console.error('[Comment] Author spoofing attempt:', { claimed: authorDID, actual: authenticatedUserDID });
-      return NextResponse.json(
-        { error: 'Author ID does not match authenticated user' },
-        { status: 403 }
-      );
-    }
+    // Use authenticated user's DID, not client-provided value
+    const authorDID = auth.userId;
 
     const comment = await createComment({
       videoId,

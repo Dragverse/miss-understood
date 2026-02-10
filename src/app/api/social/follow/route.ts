@@ -1,15 +1,36 @@
 import { NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth/verify';
 import { followUser, unfollowUser, isFollowing } from '@/lib/supabase/social';
 import { createNotification } from '@/lib/supabase/notifications';
 import { getCreatorByDID } from '@/lib/supabase/creators';
 
 export async function POST(request: Request) {
   try {
-    const { followerDID, followingDID, action } = await request.json();
+    // SECURITY: Verify authentication to prevent user spoofing
+    const auth = await verifyAuth(request);
+    if (!auth.authenticated || !auth.userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
-    if (!followerDID || !followingDID) {
+    const { followingDID, action } = await request.json();
+
+    if (!followingDID) {
       return NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Use authenticated user's DID as follower
+    const followerDID = auth.userId;
+
+    // Prevent self-follow
+    if (followerDID === followingDID) {
+      return NextResponse.json(
+        { error: 'Cannot follow yourself' },
         { status: 400 }
       );
     }
@@ -50,16 +71,25 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  // SECURITY: Require authentication to prevent relationship enumeration
+  const auth = await verifyAuth(request);
+  if (!auth.authenticated || !auth.userId) {
+    return NextResponse.json(
+      { error: 'Authentication required' },
+      { status: 401 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
-  const followerDID = searchParams.get('followerDID');
   const followingDID = searchParams.get('followingDID');
 
-  if (!followerDID || !followingDID) {
+  if (!followingDID) {
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
   }
 
   try {
-    const following = await isFollowing(followerDID, followingDID);
+    // Only allow checking current user's follows
+    const following = await isFollowing(auth.userId, followingDID);
     return NextResponse.json({ following });
   } catch (error) {
     console.error('Check following error:', error);
