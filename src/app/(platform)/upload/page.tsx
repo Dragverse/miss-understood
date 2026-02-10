@@ -682,10 +682,13 @@ function UploadPageContent() {
                 toast.success("Thumbnail uploaded!");
               }
             } else {
-              console.error("[Upload] Thumbnail upload failed:", await uploadResponse.text());
+              const errorText = await uploadResponse.text();
+              console.error("[Upload] Thumbnail upload failed:", errorText);
+              toast.error("Thumbnail upload failed. Using default thumbnail.");
             }
           } catch (error) {
             console.error("[Upload] Thumbnail upload error:", error);
+            toast.error("Thumbnail upload error. Using default thumbnail.");
           }
         }
 
