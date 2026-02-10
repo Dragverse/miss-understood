@@ -638,7 +638,7 @@ function UploadPageContent() {
         // Upload extracted thumbnail to Supabase if exists
         let thumbnailUrl: string | null = null;
 
-        if (formData.thumbnail && formData.mediaType !== "audio") {
+        if (formData.thumbnail) {
           toast("Uploading thumbnail...");
           try {
             let thumbnailToUpload = formData.thumbnail;
