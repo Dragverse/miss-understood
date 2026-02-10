@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FiUserPlus, FiUserCheck, FiDollarSign } from "react-icons/fi";
 import { usePrivy, useFundWallet } from "@privy-io/react-auth";
 import { Creator } from "@/types";
@@ -67,6 +67,28 @@ export function ProfileActionButtons({
     args: walletAddress ? [walletAddress] : undefined,
     chainId: base.id,
   });
+
+  // Load follow status on mount
+  useEffect(() => {
+    async function checkFollowStatus() {
+      if (!currentUserDID || !creator.did || isOwnProfile) return;
+
+      try {
+        const response = await fetch(
+          `/api/social/follow/check?followerDID=${encodeURIComponent(currentUserDID)}&followingDID=${encodeURIComponent(creator.did)}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setIsFollowing(data.isFollowing || false);
+        }
+      } catch (error) {
+        console.error("Failed to check follow status:", error);
+      }
+    }
+
+    checkFollowStatus();
+  }, [currentUserDID, creator.did, isOwnProfile]);
 
   const handleFollow = async () => {
     if (!currentUserDID) {
