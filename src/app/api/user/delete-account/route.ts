@@ -59,7 +59,7 @@ export async function DELETE(request: NextRequest) {
     const { error: commentsError } = await supabase
       .from("comments")
       .delete()
-      .eq("user_did", userId);
+      .eq("author_did", userId);
 
     if (commentsError) {
       console.error("[Delete Account] Error deleting comments:", commentsError);
