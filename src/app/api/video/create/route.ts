@@ -127,11 +127,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Use default thumbnail if none provided (for audio and videos without thumbnails)
+    const DEFAULT_THUMBNAIL = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://dragverse.com'}/default-thumbnail.jpg`;
+    const finalThumbnail = thumbnail || DEFAULT_THUMBNAIL;
+
     const videoInput = {
       creator_did: userDID,
       title: title.trim(),
       description: description?.trim(),
-      thumbnail: thumbnail ?? undefined, // Convert null to undefined for database
+      thumbnail: finalThumbnail, // Always provide a thumbnail (default if none uploaded)
       livepeer_asset_id: livepeerAssetId,
       playback_id: playbackId,
       playback_url: playbackUrl,

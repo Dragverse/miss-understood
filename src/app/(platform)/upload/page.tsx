@@ -1218,9 +1218,16 @@ function UploadPageContent() {
 
         {/* Thumbnail */}
         <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
-          <label className="block text-lg font-bold uppercase tracking-widest mb-4">
-            {editId ? "Cover Image (Click to change)" : "Thumbnail (Optional)"}
-          </label>
+          <div className="mb-4">
+            <label className="block text-lg font-bold uppercase tracking-widest">
+              {editId ? "Cover Image (Click to change)" : "Cover Image"}
+            </label>
+            {!editId && (
+              <p className="text-sm text-gray-400 mt-1">
+                Upload a custom thumbnail or we'll use a default cover image
+              </p>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <label className="flex flex-col items-center justify-center w-full px-4 py-8 border-2 border-dashed border-[#2f2942] rounded-2xl hover:border-[#EB83EA]/50 cursor-pointer transition">
               <FiUploadCloud className="w-8 h-8 text-[#EB83EA] mb-2" />
