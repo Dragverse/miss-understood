@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
 
     // Crosspost to Bluesky
     if (platforms.bluesky) {
-      const mediaUrl = thumbnailUrl && thumbnailUrl.startsWith("http")
+      // Use custom thumbnail only if it's a valid HTTP(S) URL (not blob URLs or relative paths)
+      const mediaUrl = thumbnailUrl && thumbnailUrl.startsWith("http") && !thumbnailUrl.startsWith("blob:")
         ? thumbnailUrl
         : DEFAULT_THUMBNAIL;
       console.log("[Crosspost Video] Posting to Bluesky...");
@@ -81,12 +82,14 @@ export async function POST(request: NextRequest) {
     if (platforms.farcaster) {
       console.log("[Crosspost Video] Posting to Farcaster...");
       try {
+        // Use custom thumbnail only if it's a valid HTTP(S) URL (not blob URLs or relative paths)
+        const farcasterMediaUrl = thumbnailUrl && thumbnailUrl.startsWith("http") && !thumbnailUrl.startsWith("blob:")
+          ? thumbnailUrl
+          : DEFAULT_THUMBNAIL;
         const farcasterResult = await postToFarcaster({
           text: postText,
           media: [{
-            url: thumbnailUrl && thumbnailUrl.startsWith("http")
-              ? thumbnailUrl
-              : DEFAULT_THUMBNAIL,
+            url: farcasterMediaUrl,
             alt: `${title} - Watch on Dragverse`,
           }],
           userId: auth.userId!, // Safe: already verified auth.authenticated above
