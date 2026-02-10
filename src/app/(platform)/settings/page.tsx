@@ -779,12 +779,15 @@ export default function SettingsPage() {
         throw new Error(errorData.error || "Failed to delete account");
       }
 
-      toast.success("Account deleted successfully. Goodbye!");
+      toast.success("Account deleted successfully. Logging out...");
 
-      // Log out and redirect to home
+      // IMPORTANT: Log out of Privy to clear session completely
+      await logout();
+
+      // Redirect to home after logout
       setTimeout(() => {
         window.location.href = "/";
-      }, 2000);
+      }, 1500);
     } catch (error) {
       toast.dismiss(loadingToast);
       console.error("Account deletion error:", error);
