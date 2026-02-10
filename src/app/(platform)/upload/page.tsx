@@ -762,8 +762,11 @@ function UploadPageContent() {
 
               const videoUrl = `${window.location.origin}/${formData.mediaType === 'audio' ? 'listen' : 'watch'}/${metadataResult.videoId}`;
 
-              // Create post text with title, description, and link
-              const postText = `${formData.title}${formData.description ? `\n\n${formData.description}` : ''}\n\n${formData.mediaType === 'video' ? '🎬' : '🎵'} ${videoUrl}`;
+              // Create post text with title, description, and link (clean and simple)
+              const descriptionPreview = formData.description
+                ? formData.description.substring(0, 150) + (formData.description.length > 150 ? '...' : '')
+                : '';
+              const postText = `${formData.title}${descriptionPreview ? `\n\n${descriptionPreview}` : ''}\n\n${videoUrl}`;
 
               // Use thumbnail or default (use production URL for crossposting compatibility)
               const postThumbnail = thumbnailUrl || 'https://www.dragverse.app/default-thumbnail.jpg';

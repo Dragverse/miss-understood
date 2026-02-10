@@ -131,10 +131,17 @@ export async function POST(request: NextRequest) {
     const username = creator?.username || creator?.handle || "a creator";
     const postUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.dragverse.app'}/posts/${post.id}`;
 
-    // Format crosspost message: "Watch @username at the Dragverse: [link]"
-    const crosspostText = textContent
-      ? `${textContent}\n\nWatch @${username} at the Dragverse: ${postUrl}`
-      : `Check out this post from @${username} at the Dragverse: ${postUrl}`;
+    // Check if text already contains a watch/listen link (video/audio post)
+    const hasVideoLink = textContent && (textContent.includes('/watch/') || textContent.includes('/listen/'));
+
+    // Format crosspost message
+    // For video/audio posts, use text as-is (already has link)
+    // For regular posts, append Dragverse link
+    const crosspostText = hasVideoLink
+      ? textContent // Video/audio posts already have the link
+      : textContent
+        ? `${textContent}\n\nWatch @${username} at the Dragverse: ${postUrl}`
+        : `Check out this post from @${username} at the Dragverse: ${postUrl}`;
 
     // Cross-post to Bluesky
     if (platforms.bluesky) {
