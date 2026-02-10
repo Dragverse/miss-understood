@@ -745,18 +745,38 @@ function UploadPageContent() {
           toast.success(`${mediaLabel} uploaded successfully!`);
 
           // Create feed post (which also handles crossposting automatically)
-          if (metadataResult.video?.id) {
+          console.log("[Upload] Metadata result:", metadataResult);
+          console.log("[Upload] Video ID:", metadataResult.videoId);
+          console.log("[Upload] Crosspost settings:", {
+            bluesky: formData.crossPostBluesky,
+            farcaster: formData.crossPostFarcaster
+          });
+
+          if (metadataResult.videoId) {
             try {
+              console.log("[Upload] Creating feed post...");
               toast("Creating feed post...");
 
               const token = await getAccessToken();
-              const videoUrl = `${window.location.origin}/${formData.mediaType === 'audio' ? 'listen' : 'watch'}/${metadataResult.video.id}`;
+              console.log("[Upload] Got access token:", token ? "✓" : "✗");
+
+              const videoUrl = `${window.location.origin}/${formData.mediaType === 'audio' ? 'listen' : 'watch'}/${metadataResult.videoId}`;
 
               // Create post text with title, description, and link
               const postText = `${formData.title}${formData.description ? `\n\n${formData.description}` : ''}\n\n${formData.mediaType === 'video' ? '🎬' : '🎵'} ${videoUrl}`;
 
               // Use thumbnail or default (use production URL for crossposting compatibility)
               const postThumbnail = thumbnailUrl || 'https://www.dragverse.app/default-thumbnail.jpg';
+
+              console.log("[Upload] Feed post data:", {
+                textContent: postText.substring(0, 50) + "...",
+                mediaUrls: [postThumbnail],
+                platforms: {
+                  dragverse: true,
+                  bluesky: formData.crossPostBluesky,
+                  farcaster: formData.crossPostFarcaster,
+                }
+              });
 
               const feedPostResponse = await fetch("/api/posts/create", {
                 method: "POST",
@@ -777,33 +797,43 @@ function UploadPageContent() {
                 }),
               });
 
+              console.log("[Upload] Feed post response status:", feedPostResponse.status);
+
               if (feedPostResponse.ok) {
                 const feedData = await feedPostResponse.json();
+                console.log("[Upload] Feed post created:", feedData);
                 toast.success("Posted to Dragverse feed!");
 
                 // Handle crosspost results
+                console.log("[Upload] Crosspost results:", feedData.crosspost);
+
                 if (feedData.crosspost?.bluesky?.success) {
+                  console.log("[Upload] ✅ Bluesky success:", feedData.crosspost.bluesky);
                   toast.success("Shared to Bluesky!");
                 } else if (feedData.crosspost?.bluesky?.error) {
-                  console.warn("[Upload] Bluesky failed:", feedData.crosspost.bluesky.error);
+                  console.error("[Upload] ❌ Bluesky failed:", feedData.crosspost.bluesky.error);
                   toast.error(`Bluesky: ${feedData.crosspost.bluesky.error}`);
                 }
 
                 if (feedData.crosspost?.farcaster?.success) {
+                  console.log("[Upload] ✅ Farcaster success:", feedData.crosspost.farcaster);
                   toast.success("Shared to Farcaster /dragverse!");
                 } else if (feedData.crosspost?.farcaster?.error) {
-                  console.warn("[Upload] Farcaster failed:", feedData.crosspost.farcaster.error);
+                  console.error("[Upload] ❌ Farcaster failed:", feedData.crosspost.farcaster.error);
                   toast.error(`Farcaster: ${feedData.crosspost.farcaster.error}`);
                 }
               } else {
                 const error = await feedPostResponse.json();
-                console.error("[Upload] Feed post failed:", error);
+                console.error("[Upload] ❌ Feed post API error:", error);
                 toast.error(`Couldn't create feed post: ${error.error || "Unknown error"}`);
               }
             } catch (feedPostError) {
-              console.error("[Upload] Feed post error:", feedPostError);
+              console.error("[Upload] ❌ Feed post exception:", feedPostError);
               toast.error("Couldn't create feed post. Your upload was saved.");
             }
+          } else {
+            console.warn("[Upload] ⚠️ No video ID in metadata result, skipping feed post creation");
+            console.warn("[Upload] Full metadata result:", metadataResult);
           }
         }
       } catch (metadataError) {
