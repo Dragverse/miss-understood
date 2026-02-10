@@ -129,14 +129,21 @@ function SnapshotsContent() {
         const isShortDuration = v.duration > 0 && v.duration < 60;
         const isShortType = v.contentType === "short";
         const hasValidUrl = isValidPlaybackUrl(v.playbackUrl);
-        const isExternalVideo = (v as any).source === "youtube" || (v as any).source === "bluesky";
+        const isYouTube = (v as any).source === "youtube";
+        const isBluesky = (v as any).source === "bluesky";
 
-        // For external videos (YouTube/Bluesky), allow if marked as short OR if it has external URL
-        if (isExternalVideo) {
-          return isShortType || (v as any).externalUrl || hasValidUrl;
+        // YouTube videos: always allow if marked as short (have watch URLs that work in iframe)
+        if (isYouTube) {
+          return isShortType && hasValidUrl;
         }
 
-        // For local videos, require valid playback URL
+        // Bluesky videos: require valid playback URL (HLS stream from av.bsky.social)
+        // This filters out image posts and text-only posts that have empty playbackUrl
+        if (isBluesky) {
+          return hasValidUrl && isShortType;
+        }
+
+        // Local videos: require valid playback URL
         return hasValidUrl && (isShortType || isShortDuration);
       });
 
