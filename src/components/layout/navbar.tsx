@@ -150,45 +150,46 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           {authenticated ? (
             <>
-              {/* Create Button - Only show if user has social connections */}
-              {hasConnection && (
-                <div className="relative hidden md:block create-menu-container">
-                  <button
-                    onClick={() => setShowCreateMenu(!showCreateMenu)}
-                    className="w-10 h-10 rounded-full bg-[#EB83EA] hover:bg-[#E748E6] flex items-center justify-center transition-all shadow-lg hover:shadow-xl"
-                    title="Create Content"
-                  >
-                    <FiPlus className="w-5 h-5 text-white" />
-                  </button>
-                  {/* Create Dropdown */}
-                  {showCreateMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl p-2 z-50">
-                      {canStream && (
-                        <Link
-                          href="/dashboard"
-                          onClick={() => setShowCreateMenu(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
-                        >
-                          <FiVideo className="w-4 h-4" />
-                          Go Live
-                        </Link>
-                      )}
+              {/* Create Button - Show for all authenticated users */}
+              <div className="relative hidden md:block create-menu-container">
+                <button
+                  onClick={() => setShowCreateMenu(!showCreateMenu)}
+                  className="w-10 h-10 rounded-full bg-[#EB83EA] hover:bg-[#E748E6] flex items-center justify-center transition-all shadow-lg hover:shadow-xl"
+                  title="Create Content"
+                >
+                  <FiPlus className="w-5 h-5 text-white" />
+                </button>
+                {/* Create Dropdown */}
+                {showCreateMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-[#1a0b2e] border border-white/10 rounded-2xl shadow-xl p-2 z-50">
+                    {canStream && (
                       <Link
-                        href="/upload"
+                        href="/dashboard"
                         onClick={() => setShowCreateMenu(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
                       >
                         <FiVideo className="w-4 h-4" />
-                        Upload Video
+                        Go Live
                       </Link>
-                      <Link
-                        href="/upload?type=audio"
-                        onClick={() => setShowCreateMenu(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
-                      >
-                        <FiHeadphones className="w-4 h-4" />
-                        Upload Audio
-                      </Link>
+                    )}
+                    <Link
+                      href="/upload"
+                      onClick={() => setShowCreateMenu(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                    >
+                      <FiVideo className="w-4 h-4" />
+                      Upload Video
+                    </Link>
+                    <Link
+                      href="/upload?type=audio"
+                      onClick={() => setShowCreateMenu(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                    >
+                      <FiHeadphones className="w-4 h-4" />
+                      Upload Audio
+                    </Link>
+                    {/* Create Post - Only show if user has social connections */}
+                    {hasConnection && (
                       <Link
                         href="/feed/create"
                         onClick={() => setShowCreateMenu(false)}
@@ -197,10 +198,10 @@ export function Navbar() {
                         <FiMessageSquare className="w-4 h-4" />
                         Create Post
                       </Link>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Notifications */}
               <Link

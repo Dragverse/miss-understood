@@ -498,9 +498,11 @@ export default function DynamicProfilePage() {
                   ? "text-[#EB83EA]"
                   : "text-gray-500 hover:text-gray-300"
               }`}
+              aria-label="View videos content"
+              aria-current={activeTab === "videos" ? "page" : undefined}
             >
               <FiGrid className="w-6 h-6" />
-              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Videos</span>
+              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Videos</span>
               {activeTab === "videos" && (
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
               )}
@@ -514,9 +516,11 @@ export default function DynamicProfilePage() {
                     ? "text-[#EB83EA]"
                     : "text-gray-500 hover:text-gray-300"
                 }`}
+                aria-label="View bytes (shorts) content"
+                aria-current={activeTab === "bytes" ? "page" : undefined}
               >
                 <FiZap className="w-6 h-6" />
-                <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Bytes</span>
+                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Bytes</span>
                 {activeTab === "bytes" && (
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
                 )}
@@ -531,9 +535,11 @@ export default function DynamicProfilePage() {
                     ? "text-[#EB83EA]"
                     : "text-gray-500 hover:text-gray-300"
                 }`}
+                aria-label="View audio content"
+                aria-current={activeTab === "audio" ? "page" : undefined}
               >
                 <FiHeadphones className="w-6 h-6" />
-                <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Audio</span>
+                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Audio</span>
                 {activeTab === "audio" && (
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
                 )}
@@ -547,9 +553,11 @@ export default function DynamicProfilePage() {
                   ? "text-[#EB83EA]"
                   : "text-gray-500 hover:text-gray-300"
               }`}
+              aria-label="View photos content"
+              aria-current={activeTab === "photos" ? "page" : undefined}
             >
               <FiImage className="w-6 h-6" />
-              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Photos</span>
+              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Photos</span>
               {activeTab === "photos" && (
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
               )}
@@ -562,9 +570,11 @@ export default function DynamicProfilePage() {
                   ? "text-[#EB83EA]"
                   : "text-gray-500 hover:text-gray-300"
               }`}
+              aria-label="View posts content"
+              aria-current={activeTab === "posts" ? "page" : undefined}
             >
               <FiMessageSquare className="w-6 h-6" />
-              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Posts</span>
+              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Posts</span>
               {activeTab === "posts" && (
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
               )}
@@ -577,9 +587,11 @@ export default function DynamicProfilePage() {
                   ? "text-[#EB83EA]"
                   : "text-gray-500 hover:text-gray-300"
               }`}
+              aria-label="View about content"
+              aria-current={activeTab === "about" ? "page" : undefined}
             >
               <FiInfo className="w-6 h-6" />
-              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">About</span>
+              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">About</span>
               {activeTab === "about" && (
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
               )}
@@ -594,7 +606,7 @@ export default function DynamicProfilePage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EB83EA]"></div>
                 </div>
               ) : videosList.length > 0 ? (
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
                   {videosList.map((video) => (
                     <div
                       key={video.id}
@@ -643,7 +655,7 @@ export default function DynamicProfilePage() {
             <div>
               {bytesList.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-3 gap-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
                     {bytesList.map((byte, index) => (
                       <div
                         key={byte.id}
@@ -701,7 +713,7 @@ export default function DynamicProfilePage() {
           {activeTab === "audio" && (
             <div>
               {audioList.length > 0 ? (
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
                   {audioList.map((audio) => (
                     <div
                       key={audio.id}
@@ -748,7 +760,7 @@ export default function DynamicProfilePage() {
             <div>
               {userPhotos.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-3 gap-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
                     {userPhotos.map((photo, index) => (
                       <div
                         key={photo.id}
