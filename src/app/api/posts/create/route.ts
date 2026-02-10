@@ -140,13 +140,38 @@ export async function POST(request: NextRequest) {
     if (platforms.bluesky) {
       console.log("[Posts] Cross-posting to Bluesky...");
       try {
-        const blueskyResult = await postToBluesky(request, {
-          text: crosspostText,
-          media: mediaUrls.map((url: string, index: number) => ({
+        // Check if this is a video/audio post by looking for watch/listen URLs in text
+        const isVideoPost = textContent && (textContent.includes('/watch/') || textContent.includes('/listen/'));
+
+        // Extract video URL and metadata for external embed
+        let blueskyParams: any = { text: crosspostText };
+
+        if (isVideoPost && mediaUrls.length > 0) {
+          // Extract video URL from text
+          const urlMatch = textContent.match(/https?:\/\/[^\s]+\/(watch|listen)\/[^\s]+/);
+          const videoUrl = urlMatch ? urlMatch[0] : postUrl;
+
+          // Extract title (first line of text before description)
+          const lines = textContent.split('\n');
+          const title = lines[0]?.trim() || "Watch on Dragverse";
+          const description = lines.slice(1).join('\n').trim().substring(0, 200) || "New content on Dragverse";
+
+          // Use external embed for video/audio posts (creates clickable link card)
+          blueskyParams.external = {
+            uri: videoUrl,
+            title: title,
+            description: description,
+            thumb: mediaUrls[0], // Use first media URL as thumbnail
+          };
+        } else {
+          // Use image embeds for regular posts
+          blueskyParams.media = mediaUrls.map((url: string, index: number) => ({
             url,
             alt: `Image ${index + 1}`,
-          })),
-        });
+          }));
+        }
+
+        const blueskyResult = await postToBluesky(request, blueskyParams);
 
         crosspostResults.bluesky = blueskyResult;
         if (blueskyResult.success) {

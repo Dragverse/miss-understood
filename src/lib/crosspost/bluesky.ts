@@ -13,6 +13,12 @@ interface BlueskyPostParams {
     url: string;
     alt?: string;
   }[];
+  external?: {
+    uri: string;
+    title: string;
+    description: string;
+    thumb?: string;
+  };
 }
 
 interface BlueskyPostResult {
@@ -63,9 +69,60 @@ export async function postToBluesky(
     const authData = await authResponse.json();
     const { accessJwt, did } = authData;
 
-    // Upload images if provided
+    // Handle embeds
     const embeds: any[] = [];
-    if (params.media && params.media.length > 0) {
+
+    // External link embed (for video/audio posts with link cards)
+    if (params.external) {
+      console.log("[Bluesky] Creating external link embed:", params.external.uri);
+
+      // Upload thumbnail for external embed if provided
+      let thumbBlob = null;
+      if (params.external.thumb) {
+        try {
+          console.log("[Bluesky] Downloading thumbnail for external embed:", params.external.thumb);
+          const thumbResponse = await fetch(params.external.thumb);
+          if (thumbResponse.ok) {
+            const thumbBuffer = await thumbResponse.arrayBuffer();
+            const thumbBlobData = new Blob([thumbBuffer], {
+              type: thumbResponse.headers.get("content-type") || "image/jpeg"
+            });
+
+            const uploadResponse = await fetch(
+              "https://bsky.social/xrpc/com.atproto.repo.uploadBlob",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": thumbBlobData.type,
+                  Authorization: `Bearer ${accessJwt}`,
+                },
+                body: thumbBlobData,
+              }
+            );
+
+            if (uploadResponse.ok) {
+              const uploadData = await uploadResponse.json();
+              thumbBlob = uploadData.blob;
+              console.log("[Bluesky] ✓ Thumbnail uploaded for external embed");
+            }
+          }
+        } catch (error) {
+          console.error("[Bluesky] Failed to upload thumbnail for external:", error);
+        }
+      }
+
+      embeds.push({
+        $type: "app.bsky.embed.external",
+        external: {
+          uri: params.external.uri,
+          title: params.external.title,
+          description: params.external.description,
+          thumb: thumbBlob,
+        },
+      });
+    }
+    // Image embeds (for regular photo posts)
+    else if (params.media && params.media.length > 0) {
       const images = await Promise.all(
         params.media.slice(0, 4).map(async (media) => {
           try {
