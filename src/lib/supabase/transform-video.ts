@@ -51,6 +51,20 @@ export async function transformVideoWithCreator(supabaseVideo: SupabaseVideo): P
     };
   }
 
+  // Fix incomplete Livepeer playback URLs
+  let playbackUrl = supabaseVideo.playback_url || '';
+  const playbackId = supabaseVideo.playback_id || supabaseVideo.livepeer_asset_id || '';
+
+  // Append /index.m3u8 if URL is incomplete (database has truncated URLs)
+  if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
+    playbackUrl = `${playbackUrl}/index.m3u8`;
+  }
+
+  // Construct from playback_id if no URL at all
+  if (!playbackUrl && playbackId) {
+    playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
+  }
+
   return {
     id: supabaseVideo.id,
     title: supabaseVideo.title,
@@ -60,8 +74,8 @@ export async function transformVideoWithCreator(supabaseVideo: SupabaseVideo): P
     views: supabaseVideo.views,
     likes: supabaseVideo.likes,
     createdAt: new Date(supabaseVideo.created_at),
-    playbackUrl: supabaseVideo.playback_url || '',
-    livepeerAssetId: supabaseVideo.livepeer_asset_id || '',
+    playbackUrl,
+    livepeerAssetId: playbackId,
     contentType: supabaseVideo.content_type || 'long',
     creator: creatorData,
     category: supabaseVideo.category || 'Other',
@@ -116,6 +130,20 @@ export async function transformVideosWithCreators(supabaseVideos: SupabaseVideo[
       verified: false,
     };
 
+    // Fix incomplete Livepeer playback URLs
+    let playbackUrl = v.playback_url || '';
+    const playbackId = v.playback_id || v.livepeer_asset_id || '';
+
+    // Append /index.m3u8 if URL is incomplete (database has truncated URLs)
+    if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
+      playbackUrl = `${playbackUrl}/index.m3u8`;
+    }
+
+    // Construct from playback_id if no URL at all
+    if (!playbackUrl && playbackId) {
+      playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
+    }
+
     return {
       id: v.id,
       title: v.title,
@@ -125,8 +153,8 @@ export async function transformVideosWithCreators(supabaseVideos: SupabaseVideo[
       views: v.views,
       likes: v.likes,
       createdAt: new Date(v.created_at),
-      playbackUrl: v.playback_url || '',
-      livepeerAssetId: v.playback_id || v.livepeer_asset_id || '',
+      playbackUrl,
+      livepeerAssetId: playbackId,
       contentType: v.content_type || 'long',
       creator,
       category: v.category || 'Other',
