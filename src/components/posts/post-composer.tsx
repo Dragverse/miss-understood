@@ -5,6 +5,7 @@ import Image from "next/image";
 import { FiImage, FiX, FiSmile, FiMapPin, FiSend, FiLoader, FiHeart, FiActivity, FiFilm, FiAward, FiStar, FiShare, FiMessageSquare } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import { usePrivy } from "@privy-io/react-auth";
+import toast from "react-hot-toast";
 
 interface PostComposerProps {
   onPostCreated?: () => void;
@@ -100,15 +101,24 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
   };
 
   const handlePost = async () => {
-    if (!content.trim() && mediaFiles.length === 0) return;
+    if (!content.trim() && mediaFiles.length === 0) {
+      toast.error("Please add some content to your post");
+      return;
+    }
 
     setIsUploading(true);
+    const loadingToast = toast.loading("Creating your post...");
+
     try {
       const authToken = await getAccessToken();
 
       // Upload media first if any
       const uploadedMediaUrls: string[] = [];
       const mediaTypes: string[] = [];
+
+      if (mediaFiles.length > 0) {
+        toast.loading(`Uploading ${mediaFiles.length} image${mediaFiles.length > 1 ? 's' : ''}...`, { id: loadingToast });
+      }
 
       for (const file of mediaFiles) {
         const formData = new FormData();
@@ -127,6 +137,10 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
           const data = await uploadResponse.json();
           uploadedMediaUrls.push(data.url);
           mediaTypes.push(file.type.startsWith("image/gif") ? "gif" : "image");
+        } else {
+          // Image upload failed
+          const errorData = await uploadResponse.json().catch(() => ({ error: "Upload failed" }));
+          throw new Error(errorData.error || "Failed to upload image");
         }
       }
 
@@ -155,12 +169,22 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
         setSelectedMood(null);
         setShowMoodPicker(false);
 
+        toast.success("Post created successfully! ✨", { id: loadingToast });
+
         if (onPostCreated) {
           onPostCreated();
         }
+      } else {
+        // Post creation failed
+        const errorData = await response.json().catch(() => ({ error: "Failed to create post" }));
+        throw new Error(errorData.error || "Failed to create post");
       }
     } catch (error) {
       console.error("Failed to create post:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create post. Please try again.",
+        { id: loadingToast }
+      );
     } finally {
       setIsUploading(false);
     }
