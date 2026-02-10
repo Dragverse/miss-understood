@@ -46,14 +46,18 @@ export async function POST(request: NextRequest) {
 
     // Crosspost to Bluesky
     if (platforms.bluesky) {
+      const mediaUrl = thumbnailUrl && thumbnailUrl.startsWith("http")
+        ? thumbnailUrl
+        : DEFAULT_THUMBNAIL;
       console.log("[Crosspost Video] Posting to Bluesky...");
+      console.log("[Crosspost Video] Thumbnail URL:", thumbnailUrl);
+      console.log("[Crosspost Video] Using media URL:", mediaUrl);
+      console.log("[Crosspost Video] Post text:", postText);
       try {
         const blueskyResult = await postToBluesky(request, {
           text: postText,
           media: [{
-            url: thumbnailUrl && thumbnailUrl.startsWith("http")
-              ? thumbnailUrl
-              : DEFAULT_THUMBNAIL,
+            url: mediaUrl,
             alt: `${title} - Watch on Dragverse`,
           }],
         });

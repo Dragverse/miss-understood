@@ -70,8 +70,16 @@ export async function postToBluesky(
         params.media.slice(0, 4).map(async (media) => {
           try {
             // Download image from URL
+            console.log("[Bluesky] Fetching image from:", media.url);
             const imageResponse = await fetch(media.url);
+
+            if (!imageResponse.ok) {
+              console.error(`[Bluesky] Image fetch failed: ${imageResponse.status} ${imageResponse.statusText}`);
+              return null;
+            }
+
             const imageBuffer = await imageResponse.arrayBuffer();
+            console.log("[Bluesky] Image downloaded, size:", imageBuffer.byteLength, "bytes");
             const imageBlob = new Blob([imageBuffer], {
               type: imageResponse.headers.get("content-type") || "image/jpeg"
             });
