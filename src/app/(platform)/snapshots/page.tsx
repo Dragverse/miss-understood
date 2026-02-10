@@ -6,7 +6,6 @@ import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
 import { useSearchParams } from "next/navigation";
 import { getLocalVideos } from "@/lib/utils/local-storage";
-import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/snapshots/short-video";
 import { FiChevronUp, FiChevronDown, FiRefreshCw } from "react-icons/fi";
@@ -21,7 +20,7 @@ function SnapshotsContent() {
   const [sliderReady, setSliderReady] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load ONLY Dragverse snapshots (matching homepage pattern for reliability)
+  // Load ONLY Dragverse snapshots (server-side API for full URLs)
   async function loadSnapshots(isRefresh = false) {
     if (isRefresh) {
       setRefreshing(true);
@@ -30,8 +29,17 @@ function SnapshotsContent() {
     }
 
     try {
-      // Fetch videos directly from Supabase (same as homepage)
-      const supabaseVideos = await getVideos(100);
+      // Fetch videos from server-side API (uses service role key for full URLs)
+      const response = await fetch("/api/videos/list?limit=100&contentType=short");
+      const data = await response.json();
+
+      if (!data.success || !data.videos) {
+        console.warn("[Snapshots] API returned no videos");
+        setSnapshots([]);
+        return;
+      }
+
+      const supabaseVideos = data.videos;
 
       // Manual transformation (matching homepage pattern - NO URL fixing)
       const allVideos = supabaseVideos.map((v: any) => ({
@@ -72,10 +80,10 @@ function SnapshotsContent() {
       }));
 
       // Filter for shorts only (matching homepage)
-      const shorts = allVideos.filter((v) => v.contentType === "short");
+      const shorts = allVideos.filter((v: Video) => v.contentType === "short");
 
       // Sort by date (newest first)
-      shorts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      shorts.sort((a: Video, b: Video) => b.createdAt.getTime() - a.createdAt.getTime());
 
       // Simple, efficient logging (no verbose playbackUrl)
       console.log(`[Snapshots] Loaded ${shorts.length} Dragverse shorts`);

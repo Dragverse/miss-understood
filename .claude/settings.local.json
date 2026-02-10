@@ -83,7 +83,9 @@
       "Bash(then echo \"YouTube API Key is set\")",
       "Bash(else echo \"YouTube API Key is NOT set\")",
       "Bash(head:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(git checkout:*)",
+      "Bash(supabase db execute:*)"
     ]
   }
 }
