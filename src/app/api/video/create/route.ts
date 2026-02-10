@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       creator_did: userDID,
       title: title.trim(),
       description: description?.trim(),
-      thumbnail,
+      thumbnail: thumbnail ?? undefined, // Convert null to undefined for database
       livepeer_asset_id: livepeerAssetId,
       playback_id: playbackId,
       playback_url: playbackUrl,
