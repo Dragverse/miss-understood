@@ -43,7 +43,7 @@ export function ProfileActionButtons({
   isDragverseUser,
   currentUserDID,
 }: ProfileActionButtonsProps) {
-  const { user, authenticated } = usePrivy();
+  const { user, authenticated, getAccessToken } = usePrivy();
   const { fundWallet } = useFundWallet();
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,13 +74,19 @@ export function ProfileActionButtons({
       if (!currentUserDID || !creator.did || isOwnProfile) return;
 
       try {
+        const authToken = await getAccessToken();
         const response = await fetch(
-          `/api/social/follow/check?followerDID=${encodeURIComponent(currentUserDID)}&followingDID=${encodeURIComponent(creator.did)}`
+          `/api/social/follow?followingDID=${encodeURIComponent(creator.did)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
         );
 
         if (response.ok) {
           const data = await response.json();
-          setIsFollowing(data.isFollowing || false);
+          setIsFollowing(data.following || false);
         }
       } catch (error) {
         console.error("Failed to check follow status:", error);
@@ -88,7 +94,7 @@ export function ProfileActionButtons({
     }
 
     checkFollowStatus();
-  }, [currentUserDID, creator.did, isOwnProfile]);
+  }, [currentUserDID, creator.did, isOwnProfile, getAccessToken]);
 
   const handleFollow = async () => {
     if (!currentUserDID) {
@@ -99,12 +105,15 @@ export function ProfileActionButtons({
 
     setIsLoading(true);
     try {
+      const authToken = await getAccessToken();
       // Use Dragverse follow API for all users
       const response = await fetch("/api/social/follow", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
         body: JSON.stringify({
-          followerDID: currentUserDID,
           followingDID: creator.did,
           action: isFollowing ? "unfollow" : "follow",
         }),

@@ -30,7 +30,7 @@ export function VideoCommentModal({
   videoId,
   videoTitle,
 }: VideoCommentModalProps) {
-  const { user, login } = usePrivy();
+  const { user, login, getAccessToken } = usePrivy();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [commentText, setCommentText] = useState("");
@@ -72,12 +72,15 @@ export function VideoCommentModal({
 
     setSubmitting(true);
     try {
+      const authToken = await getAccessToken();
       const response = await fetch("/api/social/comment", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
         body: JSON.stringify({
           videoId,
-          authorDID: user.id,
           content: commentText,
         }),
       });

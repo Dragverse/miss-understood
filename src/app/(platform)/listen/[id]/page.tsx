@@ -109,8 +109,13 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
       if (!user?.id || !audio?.id) return;
 
       try {
+        const authToken = await getAccessToken();
         // Check if user has liked the audio
-        const likeResponse = await fetch(`/api/social/like/check?userDID=${user.id}&videoId=${audio.id}`);
+        const likeResponse = await fetch(`/api/social/like?videoId=${audio.id}`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
         if (likeResponse.ok) {
           const likeData = await likeResponse.json();
           setIsLiked(likeData.liked || false);
@@ -243,7 +248,6 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
         },
         body: JSON.stringify({
           videoId: audio?.id,
-          userDID: user.id,
           action: isLiked ? "unlike" : "like",
         }),
       });

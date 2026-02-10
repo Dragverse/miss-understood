@@ -21,7 +21,7 @@ interface ShortVideoProps {
 }
 
 export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps) {
-  const { user } = usePrivy();
+  const { user, getAccessToken } = usePrivy();
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -60,11 +60,14 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
     setLikeCount(newCount);
 
     try {
+      const authToken = await getAccessToken();
       const response = await fetch("/api/social/like", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
         body: JSON.stringify({
-          userDID: user.id,
           videoId: video.id,
           action: newLiked ? "like" : "unlike",
         }),

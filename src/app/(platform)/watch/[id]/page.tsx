@@ -56,8 +56,14 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
       if (!user?.id || !video?.id) return;
 
       try {
+        const authToken = await getAccessToken();
+
         // Check if user has liked the video
-        const likeResponse = await fetch(`/api/social/like/check?userDID=${user.id}&videoId=${video.id}`);
+        const likeResponse = await fetch(`/api/social/like?videoId=${video.id}`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
         if (likeResponse.ok) {
           const likeData = await likeResponse.json();
           setIsLiked(likeData.liked || false);
@@ -65,7 +71,11 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
 
         // Check if user is following the creator
         if (video.creator.did) {
-          const followResponse = await fetch(`/api/social/follow/check?followerDID=${user.id}&followingDID=${video.creator.did}`);
+          const followResponse = await fetch(`/api/social/follow?followingDID=${video.creator.did}`, {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
           if (followResponse.ok) {
             const followData = await followResponse.json();
             setIsFollowing(followData.following || false);
@@ -407,11 +417,14 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
     setLikes(newCount);
 
     try {
+      const authToken = await getAccessToken();
       const response = await fetch("/api/social/like", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
         body: JSON.stringify({
-          userDID: user.id,
           videoId: video.id,
           action: newLiked ? "like" : "unlike",
         }),
@@ -882,7 +895,6 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                             Authorization: `Bearer ${authToken}`,
                           },
                           body: JSON.stringify({
-                            followerDID: user.id,
                             followingDID: video.creator.did,
                             action: newFollowing ? "follow" : "unfollow",
                           }),
