@@ -755,8 +755,8 @@ function UploadPageContent() {
               // Create post text with title, description, and link
               const postText = `${formData.title}${formData.description ? `\n\n${formData.description}` : ''}\n\n${formData.mediaType === 'video' ? '🎬' : '🎵'} ${videoUrl}`;
 
-              // Use thumbnail or default
-              const postThumbnail = thumbnailUrl || `${window.location.origin}/default-thumbnail.jpg`;
+              // Use thumbnail or default (use production URL for crossposting compatibility)
+              const postThumbnail = thumbnailUrl || 'https://www.dragverse.app/default-thumbnail.jpg';
 
               const feedPostResponse = await fetch("/api/posts/create", {
                 method: "POST",

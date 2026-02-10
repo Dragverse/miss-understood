@@ -53,17 +53,24 @@ export async function POST(request: NextRequest) {
     const { name } = validation.data;
     console.log("📁 Requesting upload URL for file:", name);
 
-    // Request upload URL from Livepeer
-    const response = await fetch(`${LIVEPEER_API_URL}/asset/request-upload`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name }),
-    });
+    // Request upload URL from Livepeer with extended timeout
+    console.log("🔄 Requesting upload URL from Livepeer...");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-    if (!response.ok) {
+    try {
+      const response = await fetch(`${LIVEPEER_API_URL}/asset/request-upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
       const errorText = await response.text();
       console.error("❌ Livepeer API error:", {
         status: response.status,
@@ -80,13 +87,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
-    console.log("✓ Upload URL received from Livepeer");
+      const data = await response.json();
+      console.log("✓ Upload URL received from Livepeer");
 
-    return NextResponse.json({
-      tusEndpoint: data.tusEndpoint,
-      asset: data.asset,
-    });
+      return NextResponse.json({
+        tusEndpoint: data.tusEndpoint,
+        asset: data.asset,
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error("❌ Livepeer fetch error:", fetchError);
+
+      // Handle specific error types
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        return NextResponse.json(
+          { error: "Request to Livepeer timed out. Please try again." },
+          { status: 504 }
+        );
+      }
+
+      throw fetchError; // Re-throw to be caught by outer catch
+    }
   } catch (error) {
     console.error("❌ Upload request error:", error);
     return NextResponse.json(
