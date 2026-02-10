@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/verify';
 import { likeVideo, unlikeVideo, hasLikedVideo } from '@/lib/supabase/social';
 import { createNotification } from '@/lib/supabase/notifications';
 import { getVideo } from '@/lib/supabase/videos';
 import { getCreatorByDID } from '@/lib/supabase/creators';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // SECURITY: Verify authentication to prevent user spoofing
     const auth = await verifyAuth(request);
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   // SECURITY: Require authentication to prevent relationship enumeration
   const auth = await verifyAuth(request);
   if (!auth.authenticated || !auth.userId) {
