@@ -100,12 +100,22 @@ function SnapshotsContent() {
         source: "ceramic" as const,
       })) as Video[];
 
-      // Filter for Dragverse snapshots only (shorts under 60 seconds)
+      // Debug: Log all videos
+      console.log(`[Snapshots] Total Dragverse videos fetched: ${transformedSupabase.length}`);
+
+      // Filter for Dragverse snapshots (relaxed filtering for debugging)
       const dragverseSnapshots = transformedSupabase.filter((v) => {
         const isShortDuration = v.duration > 0 && v.duration < 60;
         const isShortType = v.contentType === "short";
         const hasValidUrl = isValidPlaybackUrl(v.playbackUrl);
-        return hasValidUrl && (isShortType || isShortDuration);
+
+        // Debug logging
+        if (!hasValidUrl) {
+          console.log(`[Snapshots] Video "${v.title}" has invalid playback URL:`, v.playbackUrl);
+        }
+
+        // Relaxed filter: allow any video with valid URL OR shorts
+        return hasValidUrl || isShortType;
       });
 
       // Sort by date (newest first)
@@ -113,7 +123,14 @@ function SnapshotsContent() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
-      console.log(`[Snapshots] Loaded ${sortedSnapshots.length} Dragverse snapshots`);
+      console.log(`[Snapshots] Filtered ${sortedSnapshots.length} snapshots from ${transformedSupabase.length} total videos`);
+      console.log(`[Snapshots] Sample video:`, sortedSnapshots[0] ? {
+        title: sortedSnapshots[0].title,
+        playbackUrl: sortedSnapshots[0].playbackUrl,
+        contentType: sortedSnapshots[0].contentType,
+        duration: sortedSnapshots[0].duration
+      } : 'No videos');
+
       setSnapshots(sortedSnapshots);
     } catch (error) {
       console.error("[Snapshots] Failed to load snapshots:", error);
