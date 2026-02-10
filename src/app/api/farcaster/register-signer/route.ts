@@ -64,6 +64,46 @@ export async function POST(request: NextRequest) {
     }
 
     const fid = farcasterAccount.fid;
+    const farcasterUsername = farcasterAccount.username || null;
+
+    console.log("[Farcaster Register] Processing registration for:", {
+      userId: auth.userId,
+      fid,
+      username: farcasterUsername,
+    });
+
+    // Ensure creator profile exists and has Farcaster info
+    const supabase = getSupabaseServerClient();
+    const { data: existingCreator, error: fetchError } = await supabase
+      .from("creators")
+      .select("id, farcaster_fid, farcaster_signer_uuid")
+      .eq("did", auth.userId)
+      .single();
+
+    if (fetchError) {
+      console.error("[Farcaster Register] Creator profile not found:", fetchError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Creator profile not found",
+          message: "Please refresh the page and try again",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if signer already exists
+    if (existingCreator.farcaster_signer_uuid) {
+      console.log("[Farcaster Register] Signer already exists:", existingCreator.farcaster_signer_uuid);
+      return NextResponse.json(
+        {
+          success: true,
+          signerUuid: existingCreator.farcaster_signer_uuid,
+          message: "Signer already registered",
+          alreadyExists: true,
+        }
+      );
+    }
 
     // Initialize Neynar client
     const apiKey = process.env.NEYNAR_API_KEY;
@@ -81,7 +121,17 @@ export async function POST(request: NextRequest) {
 
     // Create a managed signer via Neynar API
     // This returns a signer_uuid and a deeplink for the user to approve in Warpcast
-    const signerResponse = await neynar.createSigner();
+    let signerResponse;
+    try {
+      signerResponse = await neynar.createSigner();
+    } catch (neynarError: any) {
+      console.error("[Farcaster Register] Neynar API error:", {
+        message: neynarError.message,
+        status: neynarError.response?.status,
+        data: neynarError.response?.data,
+      });
+      throw neynarError;
+    }
 
     if (!signerResponse || !signerResponse.signer_uuid) {
       console.error("[Farcaster Register] Failed to create signer - no UUID returned");
@@ -104,13 +154,13 @@ export async function POST(request: NextRequest) {
       approvalUrl: signerApprovalUrl,
     });
 
-    // Store the signerUuid and FID in the database
-    const supabase = getSupabaseServerClient();
+    // Store the signerUuid, FID, and handle in the database
     const { error: updateError } = await supabase
       .from("creators")
       .update({
         farcaster_signer_uuid: signerUuid,
-        farcaster_fid: fid
+        farcaster_fid: fid,
+        farcaster_handle: farcasterUsername,
       })
       .eq("did", auth.userId);
 
