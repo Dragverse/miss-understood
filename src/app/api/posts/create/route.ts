@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     console.log("[Posts] ✅ Dragverse post created:", post.id);
 
     // Cross-post to other platforms if requested
-    const crosspostResults: Record<string, { success: boolean; error?: string; url?: string }> = {
+    const crosspostResults: Record<string, { success: boolean; error?: string; url?: string; uri?: string; cid?: string; hash?: string }> = {
       dragverse: { success: true, url: `/posts/${post.id}` },
     };
 
