@@ -6,11 +6,9 @@ import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
 import { useSearchParams } from "next/navigation";
 import { getLocalVideos } from "@/lib/utils/local-storage";
-import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/snapshots/short-video";
 import { FiChevronUp, FiChevronDown, FiRefreshCw } from "react-icons/fi";
-import { isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
 import { LoadingShimmer } from "@/components/shared";
 
 function SnapshotsContent() {
@@ -22,34 +20,7 @@ function SnapshotsContent() {
   const [sliderReady, setSliderReady] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Deduplicate snapshots by ID
-  const deduplicateSnapshots = (videos: Video[]) => {
-    const seen = new Set<string>();
-    return videos.filter(video => {
-      const id = video.id || video.externalUrl || `${video.source}-${video.title}`;
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
-  };
-
-  // Prioritize and sort snapshots (no quality filtering - curated sources)
-  const sortSnapshots = (dragverseSnapshots: Video[], externalSnapshots: Video[]) => {
-    // Sort by date (newest first)
-    const sortedDragverse = [...dragverseSnapshots].sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    const sortedExternal = [...externalSnapshots].sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    console.log(`[Snapshots] Dragverse: ${dragverseSnapshots.length} snapshots, External: ${externalSnapshots.length} snapshots (no filtering)`);
-
-    // Strong Dragverse priority: show all Dragverse first
-    return [...sortedDragverse, ...sortedExternal];
-  };
-
-  // Load snapshots from various sources
+  // Load snapshots from various sources - Use API like other pages
   async function loadSnapshots(isRefresh = false) {
     if (isRefresh) {
       setRefreshing(true);
@@ -58,105 +29,38 @@ function SnapshotsContent() {
     }
 
     try {
-      // Fetch ONLY Dragverse videos (simplified for reliability)
-      const supabaseVideos = await getVideos(100).catch(() => []);
+      // Fetch Dragverse videos using the API (same as homepage and audio page)
+      const response = await fetch("/api/youtube/feed?includeDatabase=true&limit=100");
+      const data = await response.json();
 
-      // Transform Supabase videos to Video type
-      const transformedSupabase = (supabaseVideos || []).map((v: any) => {
-        // Construct Livepeer URL from playback_id if playback_url is missing
-        const playbackId = v.playback_id || v.livepeer_asset_id || "";
-        let playbackUrl = v.playback_url || "";
+      if (!data.success || !data.videos) {
+        console.warn("[Snapshots] API returned no videos");
+        setSnapshots([]);
+        return;
+      }
 
-        // Fix incomplete URLs missing /index.m3u8 suffix (database has truncated URLs)
-        if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
-          console.log(`[Snapshots] Fixing incomplete URL for "${v.title}": ${playbackUrl} -> ${playbackUrl}/index.m3u8`);
-          playbackUrl = `${playbackUrl}/index.m3u8`;
-        }
-
-        // If no playback_url but we have a playback_id, construct the Livepeer URL
-        if (!playbackUrl && playbackId) {
-          playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
-        }
-
-        return {
-          id: v.id,
-          title: v.title,
-          description: v.description || "",
-          thumbnail: v.thumbnail || null,
-          duration: v.duration || 0,
-          views: v.views,
-          likes: v.likes,
-          createdAt: new Date(v.created_at),
-          playbackUrl,
-          livepeerAssetId: playbackId,
-          contentType: (v.content_type as any) || "short",
-          creator: v.creator ? {
-          did: v.creator.did,
-          handle: v.creator.handle,
-          displayName: v.creator.display_name,
-          avatar: v.creator.avatar || "/defaultpfp.png",
-          description: "",
-          followerCount: 0,
-          followingCount: 0,
-          createdAt: new Date(v.created_at),
-          verified: v.creator.verified || false,
-        } : {
-          did: v.creator_did || "unknown",
-          handle: v.creator_did?.split(":").pop()?.substring(0, 8) || "creator",
-          displayName: "Dragverse Creator",
-          avatar: "/defaultpfp.png",
-          description: "",
-          followerCount: 0,
-          followingCount: 0,
-          createdAt: new Date(v.created_at),
-          verified: false,
-        },
-          category: v.category || "",
-          tags: v.tags || [],
-          source: "ceramic" as const,
-        };
-      }) as Video[];
-
-      // Debug: Log all videos
-      console.log(`[Snapshots] Total Dragverse videos fetched: ${transformedSupabase.length}`);
-
-      // Filter for Dragverse snapshots (relaxed filtering for debugging)
-      const dragverseSnapshots = transformedSupabase.filter((v) => {
-        const isShortDuration = v.duration > 0 && v.duration < 60;
-        const isShortType = v.contentType === "short";
-        const hasValidUrl = isValidPlaybackUrl(v.playbackUrl);
-
-        // Debug logging
-        if (!hasValidUrl) {
-          console.log(`[Snapshots] Video "${v.title}" has invalid playback URL:`, v.playbackUrl);
-        }
-
-        // Relaxed filter: allow any video with valid URL OR shorts
-        return hasValidUrl || isShortType;
-      });
+      // Filter for shorts only (contentType === "short")
+      const allVideos = data.videos.filter((v: Video) => v.contentType === "short");
 
       // Sort by date (newest first)
-      const sortedSnapshots = dragverseSnapshots.sort((a, b) =>
+      const sortedSnapshots = allVideos.sort((a: Video, b: Video) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
-      console.log(`[Snapshots] Filtered ${sortedSnapshots.length} snapshots from ${transformedSupabase.length} total videos`);
+      console.log(`[Snapshots] Loaded ${sortedSnapshots.length} shorts from API`);
 
-      if (sortedSnapshots[0]) {
-        console.log(`[Snapshots] First 3 videos with full details:`);
-        sortedSnapshots.slice(0, 3).forEach((v, i) => {
+      if (sortedSnapshots.length > 0) {
+        console.log(`[Snapshots] First 3 videos:`);
+        sortedSnapshots.slice(0, 3).forEach((v: Video, i: number) => {
           console.log(`  Video ${i + 1}:`, {
             id: v.id,
             title: v.title,
             playbackUrl: v.playbackUrl,
-            livepeerAssetId: v.livepeerAssetId,
             contentType: v.contentType,
             duration: v.duration,
             thumbnail: v.thumbnail
           });
         });
-      } else {
-        console.log(`[Snapshots] No videos found!`);
       }
 
       setSnapshots(sortedSnapshots);
