@@ -12,6 +12,7 @@ import { useAuthUser } from "@/lib/privy/hooks";
 import { getSafeThumbnail, getSafeAvatar } from "@/lib/utils/thumbnail-helpers";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
+import toast from "react-hot-toast";
 
 interface VideoCardProps {
   video: Video;
@@ -69,11 +70,15 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
         throw new Error("Failed to delete video");
       }
 
+      toast.success("Video deleted successfully");
+
       // Reload page to reflect deletion
-      window.location.reload();
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
       console.error("Error deleting video:", error);
-      alert("Failed to delete video. Please try again.");
+      toast.error("Failed to delete video. Please try again.");
     }
   };
 
@@ -85,7 +90,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
       navigator.share({ title: video.title, url });
     } else {
       navigator.clipboard.writeText(url);
-      alert("Link copied to clipboard!");
+      toast.success("Link copied to clipboard!");
     }
   };
 

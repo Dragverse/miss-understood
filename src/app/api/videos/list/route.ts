@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     if (uniqueCreatorIds.length > 0) {
       const { data: creatorsData } = await supabase
         .from('creators')
-        .select('id, did, handle, display_name, avatar, verified, wallet_address')
+        .select('id, did, handle, display_name, avatar, verified')
         .in('id', uniqueCreatorIds);
 
       if (creatorsData) {
