@@ -28,6 +28,11 @@ interface BlueskyPostResult {
   error?: string;
 }
 
+interface BlueskyDeleteResult {
+  success: boolean;
+  error?: string;
+}
+
 /**
  * Post to Bluesky using user's session
  */
@@ -227,6 +232,90 @@ export async function postToBluesky(
     };
   } catch (error) {
     console.error("[Bluesky] Error posting:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    };
+  }
+}
+
+/**
+ * Delete a post from Bluesky using user's session
+ */
+export async function deleteFromBluesky(
+  request: NextRequest,
+  postUri: string
+): Promise<BlueskyDeleteResult> {
+  try {
+    console.log("[Bluesky] Deleting post:", postUri);
+
+    // Get Bluesky session from iron-session
+    const response = new Response();
+    const session = await getIronSession<SessionData>(request, response, sessionOptions);
+
+    if (!session.bluesky?.handle || !session.bluesky?.appPassword) {
+      return {
+        success: false,
+        error: "Bluesky not connected"
+      };
+    }
+
+    const { handle, appPassword } = session.bluesky;
+
+    // Authenticate with Bluesky
+    const authResponse = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier: handle,
+        password: appPassword,
+      }),
+    });
+
+    if (!authResponse.ok) {
+      return {
+        success: false,
+        error: "Failed to authenticate with Bluesky"
+      };
+    }
+
+    const authData = await authResponse.json();
+    const { accessJwt, did } = authData;
+
+    // Parse post URI to get rkey: at://did:plc:xxx/app.bsky.feed.post/RKEY
+    const uriParts = postUri.split('/');
+    const rkey = uriParts[uriParts.length - 1];
+
+    // Delete the post
+    const deleteResponse = await fetch(
+      "https://bsky.social/xrpc/com.atproto.repo.deleteRecord",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessJwt}`,
+        },
+        body: JSON.stringify({
+          repo: did,
+          collection: "app.bsky.feed.post",
+          rkey: rkey,
+        }),
+      }
+    );
+
+    if (!deleteResponse.ok) {
+      const errorText = await deleteResponse.text();
+      console.error("[Bluesky] Delete failed:", errorText);
+      return {
+        success: false,
+        error: `Failed to delete from Bluesky: ${errorText}`
+      };
+    }
+
+    console.log("[Bluesky] ✅ Post deleted successfully");
+    return { success: true };
+  } catch (error) {
+    console.error("[Bluesky] Error deleting:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error"

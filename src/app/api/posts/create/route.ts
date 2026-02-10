@@ -216,10 +216,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Update post with crosspost tracking info
+    const crosspostedTo: string[] = [];
+    const updateData: any = { crossposted_to: crosspostedTo };
+
+    if (crosspostResults.bluesky?.success && crosspostResults.bluesky.uri) {
+      crosspostedTo.push('bluesky');
+      updateData.bluesky_post_uri = crosspostResults.bluesky.uri;
+    }
+
+    if (crosspostResults.farcaster?.success && crosspostResults.farcaster.hash) {
+      crosspostedTo.push('farcaster');
+      updateData.farcaster_cast_hash = crosspostResults.farcaster.hash;
+    }
+
+    if (crosspostedTo.length > 0) {
+      await supabase
+        .from("posts")
+        .update(updateData)
+        .eq("id", post.id);
+      console.log("[Posts] ✅ Updated crosspost tracking:", crosspostedTo);
+    }
+
     // Return success even if cross-posting partially fails
     return NextResponse.json({
       success: true,
-      post,
+      post: { ...post, crosspostedTo },
       crosspost: crosspostResults,
     });
   } catch (error) {

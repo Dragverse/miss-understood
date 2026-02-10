@@ -58,6 +58,10 @@ export interface Video {
   source?: "ceramic" | "bluesky" | "farcaster" | "youtube";
   externalUrl?: string; // Original post URL for external content
   internalUrl?: string; // Internal Dragverse route (e.g., /profile/handle)
+  // Crosspost tracking
+  crosspostedTo?: string[]; // Platforms this was crossposted to (e.g., ['bluesky', 'farcaster'])
+  blueskyPostUri?: string; // Bluesky post URI for deletion
+  farcasterCastHash?: string; // Farcaster cast hash for deletion
   // Platform-specific metadata
   uri?: string; // Bluesky URI for actions
   cid?: string; // Bluesky CID for actions

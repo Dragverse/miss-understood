@@ -85,7 +85,8 @@
       "Bash(head:*)",
       "Bash(npx eslint:*)",
       "Bash(git checkout:*)",
-      "Bash(supabase db execute:*)"
+      "Bash(supabase db execute:*)",
+      "Bash(psql:*)"
     ]
   }
 }

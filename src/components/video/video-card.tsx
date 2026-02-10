@@ -164,9 +164,36 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
               {video.contentType}
             </div>
           )}
+          {/* Crosspost badges - show which platforms this was shared to */}
+          {video.crosspostedTo && video.crosspostedTo.length > 0 && (
+            <div className="absolute top-2 right-2 flex gap-1">
+              {video.crosspostedTo.includes('bluesky') && (
+                <div
+                  className="bg-blue-500/90 backdrop-blur-sm px-1.5 py-0.5 rounded flex items-center gap-0.5"
+                  title="Shared to Bluesky"
+                >
+                  <SiBluesky className="w-2.5 h-2.5 text-white" />
+                </div>
+              )}
+              {video.crosspostedTo.includes('farcaster') && (
+                <div
+                  className="bg-purple-500/90 backdrop-blur-sm px-1.5 py-0.5 rounded flex items-center gap-0.5"
+                  title="Shared to Farcaster"
+                >
+                  <Image
+                    src="/farcaster-transparent-white.svg"
+                    alt="Farcaster"
+                    width={10}
+                    height={10}
+                    className="w-2.5 h-2.5"
+                  />
+                </div>
+              )}
+            </div>
+          )}
           {/* Three-dot menu (only show for owner or non-external content) */}
           {!isExternal && (
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-2 right-12 opacity-0 group-hover:opacity-100 transition-opacity">
               <VideoOptionsMenu
                 video={video}
                 isOwner={isOwner || false}
