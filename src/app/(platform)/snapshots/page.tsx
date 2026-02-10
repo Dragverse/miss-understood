@@ -62,19 +62,29 @@ function SnapshotsContent() {
       const supabaseVideos = await getVideos(100).catch(() => []);
 
       // Transform Supabase videos to Video type
-      const transformedSupabase = (supabaseVideos || []).map((v: any) => ({
-        id: v.id,
-        title: v.title,
-        description: v.description || "",
-        thumbnail: v.thumbnail || null,
-        duration: v.duration || 0,
-        views: v.views,
-        likes: v.likes,
-        createdAt: new Date(v.created_at),
-        playbackUrl: v.playback_url || "",
-        livepeerAssetId: v.playback_id || v.livepeer_asset_id || "",
-        contentType: (v.content_type as any) || "short",
-        creator: v.creator ? {
+      const transformedSupabase = (supabaseVideos || []).map((v: any) => {
+        // Construct Livepeer URL from playback_id if playback_url is missing
+        const playbackId = v.playback_id || v.livepeer_asset_id || "";
+        let playbackUrl = v.playback_url || "";
+
+        // If no playback_url but we have a playback_id, construct the Livepeer URL
+        if (!playbackUrl && playbackId) {
+          playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
+        }
+
+        return {
+          id: v.id,
+          title: v.title,
+          description: v.description || "",
+          thumbnail: v.thumbnail || null,
+          duration: v.duration || 0,
+          views: v.views,
+          likes: v.likes,
+          createdAt: new Date(v.created_at),
+          playbackUrl,
+          livepeerAssetId: playbackId,
+          contentType: (v.content_type as any) || "short",
+          creator: v.creator ? {
           did: v.creator.did,
           handle: v.creator.handle,
           displayName: v.creator.display_name,
@@ -95,10 +105,11 @@ function SnapshotsContent() {
           createdAt: new Date(v.created_at),
           verified: false,
         },
-        category: v.category || "",
-        tags: v.tags || [],
-        source: "ceramic" as const,
-      })) as Video[];
+          category: v.category || "",
+          tags: v.tags || [],
+          source: "ceramic" as const,
+        };
+      }) as Video[];
 
       // Debug: Log all videos
       console.log(`[Snapshots] Total Dragverse videos fetched: ${transformedSupabase.length}`);
