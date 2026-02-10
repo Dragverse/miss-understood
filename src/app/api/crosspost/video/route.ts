@@ -37,6 +37,9 @@ export async function POST(request: NextRequest) {
       : "";
     const postText = `${title}\n\n${truncatedDesc}\n\nWatch on Dragverse: ${videoUrl}`;
 
+    // Default thumbnail for audio and videos without thumbnails
+    const DEFAULT_THUMBNAIL = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://dragverse.com'}/default-thumbnail.jpg`;
+
     const results: any = {
       dragverse: { success: true, videoId },
     };
@@ -47,10 +50,12 @@ export async function POST(request: NextRequest) {
       try {
         const blueskyResult = await postToBluesky(request, {
           text: postText,
-          media:
-            thumbnailUrl?.startsWith("http")
-              ? [{ url: thumbnailUrl, alt: title }]
-              : [],
+          media: [{
+            url: thumbnailUrl && thumbnailUrl.startsWith("http")
+              ? thumbnailUrl
+              : DEFAULT_THUMBNAIL,
+            alt: `${title} - Watch on Dragverse`,
+          }],
         });
         results.bluesky = blueskyResult;
 
@@ -74,10 +79,12 @@ export async function POST(request: NextRequest) {
       try {
         const farcasterResult = await postToFarcaster({
           text: postText,
-          media:
-            thumbnailUrl?.startsWith("http")
-              ? [{ url: thumbnailUrl, alt: title }]
-              : [],
+          media: [{
+            url: thumbnailUrl && thumbnailUrl.startsWith("http")
+              ? thumbnailUrl
+              : DEFAULT_THUMBNAIL,
+            alt: `${title} - Watch on Dragverse`,
+          }],
           userId: auth.userId!, // Safe: already verified auth.authenticated above
         });
         results.farcaster = farcasterResult;

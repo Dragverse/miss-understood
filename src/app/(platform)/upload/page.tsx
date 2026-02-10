@@ -557,7 +557,7 @@ function UploadPageContent() {
     }
 
     if (!formData.video) {
-      toast.error("Please select a video file");
+      toast.error(`Please select a ${formData.mediaType} file`);
       return;
     }
 
@@ -623,14 +623,15 @@ function UploadPageContent() {
         authToken
       );
 
-      toast.success("Upload complete! Processing video...");
+      toast.success(`Upload complete! Processing ${formData.mediaType}...`);
       setUploadStage("processing");
 
       const readyAsset = await waitForAssetReady(asset.id, (progress) => {
         setProcessingProgress(Math.round(progress * 100));
       });
 
-      toast.success("Video processing complete! 🎉");
+      const mediaLabel = formData.mediaType === 'video' ? 'Video' : 'Audio';
+      toast.success(`${mediaLabel} processing complete! 🎉`);
 
       // Save video metadata to Supabase via backend API
       try {
@@ -1398,7 +1399,9 @@ function UploadPageContent() {
                       <FiLoader className="text-lg text-[#EB83EA] animate-spin" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg">Processing Video</h3>
+                      <h3 className="font-bold text-lg">
+                        Processing {formData.mediaType === 'video' ? 'Video' : 'Audio'}
+                      </h3>
                       <p className="text-xs text-gray-400">Optimizing for streaming...</p>
                     </div>
                   </div>
