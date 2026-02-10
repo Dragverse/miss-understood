@@ -14,6 +14,8 @@ import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
 import { TipButton } from "@/components/shared";
 import { usePrivy } from "@privy-io/react-auth";
+import { getVideo } from "@/lib/supabase/videos";
+import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 
 interface PostCardProps {
   post: {
@@ -49,6 +51,9 @@ export function PostCard({ post }: PostCardProps) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [audioData, setAudioData] = useState<any>(null);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [audioError, setAudioError] = useState(false);
 
   const isOwnPost = user?.id && post.creator.did && post.creator.did === user.id;
 
@@ -73,6 +78,43 @@ export function PostCard({ post }: PostCardProps) {
       setIsFollowing(following.includes(post.creator.did));
     }
   }, [post.id, post.creator.did]);
+
+  // Detect and fetch audio from /listen/ links in description
+  useEffect(() => {
+    const detectAndFetchAudio = async () => {
+      // Check if description contains a /listen/ link
+      const listenLinkMatch = post.description.match(/\/listen\/([a-zA-Z0-9-]+)/);
+      if (!listenLinkMatch) return;
+
+      const audioId = listenLinkMatch[1];
+      setIsLoadingAudio(true);
+      setAudioError(false);
+
+      try {
+        // Fetch audio data from Supabase
+        const audioDoc = await getVideo(audioId);
+        if (!audioDoc) {
+          setAudioError(true);
+          return;
+        }
+
+        // Transform to include creator info
+        const transformedAudio = await transformVideoWithCreator(audioDoc);
+        if (transformedAudio && transformedAudio.playbackUrl) {
+          setAudioData(transformedAudio);
+        } else {
+          setAudioError(true);
+        }
+      } catch (error) {
+        console.error("[PostCard] Failed to fetch audio:", error);
+        setAudioError(true);
+      } finally {
+        setIsLoadingAudio(false);
+      }
+    };
+
+    detectAndFetchAudio();
+  }, [post.description]);
 
   const toggleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -331,6 +373,65 @@ export function PostCard({ post }: PostCardProps) {
           />
         </div>
       ) : null}
+
+      {/* Inline Audio Player for /listen/ links */}
+      {audioData && audioData.playbackUrl && (
+        <div className="mb-4 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-xl p-4 border border-[#EB83EA]/20">
+          <div className="flex gap-4">
+            {/* Album Art */}
+            <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
+              <Image
+                src={audioData.thumbnail || "/default-thumbnail.jpg"}
+                alt={audioData.title}
+                fill
+                className="object-cover"
+              />
+            </div>
+
+            {/* Audio Info and Controls */}
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-white text-sm mb-1 line-clamp-1">
+                {audioData.title}
+              </h3>
+              <p className="text-xs text-gray-400 mb-3 line-clamp-1">
+                {audioData.creator?.displayName || "Unknown Artist"}
+              </p>
+
+              {/* HTML5 Audio Player */}
+              <audio
+                controls
+                className="w-full"
+                style={{
+                  height: "32px",
+                  accentColor: "#EB83EA"
+                }}
+              >
+                <source src={audioData.playbackUrl} type="audio/mpeg" />
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+          </div>
+
+          {/* View Full Player Link */}
+          <Link
+            href={`/listen/${audioData.id}`}
+            className="mt-3 flex items-center justify-center gap-2 text-sm text-[#EB83EA] hover:text-[#E748E6] transition-colors"
+          >
+            <span>Open in full player</span>
+            <FiExternalLink className="w-4 h-4" />
+          </Link>
+        </div>
+      )}
+
+      {/* Audio Loading State */}
+      {isLoadingAudio && (
+        <div className="mb-4 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-xl p-4 border border-[#EB83EA]/20">
+          <div className="flex items-center gap-3 text-gray-400 text-sm">
+            <div className="w-5 h-5 border-2 border-[#EB83EA] border-t-transparent rounded-full animate-spin"></div>
+            <span>Loading audio...</span>
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-6 text-gray-400 text-sm pt-3 border-t border-[#2f2942]">
