@@ -347,7 +347,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
 
             {/* Play/Pause Indicator - Only show for non-YouTube videos */}
             {!isPlaying && !isYouTubeVideo && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]">
                 <div className="w-20 h-20 bg-black/50 rounded-full flex items-center justify-center">
                   <div className="w-0 h-0 border-t-[15px] border-t-transparent border-l-[25px] border-l-white border-b-[15px] border-b-transparent ml-2" />
                 </div>
