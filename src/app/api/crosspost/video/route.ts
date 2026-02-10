@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
             thumbnailUrl?.startsWith("http")
               ? [{ url: thumbnailUrl, alt: title }]
               : [],
-          userId: auth.userId,
+          userId: auth.userId!, // Safe: already verified auth.authenticated above
         });
         results.farcaster = farcasterResult;
 
