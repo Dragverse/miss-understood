@@ -6,8 +6,6 @@ import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
 import { useSearchParams } from "next/navigation";
 import { getLocalVideos } from "@/lib/utils/local-storage";
-import { getVideos } from "@/lib/supabase/videos";
-import { transformVideosWithCreators } from "@/lib/supabase/transform-video";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/snapshots/short-video";
 import { FiChevronUp, FiChevronDown, FiRefreshCw } from "react-icons/fi";
@@ -22,7 +20,7 @@ function SnapshotsContent() {
   const [sliderReady, setSliderReady] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load Dragverse snapshots directly from database
+  // Load Dragverse snapshots via API (same as homepage and audio page)
   async function loadSnapshots(isRefresh = false) {
     if (isRefresh) {
       setRefreshing(true);
@@ -31,21 +29,25 @@ function SnapshotsContent() {
     }
 
     try {
-      // Fetch Dragverse videos directly from Supabase
-      const supabaseVideos = await getVideos(100);
+      // Fetch via API like other working pages (homepage, audio)
+      const response = await fetch("/api/youtube/feed?includeDatabase=true&limit=100");
+      const data = await response.json();
 
-      // Transform with creator data (includes URL fixing)
-      const allVideos = await transformVideosWithCreators(supabaseVideos);
+      if (!data.success || !data.videos) {
+        console.warn("[Snapshots] API returned no videos");
+        setSnapshots([]);
+        return;
+      }
 
       // Filter for shorts only (contentType === "short")
-      const shorts = allVideos.filter((v: Video) => v.contentType === "short");
+      const shorts = data.videos.filter((v: Video) => v.contentType === "short");
 
       // Sort by date (newest first)
       const sortedSnapshots = shorts.sort((a: Video, b: Video) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
-      console.log(`[Snapshots] Loaded ${sortedSnapshots.length} Dragverse shorts`);
+      console.log(`[Snapshots] Loaded ${sortedSnapshots.length} Dragverse shorts via API`);
 
       if (sortedSnapshots.length > 0) {
         console.log(`[Snapshots] First 3 videos:`);
