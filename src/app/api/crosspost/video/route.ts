@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     const postText = `${title}\n\n${truncatedDesc}\n\nWatch on Dragverse: ${videoUrl}`;
 
     // Default thumbnail for audio and videos without thumbnails
-    const DEFAULT_THUMBNAIL = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://dragverse.com'}/default-thumbnail.jpg`;
+    const DEFAULT_THUMBNAIL = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.dragverse.app'}/default-thumbnail.jpg`;
 
     const results: any = {
       dragverse: { success: true, videoId },
