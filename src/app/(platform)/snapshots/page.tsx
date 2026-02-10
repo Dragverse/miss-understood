@@ -20,7 +20,7 @@ function SnapshotsContent() {
   const [sliderReady, setSliderReady] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load Dragverse snapshots via API (same as homepage and audio page)
+  // Load ONLY Dragverse snapshots (no YouTube, no external sources)
   async function loadSnapshots(isRefresh = false) {
     if (isRefresh) {
       setRefreshing(true);
@@ -29,8 +29,8 @@ function SnapshotsContent() {
     }
 
     try {
-      // Fetch via API like other working pages (homepage, audio)
-      const response = await fetch("/api/youtube/feed?includeDatabase=true&limit=100");
+      // Fetch ONLY Dragverse shorts from dedicated API endpoint
+      const response = await fetch("/api/videos/shorts");
       const data = await response.json();
 
       if (!data.success || !data.videos) {
@@ -39,15 +39,10 @@ function SnapshotsContent() {
         return;
       }
 
-      // Filter for shorts only (contentType === "short")
-      const shorts = data.videos.filter((v: Video) => v.contentType === "short");
+      // Videos are already filtered and sorted by the API
+      const sortedSnapshots = data.videos;
 
-      // Sort by date (newest first)
-      const sortedSnapshots = shorts.sort((a: Video, b: Video) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-
-      console.log(`[Snapshots] Loaded ${sortedSnapshots.length} Dragverse shorts via API`);
+      console.log(`[Snapshots] Loaded ${sortedSnapshots.length} DRAGVERSE shorts (no YouTube!)`);
 
       if (sortedSnapshots.length > 0) {
         console.log(`[Snapshots] First 3 videos:`);
