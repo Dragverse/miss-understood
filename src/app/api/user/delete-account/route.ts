@@ -99,16 +99,39 @@ export async function DELETE(request: NextRequest) {
       // Non-critical, continue
     }
 
-    // 7. Finally, delete the creator profile
-    const { error: creatorError } = await supabase
+    // 7. Clear social connections BEFORE deleting profile
+    // This prevents unique constraint issues when reconnecting accounts
+    console.log("[Delete Account] Clearing social connections...");
+    const { error: clearConnectionsError } = await supabase
+      .from("creators")
+      .update({
+        bluesky_handle: null,
+        bluesky_did: null,
+        farcaster_handle: null,
+        farcaster_fid: null,
+        farcaster_signer_uuid: null,
+      })
+      .eq("did", userId);
+
+    if (clearConnectionsError) {
+      console.error("[Delete Account] Error clearing social connections:", clearConnectionsError);
+      // Non-critical, continue with deletion
+    }
+
+    // 8. Finally, delete the creator profile
+    console.log("[Delete Account] Deleting creator profile...");
+    const { error: creatorError, count } = await supabase
       .from("creators")
       .delete()
       .eq("did", userId);
 
     if (creatorError) {
       console.error("[Delete Account] Error deleting creator profile:", creatorError);
-      throw new Error("Failed to delete creator profile");
+      console.error("[Delete Account] Error details:", JSON.stringify(creatorError, null, 2));
+      throw new Error(`Failed to delete creator profile: ${creatorError.message}`);
     }
+
+    console.log(`[Delete Account] Deleted ${count} creator profile(s)`);
 
     console.log(`[Delete Account] ✅ Successfully deleted account: ${userId}`);
 
