@@ -21,6 +21,7 @@ import { Creator, Video } from "@/types";
 import { getUserBadgeType } from "@/lib/verification";
 import { FaInstagram, FaTiktok } from "react-icons/fa";
 import { SiBluesky } from "react-icons/si";
+import { PostCard as FeedPostCard } from "@/components/feed/post-card";
 
 /**
  * Dynamic Profile Page - Instagram Style
@@ -136,7 +137,11 @@ export default function DynamicProfilePage() {
   async function loadUserContent(creatorDID: string) {
     setIsLoadingContent(true);
     try {
-      const videos = await getVideosByCreator(creatorDID);
+      // Fetch videos and posts in parallel
+      const [videos, postsResponse] = await Promise.all([
+        getVideosByCreator(creatorDID),
+        fetch(`/api/posts/feed?creatorDid=${encodeURIComponent(creatorDID)}&limit=50`)
+      ]);
 
       const transformedVideos: Video[] = videos.map((sv) => ({
         id: sv.id,
@@ -159,8 +164,16 @@ export default function DynamicProfilePage() {
       }));
 
       setUserVideos(transformedVideos);
+
+      // Parse posts data
+      if (postsResponse.ok) {
+        const postsData = await postsResponse.json();
+        if (postsData.success && postsData.posts) {
+          setUserPosts(postsData.posts);
+        }
+      }
     } catch (error) {
-      console.error("Failed to load videos:", error);
+      console.error("Failed to load content:", error);
     } finally {
       setIsLoadingContent(false);
     }
@@ -800,36 +813,16 @@ export default function DynamicProfilePage() {
           {activeTab === "posts" && (
             <div>
               {userPosts.length > 0 ? (
-                <div className="max-w-3xl mx-auto space-y-4">
+                <div className="max-w-3xl mx-auto space-y-6">
                   {userPosts.map((post) => (
-                    <div
+                    <FeedPostCard
                       key={post.id}
-                      className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/20 transition-all"
-                    >
-                      <p className="text-gray-200 mb-4 whitespace-pre-wrap leading-relaxed">
-                        {post.description}
-                      </p>
-                      <div className="flex items-center justify-between text-sm text-gray-400">
-                        <span className="flex items-center gap-2">
-                          <FiCalendar className="w-4 h-4" />
-                          {new Date(post.createdAt).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </span>
-                        {post.externalUrl && (
-                          <a
-                            href={post.externalUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[#EB83EA] hover:text-[#E748E6] transition font-semibold"
-                          >
-                            View on Bluesky →
-                          </a>
-                        )}
-                      </div>
-                    </div>
+                      post={{
+                        ...post,
+                        description: post.text_content || post.description || "",
+                        createdAt: post.created_at,
+                      }}
+                    />
                   ))}
                 </div>
               ) : (
