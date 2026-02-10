@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth/verify";
 import { postToBluesky } from "@/lib/crosspost/bluesky";
 import { postToFarcaster } from "@/lib/crosspost/farcaster";
+import { getSupabaseServerClient } from "@/lib/supabase/client";
 
 /**
  * POST /api/crosspost/video
@@ -31,11 +32,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch creator info to get username
+    const supabase = getSupabaseServerClient();
+    const { data: creator } = await supabase
+      .from("creators")
+      .select("username, handle")
+      .eq("did", auth.userId)
+      .single();
+
+    const username = creator?.username || creator?.handle || "a creator";
     const videoUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/watch/${videoId}`;
-    const truncatedDesc = description
-      ? description.slice(0, 200) + (description.length > 200 ? "..." : "")
-      : "";
-    const postText = `${title}\n\n${truncatedDesc}\n\nWatch on Dragverse: ${videoUrl}`;
+
+    // Format: "Watch @username at the Dragverse: [link]"
+    // Include title and description for context
+    const postText = `${title}\n\n${description || ""}\n\nWatch @${username} at the Dragverse: ${videoUrl}`;
 
     // Default thumbnail for audio and videos without thumbnails
     const DEFAULT_THUMBNAIL = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.dragverse.app'}/default-thumbnail.jpg`;
