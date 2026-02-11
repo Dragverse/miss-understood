@@ -226,7 +226,7 @@ export function FarcasterSignerSetup() {
 
               <div className="flex flex-wrap gap-3 mb-4">
                 <a
-                  href={signerStatus.approvalUrl || "https://warpcast.com/settings/connected-apps"}
+                  href={signerStatus.approvalUrl || "https://warpcast.com/~/settings/connected-apps"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
@@ -282,7 +282,7 @@ export function FarcasterSignerSetup() {
                   <p className="text-sm text-yellow-400">
                     <strong>Note:</strong> The approval URL was not found. Please go to{" "}
                     <a
-                      href="https://warpcast.com/settings/connected-apps"
+                      href="https://warpcast.com/~/settings/connected-apps"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline hover:text-yellow-300"
