@@ -156,6 +156,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
       }
 
       // Create post
+      console.log("[PostComposer] Creating post with platforms:", selectedPlatforms);
       const response = await fetch("/api/posts/create", {
         method: "POST",
         headers: {
@@ -182,17 +183,15 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
         setSelectedMood(null);
         setShowMoodPicker(false);
 
-        toast.success("Post created successfully! ✨", { id: loadingToast });
+        console.log("[PostComposer] Post created, crosspost results:", result.crosspost);
 
-        // Open Warpcast if Farcaster was selected (free sharing method)
-        if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.openWarpcast) {
-          console.log("[PostComposer] Opening Warpcast to share...");
-          const postUrl = `${window.location.origin}/feed`;
-          const shareText = content.length > 0 ? `${content}\n\n${postUrl}` : postUrl;
-          const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&channelKey=dragverse`;
-
-          window.open(warpcastUrl, '_blank', 'noopener,noreferrer');
-          toast.success("Opening Warpcast to share to /dragverse!");
+        // Show success messages
+        if (selectedPlatforms.bluesky && result.crosspost?.bluesky?.success) {
+          toast.success("Posted to Dragverse and Bluesky! ✨", { id: loadingToast });
+        } else if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.success) {
+          toast.success("Posted to Dragverse and Farcaster! ✨", { id: loadingToast });
+        } else {
+          toast.success("Post created successfully! ✨", { id: loadingToast });
         }
 
         if (onPostCreated) {

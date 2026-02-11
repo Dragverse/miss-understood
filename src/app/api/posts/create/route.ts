@@ -145,6 +145,7 @@ export async function POST(request: NextRequest) {
         : `Check out this post from @${username} at the Dragverse: ${postUrl}`;
 
     // Cross-post to Bluesky
+    console.log("[Posts] Platforms received:", platforms);
     if (platforms.bluesky) {
       console.log("[Posts] Cross-posting to Bluesky...");
       try {
@@ -196,14 +197,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Farcaster: Use client-side Warpcast sharing (free alternative to Neynar managed signers)
-    // The client will handle opening Warpcast with pre-filled content
+    // Farcaster: Post directly to Farcaster via Neynar API
     if (platforms.farcaster) {
-      console.log("[Posts] Farcaster enabled - client will open Warpcast");
-      crosspostResults.farcaster = {
-        success: true,
-        openWarpcast: true, // Signal to client to open Warpcast
-      };
+      console.log("[Posts] Cross-posting to Farcaster...");
+      try {
+        const farcasterResult = await postToFarcaster({
+          text: crosspostText,
+          media: mediaUrls.length > 0 ? mediaUrls.map((url: string) => ({ url })) : undefined,
+          userId: userDID,
+        });
+
+        crosspostResults.farcaster = farcasterResult;
+        if (farcasterResult.success) {
+          console.log("[Posts] ✅ Farcaster post created:", farcasterResult.hash);
+        } else {
+          console.error("[Posts] ❌ Farcaster post failed:", farcasterResult.error);
+        }
+      } catch (error) {
+        console.error("[Posts] ❌ Farcaster error:", error);
+        crosspostResults.farcaster = {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
     }
 
     // Update post with crosspost tracking info
