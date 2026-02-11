@@ -328,9 +328,9 @@ export default function SettingsPage() {
     return () => clearTimeout(timeout);
   }, [isLoadingProfile]);
 
-  // Check Farcaster signer status when Farcaster is connected
+  // Check Farcaster signer status and sync FID to database when Farcaster is connected
   useEffect(() => {
-    async function checkFarcasterSigner() {
+    async function checkAndSyncFarcaster() {
       if (!farcasterHandle || !isAuthenticated) {
         setFarcasterSignerStatus(null);
         return;
@@ -338,6 +338,34 @@ export default function SettingsPage() {
 
       try {
         const token = await getAccessToken();
+
+        // First, sync the Farcaster FID to database
+        console.log("[Settings] Syncing Farcaster FID to database...");
+        const syncResponse = await fetch("/api/creator/sync-profile", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (syncResponse.ok) {
+          console.log("[Settings] ✅ Farcaster FID synced to database");
+          // Reload crosspost settings to reflect the change
+          const settingsResponse = await fetch("/api/user/crosspost-settings", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (settingsResponse.ok) {
+            const data = await settingsResponse.json();
+            if (data.success) {
+              setConnectedPlatforms(data.connected);
+              console.log("[Settings] Farcaster connection status:", data.connected.farcaster);
+            }
+          }
+        }
+
+        // Then check signer status
         const response = await fetch("/api/farcaster/register-signer", {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -352,11 +380,11 @@ export default function SettingsPage() {
           });
         }
       } catch (error) {
-        console.error("Failed to check Farcaster signer status:", error);
+        console.error("Failed to sync Farcaster:", error);
       }
     }
 
-    checkFarcasterSigner();
+    checkAndSyncFarcaster();
   }, [farcasterHandle, isAuthenticated, getAccessToken]);
 
   // Load crosspost settings
