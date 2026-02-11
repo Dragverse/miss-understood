@@ -693,7 +693,10 @@ export default function SettingsPage() {
         }
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || "Failed to setup Farcaster posting");
+        console.error("[Farcaster Setup] Server error:", errorData);
+        const errorMsg = errorData.message || errorData.error || "Failed to setup Farcaster posting";
+        const hint = errorData.details?.hint || '';
+        toast.error(`${errorMsg}${hint ? ` (${hint})` : ''}`, { duration: 6000 });
       }
     } catch (error) {
       console.error("Farcaster setup error:", error);

@@ -211,11 +211,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Return detailed error to help diagnose the issue
     return NextResponse.json(
       {
         success: false,
         error: "Failed to create Farcaster signer",
-        details: error.message || String(error),
+        message: error.message || String(error),
+        details: {
+          errorType: error.constructor?.name || 'Unknown',
+          errorMessage: error.message,
+          hint: error.response?.data ? 'Neynar API error - check server logs for details' : 'Check if creator profile exists and Privy session is valid'
+        },
       },
       { status: 500 }
     );
