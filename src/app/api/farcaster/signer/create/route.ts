@@ -47,7 +47,23 @@ export async function POST(request: NextRequest) {
 
     const fid = creator.farcaster_fid;
 
+    // Check if user already has a signer - delete it first
+    const { data: existingSigner } = await supabase
+      .from("farcaster_signers")
+      .select("*")
+      .eq("user_did", auth.userId)
+      .single();
+
+    if (existingSigner) {
+      console.log(`[Farcaster Signer] Deleting existing signer for user ${auth.userId}`);
+      await supabase
+        .from("farcaster_signers")
+        .delete()
+        .eq("user_did", auth.userId);
+    }
+
     // Use Neynar API to create a managed signer
+    console.log(`[Farcaster Signer] Creating new signer for FID ${fid}...`);
     const neynarResponse = await fetch("https://api.neynar.com/v2/farcaster/signer", {
       method: "POST",
       headers: {
@@ -60,13 +76,34 @@ export async function POST(request: NextRequest) {
     });
 
     if (!neynarResponse.ok) {
-      const errorData = await neynarResponse.json();
-      console.error("[Farcaster Signer] Neynar API error:", errorData);
-      throw new Error(errorData.message || "Failed to create signer with Neynar");
+      const errorText = await neynarResponse.text();
+      console.error("[Farcaster Signer] Neynar API error:");
+      console.error("[Farcaster Signer] Status:", neynarResponse.status);
+      console.error("[Farcaster Signer] Response:", errorText);
+
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { message: errorText };
+      }
+
+      throw new Error(errorData.message || `Neynar API error (${neynarResponse.status})`);
     }
 
     const neynarData = await neynarResponse.json();
+
+    console.log(`[Farcaster Signer] ✅ Full Neynar response:`, JSON.stringify(neynarData, null, 2));
+
     const { signer_uuid, public_key, signer_approval_url } = neynarData;
+
+    if (!signer_uuid || !public_key || !signer_approval_url) {
+      console.error("[Farcaster Signer] ❌ Missing required fields in Neynar response");
+      console.error("[Farcaster Signer] signer_uuid:", signer_uuid);
+      console.error("[Farcaster Signer] public_key:", public_key);
+      console.error("[Farcaster Signer] signer_approval_url:", signer_approval_url);
+      throw new Error("Invalid response from Neynar - missing required fields");
+    }
 
     console.log(`[Farcaster Signer] ✅ Neynar signer created`);
     console.log(`[Farcaster Signer] Signer UUID: ${signer_uuid}`);
