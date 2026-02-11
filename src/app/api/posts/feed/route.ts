@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
     // Transform posts to include social handles properly (snake_case to camelCase)
     const transformedPosts = posts?.map(post => ({
       ...post,
+      source: "dragverse", // Mark as Dragverse native content for filtering
       creator: post.creator ? {
         ...post.creator,
         blueskyHandle: (post.creator as any).bluesky_handle,

@@ -175,16 +175,24 @@ function FeedContent() {
         if (youtubeData.success && youtubeData.videos) {
           // Convert YouTube videos to post format for unified feed display
           const youtubePosts = youtubeData.videos.map((video: any) => ({
-            ...video,
+            id: video.id,
             type: "youtube-video",
-            text: video.description,
+            description: video.description || video.title,
             source: "youtube",
-            // Add post-like properties for BlueskyPostCard compatibility
-            author: video.creator,
-            uri: video.externalUrl,
-            indexedAt: video.createdAt,
-            // Ensure playbackUrl is set correctly
+            thumbnail: video.thumbnail,
+            likes: video.likes || 0,
+            views: video.views || 0,
+            // Map creator properly (NOT author)
+            creator: {
+              displayName: video.creator?.displayName || "YouTube Channel",
+              handle: video.creator?.handle || "youtube",
+              avatar: video.creator?.avatar || "/defaultpfp.png",
+              did: video.creator?.did,
+            },
+            createdAt: video.createdAt,
+            externalUrl: video.externalUrl,
             playbackUrl: video.playbackUrl || video.externalUrl,
+            contentType: video.contentType,
           }));
           externalPosts = [...externalPosts, ...youtubePosts];
         }
