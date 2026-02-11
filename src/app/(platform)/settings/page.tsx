@@ -717,9 +717,6 @@ export default function SettingsPage() {
       setYoutubeSubscriberCount(0);
       setYoutubeSyncedAt(null);
       toast.success("YouTube channel disconnected");
-
-      // Reload profile to update follower count
-      await loadProfile();
     } catch (error) {
       console.error("YouTube disconnect error:", error);
       toast.error("Failed to disconnect YouTube channel");
@@ -754,9 +751,6 @@ export default function SettingsPage() {
         `Re-synced ${data.channelInfo.channelName}! Updated to ${data.channelInfo.subscriberCount.toLocaleString()} subscribers.`,
         { id: toastId }
       );
-
-      // Reload profile to update follower count
-      await loadProfile();
     } catch (error) {
       console.error("YouTube re-sync error:", error);
       toast.error("Failed to re-sync YouTube channel");
