@@ -1651,12 +1651,46 @@ export default function SettingsPage() {
                             </span>
                             {canUnlinkAccount() && (
                               <button
-                                onClick={() => {
+                                onClick={async () => {
                                   const farcasterAccount = linkedAccounts?.find(
                                     (account: any) => account.type === "farcaster"
                                   ) as any;
                                   if (farcasterAccount?.fid) {
-                                    unlinkFarcaster(farcasterAccount.fid);
+                                    const loadingToast = toast.loading("Disconnecting Farcaster...");
+
+                                    try {
+                                      // Unlink from Privy
+                                      await unlinkFarcaster(farcasterAccount.fid);
+
+                                      // Clear Farcaster data from database
+                                      const token = await getAccessToken();
+                                      const response = await fetch("/api/farcaster/disconnect", {
+                                        method: "POST",
+                                        headers: {
+                                          Authorization: `Bearer ${token}`,
+                                        },
+                                      });
+
+                                      if (!response.ok) {
+                                        throw new Error("Failed to clear Farcaster data");
+                                      }
+
+                                      toast.success("Farcaster disconnected", { id: loadingToast });
+
+                                      // Reload crosspost settings to reflect disconnection
+                                      const settingsResponse = await fetch("/api/user/crosspost-settings", {
+                                        headers: { Authorization: `Bearer ${token}` },
+                                      });
+                                      if (settingsResponse.ok) {
+                                        const data = await settingsResponse.json();
+                                        if (data.success) {
+                                          setConnectedPlatforms(data.connected);
+                                        }
+                                      }
+                                    } catch (error) {
+                                      console.error("Failed to disconnect Farcaster:", error);
+                                      toast.error("Failed to disconnect Farcaster", { id: loadingToast });
+                                    }
                                   }
                                 }}
                                 className="text-sm px-3 py-1 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition"
