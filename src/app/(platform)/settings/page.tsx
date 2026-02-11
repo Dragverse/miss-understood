@@ -1637,33 +1637,21 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* Posting permissions status */}
+                    {/* Farcaster sharing info */}
                     {farcasterHandle && (
                       <div className="pt-3 border-t border-[#2f2942]">
-                        <div className="flex items-center justify-between">
-                          <div>
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1">
                             <p className="text-sm font-medium text-gray-300">
-                              Cross-posting to /dragverse
+                              Sharing to /dragverse
                             </p>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {farcasterSignerStatus?.hasSigner
-                                ? "You can share videos to Farcaster"
-                                : "Setup required to share videos"}
+                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                              When you upload videos with Farcaster sharing enabled, Warpcast will open automatically with your content pre-filled. Just click "Cast" to share to the /dragverse channel!
                             </p>
                           </div>
-                          {farcasterSignerStatus?.hasSigner ? (
-                            <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
-                              Enabled
-                            </span>
-                          ) : (
-                            <button
-                              onClick={handleSetupFarcaster}
-                              disabled={isSettingUpFarcaster}
-                              className="text-sm px-4 py-2 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border border-purple-500/30 hover:border-purple-500 rounded-lg transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isSettingUpFarcaster ? "Setting up..." : "Setup Posting"}
-                            </button>
-                          )}
+                          <span className="text-xs px-3 py-1 bg-purple-500/10 text-purple-400 rounded-full flex-shrink-0">
+                            Ready
+                          </span>
                         </div>
                       </div>
                     )}

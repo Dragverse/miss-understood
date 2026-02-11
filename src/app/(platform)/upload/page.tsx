@@ -820,12 +820,14 @@ function UploadPageContent() {
                   toast.error(`Bluesky: ${feedData.crosspost.bluesky.error}`);
                 }
 
-                if (feedData.crosspost?.farcaster?.success) {
-                  console.log("[Upload] ✅ Farcaster success:", feedData.crosspost.farcaster);
-                  toast.success("Shared to Farcaster /dragverse!");
-                } else if (feedData.crosspost?.farcaster?.error) {
-                  console.error("[Upload] ❌ Farcaster failed:", feedData.crosspost.farcaster.error);
-                  toast.error(`Farcaster: ${feedData.crosspost.farcaster.error}`);
+                // Farcaster: Open Warpcast to share (free alternative to managed signers)
+                if (formData.crossPostFarcaster) {
+                  console.log("[Upload] Opening Warpcast to share...");
+                  const shareText = `${formData.title}\n\n${descriptionPreview ? descriptionPreview + '\n\n' : ''}${videoUrl}`;
+                  const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(videoUrl)}&channelKey=dragverse`;
+
+                  window.open(warpcastUrl, '_blank', 'noopener,noreferrer');
+                  toast.success("Opening Warpcast to share to /dragverse!");
                 }
               } else {
                 const error = await feedPostResponse.json();
@@ -1372,10 +1374,10 @@ function UploadPageContent() {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <FarcasterIcon className="w-5 h-5" />
-                  <span className="font-semibold text-white">Cross-post to Farcaster</span>
+                  <span className="font-semibold text-white">Share to Farcaster</span>
                 </div>
                 <p className="text-sm text-gray-400 mt-1">
-                  Share this video to /dragverse channel on your connected Farcaster account
+                  Opens Warpcast to share this video to /dragverse channel
                 </p>
                 {!connectedPlatforms.farcaster && !isLoadingConnections && (
                   <p className="text-sm text-red-400 mt-2">
