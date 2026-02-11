@@ -328,7 +328,7 @@ export default function SettingsPage() {
     return () => clearTimeout(timeout);
   }, [isLoadingProfile]);
 
-  // Check Farcaster signer status and sync FID to database when Farcaster is connected
+  // Check Farcaster connection and sync FID to database when linked
   useEffect(() => {
     async function checkAndSyncFarcaster() {
       if (!farcasterHandle || !isAuthenticated) {
@@ -339,9 +339,9 @@ export default function SettingsPage() {
       try {
         const token = await getAccessToken();
 
-        // First, sync the Farcaster FID to database
+        // Sync Farcaster FID to database using dedicated endpoint
         console.log("[Settings] Syncing Farcaster FID to database...");
-        const syncResponse = await fetch("/api/creator/sync-profile", {
+        const syncResponse = await fetch("/api/farcaster/sync-fid", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -349,8 +349,10 @@ export default function SettingsPage() {
         });
 
         if (syncResponse.ok) {
-          console.log("[Settings] ✅ Farcaster FID synced to database");
-          // Reload crosspost settings to reflect the change
+          const syncData = await syncResponse.json();
+          console.log("[Settings] ✅ Farcaster FID synced:", syncData.farcasterFID);
+
+          // Reload crosspost settings to show the updated connection status
           const settingsResponse = await fetch("/api/user/crosspost-settings", {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -360,12 +362,15 @@ export default function SettingsPage() {
             const data = await settingsResponse.json();
             if (data.success) {
               setConnectedPlatforms(data.connected);
-              console.log("[Settings] Farcaster connection status:", data.connected.farcaster);
+              console.log("[Settings] Farcaster ready for crossposting:", data.connected.farcaster);
             }
           }
+        } else {
+          const error = await syncResponse.json();
+          console.error("[Settings] Farcaster sync failed:", error.details || error.error);
         }
 
-        // Then check signer status
+        // Check signer status (for reference, not used for crossposting)
         const response = await fetch("/api/farcaster/register-signer", {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -380,7 +385,7 @@ export default function SettingsPage() {
           });
         }
       } catch (error) {
-        console.error("Failed to sync Farcaster:", error);
+        console.error("[Settings] Failed to sync Farcaster:", error);
       }
     }
 
