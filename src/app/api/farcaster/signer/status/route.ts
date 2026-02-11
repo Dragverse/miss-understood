@@ -50,7 +50,8 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Farcaster Signer Status] Signer ${signerUuid} status: ${neynarData.status}`);
 
-    return NextResponse.json({
+    // Include approval URL if not yet approved
+    const response: any = {
       approved: isApproved,
       fid: signer.fid,
       publicKey: signer.publicKey,
@@ -58,7 +59,14 @@ export async function GET(request: NextRequest) {
       message: isApproved
         ? "Signer is approved and ready for posting"
         : "Signer pending approval. Please approve in Warpcast.",
-    });
+    };
+
+    // If not approved, include the approval URL from Neynar
+    if (!isApproved && neynarData.signer_approval_url) {
+      response.approvalUrl = neynarData.signer_approval_url;
+    }
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("[Farcaster Signer Status] Error:", error);
     return NextResponse.json(

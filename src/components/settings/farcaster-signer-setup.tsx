@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { SiFarcaster } from "react-icons/si";
-import { FiCheck, FiLoader, FiAlertCircle } from "react-icons/fi";
+import { FiCheck, FiLoader, FiAlertCircle, FiQrCode } from "react-icons/fi";
 import toast from "react-hot-toast";
 
 export function FarcasterSignerSetup() {
@@ -19,6 +19,7 @@ export function FarcasterSignerSetup() {
     loading: true,
   });
   const [creating, setCreating] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   useEffect(() => {
     checkSignerStatus();
@@ -33,11 +34,18 @@ export function FarcasterSignerSetup() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("[Farcaster Setup] Status check:", data);
+
         setSignerStatus({
           exists: true,
           approved: data.approved,
+          approvalUrl: data.approvalUrl, // Get approval URL from status
           loading: false,
         });
+
+        if (data.approved) {
+          toast.success("Farcaster signer approved! ✅");
+        }
       } else {
         setSignerStatus({
           exists: false,
@@ -216,17 +224,27 @@ export function FarcasterSignerSetup() {
                 and approve the signer request to enable native posting.
               </p>
 
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3 mb-4">
                 {signerStatus.approvalUrl && (
-                  <a
-                    href={signerStatus.approvalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <SiFarcaster className="w-4 h-4" />
-                    <span>Open Warpcast</span>
-                  </a>
+                  <>
+                    <a
+                      href={signerStatus.approvalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <SiFarcaster className="w-4 h-4" />
+                      <span>Open Warpcast</span>
+                    </a>
+
+                    <button
+                      onClick={() => setShowQR(!showQR)}
+                      className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <FiQrCode className="w-4 h-4" />
+                      <span>{showQR ? "Hide" : "Show"} QR Code</span>
+                    </button>
+                  </>
                 )}
 
                 <button
@@ -236,6 +254,30 @@ export function FarcasterSignerSetup() {
                   Check Status
                 </button>
               </div>
+
+              {showQR && signerStatus.approvalUrl && (
+                <div className="bg-white p-4 rounded-lg mb-4 flex flex-col items-center">
+                  <p className="text-sm text-gray-600 mb-3 text-center">
+                    Scan this QR code with your phone to approve in Warpcast
+                  </p>
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(signerStatus.approvalUrl)}`}
+                    alt="Warpcast Approval QR Code"
+                    className="w-[200px] h-[200px]"
+                  />
+                  <p className="text-xs text-gray-500 mt-3 text-center max-w-[250px]">
+                    Or copy the link: <br />
+                    <a
+                      href={signerStatus.approvalUrl}
+                      className="text-purple-600 hover:underline break-all"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {signerStatus.approvalUrl.substring(0, 50)}...
+                    </a>
+                  </p>
+                </div>
+              )}
             </>
           )}
 
