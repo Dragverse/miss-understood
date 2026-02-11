@@ -117,6 +117,13 @@ export async function POST(request: NextRequest) {
 
     const neynar = new NeynarAPIClient({ apiKey });
 
+    // Log API key status (first 8 chars only for security)
+    console.log("[Farcaster Register] API key status:", {
+      hasKey: !!apiKey,
+      keyPrefix: apiKey?.substring(0, 8) + '...',
+      keyLength: apiKey?.length,
+    });
+
     console.log("[Farcaster Register] Creating managed signer for FID:", fid);
 
     // Create a managed signer via Neynar API
@@ -194,9 +201,21 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: "Invalid Neynar API credentials",
-          details: "API key may be incorrect or expired",
+          message: "API key may be incorrect or expired. Please check your Neynar dashboard.",
         },
         { status: 401 }
+      );
+    }
+
+    if (error.response?.status === 402) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Payment Required",
+          message: "Neynar API requires payment or credits. Please check your Neynar account billing.",
+          details: error.response?.data || "Check Neynar dashboard for account status",
+        },
+        { status: 402 }
       );
     }
 
