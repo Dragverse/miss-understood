@@ -97,7 +97,7 @@ export function FollowerBreakdown({
       name: "Farcaster",
       count: stats.bySource.farcaster,
       icon: <SiFarcaster className="w-4 h-4" />,
-      color: "text-purple-400",
+      color: "text-purple-500",
       bgColor: "bg-purple-600/10",
     },
   ];

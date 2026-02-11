@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { FiExternalLink } from "react-icons/fi";
+import { SiFarcaster } from "react-icons/si";
 
 interface FarcasterBadgeProps {
   username: string;
@@ -19,14 +19,8 @@ export function FarcasterBadge({ username, className = "" }: FarcasterBadgeProps
       title="Connected to Farcaster"
       className={`inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 transition group ${className}`}
     >
-      {/* Farcaster icon */}
-      <Image
-        src="/farcaster-transparent-white.svg"
-        alt="Farcaster"
-        width={16}
-        height={16}
-        className="w-4 h-4"
-      />
+      {/* Farcaster icon - using SiFarcaster for consistency */}
+      <SiFarcaster className="w-4 h-4" />
       <FiExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition" />
     </a>
   );
@@ -39,13 +33,7 @@ export function FarcasterBadge({ username, className = "" }: FarcasterBadgeProps
 export function FarcasterIndicator({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-1 text-xs text-purple-400 ${className}`}>
-      <Image
-        src="/farcaster-transparent-white.svg"
-        alt="Farcaster"
-        width={12}
-        height={12}
-        className="w-3 h-3"
-      />
+      <SiFarcaster className="w-3 h-3" />
       <span>from Farcaster</span>
     </span>
   );
@@ -56,13 +44,5 @@ export function FarcasterIndicator({ className = "" }: { className?: string }) {
  * Reusable Farcaster icon for use throughout the app
  */
 export function FarcasterIcon({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <Image
-      src="/farcaster-transparent-white.svg"
-      alt="Farcaster"
-      width={20}
-      height={20}
-      className={className}
-    />
-  );
+  return <SiFarcaster className={className} />;
 }
