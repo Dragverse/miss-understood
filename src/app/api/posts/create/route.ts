@@ -215,10 +215,10 @@ export async function POST(request: NextRequest) {
 
         crosspostResults.farcaster = farcasterResult;
         if (farcasterResult.success) {
-          console.log("[Posts] ✅ Farcaster cast created!");
-          console.log("[Posts] Cast hash:", farcasterResult.hash);
+          console.log("[Posts] ✅ Warpcast share URL generated!");
+          console.log("[Posts] Warpcast URL:", farcasterResult.warpcastUrl);
         } else {
-          console.error("[Posts] ❌ Farcaster cast failed:", farcasterResult.error);
+          console.error("[Posts] ❌ Farcaster failed:", farcasterResult.error);
         }
       } catch (error) {
         console.error("[Posts] ❌ Farcaster error:", error);
