@@ -43,7 +43,14 @@ export async function exchangeYouTubeAuthCode(
   try {
     const clientId = process.env.YOUTUBE_OAUTH_CLIENT_ID;
     const clientSecret = process.env.YOUTUBE_OAUTH_CLIENT_SECRET;
-    const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/api/youtube/oauth/callback`;
+
+    // Use production URL or fallback to localhost for development
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+                    (process.env.NODE_ENV === 'production'
+                      ? 'https://www.dragverse.app'
+                      : 'http://localhost:3000');
+
+    const redirectUri = `${baseUrl}/api/youtube/oauth/callback`;
 
     if (!clientId || !clientSecret) {
       throw new Error("YouTube OAuth credentials not configured");
@@ -463,7 +470,14 @@ export async function disconnectYouTubeChannel(userDID: string): Promise<SyncRes
  */
 export function generateYouTubeOAuthUrl(state?: string): string {
   const clientId = process.env.YOUTUBE_OAUTH_CLIENT_ID;
-  const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/api/youtube/oauth/callback`;
+
+  // Use production URL or fallback to localhost for development
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+                  (process.env.NODE_ENV === 'production'
+                    ? 'https://www.dragverse.app'
+                    : 'http://localhost:3000');
+
+  const redirectUri = `${baseUrl}/api/youtube/oauth/callback`;
 
   const params = new URLSearchParams({
     client_id: clientId!,
