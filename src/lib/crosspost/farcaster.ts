@@ -1,6 +1,6 @@
 /**
  * Farcaster cross-posting utilities
- * Posts content to Farcaster using Neynar API and user's signer from Privy
+ * Uses free Warpcast sharing method (no Neynar required)
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -16,90 +16,65 @@ interface FarcasterPostParams {
     url: string;
     alt?: string;
   }[];
-  userId: string; // User's DID to lookup signer
+  userId: string; // User's DID to check Farcaster connection
 }
 
 interface FarcasterPostResult {
   success: boolean;
-  hash?: string;
+  openWarpcast: boolean; // Always true for free Warpcast sharing
+  warpcastUrl?: string; // URL to open Warpcast
   error?: string;
-  openWarpcast?: boolean; // For client-side Warpcast sharing (free method)
 }
 
 /**
- * Post to Farcaster using Neynar API
+ * Prepare Farcaster post using free Warpcast sharing
+ * Opens Warpcast in a new tab with pre-filled message
  */
 export async function postToFarcaster(
   params: FarcasterPostParams
 ): Promise<FarcasterPostResult> {
   try {
-    if (!process.env.NEYNAR_API_KEY) {
-      return {
-        success: false,
-        error: "Neynar API key not configured"
-      };
-    }
-
-    // Get user's Farcaster signer UUID from database
+    // Check if user has Farcaster connected
     const { data: creator, error: dbError } = await supabase
       .from("creators")
-      .select("farcaster_signer_uuid, farcaster_fid")
+      .select("farcaster_fid")
       .eq("did", params.userId)
       .single();
 
-    if (dbError || !creator?.farcaster_signer_uuid || !creator?.farcaster_fid) {
+    if (dbError || !creator?.farcaster_fid) {
       return {
         success: false,
+        openWarpcast: false,
         error: "Farcaster not connected. Please connect your Farcaster account first."
       };
     }
 
-    const { farcaster_signer_uuid } = creator;
+    // Create Warpcast URL with pre-filled message
+    // Warpcast URL format: https://warpcast.com/~/compose?text=...&embeds[]=...
+    const encodedText = encodeURIComponent(params.text);
 
-    // Prepare cast data
-    const castData: any = {
-      signer_uuid: farcaster_signer_uuid,
-      text: params.text,
-    };
+    let warpcastUrl = `https://warpcast.com/~/compose?text=${encodedText}`;
 
-    // Handle media embeds
+    // Add media embeds (Warpcast supports embeds via URL parameter)
     if (params.media && params.media.length > 0) {
-      // Farcaster supports image embeds via URL
-      castData.embeds = params.media.slice(0, 2).map((media) => ({
-        url: media.url,
-      }));
+      params.media.slice(0, 2).forEach((media, index) => {
+        warpcastUrl += `&embeds[]=${encodeURIComponent(media.url)}`;
+      });
     }
 
-    // Post cast using Neynar API
-    const response = await fetch("https://api.neynar.com/v2/farcaster/cast", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api_key": process.env.NEYNAR_API_KEY,
-      },
-      body: JSON.stringify(castData),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[Farcaster] Cast failed:", errorText);
-      return {
-        success: false,
-        error: `Failed to post to Farcaster: ${errorText}`
-      };
-    }
-
-    const castResponse = await response.json();
-    console.log("[Farcaster] Cast successful:", castResponse.cast?.hash);
+    console.log("[Farcaster] Using free Warpcast sharing method");
+    console.log("[Farcaster] Warpcast URL:", warpcastUrl);
 
     return {
       success: true,
-      hash: castResponse.cast?.hash
+      openWarpcast: true,
+      warpcastUrl
     };
   } catch (error) {
-    console.error("[Farcaster] Error posting:", error);
+    console.error("[Farcaster] Error preparing Warpcast share:", error);
     return {
       success: false,
+      openWarpcast: false,
       error: error instanceof Error ? error.message : "Unknown error"
     };
   }

@@ -185,11 +185,17 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
 
         console.log("[PostComposer] Post created, crosspost results:", result.crosspost);
 
+        // Handle Farcaster Warpcast redirect
+        if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.openWarpcast && result.crosspost?.farcaster?.warpcastUrl) {
+          // Open Warpcast in a new tab with pre-filled message
+          window.open(result.crosspost.farcaster.warpcastUrl, '_blank');
+          toast.success("Post created! Opening Warpcast to share... ✨", { id: loadingToast });
+        }
         // Show success messages
-        if (selectedPlatforms.bluesky && result.crosspost?.bluesky?.success) {
+        else if (selectedPlatforms.bluesky && result.crosspost?.bluesky?.success) {
           toast.success("Posted to Dragverse and Bluesky! ✨", { id: loadingToast });
         } else if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.success) {
-          toast.success("Posted to Dragverse and Farcaster! ✨", { id: loadingToast });
+          toast.success("Posted to Dragverse! ✨", { id: loadingToast });
         } else {
           toast.success("Post created successfully! ✨", { id: loadingToast });
         }

@@ -209,7 +209,11 @@ export async function POST(request: NextRequest) {
 
         crosspostResults.farcaster = farcasterResult;
         if (farcasterResult.success) {
-          console.log("[Posts] ✅ Farcaster post created:", farcasterResult.hash);
+          if (farcasterResult.openWarpcast) {
+            console.log("[Posts] ✅ Warpcast URL prepared:", farcasterResult.warpcastUrl);
+          } else {
+            console.log("[Posts] ✅ Farcaster post created");
+          }
         } else {
           console.error("[Posts] ❌ Farcaster post failed:", farcasterResult.error);
         }
@@ -231,9 +235,10 @@ export async function POST(request: NextRequest) {
       updateData.bluesky_post_uri = crosspostResults.bluesky.uri;
     }
 
-    if (crosspostResults.farcaster?.success && crosspostResults.farcaster.hash) {
-      crosspostedTo.push('farcaster');
-      updateData.farcaster_cast_hash = crosspostResults.farcaster.hash;
+    // Note: Farcaster uses free Warpcast sharing (no hash to save)
+    if (crosspostResults.farcaster?.success && crosspostResults.farcaster.openWarpcast) {
+      // Don't add to crosspostedTo array since it requires manual posting via Warpcast
+      console.log("[Posts] Farcaster sharing prepared via Warpcast");
     }
 
     if (crosspostedTo.length > 0) {
