@@ -64,14 +64,18 @@ export async function GET(request: NextRequest) {
     };
 
     // If not approved, include the approval URL from Neynar
-    // Try multiple possible field names
-    const approvalUrl = neynarData.signer_approval_url || neynarData.signerApprovalUrl || neynarData.approval_url;
+    // Try multiple possible field names, or construct it from signer UUID
+    let approvalUrl = neynarData.signer_approval_url || neynarData.signerApprovalUrl || neynarData.approval_url;
+
+    // If Neynar didn't provide the URL, construct it ourselves
+    if (!isApproved && !approvalUrl) {
+      approvalUrl = `https://client.warpcast.com/deeplinks/signed-key-request?token=${signerUuid}`;
+      console.log(`[Farcaster Signer Status] ⚠️ No approval URL from Neynar, constructed: ${approvalUrl}`);
+    }
 
     if (!isApproved && approvalUrl) {
       response.approvalUrl = approvalUrl;
       console.log(`[Farcaster Signer Status] Including approval URL in response:`, approvalUrl);
-    } else if (!isApproved) {
-      console.log(`[Farcaster Signer Status] ⚠️ No approval URL found in Neynar response`);
     }
 
     return NextResponse.json(response);

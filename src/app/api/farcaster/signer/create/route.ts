@@ -97,18 +97,22 @@ export async function POST(request: NextRequest) {
 
     const { signer_uuid, public_key, signer_approval_url } = neynarData;
 
-    if (!signer_uuid || !public_key || !signer_approval_url) {
+    if (!signer_uuid || !public_key) {
       console.error("[Farcaster Signer] ❌ Missing required fields in Neynar response");
       console.error("[Farcaster Signer] signer_uuid:", signer_uuid);
       console.error("[Farcaster Signer] public_key:", public_key);
-      console.error("[Farcaster Signer] signer_approval_url:", signer_approval_url);
-      throw new Error("Invalid response from Neynar - missing required fields");
+      throw new Error("Invalid response from Neynar - missing signer UUID or public key");
     }
+
+    // Construct approval URL if Neynar doesn't provide it
+    // Format: https://client.warpcast.com/deeplinks/signed-key-request?token={signer_uuid}
+    const approvalUrl = signer_approval_url || `https://client.warpcast.com/deeplinks/signed-key-request?token=${signer_uuid}`;
 
     console.log(`[Farcaster Signer] ✅ Neynar signer created`);
     console.log(`[Farcaster Signer] Signer UUID: ${signer_uuid}`);
     console.log(`[Farcaster Signer] Public Key: ${public_key}`);
-    console.log(`[Farcaster Signer] Approval URL: ${signer_approval_url}`);
+    console.log(`[Farcaster Signer] Approval URL (from API): ${signer_approval_url}`);
+    console.log(`[Farcaster Signer] Approval URL (final): ${approvalUrl}`);
 
     // Store signer UUID in database (we'll use Neynar's managed signer, not our own keys)
     const { error: dbError } = await supabase.from("farcaster_signers").upsert({
@@ -127,7 +131,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       publicKey: public_key,
-      approvalUrl: signer_approval_url,
+      approvalUrl: approvalUrl, // Use constructed URL if Neynar didn't provide one
       fid,
       message: "Signer created. User must approve in Warpcast to enable posting.",
     });
