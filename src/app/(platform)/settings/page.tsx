@@ -1233,10 +1233,10 @@ export default function SettingsPage() {
                           <FarcasterIcon className="w-6 h-6" />
                         </div>
                         <div>
-                          <p className="font-semibold">Farcaster</p>
+                          <p className="font-semibold">Farcaster (via Warpcast)</p>
                           <p className="text-sm text-gray-400">
                             {connectedPlatforms.farcaster
-                              ? `Connected as @${farcasterHandle}`
+                              ? `Opens Warpcast to share to /dragverse`
                               : "Not connected"}
                           </p>
                         </div>
@@ -1244,34 +1244,23 @@ export default function SettingsPage() {
                       <div className="flex items-center gap-3">
                         {connectedPlatforms.farcaster ? (
                           <>
-                            {farcasterSignerStatus?.hasSigner ? (
-                              <>
-                                <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
-                                  Ready
-                                </span>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={crosspostSettings.farcaster}
-                                    onChange={(e) =>
-                                      setCrosspostSettings((prev) => ({
-                                        ...prev,
-                                        farcaster: e.target.checked,
-                                      }))
-                                    }
-                                    className="sr-only peer"
-                                  />
-                                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#EB83EA]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#EB83EA]"></div>
-                                </label>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => setActiveSection("accounts")}
-                                className="text-sm px-4 py-2 bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 border border-yellow-500/30 hover:border-yellow-500 rounded-lg transition font-semibold"
-                              >
-                                Setup Required
-                              </button>
-                            )}
+                            <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                              Connected
+                            </span>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={crosspostSettings.farcaster}
+                                onChange={(e) =>
+                                  setCrosspostSettings((prev) => ({
+                                    ...prev,
+                                    farcaster: e.target.checked,
+                                  }))
+                                }
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#EB83EA]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#EB83EA]"></div>
+                            </label>
                           </>
                         ) : (
                           <button
@@ -1283,6 +1272,15 @@ export default function SettingsPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* Farcaster explanation */}
+                    {connectedPlatforms.farcaster && (
+                      <div className="mt-3 pt-3 border-t border-[#2f2942]">
+                        <p className="text-xs text-gray-400">
+                          <span className="text-[#EB83EA]">💡 Free sharing:</span> When enabled, Warpcast will open in a new tab with your content pre-filled for the /dragverse channel. No paid subscription needed!
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
