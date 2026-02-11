@@ -6,7 +6,6 @@ import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft, FiAlertTriangle, FiShar
 import { SiBluesky } from "react-icons/si";
 import Image from "next/image";
 import { FarcasterIcon } from "@/components/profile/farcaster-badge";
-import { FarcasterSignerSetup } from "@/components/settings/farcaster-signer-setup";
 import toast from "react-hot-toast";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { usePrivy, useFundWallet } from "@privy-io/react-auth";
@@ -1289,13 +1288,6 @@ export default function SettingsPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Farcaster Native Posting Setup */}
-                {connectedPlatforms.farcaster && (
-                  <div className="mt-6">
-                    <FarcasterSignerSetup />
-                  </div>
-                )}
 
                 {/* Info Box */}
                 <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
