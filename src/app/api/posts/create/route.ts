@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 import { postToBluesky } from "@/lib/crosspost/bluesky";
-import { postToFarcaster } from "@/lib/crosspost/farcaster";
 
 /**
  * POST /api/posts/create
@@ -35,7 +34,7 @@ export async function POST(request: NextRequest) {
       location,
       visibility = "public",
       scheduledAt,
-      platforms = { dragverse: true, bluesky: false, farcaster: false },
+      platforms = { dragverse: true, bluesky: false },
     } = body;
 
     // Validate: must have either text or media
@@ -148,7 +147,6 @@ export async function POST(request: NextRequest) {
     console.log("[Posts] ========== CROSSPOSTING DEBUG ==========");
     console.log("[Posts] Platforms received:", platforms);
     console.log("[Posts] Bluesky enabled:", platforms.bluesky);
-    console.log("[Posts] Farcaster enabled:", platforms.farcaster);
     console.log("[Posts] User DID:", userDID);
     console.log("[Posts] Crosspost text:", crosspostText);
 
@@ -203,32 +201,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Farcaster: Post directly to Farcaster via Neynar API
-    if (platforms.farcaster) {
-      console.log("[Posts] Cross-posting to Farcaster...");
-      try {
-        const farcasterResult = await postToFarcaster({
-          text: crosspostText,
-          media: mediaUrls.length > 0 ? mediaUrls.map((url: string) => ({ url })) : undefined,
-          userId: userDID,
-        });
-
-        crosspostResults.farcaster = farcasterResult;
-        if (farcasterResult.success) {
-          console.log("[Posts] ✅ Warpcast share URL generated!");
-          console.log("[Posts] Warpcast URL:", farcasterResult.warpcastUrl);
-        } else {
-          console.error("[Posts] ❌ Farcaster failed:", farcasterResult.error);
-        }
-      } catch (error) {
-        console.error("[Posts] ❌ Farcaster error:", error);
-        crosspostResults.farcaster = {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
-    }
-
     // Update post with crosspost tracking info
     const crosspostedTo: string[] = [];
     const updateData: any = { crossposted_to: crosspostedTo };
@@ -236,12 +208,6 @@ export async function POST(request: NextRequest) {
     if (crosspostResults.bluesky?.success && crosspostResults.bluesky.uri) {
       crosspostedTo.push('bluesky');
       updateData.bluesky_post_uri = crosspostResults.bluesky.uri;
-    }
-
-    // Save Farcaster cast hash if posted successfully
-    if (crosspostResults.farcaster?.success && crosspostResults.farcaster.hash) {
-      crosspostedTo.push('farcaster');
-      updateData.farcaster_cast_hash = crosspostResults.farcaster.hash;
     }
 
     if (crosspostedTo.length > 0) {

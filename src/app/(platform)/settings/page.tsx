@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft, FiAlertTriangle, FiShare2, FiDollarSign } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import Image from "next/image";
-import { FarcasterIcon } from "@/components/profile/farcaster-badge";
 import toast from "react-hot-toast";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { usePrivy, useFundWallet } from "@privy-io/react-auth";
@@ -18,7 +17,7 @@ import { clearBlueskyCache } from "@/lib/bluesky/hooks";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { getAccessToken, linkFarcaster, unlinkFarcaster, logout } = usePrivy();
+  const { getAccessToken, logout } = usePrivy();
   const { fundWallet } = useFundWallet();
   const {
     isAuthenticated,
@@ -26,9 +25,7 @@ export default function SettingsPage() {
     userHandle,
     userEmail,
     user,
-    farcasterHandle,
     wallets,
-    linkedAccounts,
     emailAccount,
     googleAccount,
     linkWallet,
@@ -67,13 +64,6 @@ export default function SettingsPage() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  // Farcaster signer state
-  const [farcasterSignerStatus, setFarcasterSignerStatus] = useState<{
-    hasSigner: boolean;
-    signerUuid: string | null;
-  } | null>(null);
-  const [isSettingUpFarcaster, setIsSettingUpFarcaster] = useState(false);
-
   // Delete account state
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -81,11 +71,9 @@ export default function SettingsPage() {
   // Crosspost settings state
   const [crosspostSettings, setCrosspostSettings] = useState({
     bluesky: false,
-    farcaster: false,
   });
   const [connectedPlatforms, setConnectedPlatforms] = useState({
     bluesky: false,
-    farcaster: false,
   });
   const [isSavingCrosspost, setIsSavingCrosspost] = useState(false);
 
@@ -117,7 +105,6 @@ export default function SettingsPage() {
     const authMethods = [];
     if (emailAccount) authMethods.push('email');
     if (googleAccount) authMethods.push('google');
-    if (farcasterHandle) authMethods.push('farcaster');
     if (wallets && wallets.length > 0) authMethods.push('wallet');
     return authMethods.length > 1;
   };
@@ -328,69 +315,6 @@ export default function SettingsPage() {
     return () => clearTimeout(timeout);
   }, [isLoadingProfile]);
 
-  // Check Farcaster connection and sync FID to database when linked
-  useEffect(() => {
-    async function checkAndSyncFarcaster() {
-      if (!farcasterHandle || !isAuthenticated) {
-        setFarcasterSignerStatus(null);
-        return;
-      }
-
-      try {
-        const token = await getAccessToken();
-
-        // Sync Farcaster FID to database using dedicated endpoint
-        console.log("[Settings] Syncing Farcaster FID to database...");
-        const syncResponse = await fetch("/api/farcaster/sync-fid", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (syncResponse.ok) {
-          const syncData = await syncResponse.json();
-          console.log("[Settings] ✅ Farcaster FID synced:", syncData.farcasterFID);
-
-          // Reload crosspost settings to show the updated connection status
-          const settingsResponse = await fetch("/api/user/crosspost-settings", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          if (settingsResponse.ok) {
-            const data = await settingsResponse.json();
-            if (data.success) {
-              setConnectedPlatforms(data.connected);
-              console.log("[Settings] Farcaster ready for crossposting:", data.connected.farcaster);
-            }
-          }
-        } else {
-          const error = await syncResponse.json();
-          console.error("[Settings] Farcaster sync failed:", error.details || error.error);
-        }
-
-        // Check signer status (for reference, not used for crossposting)
-        const response = await fetch("/api/farcaster/register-signer", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setFarcasterSignerStatus({
-            hasSigner: data.hasSigner,
-            signerUuid: data.signerUuid,
-          });
-        }
-      } catch (error) {
-        console.error("[Settings] Failed to sync Farcaster:", error);
-      }
-    }
-
-    checkAndSyncFarcaster();
-  }, [farcasterHandle, isAuthenticated, getAccessToken]);
 
   // Load crosspost settings
   useEffect(() => {
@@ -688,56 +612,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSetupFarcaster = async () => {
-    if (!farcasterHandle) {
-      toast.error("Please connect your Farcaster account first");
-      return;
-    }
-
-    setIsSettingUpFarcaster(true);
-    try {
-      const token = await getAccessToken();
-      const response = await fetch("/api/farcaster/register-signer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.signerApprovalUrl) {
-          toast.success("Opening Warpcast to approve posting permissions...");
-          window.open(data.signerApprovalUrl, "_blank");
-
-          // Update signer status
-          setFarcasterSignerStatus({
-            hasSigner: true,
-            signerUuid: data.signerUuid,
-          });
-
-          toast.success(
-            "After approving in Warpcast, you'll be able to cross-post to Farcaster!",
-            { duration: 8000 }
-          );
-        } else {
-          toast.error("Setup incomplete. Please try again.");
-        }
-      } else {
-        const errorData = await response.json();
-        console.error("[Farcaster Setup] Server error:", errorData);
-        const errorMsg = errorData.message || errorData.error || "Failed to setup Farcaster posting";
-        const hint = errorData.details?.hint || '';
-        toast.error(`${errorMsg}${hint ? ` (${hint})` : ''}`, { duration: 6000 });
-      }
-    } catch (error) {
-      console.error("Farcaster setup error:", error);
-      toast.error("Failed to setup Farcaster posting");
-    } finally {
-      setIsSettingUpFarcaster(false);
-    }
-  };
 
   const handleSaveCrosspostSettings = async () => {
     setIsSavingCrosspost(true);
@@ -1229,64 +1103,6 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Farcaster Toggle */}
-                  <div className="p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-purple-600/20 flex items-center justify-center">
-                          <FarcasterIcon className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <p className="font-semibold">Farcaster (via Warpcast)</p>
-                          <p className="text-sm text-gray-400">
-                            {connectedPlatforms.farcaster
-                              ? `Opens Warpcast to share to /dragverse`
-                              : "Not connected"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {connectedPlatforms.farcaster ? (
-                          <>
-                            <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
-                              Connected
-                            </span>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={crosspostSettings.farcaster}
-                                onChange={(e) =>
-                                  setCrosspostSettings((prev) => ({
-                                    ...prev,
-                                    farcaster: e.target.checked,
-                                  }))
-                                }
-                                className="sr-only peer"
-                              />
-                              <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#EB83EA]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#EB83EA]"></div>
-                            </label>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => setActiveSection("accounts")}
-                            className="text-sm px-4 py-2 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border border-purple-500/30 hover:border-purple-500 rounded-lg transition font-semibold"
-                          >
-                            Connect
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Farcaster explanation */}
-                    {connectedPlatforms.farcaster && (
-                      <div className="mt-3 pt-3 border-t border-[#2f2942]">
-                        <p className="text-xs text-gray-400">
-                          <span className="text-[#EB83EA]">💡 Free sharing:</span> When enabled, Warpcast will open in a new tab with your content pre-filled for the /dragverse channel. No paid subscription needed!
-                        </p>
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 {/* Info Box */}
@@ -1619,109 +1435,6 @@ export default function SettingsPage() {
                     </div>
                   )}
 
-                  {/* Farcaster */}
-                  <div className="p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-purple-600/20 flex items-center justify-center">
-                          <FarcasterIcon className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <p className="font-semibold">Farcaster</p>
-                          {farcasterHandle ? (
-                            <p className="text-sm text-gray-400">@{farcasterHandle}</p>
-                          ) : (
-                            <p className="text-sm text-gray-500">Not connected</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {farcasterHandle ? (
-                          <>
-                            <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
-                              Connected
-                            </span>
-                            {canUnlinkAccount() && (
-                              <button
-                                onClick={async () => {
-                                  const farcasterAccount = linkedAccounts?.find(
-                                    (account: any) => account.type === "farcaster"
-                                  ) as any;
-                                  if (farcasterAccount?.fid) {
-                                    const loadingToast = toast.loading("Disconnecting Farcaster...");
-
-                                    try {
-                                      // Unlink from Privy
-                                      await unlinkFarcaster(farcasterAccount.fid);
-
-                                      // Clear Farcaster data from database
-                                      const token = await getAccessToken();
-                                      const response = await fetch("/api/farcaster/disconnect", {
-                                        method: "POST",
-                                        headers: {
-                                          Authorization: `Bearer ${token}`,
-                                        },
-                                      });
-
-                                      if (!response.ok) {
-                                        throw new Error("Failed to clear Farcaster data");
-                                      }
-
-                                      toast.success("Farcaster disconnected", { id: loadingToast });
-
-                                      // Reload crosspost settings to reflect disconnection
-                                      const settingsResponse = await fetch("/api/user/crosspost-settings", {
-                                        headers: { Authorization: `Bearer ${token}` },
-                                      });
-                                      if (settingsResponse.ok) {
-                                        const data = await settingsResponse.json();
-                                        if (data.success) {
-                                          setConnectedPlatforms(data.connected);
-                                        }
-                                      }
-                                    } catch (error) {
-                                      console.error("Failed to disconnect Farcaster:", error);
-                                      toast.error("Failed to disconnect Farcaster", { id: loadingToast });
-                                    }
-                                  }
-                                }}
-                                className="text-sm px-3 py-1 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition"
-                              >
-                                Disconnect
-                              </button>
-                            )}
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => linkFarcaster()}
-                            className="text-sm px-4 py-2 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border border-purple-500/30 hover:border-purple-500 rounded-lg transition font-semibold"
-                          >
-                            Connect Farcaster
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Farcaster sharing info */}
-                    {farcasterHandle && (
-                      <div className="pt-3 border-t border-[#2f2942]">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-300">
-                              Sharing to /dragverse
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                              When you upload videos with Farcaster sharing enabled, Warpcast will open automatically with your content pre-filled. Just click "Cast" to share to the /dragverse channel!
-                            </p>
-                          </div>
-                          <span className="text-xs px-3 py-1 bg-purple-500/10 text-purple-400 rounded-full flex-shrink-0">
-                            Ready
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Bluesky */}
                   <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
                     <div className="flex items-center gap-3">
@@ -1785,9 +1498,6 @@ export default function SettingsPage() {
                   </p>
                   <p className="text-sm text-blue-400 mb-2">
                     <strong>Email & Google:</strong> Connect via Privy when logging in or using the link button
-                  </p>
-                  <p className="text-sm text-blue-400 mb-2">
-                    <strong>Farcaster:</strong> Connect via Privy when logging in (sign in with Farcaster)
                   </p>
                   <p className="text-sm text-blue-400">
                     <strong>Bluesky:</strong> Connect manually using the button above with your Bluesky app password

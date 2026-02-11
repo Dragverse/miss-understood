@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth/verify";
 import { postToBluesky } from "@/lib/crosspost/bluesky";
-import { postToFarcaster } from "@/lib/crosspost/farcaster";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
 
 /**
@@ -13,7 +12,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/client";
  * - title: string
  * - description?: string
  * - thumbnailUrl?: string
- * - platforms: { bluesky?: boolean, farcaster?: boolean }
+ * - platforms: { bluesky?: boolean }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -82,39 +81,6 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error("[Crosspost Video] Bluesky error:", error);
         results.bluesky = {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
-    }
-
-    // Crosspost to Farcaster
-    if (platforms.farcaster) {
-      console.log("[Crosspost Video] Posting to Farcaster...");
-      try {
-        // Use custom thumbnail only if it's a valid HTTP(S) URL (not blob URLs or relative paths)
-        const farcasterMediaUrl = thumbnailUrl && thumbnailUrl.startsWith("http") && !thumbnailUrl.startsWith("blob:")
-          ? thumbnailUrl
-          : DEFAULT_THUMBNAIL;
-        const farcasterResult = await postToFarcaster({
-          text: postText,
-          media: [{
-            url: farcasterMediaUrl,
-            alt: `${title} - Watch on Dragverse`,
-          }],
-          userId: auth.userId!, // Safe: already verified auth.authenticated above
-        });
-        results.farcaster = farcasterResult;
-
-        if (farcasterResult.success) {
-          console.log("[Crosspost Video] ✅ Warpcast share URL generated");
-          console.log("[Crosspost Video] URL:", farcasterResult.warpcastUrl);
-        } else {
-          console.error("[Crosspost Video] ❌ Farcaster failed:", farcasterResult.error);
-        }
-      } catch (error) {
-        console.error("[Crosspost Video] Farcaster error:", error);
-        results.farcaster = {
           success: false,
           error: error instanceof Error ? error.message : "Unknown error",
         };

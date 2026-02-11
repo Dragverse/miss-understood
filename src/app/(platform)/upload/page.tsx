@@ -13,7 +13,6 @@ import { saveLocalVideo } from "@/lib/utils/local-storage";
 import { getVideo } from "@/lib/supabase/videos";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 import imageCompression from "browser-image-compression";
-import { FarcasterIcon } from "@/components/profile/farcaster-badge";
 
 function UploadPageContent() {
   const { isAuthenticated, signIn, user } = useAuthUser();
@@ -39,12 +38,12 @@ function UploadPageContent() {
     thumbnailPreview: null as string | null,
     video: null as File | null,
     crossPostBluesky: false,
-    crossPostFarcaster: false,
+    // crossPostFarcaster removed - requires paid Neynar plan
   });
 
   const [connectedPlatforms, setConnectedPlatforms] = useState({
     bluesky: false,
-    farcaster: false,
+    // farcaster removed
   });
   const [isLoadingConnections, setIsLoadingConnections] = useState(true);
 
@@ -111,7 +110,6 @@ function UploadPageContent() {
           thumbnailPreview: video.thumbnail || null,
           video: null, // Don't load the actual file
           crossPostBluesky: false, // Don't cross-post when editing
-          crossPostFarcaster: false, // Don't cross-post when editing
         });
 
         toast.success("Loaded video data for editing");
@@ -146,8 +144,6 @@ function UploadPageContent() {
               ...prev,
               crossPostBluesky:
                 data.connected.bluesky && data.settings.bluesky,
-              crossPostFarcaster:
-                data.connected.farcaster && data.settings.farcaster,
             }));
           }
         }
@@ -749,7 +745,6 @@ function UploadPageContent() {
           console.log("[Upload] Video ID:", metadataResult.videoId);
           console.log("[Upload] Crosspost settings:", {
             bluesky: formData.crossPostBluesky,
-            farcaster: formData.crossPostFarcaster
           });
 
           if (metadataResult.videoId) {
@@ -777,7 +772,6 @@ function UploadPageContent() {
                 platforms: {
                   dragverse: true,
                   bluesky: formData.crossPostBluesky,
-                  farcaster: formData.crossPostFarcaster,
                 }
               });
 
@@ -797,7 +791,6 @@ function UploadPageContent() {
                   platforms: {
                     dragverse: true,
                     bluesky: formData.crossPostBluesky,
-                    farcaster: formData.crossPostFarcaster,
                   },
                 }),
               });
@@ -818,16 +811,6 @@ function UploadPageContent() {
                 } else if (feedData.crosspost?.bluesky?.error) {
                   console.error("[Upload] ❌ Bluesky failed:", feedData.crosspost.bluesky.error);
                   toast.error(`Bluesky: ${feedData.crosspost.bluesky.error}`);
-                }
-
-                // Farcaster: Open Warpcast to share (free alternative to managed signers)
-                if (formData.crossPostFarcaster) {
-                  console.log("[Upload] Opening Warpcast to share...");
-                  const shareText = `${formData.title}\n\n${descriptionPreview ? descriptionPreview + '\n\n' : ''}${videoUrl}`;
-                  const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(videoUrl)}&channelKey=dragverse`;
-
-                  window.open(warpcastUrl, '_blank', 'noopener,noreferrer');
-                  toast.success("Opening Warpcast to share to /dragverse!");
                 }
               } else {
                 const error = await feedPostResponse.json();
@@ -863,7 +846,6 @@ function UploadPageContent() {
           thumbnailPreview: null,
           video: null,
           crossPostBluesky: false,
-          crossPostFarcaster: false,
         });
         setUploadStage("idle");
         setUploadProgress(0);
@@ -1363,32 +1345,6 @@ function UploadPageContent() {
               </div>
             </label>
 
-            <label className={`flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl ${!connectedPlatforms.farcaster || isLoadingConnections ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-purple-500/50'} transition mt-3`}>
-              <input
-                type="checkbox"
-                checked={formData.crossPostFarcaster}
-                onChange={(e) => setFormData({ ...formData, crossPostFarcaster: e.target.checked })}
-                disabled={!connectedPlatforms.farcaster || isLoadingConnections}
-                className="mt-1 w-5 h-5 accent-purple-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <FarcasterIcon className="w-5 h-5" />
-                  <span className="font-semibold text-white">Share to Farcaster</span>
-                </div>
-                <p className="text-sm text-gray-400 mt-1">
-                  Opens Warpcast to share this video to /dragverse channel
-                </p>
-                {!connectedPlatforms.farcaster && !isLoadingConnections && (
-                  <p className="text-sm text-red-400 mt-2">
-                    Not connected -{" "}
-                    <Link href="/settings" className="underline hover:text-red-300">
-                      connect in Settings
-                    </Link>
-                  </p>
-                )}
-              </div>
-            </label>
           </div>
         )}
 

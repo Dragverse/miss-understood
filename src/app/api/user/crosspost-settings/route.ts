@@ -3,7 +3,6 @@ import { verifyAuth } from "@/lib/auth/verify";
 import { createClient } from "@supabase/supabase-js";
 import { getIronSession } from "iron-session";
 import { sessionOptions, SessionData } from "@/lib/session/config";
-import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +25,7 @@ export async function GET(request: NextRequest) {
     // Fetch creator record with crosspost settings
     const { data: creator, error } = await supabase
       .from("creators")
-      .select("default_crosspost_platforms, bluesky_handle, farcaster_fid, farcaster_signer_uuid")
+      .select("default_crosspost_platforms, bluesky_handle")
       .eq("did", userId)
       .single();
 
@@ -34,13 +33,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           success: true,
-          settings: { bluesky: false, farcaster: false },
-          connected: { bluesky: false, farcaster: false }
+          settings: { bluesky: false },
+          connected: { bluesky: false }
         }
       );
     }
 
-    const settings = creator.default_crosspost_platforms || { bluesky: false, farcaster: false };
+    const settings = creator.default_crosspost_platforms || { bluesky: false };
 
     // Cross-check with iron-session for Bluesky (session is source of truth)
     const response = NextResponse.json({ success: true });
@@ -67,17 +66,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Farcaster: Check if user has Farcaster FID (from Privy connection)
-    // We use the free Warpcast sharing method, so no need to check Neynar signer approval
-    let farcasterConnected = !!creator.farcaster_fid;
-    console.log("[Crosspost Settings] Farcaster connection check:", {
-      hasFID: !!creator.farcaster_fid,
-      connected: farcasterConnected,
-    });
-
     const connected = {
       bluesky: blueskyConnected,
-      farcaster: farcasterConnected,
     };
 
     return NextResponse.json({
@@ -107,10 +97,10 @@ export async function POST(request: NextRequest) {
 
     const userId = auth.userId;
     const body = await request.json();
-    const { bluesky, farcaster } = body;
+    const { bluesky } = body;
 
     // Validate input
-    if (typeof bluesky !== "boolean" || typeof farcaster !== "boolean") {
+    if (typeof bluesky !== "boolean") {
       return NextResponse.json(
         { error: "Invalid settings format" },
         { status: 400 }
@@ -121,7 +111,7 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase
       .from("creators")
       .update({
-        default_crosspost_platforms: { bluesky, farcaster },
+        default_crosspost_platforms: { bluesky },
         updated_at: new Date().toISOString()
       })
       .eq("did", userId);
@@ -136,7 +126,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      settings: { bluesky, farcaster }
+      settings: { bluesky }
     });
   } catch (error) {
     console.error("[Crosspost Settings API] Error:", error);

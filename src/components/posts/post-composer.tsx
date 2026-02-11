@@ -73,7 +73,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
             setSelectedPlatforms({
               dragverse: true,
               bluesky: data.settings.bluesky && data.connected.bluesky,
-              farcaster: data.settings.farcaster && data.connected.farcaster,
+              farcaster: false, // Removed: Requires paid Neynar plan
             });
             setConnectedPlatforms(data.connected);
           }
@@ -195,13 +195,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
           crosspostErrors.push(`Bluesky: ${result.crosspost.bluesky.error}`);
         }
 
-        if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.success) {
-          crosspostSuccess.push("Farcaster");
-        } else if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.needsSetup) {
-          crosspostErrors.push("Farcaster: Please set up native posting in settings");
-        } else if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.error) {
-          crosspostErrors.push(`Farcaster: ${result.crosspost.farcaster.error}`);
-        }
+        // Farcaster removed - requires paid Neynar plan
 
         // Show success message
         if (crosspostSuccess.length > 0) {
@@ -417,7 +411,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
       )}
 
       {/* Selected platforms display */}
-      {!showPlatformPicker && (selectedPlatforms.bluesky || selectedPlatforms.farcaster) && (
+      {!showPlatformPicker && selectedPlatforms.bluesky && (
         <div className="mb-4 flex items-center gap-2">
           <span className="text-gray-400 text-sm">Posting to:</span>
           <div className="flex items-center gap-2">
