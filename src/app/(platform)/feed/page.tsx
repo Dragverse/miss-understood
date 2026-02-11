@@ -25,6 +25,7 @@ function FeedContent() {
   const [hasBluesky, setHasBluesky] = useState(false);
   const [hasFarcaster, setHasFarcaster] = useState(false);
   const [sortBy, setSortBy] = useState<"engagement" | "recent">("engagement");
+  const [contentFilter, setContentFilter] = useState<"all" | "youtube" | "bluesky" | "dragverse">("all");
   const [showComposer, setShowComposer] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -325,35 +326,83 @@ function FeedContent() {
             </div>
           )}
 
-          {/* Sort Selector - Compact on mobile */}
+          {/* Sort and Filter Selectors - Compact on mobile */}
           {!showBookmarks && (
-            <div className="flex items-center gap-2 md:gap-3 mb-6">
-              <span className="hidden sm:inline text-sm text-gray-400">Sort by:</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSortBy("engagement")}
-                  className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
-                    sortBy === "engagement"
-                      ? "bg-[#EB83EA] text-white"
-                      : "bg-white/5 text-gray-400 hover:bg-white/10"
-                  }`}
-                >
-                  <span className="hidden sm:inline">Trending</span>
-                  <span className="sm:hidden">🔥</span>
-                </button>
-                <button
-                  onClick={() => setSortBy("recent")}
-                  className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
-                    sortBy === "recent"
-                      ? "bg-[#EB83EA] text-white"
-                      : "bg-white/5 text-gray-400 hover:bg-white/10"
-                  }`}
-                >
-                  <span className="hidden sm:inline">Recent</span>
-                  <span className="sm:hidden">🕐</span>
-                </button>
+            <>
+              <div className="flex items-center gap-2 md:gap-3 mb-4">
+                <span className="hidden sm:inline text-sm text-gray-400">Sort by:</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSortBy("engagement")}
+                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
+                      sortBy === "engagement"
+                        ? "bg-[#EB83EA] text-white"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10"
+                    }`}
+                  >
+                    <span className="hidden sm:inline">Trending</span>
+                    <span className="sm:hidden">🔥</span>
+                  </button>
+                  <button
+                    onClick={() => setSortBy("recent")}
+                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
+                      sortBy === "recent"
+                        ? "bg-[#EB83EA] text-white"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10"
+                    }`}
+                  >
+                    <span className="hidden sm:inline">Recent</span>
+                    <span className="sm:hidden">🕐</span>
+                  </button>
+                </div>
               </div>
-            </div>
+
+              <div className="flex items-center gap-2 md:gap-3 mb-6">
+                <span className="hidden sm:inline text-sm text-gray-400">Show:</span>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => setContentFilter("all")}
+                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
+                      contentFilter === "all"
+                        ? "bg-[#EB83EA] text-white"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10"
+                    }`}
+                  >
+                    All Content
+                  </button>
+                  <button
+                    onClick={() => setContentFilter("dragverse")}
+                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
+                      contentFilter === "dragverse"
+                        ? "bg-purple-500 text-white"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10"
+                    }`}
+                  >
+                    Dragverse Only
+                  </button>
+                  <button
+                    onClick={() => setContentFilter("youtube")}
+                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
+                      contentFilter === "youtube"
+                        ? "bg-red-500 text-white"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10"
+                    }`}
+                  >
+                    YouTube
+                  </button>
+                  <button
+                    onClick={() => setContentFilter("bluesky")}
+                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
+                      contentFilter === "bluesky"
+                        ? "bg-blue-500 text-white"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10"
+                    }`}
+                  >
+                    Bluesky
+                  </button>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Search Error Alert */}
@@ -388,23 +437,55 @@ function FeedContent() {
           ) : (
             <div className="space-y-6">
               {/* Dragverse Native Posts - Use BlueskyPostCard for audio player support */}
-              {dragversePosts.map((post) => (
-                <BlueskyPostCard
-                  key={`dragverse-${post.id}`}
-                  post={{
-                    ...post,
-                    description: post.text_content || post.description || "",
-                    createdAt: post.created_at || post.createdAt,
-                  }}
-                />
-              ))}
+              {dragversePosts
+                .filter((post) => {
+                  if (contentFilter === "all") return true;
+                  if (contentFilter === "dragverse") return (post as any).source === "dragverse" || (post as any).source === "ceramic";
+                  return false;
+                })
+                .map((post) => (
+                  <BlueskyPostCard
+                    key={`dragverse-${post.id}`}
+                    post={{
+                      ...post,
+                      description: post.text_content || post.description || "",
+                      createdAt: post.created_at || post.createdAt,
+                      creator: post.creator ? {
+                        displayName: post.creator.display_name || post.creator.displayName,
+                        handle: post.creator.handle,
+                        avatar: post.creator.avatar,
+                        did: post.creator.did,
+                        blueskyHandle: post.creator.blueskyHandle,
+                        farcasterHandle: post.creator.farcasterHandle,
+                      } : post.creator,
+                    }}
+                  />
+                ))}
 
-              {/* External Bluesky Posts */}
-              {posts.map((post) => (
-                <BlueskyPostCard key={`bluesky-${post.id}`} post={post} />
-              ))}
+              {/* External Posts (Bluesky, YouTube, etc.) */}
+              {posts
+                .filter((post) => {
+                  if (contentFilter === "all") return true;
+                  if (contentFilter === "youtube") return (post as any).source === "youtube";
+                  if (contentFilter === "bluesky") return (post as any).source !== "youtube" && (post as any).source !== "dragverse" && (post as any).source !== "ceramic";
+                  if (contentFilter === "dragverse") return false; // External posts are not Dragverse
+                  return false;
+                })
+                .map((post) => (
+                  <BlueskyPostCard key={`external-${post.id}`} post={post} />
+                ))}
 
-              {dragversePosts.length === 0 && posts.length === 0 && !searchError && (
+              {dragversePosts.filter((post) => {
+                if (contentFilter === "all") return true;
+                if (contentFilter === "dragverse") return (post as any).source === "dragverse" || (post as any).source === "ceramic";
+                return false;
+              }).length === 0 && posts.filter((post) => {
+                if (contentFilter === "all") return true;
+                if (contentFilter === "youtube") return (post as any).source === "youtube";
+                if (contentFilter === "bluesky") return (post as any).source !== "youtube" && (post as any).source !== "dragverse" && (post as any).source !== "ceramic";
+                if (contentFilter === "dragverse") return false;
+                return false;
+              }).length === 0 && !searchError && (
                 <div className="text-center py-20">
                   <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
                     <FiMessageSquare className="w-10 h-10 text-[#EB83EA]" />

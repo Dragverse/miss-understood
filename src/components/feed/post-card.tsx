@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiHeart, FiMessageCircle, FiExternalLink, FiBookmark, FiUserPlus, FiUserCheck } from "react-icons/fi";
-import { SiBluesky } from "react-icons/si";
+import { FiHeart, FiMessageCircle, FiExternalLink, FiBookmark, FiUserPlus, FiUserCheck, FiMoreHorizontal, FiTrash2 } from "react-icons/fi";
+import { SiBluesky, SiFarcaster } from "react-icons/si";
 import { parseTextWithLinks } from "@/lib/text-parser";
 import { CommentModal } from "./comment-modal";
 import * as Player from "@livepeer/react/player";
@@ -16,6 +16,7 @@ import { TipButton } from "@/components/shared";
 import { usePrivy } from "@privy-io/react-auth";
 import { getVideo } from "@/lib/supabase/videos";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
+import toast from "react-hot-toast";
 
 interface PostCardProps {
   post: {
@@ -43,7 +44,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
-  const { user } = usePrivy();
+  const { user, getAccessToken } = usePrivy();
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
@@ -54,6 +55,9 @@ export function PostCard({ post }: PostCardProps) {
   const [audioData, setAudioData] = useState<any>(null);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [audioError, setAudioError] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const isOwnPost = user?.id && post.creator.did && post.creator.did === user.id;
 
@@ -62,6 +66,17 @@ export function PostCard({ post }: PostCardProps) {
     day: "numeric",
     year: "numeric",
   });
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Check bookmark, like, and follow status on mount
   useEffect(() => {
@@ -194,6 +209,42 @@ export function PostCard({ post }: PostCardProps) {
     window.dispatchEvent(new Event("storage"));
   };
 
+  const handleDelete = async () => {
+    if (!isOwnPost) return;
+
+    const confirmed = window.confirm("Are you sure you want to delete this post?");
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    setShowMenu(false);
+
+    try {
+      const token = await getAccessToken();
+      const response = await fetch(`/api/posts/delete?postId=${post.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        toast.success("Post deleted successfully");
+        // Reload page after short delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to delete post");
+      }
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      toast.error("Failed to delete post. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const toggleFollow = async (e: React.MouseEvent) => {
     e.preventDefault();
 
@@ -270,7 +321,30 @@ export function PostCard({ post }: PostCardProps) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-500">{formattedDate}</span>
-          {post.creator.did && (
+          {isOwnPost ? (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                aria-label="Post options"
+              >
+                <FiMoreHorizontal className="w-5 h-5 text-gray-400" />
+              </button>
+
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-[#1a0b2e] border border-[#2f2942] rounded-xl shadow-xl z-10 overflow-hidden">
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="w-full px-4 py-3 text-left text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <FiTrash2 className="w-4 h-4" />
+                    {isDeleting ? "Deleting..." : "Delete Post"}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : post.creator.did ? (
             <button
               onClick={toggleFollow}
               disabled={isFollowLoading}
@@ -292,7 +366,7 @@ export function PostCard({ post }: PostCardProps) {
                 </>
               )}
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -308,6 +382,11 @@ export function PostCard({ post }: PostCardProps) {
         <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-500/20 rounded-full border border-purple-500/30 mb-3">
           <Image src="/logo.svg" alt="" width={12} height={12} />
           <span className="text-purple-300 text-[10px] font-semibold uppercase">Dragverse</span>
+        </div>
+      ) : (post as any).source === "farcaster" ? (
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-600/20 rounded-full border border-purple-600/30 mb-3">
+          <SiFarcaster className="w-3 h-3 text-purple-400" />
+          <span className="text-purple-300 text-[10px] font-semibold uppercase">Farcaster</span>
         </div>
       ) : (
         <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-500/20 rounded-full border border-blue-500/30 mb-3">
