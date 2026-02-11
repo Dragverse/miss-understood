@@ -145,7 +145,13 @@ export async function POST(request: NextRequest) {
         : `Check out this post from @${username} at the Dragverse: ${postUrl}`;
 
     // Cross-post to Bluesky
+    console.log("[Posts] ========== CROSSPOSTING DEBUG ==========");
     console.log("[Posts] Platforms received:", platforms);
+    console.log("[Posts] Bluesky enabled:", platforms.bluesky);
+    console.log("[Posts] Farcaster enabled:", platforms.farcaster);
+    console.log("[Posts] User DID:", userDID);
+    console.log("[Posts] Crosspost text:", crosspostText);
+
     if (platforms.bluesky) {
       console.log("[Posts] Cross-posting to Bluesky...");
       try {

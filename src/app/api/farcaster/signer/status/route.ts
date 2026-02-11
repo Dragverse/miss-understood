@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth/verify";
-import { getSigner, verifySigner } from "@/lib/farcaster/signer";
+import { getSigner } from "@/lib/farcaster/signer";
 
 /**
  * GET /api/farcaster/signer/status
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's signer
+    // Get user's signer from database
     const signer = await getSigner(auth.userId);
 
     if (!signer) {
@@ -27,13 +27,34 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Verify signer is registered with Farcaster protocol
-    const isApproved = await verifySigner(signer.fid, signer.publicKey);
+    // The encryptedPrivateKey field now stores the Neynar signer UUID
+    const signerUuid = signer.encryptedPrivateKey;
+
+    // Check signer status via Neynar API
+    const neynarResponse = await fetch(`https://api.neynar.com/v2/farcaster/signer?signer_uuid=${signerUuid}`, {
+      headers: {
+        "api_key": process.env.NEYNAR_API_KEY || "",
+      },
+    });
+
+    if (!neynarResponse.ok) {
+      console.error("[Farcaster Signer Status] Neynar API error:", await neynarResponse.text());
+      return NextResponse.json({
+        approved: false,
+        message: "Failed to check signer status",
+      });
+    }
+
+    const neynarData = await neynarResponse.json();
+    const isApproved = neynarData.status === "approved";
+
+    console.log(`[Farcaster Signer Status] Signer ${signerUuid} status: ${neynarData.status}`);
 
     return NextResponse.json({
       approved: isApproved,
       fid: signer.fid,
       publicKey: signer.publicKey,
+      status: neynarData.status,
       message: isApproved
         ? "Signer is approved and ready for posting"
         : "Signer pending approval. Please approve in Warpcast.",

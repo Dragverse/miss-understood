@@ -69,12 +69,23 @@ export function FarcasterSignerSetup() {
       if (response.ok) {
         const data = await response.json();
 
+        console.log("[Farcaster Setup] Signer created:", data);
+        console.log("[Farcaster Setup] Approval URL:", data.approvalUrl);
+
         toast.success("Signer created! Opening Warpcast for approval...", {
           id: loadingToast,
+          duration: 5000,
         });
 
         // Open Warpcast approval URL
-        window.open(data.approvalUrl, "_blank");
+        const newWindow = window.open(data.approvalUrl, "_blank");
+
+        if (!newWindow) {
+          toast.error("Popup blocked! Please allow popups and try again.", {
+            duration: 5000,
+          });
+          console.error("[Farcaster Setup] Popup blocked. URL:", data.approvalUrl);
+        }
 
         // Update state
         setSignerStatus({
@@ -88,7 +99,8 @@ export function FarcasterSignerSetup() {
         pollForApproval();
       } else {
         const error = await response.json();
-        toast.error(error.error || "Failed to create signer", {
+        console.error("[Farcaster Setup] API error:", error);
+        toast.error(error.message || error.error || "Failed to create signer", {
           id: loadingToast,
         });
       }

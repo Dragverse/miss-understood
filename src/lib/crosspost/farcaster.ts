@@ -1,9 +1,9 @@
 /**
  * Farcaster cross-posting utilities
- * Uses native signing with custom signer management (no Neynar required)
+ * Uses Neynar's managed signer API for reliable posting
  */
 
-import { createCast, getSigner } from "@/lib/farcaster/signer";
+import { getSigner } from "@/lib/farcaster/signer";
 
 interface FarcasterPostParams {
   text: string;
@@ -22,14 +22,14 @@ interface FarcasterPostResult {
 }
 
 /**
- * Post to Farcaster using native signing
- * Requires user to have a registered signer (approved via Warpcast)
+ * Post to Farcaster using Neynar's managed signer API
+ * Requires user to have an approved signer (approved via Warpcast)
  */
 export async function postToFarcaster(
   params: FarcasterPostParams
 ): Promise<FarcasterPostResult> {
   try {
-    console.log("[Farcaster] Attempting native cast creation...");
+    console.log("[Farcaster] Attempting cast creation via Neynar...");
 
     // Check if user has a signer set up
     const signer = await getSigner(params.userId);
@@ -43,27 +43,45 @@ export async function postToFarcaster(
       };
     }
 
-    // Prepare embeds
+    // The encryptedPrivateKey field stores the Neynar signer UUID
+    const signerUuid = signer.encryptedPrivateKey;
+
+    // Prepare embeds (convert media URLs to embed format)
     const embeds = params.media?.map((m) => ({ url: m.url })) || [];
 
-    // Create and broadcast cast
-    const result = await createCast(params.userId, params.text, embeds);
+    // Post via Neynar API
+    const neynarResponse = await fetch("https://api.neynar.com/v2/farcaster/cast", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api_key": process.env.NEYNAR_API_KEY || "",
+      },
+      body: JSON.stringify({
+        signer_uuid: signerUuid,
+        text: params.text,
+        embeds: embeds.length > 0 ? embeds : undefined,
+      }),
+    });
 
-    if (result.success) {
-      console.log(`[Farcaster] ✅ Cast published successfully!`);
-      console.log(`[Farcaster] Hash: ${result.hash}`);
-
-      return {
-        success: true,
-        hash: result.hash,
-      };
-    } else {
-      console.error("[Farcaster] ❌ Cast failed:", result.error);
+    if (!neynarResponse.ok) {
+      const errorData = await neynarResponse.json();
+      console.error("[Farcaster] ❌ Neynar API error:", errorData);
       return {
         success: false,
-        error: result.error,
+        error: errorData.message || "Failed to post cast",
       };
     }
+
+    const castData = await neynarResponse.json();
+    const castHash = castData.cast?.hash;
+
+    console.log(`[Farcaster] ✅ Cast published successfully!`);
+    console.log(`[Farcaster] Hash: ${castHash}`);
+
+    return {
+      success: true,
+      hash: castHash,
+    };
   } catch (error) {
     console.error("[Farcaster] Posting error:", error);
     return {

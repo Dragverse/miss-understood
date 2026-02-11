@@ -5,11 +5,11 @@ import { getSupabaseServerClient } from "@/lib/supabase/client";
 
 /**
  * POST /api/farcaster/signer/create
- * Generate a new Farcaster signer and return approval URL
+ * Generate a new Farcaster signer using Neynar's Signer API
  *
  * Flow:
- * 1. Generate Ed25519 key pair
- * 2. Store encrypted private key
+ * 1. Call Neynar API to create managed signer
+ * 2. Store signer UUID and public key
  * 3. Return deeplink for Warpcast approval
  * 4. User approves in Warpcast app
  * 5. Poll /api/farcaster/signer/status to check approval
@@ -47,23 +47,50 @@ export async function POST(request: NextRequest) {
 
     const fid = creator.farcaster_fid;
 
-    // Generate new signer
-    const { publicKey, encryptedPrivateKey } = await generateSigner();
+    // Use Neynar API to create a managed signer
+    const neynarResponse = await fetch("https://api.neynar.com/v2/farcaster/signer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api_key": process.env.NEYNAR_API_KEY || "",
+      },
+      body: JSON.stringify({
+        fid: fid,
+      }),
+    });
 
-    // Store in database
-    await storeSigner(auth.userId, fid, publicKey, encryptedPrivateKey);
+    if (!neynarResponse.ok) {
+      const errorData = await neynarResponse.json();
+      console.error("[Farcaster Signer] Neynar API error:", errorData);
+      throw new Error(errorData.message || "Failed to create signer with Neynar");
+    }
 
-    // Create Warpcast deeplink for approval
-    // Format: farcaster://signed-key-request?token=<public_key>
-    const approvalUrl = `https://client.warpcast.com/deeplinks/signed-key-request?deeplinkUrl=dragverse://farcaster/signer&token=${publicKey}`;
+    const neynarData = await neynarResponse.json();
+    const { signer_uuid, public_key, signer_approval_url } = neynarData;
 
-    console.log(`[Farcaster Signer] ✅ Signer created for FID ${fid}`);
-    console.log(`[Farcaster Signer] Approval URL: ${approvalUrl}`);
+    console.log(`[Farcaster Signer] ✅ Neynar signer created`);
+    console.log(`[Farcaster Signer] Signer UUID: ${signer_uuid}`);
+    console.log(`[Farcaster Signer] Public Key: ${public_key}`);
+    console.log(`[Farcaster Signer] Approval URL: ${signer_approval_url}`);
+
+    // Store signer UUID in database (we'll use Neynar's managed signer, not our own keys)
+    const { error: dbError } = await supabase.from("farcaster_signers").upsert({
+      user_did: auth.userId,
+      fid: fid,
+      public_key: public_key,
+      encrypted_private_key: signer_uuid, // Store UUID instead of encrypted key
+      created_at: new Date().toISOString(),
+    });
+
+    if (dbError) {
+      console.error("[Farcaster Signer] Database error:", dbError);
+      throw new Error("Failed to store signer in database");
+    }
 
     return NextResponse.json({
       success: true,
-      publicKey,
-      approvalUrl,
+      publicKey: public_key,
+      approvalUrl: signer_approval_url,
       fid,
       message: "Signer created. User must approve in Warpcast to enable posting.",
     });
