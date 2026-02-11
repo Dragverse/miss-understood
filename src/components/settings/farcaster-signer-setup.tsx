@@ -251,6 +251,43 @@ export function FarcasterSignerSetup() {
                 >
                   Check Status
                 </button>
+
+                <button
+                  onClick={async () => {
+                    if (!confirm("Delete existing signer and start over? You'll need to approve a new signer in Warpcast.")) {
+                      return;
+                    }
+
+                    const loadingToast = toast.loading("Resetting signer...");
+
+                    try {
+                      const token = await getAccessToken();
+                      const response = await fetch("/api/farcaster/signer/reset", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+
+                      if (!response.ok) {
+                        throw new Error("Failed to reset signer");
+                      }
+
+                      toast.success("Signer reset. You can now create a new one.", { id: loadingToast });
+
+                      // Reset state to show "Enable Native Posting" button again
+                      setSignerStatus({
+                        exists: false,
+                        approved: false,
+                        loading: false,
+                      });
+                    } catch (error) {
+                      console.error("Failed to reset signer:", error);
+                      toast.error("Failed to reset signer. Please try again.", { id: loadingToast });
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition-colors font-medium"
+                >
+                  Start Over
+                </button>
               </div>
 
               {showQR && signerStatus.approvalUrl && (
