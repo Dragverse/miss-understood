@@ -1,9 +1,7 @@
 /**
  * Farcaster cross-posting utilities
- * Uses Neynar's managed signer API for reliable posting
+ * Uses FREE Warpcast share intents - no API required
  */
-
-import { getSigner } from "@/lib/farcaster/signer";
 
 interface FarcasterPostParams {
   text: string;
@@ -16,74 +14,49 @@ interface FarcasterPostParams {
 
 interface FarcasterPostResult {
   success: boolean;
-  hash?: string; // Cast hash
+  warpcastUrl?: string; // Warpcast compose URL to open
   error?: string;
-  needsSetup?: boolean; // True if user needs to set up signer
+  needsSetup?: boolean; // True if user needs to connect Farcaster
 }
 
 /**
- * Post to Farcaster using Neynar's managed signer API
- * Requires user to have an approved signer (approved via Warpcast)
+ * Generate Warpcast share intent URL
+ * This is 100% FREE - just opens Warpcast with pre-filled content
  */
 export async function postToFarcaster(
   params: FarcasterPostParams
 ): Promise<FarcasterPostResult> {
   try {
-    console.log("[Farcaster] Attempting cast creation via Neynar...");
+    console.log("[Farcaster] Generating Warpcast share URL...");
 
-    // Check if user has a signer set up
-    const signer = await getSigner(params.userId);
+    // Build Warpcast compose URL with pre-filled content
+    const baseUrl = "https://warpcast.com/~/compose";
+    const urlParams = new URLSearchParams();
 
-    if (!signer) {
-      console.log("[Farcaster] No signer found for user");
-      return {
-        success: false,
-        needsSetup: true,
-        error: "Farcaster posting not set up. Please enable native posting in settings.",
-      };
+    // Add text
+    urlParams.set("text", params.text);
+
+    // Add embeds (images/videos)
+    if (params.media && params.media.length > 0) {
+      params.media.forEach((media, index) => {
+        urlParams.append("embeds[]", media.url);
+      });
     }
 
-    // The encryptedPrivateKey field stores the Neynar signer UUID
-    const signerUuid = signer.encryptedPrivateKey;
+    // Add channel (dragverse)
+    urlParams.set("channelKey", "dragverse");
 
-    // Prepare embeds (convert media URLs to embed format)
-    const embeds = params.media?.map((m) => ({ url: m.url })) || [];
+    const warpcastUrl = `${baseUrl}?${urlParams.toString()}`;
 
-    // Post via Neynar API
-    const neynarResponse = await fetch("https://api.neynar.com/v2/farcaster/cast", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api_key": process.env.NEYNAR_API_KEY || "",
-      },
-      body: JSON.stringify({
-        signer_uuid: signerUuid,
-        text: params.text,
-        embeds: embeds.length > 0 ? embeds : undefined,
-      }),
-    });
-
-    if (!neynarResponse.ok) {
-      const errorData = await neynarResponse.json();
-      console.error("[Farcaster] ❌ Neynar API error:", errorData);
-      return {
-        success: false,
-        error: errorData.message || "Failed to post cast",
-      };
-    }
-
-    const castData = await neynarResponse.json();
-    const castHash = castData.cast?.hash;
-
-    console.log(`[Farcaster] ✅ Cast published successfully!`);
-    console.log(`[Farcaster] Hash: ${castHash}`);
+    console.log("[Farcaster] ✅ Warpcast share URL generated");
+    console.log("[Farcaster] URL:", warpcastUrl);
 
     return {
       success: true,
-      hash: castHash,
+      warpcastUrl,
     };
   } catch (error) {
-    console.error("[Farcaster] Posting error:", error);
+    console.error("[Farcaster] Error generating share URL:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
