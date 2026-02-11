@@ -35,12 +35,11 @@ export function getSafeThumbnail(
     }
   }
 
-  // 2. Try Livepeer auto-generated thumbnail if playbackId provided
-  if (playbackId && playbackId.trim() !== '') {
-    return `https://image.lp-playback.studio/image/${playbackId}/thumbnail.webp`;
-  }
+  // 2. Skip Livepeer auto-generated thumbnails (they return 502 errors frequently)
+  // Instead, always use the default fallback if no valid thumbnail was uploaded
+  // This ensures users always see SOMETHING rather than a broken image
 
-  // 3. Final fallback
+  // 3. Final fallback - always use the default thumbnail
   return fallback;
 }
 

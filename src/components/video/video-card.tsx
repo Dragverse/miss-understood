@@ -22,6 +22,7 @@ interface VideoCardProps {
 export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
   const router = useRouter();
   const { userId } = useAuthUser();
+  const [thumbnailError, setThumbnailError] = useState(false);
 
   // Check if this is external content (from Bluesky, YouTube, etc.)
   const isExternal = (video as any).source === "bluesky" || (video as any).source === "youtube";
@@ -102,12 +103,13 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
       >
         <div className="relative w-48 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-gray-800">
           <Image
-            src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', (video as any).playbackId)}
+            src={thumbnailError ? '/default-thumbnail.jpg' : getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', (video as any).playbackId)}
             alt={video.title}
             fill
             className="object-cover"
             loading="lazy"
             sizes="192px"
+            onError={() => setThumbnailError(true)}
           />
           <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-xs font-medium">
             {formatDuration(video.duration)}
@@ -150,12 +152,13 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
     >
         <div className={`relative w-full ${aspectRatioClass} rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-3 shadow-lg`}>
           <Image
-            src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', (video as any).playbackId)}
+            src={thumbnailError ? '/default-thumbnail.jpg' : getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', (video as any).playbackId)}
             alt={video.title}
             fill
             className={`${objectFit} group-hover:scale-105 transition-transform duration-300`}
             loading="lazy"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 20vw"
+            onError={() => setThumbnailError(true)}
           />
           {/* Duration badge */}
           {video.duration > 0 && (

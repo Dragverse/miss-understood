@@ -129,7 +129,8 @@ export async function POST(request: NextRequest) {
 
     // Use default thumbnail if none provided (for audio and videos without thumbnails)
     const DEFAULT_THUMBNAIL = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.dragverse.app'}/default-thumbnail.jpg`;
-    const finalThumbnail = thumbnail ?? DEFAULT_THUMBNAIL; // Only use default for null/undefined, not empty string
+    // Use default for null, undefined, OR empty string
+    const finalThumbnail = (thumbnail && thumbnail.trim() !== '') ? thumbnail : DEFAULT_THUMBNAIL;
 
     const videoInput = {
       creator_did: userDID,
