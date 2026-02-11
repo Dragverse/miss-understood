@@ -57,9 +57,17 @@ function FeedContent() {
       }
     }
 
-    // Check if user has Farcaster connected
-    function checkFarcasterConnection() {
-      setHasFarcaster(!!farcasterHandle);
+    // Check if user has Farcaster connected (use same method as upload/post pages)
+    async function checkFarcasterConnection() {
+      try {
+        const response = await fetch("/api/user/crosspost-settings");
+        const data = await response.json();
+        if (data.success) {
+          setHasFarcaster(data.connected.farcaster);
+        }
+      } catch (error) {
+        console.error("Failed to check Farcaster connection:", error);
+      }
     }
 
     // Backfill any posts missing creator_id
@@ -79,7 +87,7 @@ function FeedContent() {
       checkFarcasterConnection();
       backfillPosts();
     }
-  }, [isAuthenticated, farcasterHandle]);
+  }, [isAuthenticated]);
 
   // Handle post deletion
   const handlePostDeleted = (postId: string) => {

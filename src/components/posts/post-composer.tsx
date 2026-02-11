@@ -162,6 +162,8 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
       });
 
       if (response.ok) {
+        const result = await response.json();
+
         // Reset form
         setContent("");
         setMediaFiles([]);
@@ -170,6 +172,17 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
         setShowMoodPicker(false);
 
         toast.success("Post created successfully! ✨", { id: loadingToast });
+
+        // Open Warpcast if Farcaster was selected (free sharing method)
+        if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.openWarpcast) {
+          console.log("[PostComposer] Opening Warpcast to share...");
+          const postUrl = `${window.location.origin}/feed`;
+          const shareText = content.length > 0 ? `${content}\n\n${postUrl}` : postUrl;
+          const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&channelKey=dragverse`;
+
+          window.open(warpcastUrl, '_blank', 'noopener,noreferrer');
+          toast.success("Opening Warpcast to share to /dragverse!");
+        }
 
         if (onPostCreated) {
           onPostCreated();

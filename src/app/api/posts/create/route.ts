@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     console.log("[Posts] ✅ Dragverse post created:", post.id);
 
     // Cross-post to other platforms if requested
-    const crosspostResults: Record<string, { success: boolean; error?: string; url?: string; uri?: string; cid?: string; hash?: string }> = {
+    const crosspostResults: Record<string, { success: boolean; error?: string; url?: string; uri?: string; cid?: string; hash?: string; openWarpcast?: boolean }> = {
       dragverse: { success: true, url: `/posts/${post.id}` },
     };
 
@@ -196,37 +196,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Cross-post to Farcaster
+    // Farcaster: Use client-side Warpcast sharing (free alternative to Neynar managed signers)
+    // The client will handle opening Warpcast with pre-filled content
     if (platforms.farcaster) {
-      console.log("[Posts] Cross-posting to Farcaster...");
-      try {
-        // Use crosspostThumbnail for video/audio posts, otherwise use mediaUrls
-        const farcasterMedia = crosspostThumbnail
-          ? [{ url: crosspostThumbnail, alt: "Thumbnail" }]
-          : mediaUrls.map((url: string, index: number) => ({
-              url,
-              alt: `Image ${index + 1}`,
-            }));
-
-        const farcasterResult = await postToFarcaster({
-          text: crosspostText,
-          media: farcasterMedia,
-          userId: userDID,
-        });
-
-        crosspostResults.farcaster = farcasterResult;
-        if (farcasterResult.success) {
-          console.log("[Posts] ✅ Farcaster cast created:", farcasterResult.hash);
-        } else {
-          console.error("[Posts] ❌ Farcaster cast failed:", farcasterResult.error);
-        }
-      } catch (error) {
-        console.error("[Posts] ❌ Farcaster error:", error);
-        crosspostResults.farcaster = {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
+      console.log("[Posts] Farcaster enabled - client will open Warpcast");
+      crosspostResults.farcaster = {
+        success: true,
+        openWarpcast: true, // Signal to client to open Warpcast
+      };
     }
 
     // Update post with crosspost tracking info

@@ -23,6 +23,7 @@ interface FarcasterPostResult {
   success: boolean;
   hash?: string;
   error?: string;
+  openWarpcast?: boolean; // For client-side Warpcast sharing (free method)
 }
 
 /**
