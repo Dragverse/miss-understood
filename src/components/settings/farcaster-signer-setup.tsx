@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { SiFarcaster } from "react-icons/si";
-import { FiCheck, FiLoader, FiAlertCircle, FiQrCode } from "react-icons/fi";
+import { FiCheck, FiLoader, FiAlertCircle, FiMaximize } from "react-icons/fi";
 import toast from "react-hot-toast";
 
 export function FarcasterSignerSetup() {
@@ -241,7 +241,7 @@ export function FarcasterSignerSetup() {
                       onClick={() => setShowQR(!showQR)}
                       className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
                     >
-                      <FiQrCode className="w-4 h-4" />
+                      <FiMaximize className="w-4 h-4" />
                       <span>{showQR ? "Hide" : "Show"} QR Code</span>
                     </button>
                   </>
