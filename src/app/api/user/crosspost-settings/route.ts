@@ -67,25 +67,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Farcaster: Check if signer exists AND is approved
-    let farcasterConnected = !!(creator.farcaster_fid && creator.farcaster_signer_uuid);
-
-    if (farcasterConnected && process.env.NEYNAR_API_KEY) {
-      try {
-        const neynar = new NeynarAPIClient({ apiKey: process.env.NEYNAR_API_KEY });
-        const signer = await neynar.lookupSigner({
-          signerUuid: creator.farcaster_signer_uuid,
-        });
-        farcasterConnected = signer.status === "approved";
-
-        if (signer.status !== "approved") {
-          console.log(`[Crosspost Settings] Farcaster signer not approved: ${signer.status}`);
-        }
-      } catch (signerError) {
-        console.warn("[Crosspost Settings] Failed to check Farcaster signer status:", signerError);
-        // Keep farcasterConnected true, let post attempt fail with better error
-      }
-    }
+    // Farcaster: Check if user has Farcaster FID (from Privy connection)
+    // We use the free Warpcast sharing method, so no need to check Neynar signer approval
+    let farcasterConnected = !!creator.farcaster_fid;
+    console.log("[Crosspost Settings] Farcaster connection check:", {
+      hasFID: !!creator.farcaster_fid,
+      connected: farcasterConnected,
+    });
 
     const connected = {
       bluesky: blueskyConnected,

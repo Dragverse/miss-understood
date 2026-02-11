@@ -50,8 +50,12 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
     async function loadCrosspostSettings() {
       try {
         const authToken = await getAccessToken();
-        if (!authToken) return;
+        if (!authToken) {
+          console.log("[PostComposer] No auth token available");
+          return;
+        }
 
+        console.log("[PostComposer] Loading crosspost settings...");
         const response = await fetch("/api/user/crosspost-settings", {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -60,7 +64,12 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
 
         if (response.ok) {
           const data = await response.json();
+          console.log("[PostComposer] Crosspost settings loaded:", data);
           if (data.success) {
+            console.log("[PostComposer] Connected platforms:", {
+              bluesky: data.connected.bluesky,
+              farcaster: data.connected.farcaster,
+            });
             setSelectedPlatforms({
               dragverse: true,
               bluesky: data.settings.bluesky && data.connected.bluesky,
@@ -68,9 +77,11 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
             });
             setConnectedPlatforms(data.connected);
           }
+        } else {
+          console.error("[PostComposer] Failed to load settings:", response.status);
         }
       } catch (error) {
-        console.error("Failed to load crosspost settings:", error);
+        console.error("[PostComposer] Failed to load crosspost settings:", error);
       }
     }
 
