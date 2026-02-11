@@ -48,7 +48,9 @@ export async function GET(request: NextRequest) {
     const neynarData = await neynarResponse.json();
     const isApproved = neynarData.status === "approved";
 
+    console.log(`[Farcaster Signer Status] Full Neynar response:`, JSON.stringify(neynarData, null, 2));
     console.log(`[Farcaster Signer Status] Signer ${signerUuid} status: ${neynarData.status}`);
+    console.log(`[Farcaster Signer Status] Approval URL field:`, neynarData.signer_approval_url);
 
     // Include approval URL if not yet approved
     const response: any = {
@@ -62,8 +64,14 @@ export async function GET(request: NextRequest) {
     };
 
     // If not approved, include the approval URL from Neynar
-    if (!isApproved && neynarData.signer_approval_url) {
-      response.approvalUrl = neynarData.signer_approval_url;
+    // Try multiple possible field names
+    const approvalUrl = neynarData.signer_approval_url || neynarData.signerApprovalUrl || neynarData.approval_url;
+
+    if (!isApproved && approvalUrl) {
+      response.approvalUrl = approvalUrl;
+      console.log(`[Farcaster Signer Status] Including approval URL in response:`, approvalUrl);
+    } else if (!isApproved) {
+      console.log(`[Farcaster Signer Status] ⚠️ No approval URL found in Neynar response`);
     }
 
     return NextResponse.json(response);
