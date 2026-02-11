@@ -185,19 +185,39 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
 
         console.log("[PostComposer] Post created, crosspost results:", result.crosspost);
 
-        // Handle Farcaster Warpcast redirect
-        if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.openWarpcast && result.crosspost?.farcaster?.warpcastUrl) {
-          // Open Warpcast in a new tab with pre-filled message
-          window.open(result.crosspost.farcaster.warpcastUrl, '_blank');
-          toast.success("Post created! Opening Warpcast to share... ✨", { id: loadingToast });
+        // Check crosspost results and show appropriate message
+        const crosspostSuccess: string[] = [];
+        const crosspostErrors: string[] = [];
+
+        if (selectedPlatforms.bluesky && result.crosspost?.bluesky?.success) {
+          crosspostSuccess.push("Bluesky");
+        } else if (selectedPlatforms.bluesky && result.crosspost?.bluesky?.error) {
+          crosspostErrors.push(`Bluesky: ${result.crosspost.bluesky.error}`);
         }
-        // Show success messages
-        else if (selectedPlatforms.bluesky && result.crosspost?.bluesky?.success) {
-          toast.success("Posted to Dragverse and Bluesky! ✨", { id: loadingToast });
-        } else if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.success) {
-          toast.success("Posted to Dragverse! ✨", { id: loadingToast });
+
+        if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.success) {
+          crosspostSuccess.push("Farcaster");
+        } else if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.needsSetup) {
+          crosspostErrors.push("Farcaster: Please set up native posting in settings");
+        } else if (selectedPlatforms.farcaster && result.crosspost?.farcaster?.error) {
+          crosspostErrors.push(`Farcaster: ${result.crosspost.farcaster.error}`);
+        }
+
+        // Show success message
+        if (crosspostSuccess.length > 0) {
+          toast.success(
+            `Posted to Dragverse and ${crosspostSuccess.join(", ")}! ✨`,
+            { id: loadingToast }
+          );
         } else {
           toast.success("Post created successfully! ✨", { id: loadingToast });
+        }
+
+        // Show crosspost errors if any
+        if (crosspostErrors.length > 0) {
+          setTimeout(() => {
+            crosspostErrors.forEach((error) => toast.error(error));
+          }, 500);
         }
 
         if (onPostCreated) {

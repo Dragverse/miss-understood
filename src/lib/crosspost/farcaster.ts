@@ -1,14 +1,9 @@
 /**
  * Farcaster cross-posting utilities
- * Uses free Warpcast sharing method (no Neynar required)
+ * Uses native signing with custom signer management (no Neynar required)
  */
 
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createCast, getSigner } from "@/lib/farcaster/signer";
 
 interface FarcasterPostParams {
   text: string;
@@ -16,66 +11,64 @@ interface FarcasterPostParams {
     url: string;
     alt?: string;
   }[];
-  userId: string; // User's DID to check Farcaster connection
+  userId: string; // User's DID
 }
 
 interface FarcasterPostResult {
   success: boolean;
-  openWarpcast: boolean; // Always true for free Warpcast sharing
-  warpcastUrl?: string; // URL to open Warpcast
+  hash?: string; // Cast hash
   error?: string;
+  needsSetup?: boolean; // True if user needs to set up signer
 }
 
 /**
- * Prepare Farcaster post using free Warpcast sharing
- * Opens Warpcast in a new tab with pre-filled message
+ * Post to Farcaster using native signing
+ * Requires user to have a registered signer (approved via Warpcast)
  */
 export async function postToFarcaster(
   params: FarcasterPostParams
 ): Promise<FarcasterPostResult> {
   try {
-    // Check if user has Farcaster connected
-    const { data: creator, error: dbError } = await supabase
-      .from("creators")
-      .select("farcaster_fid")
-      .eq("did", params.userId)
-      .single();
+    console.log("[Farcaster] Attempting native cast creation...");
 
-    if (dbError || !creator?.farcaster_fid) {
+    // Check if user has a signer set up
+    const signer = await getSigner(params.userId);
+
+    if (!signer) {
+      console.log("[Farcaster] No signer found for user");
       return {
         success: false,
-        openWarpcast: false,
-        error: "Farcaster not connected. Please connect your Farcaster account first."
+        needsSetup: true,
+        error: "Farcaster posting not set up. Please enable native posting in settings.",
       };
     }
 
-    // Create Warpcast URL with pre-filled message
-    // Warpcast URL format: https://warpcast.com/~/compose?text=...&embeds[]=...
-    const encodedText = encodeURIComponent(params.text);
+    // Prepare embeds
+    const embeds = params.media?.map((m) => ({ url: m.url })) || [];
 
-    let warpcastUrl = `https://warpcast.com/~/compose?text=${encodedText}`;
+    // Create and broadcast cast
+    const result = await createCast(params.userId, params.text, embeds);
 
-    // Add media embeds (Warpcast supports embeds via URL parameter)
-    if (params.media && params.media.length > 0) {
-      params.media.slice(0, 2).forEach((media, index) => {
-        warpcastUrl += `&embeds[]=${encodeURIComponent(media.url)}`;
-      });
+    if (result.success) {
+      console.log(`[Farcaster] ✅ Cast published successfully!`);
+      console.log(`[Farcaster] Hash: ${result.hash}`);
+
+      return {
+        success: true,
+        hash: result.hash,
+      };
+    } else {
+      console.error("[Farcaster] ❌ Cast failed:", result.error);
+      return {
+        success: false,
+        error: result.error,
+      };
     }
-
-    console.log("[Farcaster] Using free Warpcast sharing method");
-    console.log("[Farcaster] Warpcast URL:", warpcastUrl);
-
-    return {
-      success: true,
-      openWarpcast: true,
-      warpcastUrl
-    };
   } catch (error) {
-    console.error("[Farcaster] Error preparing Warpcast share:", error);
+    console.error("[Farcaster] Posting error:", error);
     return {
       success: false,
-      openWarpcast: false,
-      error: error instanceof Error ? error.message : "Unknown error"
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }

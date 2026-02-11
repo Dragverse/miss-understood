@@ -10,8 +10,11 @@
   },
   "dependencies": {
     "@atproto/api": "^0.18.15",
+    "@farcaster/core": "^0.18.10",
+    "@farcaster/hub-nodejs": "^0.15.10",
     "@livepeer/react": "^4.3.6",
     "@neynar/nodejs-sdk": "^3.125.0",
+    "@noble/ed25519": "^3.0.0",
     "@privy-io/node": "^0.7.0",
     "@privy-io/react-auth": "^3.10.2",
     "@privy-io/wagmi": "^2.1.3",

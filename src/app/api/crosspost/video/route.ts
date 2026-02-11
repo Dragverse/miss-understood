@@ -107,11 +107,8 @@ export async function POST(request: NextRequest) {
         results.farcaster = farcasterResult;
 
         if (farcasterResult.success) {
-          if (farcasterResult.openWarpcast) {
-            console.log("[Crosspost Video] ✅ Warpcast URL prepared:", farcasterResult.warpcastUrl);
-          } else {
-            console.log("[Crosspost Video] ✅ Posted to Farcaster");
-          }
+          console.log("[Crosspost Video] ✅ Posted to Farcaster");
+          console.log("[Crosspost Video] Cast hash:", farcasterResult.hash);
         } else {
           console.error("[Crosspost Video] ❌ Farcaster failed:", farcasterResult.error);
         }
