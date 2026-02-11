@@ -6,11 +6,10 @@ import { SiBluesky } from "react-icons/si";
 
 interface ConnectionGateProps {
   hasBluesky: boolean;
-  hasFarcaster: boolean;
 }
 
-export function ConnectionGate({ hasBluesky, hasFarcaster }: ConnectionGateProps) {
-  const hasAnyConnection = hasBluesky || hasFarcaster;
+export function ConnectionGate({ hasBluesky }: ConnectionGateProps) {
+  const hasAnyConnection = hasBluesky;
 
   if (hasAnyConnection) {
     return null;
@@ -30,7 +29,7 @@ export function ConnectionGate({ hasBluesky, hasFarcaster }: ConnectionGateProps
         </h1>
 
         <p className="text-xl text-gray-300 mb-8 leading-relaxed">
-          The Feed is available for creators who connect their Bluesky or Farcaster account.
+          The Feed is available for creators who connect their Bluesky account.
         </p>
 
         {/* Benefits */}
@@ -54,8 +53,8 @@ export function ConnectionGate({ hasBluesky, hasFarcaster }: ConnectionGateProps
             <div className="flex items-start gap-3">
               <FiCheckCircle className="w-5 h-5 text-[#EB83EA] flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-white">Cross-post to Farcaster</p>
-                <p className="text-sm text-gray-400">Optionally share your posts across platforms</p>
+                <p className="font-semibold text-white">Cross-post to Bluesky</p>
+                <p className="text-sm text-gray-400">Automatically share your Dragverse posts to Bluesky</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -75,13 +74,13 @@ export function ConnectionGate({ hasBluesky, hasFarcaster }: ConnectionGateProps
             className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6b2fd5] text-white font-bold rounded-full transition-all shadow-lg hover:shadow-xl"
           >
             <SiBluesky className="w-5 h-5" />
-            Connect Bluesky or Farcaster
+            Connect Bluesky
           </Link>
         </div>
 
         {/* Note */}
         <p className="text-sm text-gray-500 mt-8">
-          We use Bluesky/Farcaster for identity verification and to reduce spam.
+          We use Bluesky for identity verification and to reduce spam.
           <br />
           Your credentials are securely stored and never shared.
         </p>

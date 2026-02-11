@@ -37,11 +37,9 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
   const [selectedPlatforms, setSelectedPlatforms] = useState({
     dragverse: true, // Always true
     bluesky: false,
-    farcaster: false,
   });
   const [connectedPlatforms, setConnectedPlatforms] = useState({
     bluesky: false,
-    farcaster: false,
   });
   const [showPlatformPicker, setShowPlatformPicker] = useState(false);
 
@@ -68,12 +66,10 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
           if (data.success) {
             console.log("[PostComposer] Connected platforms:", {
               bluesky: data.connected.bluesky,
-              farcaster: data.connected.farcaster,
             });
             setSelectedPlatforms({
               dragverse: true,
               bluesky: data.settings.bluesky && data.connected.bluesky,
-              farcaster: false, // Removed: Requires paid Neynar plan
             });
             setConnectedPlatforms(data.connected);
           }
@@ -377,35 +373,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
               )}
             </div>
 
-            {/* Farcaster */}
-            <div className="flex items-center justify-between p-3 bg-[#2f2942] rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">F</span>
-                </div>
-                <span className="text-white font-semibold">Farcaster</span>
-              </div>
-              {connectedPlatforms.farcaster ? (
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedPlatforms.farcaster}
-                    onChange={(e) =>
-                      setSelectedPlatforms((prev) => ({
-                        ...prev,
-                        farcaster: e.target.checked,
-                      }))
-                    }
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#EB83EA]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#EB83EA]"></div>
-                </label>
-              ) : (
-                <span className="text-xs px-3 py-1 bg-gray-600/30 text-gray-400 rounded-full">
-                  Not Connected
-                </span>
-              )}
-            </div>
           </div>
         </div>
       )}
@@ -423,12 +390,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/20 rounded-full border border-blue-500/30">
                 <SiBluesky className="w-4 h-4 text-blue-400" />
                 <span className="text-blue-400 text-xs font-semibold">Bluesky</span>
-              </span>
-            )}
-            {selectedPlatforms.farcaster && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
-                <span className="text-purple-400 text-xs font-bold">F</span>
-                <span className="text-purple-400 text-xs font-semibold">Farcaster</span>
               </span>
             )}
           </div>

@@ -13,7 +13,7 @@ import { ConnectionGate } from "@/components/feed/connection-gate";
 import { CardSkeleton } from "@/components/shared";
 
 function FeedContent() {
-  const { isAuthenticated, farcasterHandle } = useAuthUser();
+  const { isAuthenticated } = useAuthUser();
   const searchParams = useSearchParams();
   const filter = searchParams?.get("filter");
   const hashtag = searchParams?.get("hashtag");
@@ -23,7 +23,6 @@ function FeedContent() {
   const [dragversePosts, setDragversePosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasBluesky, setHasBluesky] = useState(false);
-  const [hasFarcaster, setHasFarcaster] = useState(false);
   const [sortBy, setSortBy] = useState<"engagement" | "recent">("engagement");
   const [contentFilter, setContentFilter] = useState<"all" | "youtube" | "bluesky" | "dragverse">("all");
   const [showComposer, setShowComposer] = useState(false);
@@ -46,7 +45,7 @@ function FeedContent() {
     };
   }, []);
 
-  // Check Bluesky session status, Farcaster connection, and backfill posts
+  // Check Bluesky session status and backfill posts
   useEffect(() => {
     async function checkBlueskySession() {
       try {
@@ -55,19 +54,6 @@ function FeedContent() {
         setHasBluesky(data.connected);
       } catch (error) {
         console.error("Failed to check Bluesky session:", error);
-      }
-    }
-
-    // Check if user has Farcaster connected (use same method as upload/post pages)
-    async function checkFarcasterConnection() {
-      try {
-        const response = await fetch("/api/user/crosspost-settings");
-        const data = await response.json();
-        if (data.success) {
-          setHasFarcaster(data.connected.farcaster);
-        }
-      } catch (error) {
-        console.error("Failed to check Farcaster connection:", error);
       }
     }
 
@@ -85,7 +71,6 @@ function FeedContent() {
 
     if (isAuthenticated) {
       checkBlueskySession();
-      checkFarcasterConnection();
       backfillPosts();
     }
   }, [isAuthenticated]);
@@ -253,8 +238,8 @@ function FeedContent() {
     setShowComposer(false);
   };
 
-  // Show connection gate if user doesn't have Bluesky or Farcaster connected
-  const hasConnection = hasBluesky || hasFarcaster;
+  // Show connection gate if user doesn't have Bluesky connected
+  const hasConnection = hasBluesky;
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
@@ -263,7 +248,7 @@ function FeedContent() {
         <div className="lg:col-span-9 space-y-6">
           {/* Connection Gate */}
           {!loading && !hasConnection ? (
-            <ConnectionGate hasBluesky={hasBluesky} hasFarcaster={hasFarcaster} />
+            <ConnectionGate hasBluesky={hasBluesky} />
           ) : (
             <>
           {/* Header - Compact on mobile */}
@@ -464,7 +449,6 @@ function FeedContent() {
                         avatar: post.creator.avatar,
                         did: post.creator.did,
                         blueskyHandle: post.creator.blueskyHandle,
-                        farcasterHandle: post.creator.farcasterHandle,
                       } : post.creator,
                     }}
                   />

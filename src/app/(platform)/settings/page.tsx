@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft, FiAlertTriangle, FiShare2, FiDollarSign } from "react-icons/fi";
-import { SiBluesky } from "react-icons/si";
+import { SiBluesky, SiYoutube } from "react-icons/si";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAuthUser } from "@/lib/privy/hooks";
@@ -63,6 +63,12 @@ export default function SettingsPage() {
   const [blueskyProfile, setBlueskyProfile] = useState<any | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+
+  // YouTube OAuth state
+  const [youtubeChannelName, setYoutubeChannelName] = useState<string | null>(null);
+  const [youtubeSubscriberCount, setYoutubeSubscriberCount] = useState<number>(0);
+  const [youtubeSyncedAt, setYoutubeSyncedAt] = useState<string | null>(null);
+  const [isConnectingYouTube, setIsConnectingYouTube] = useState(false);
 
   // Delete account state
   const [isDeleting, setIsDeleting] = useState(false);
@@ -196,6 +202,14 @@ export default function SettingsPage() {
           });
           setBannerPreview(supabaseProfile.banner || null);
           setAvatarPreview(supabaseProfile.avatar || "");
+
+          // Load YouTube channel info if connected (use raw database fields)
+          if ((supabaseProfile as any).youtube_channel_name) {
+            setYoutubeChannelName((supabaseProfile as any).youtube_channel_name);
+            setYoutubeSubscriberCount((supabaseProfile as any).youtube_subscriber_count || 0);
+            setYoutubeSyncedAt((supabaseProfile as any).youtube_synced_at);
+          }
+
           return;
         }
       } catch (error) {
@@ -343,6 +357,44 @@ export default function SettingsPage() {
 
     loadCrosspostSettings();
   }, [isAuthenticated, getAccessToken]);
+
+  // Handle YouTube OAuth callback
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const youtubeSuccess = urlParams.get('youtube_success');
+    const youtubeError = urlParams.get('youtube_error');
+    const channelName = urlParams.get('channel');
+    const subscribers = urlParams.get('subscribers');
+
+    if (youtubeSuccess === 'true' && channelName) {
+      toast.success(
+        `Connected ${decodeURIComponent(channelName)}! Imported ${parseInt(subscribers || '0').toLocaleString()} subscribers.`,
+        { duration: 5000 }
+      );
+      setIsConnectingYouTube(false);
+      setYoutubeChannelName(decodeURIComponent(channelName));
+      setYoutubeSubscriberCount(parseInt(subscribers || '0'));
+      setYoutubeSyncedAt(new Date().toISOString());
+      // Clean up URL
+      window.history.replaceState({}, '', '/settings?tab=accounts');
+    } else if (youtubeError) {
+      const errorMessages: Record<string, string> = {
+        denied: "YouTube authorization was cancelled",
+        no_code: "No authorization code received from YouTube",
+        token_exchange_failed: "Failed to exchange authorization code",
+        unknown: "An unknown error occurred",
+      };
+      toast.error(
+        errorMessages[youtubeError] || decodeURIComponent(youtubeError),
+        { duration: 5000 }
+      );
+      setIsConnectingYouTube(false);
+      // Clean up URL
+      window.history.replaceState({}, '', '/settings?tab=accounts');
+    }
+  }, []);
 
   const handleBannerChange = async (file: File | null) => {
     if (file) {
@@ -612,6 +664,104 @@ export default function SettingsPage() {
     }
   };
 
+  // YouTube OAuth handlers
+  const handleConnectYouTube = async () => {
+    setIsConnectingYouTube(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+
+      // Get OAuth URL from backend
+      const response = await fetch("/api/youtube/connect", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate OAuth URL");
+      }
+
+      const data = await response.json();
+
+      // Redirect to Google OAuth consent screen
+      window.location.href = data.authUrl;
+    } catch (error) {
+      console.error("YouTube connect error:", error);
+      toast.error("Failed to connect YouTube. Please try again.");
+      setIsConnectingYouTube(false);
+    }
+  };
+
+  const handleDisconnectYouTube = async () => {
+    if (!confirm("Disconnect your YouTube channel? This will remove imported subscribers.")) {
+      return;
+    }
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+
+      const response = await fetch("/api/youtube/connect", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to disconnect YouTube channel");
+      }
+
+      setYoutubeChannelName(null);
+      setYoutubeSubscriberCount(0);
+      setYoutubeSyncedAt(null);
+      toast.success("YouTube channel disconnected");
+
+      // Reload profile to update follower count
+      await loadProfile();
+    } catch (error) {
+      console.error("YouTube disconnect error:", error);
+      toast.error("Failed to disconnect YouTube channel");
+    }
+  };
+
+  const handleResyncYouTube = async () => {
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+
+      const toastId = toast.loading("Re-syncing YouTube channel...");
+
+      const response = await fetch("/api/youtube/connect", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to re-sync channel");
+      }
+
+      const data = await response.json();
+
+      setYoutubeChannelName(data.channelInfo.channelName);
+      setYoutubeSubscriberCount(data.channelInfo.subscriberCount);
+      setYoutubeSyncedAt(new Date().toISOString());
+
+      toast.success(
+        `Re-synced ${data.channelInfo.channelName}! Updated to ${data.channelInfo.subscriberCount.toLocaleString()} subscribers.`,
+        { id: toastId }
+      );
+
+      // Reload profile to update follower count
+      await loadProfile();
+    } catch (error) {
+      console.error("YouTube re-sync error:", error);
+      toast.error("Failed to re-sync YouTube channel");
+    }
+  };
 
   const handleSaveCrosspostSettings = async () => {
     setIsSavingCrosspost(true);
@@ -1490,6 +1640,78 @@ export default function SettingsPage() {
                       </button>
                     )}
                   </div>
+
+                  {/* YouTube Channel */}
+                  <div className="p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-red-600/20 flex items-center justify-center">
+                          <SiYoutube className="w-6 h-6 text-red-500" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">YouTube Channel</p>
+                          {youtubeChannelName ? (
+                            <>
+                              <p className="text-sm text-gray-400">{youtubeChannelName}</p>
+                              <p className="text-xs text-gray-500">
+                                {youtubeSubscriberCount.toLocaleString()} subscribers
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-sm text-gray-500">Not connected</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {youtubeChannelName ? (
+                          <>
+                            <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                              Connected
+                            </span>
+                            <button
+                              onClick={handleDisconnectYouTube}
+                              className="text-sm px-3 py-1 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition"
+                            >
+                              Disconnect
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={handleConnectYouTube}
+                            disabled={isConnectingYouTube}
+                            className="text-sm px-4 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 hover:border-red-500 rounded-lg transition font-semibold disabled:opacity-50"
+                          >
+                            {isConnectingYouTube ? "Connecting..." : "Connect Channel"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Import Subscribers Info */}
+                    {youtubeChannelName && (
+                      <div className="pt-3 border-t border-[#2f2942]">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-300">
+                              Subscribers Imported
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Your {youtubeSubscriberCount.toLocaleString()} YouTube subscribers are reflected in your Dragverse follower count.
+                              {youtubeSyncedAt && (
+                                <> Last synced: {new Date(youtubeSyncedAt).toLocaleDateString()}</>
+                              )}
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleResyncYouTube}
+                            className="text-xs px-3 py-1 bg-purple-500/10 text-purple-400 rounded-full hover:bg-purple-500/20 transition flex-shrink-0"
+                          >
+                            Re-sync
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
@@ -1499,8 +1721,11 @@ export default function SettingsPage() {
                   <p className="text-sm text-blue-400 mb-2">
                     <strong>Email & Google:</strong> Connect via Privy when logging in or using the link button
                   </p>
-                  <p className="text-sm text-blue-400">
+                  <p className="text-sm text-blue-400 mb-2">
                     <strong>Bluesky:</strong> Connect manually using the button above with your Bluesky app password
+                  </p>
+                  <p className="text-sm text-blue-400">
+                    <strong>YouTube:</strong> Connect via Google OAuth to import your subscriber count as Dragverse followers
                   </p>
                 </div>
               </div>

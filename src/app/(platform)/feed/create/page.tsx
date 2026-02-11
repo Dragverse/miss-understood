@@ -23,11 +23,9 @@ export default function CreatePostPage() {
   const [selectedPlatforms, setSelectedPlatforms] = useState({
     dragverse: true,
     bluesky: false,
-    farcaster: false,
   });
   const [connectedPlatforms, setConnectedPlatforms] = useState({
     bluesky: false,
-    farcaster: false,
   });
 
   useEffect(() => {
@@ -69,7 +67,6 @@ export default function CreatePostPage() {
               dragverse: true,
               // Auto-enable if connected, regardless of saved preference
               bluesky: data.connected.bluesky,
-              farcaster: data.connected.farcaster,
             });
             setConnectedPlatforms(data.connected);
           }
@@ -213,7 +210,6 @@ export default function CreatePostPage() {
       const platformsPosted = [];
       if (selectedPlatforms.dragverse) platformsPosted.push("Dragverse");
       if (selectedPlatforms.bluesky && result.bluesky?.success) platformsPosted.push("Bluesky");
-      if (selectedPlatforms.farcaster && result.farcaster?.success) platformsPosted.push("Farcaster");
 
       toast.success(`Post created on ${platformsPosted.join(", ")}! 🎉`);
       setText("");
@@ -368,22 +364,6 @@ export default function CreatePostPage() {
               </span>
             </label>
 
-            {/* Farcaster */}
-            <label className={`flex items-center gap-3 p-3 rounded-lg ${
-              connectedPlatforms.farcaster ? 'bg-[#2f2942] cursor-pointer hover:bg-[#3f3952]' : 'bg-[#2f2942]/50 cursor-not-allowed'
-            }`}>
-              <input
-                type="checkbox"
-                checked={selectedPlatforms.farcaster}
-                disabled={!connectedPlatforms.farcaster || posting}
-                onChange={(e) => setSelectedPlatforms(prev => ({ ...prev, farcaster: e.target.checked }))}
-                className="w-4 h-4"
-              />
-              <span className="text-sm font-medium">Farcaster</span>
-              <span className="ml-auto text-xs text-gray-400">
-                {connectedPlatforms.farcaster ? "Connected" : "Not Connected"}
-              </span>
-            </label>
           </div>
         </div>
 
