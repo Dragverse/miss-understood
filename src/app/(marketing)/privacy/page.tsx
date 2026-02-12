@@ -9,7 +9,18 @@ export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-[#0a0118] text-white">
       <div className="max-w-4xl mx-auto px-4 py-12">
-        <h1 className="text-4xl font-bold mb-8">Privacy Policy</h1>
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <Image
+            src="/logo.svg"
+            alt="Dragverse Logo"
+            width={200}
+            height={60}
+            className="h-12 w-auto"
+          />
+        </div>
+
+        <h1 className="text-4xl font-bold mb-8 text-center">Privacy Policy</h1>
 
         <p className="text-gray-400 mb-8">
           Last Updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
