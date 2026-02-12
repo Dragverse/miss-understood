@@ -24,8 +24,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Aggregate API] Fetching stats for user ${userId}...`);
 
-    // Fetch creator record from Supabase
-    // Note: youtube_channel_id and youtube_follower_count columns not yet migrated
+    // Fetch creator record from Supabase (including YouTube fields)
     const { data: creator, error } = await supabase
       .from("creators")
       .select(
@@ -39,7 +38,9 @@ export async function GET(request: NextRequest) {
         bluesky_handle,
         bluesky_follower_count,
         farcaster_fid,
-        farcaster_follower_count
+        farcaster_follower_count,
+        youtube_channel_id,
+        youtube_subscriber_count
       `
       )
       .eq("did", userId)
@@ -73,7 +74,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Aggregate stats from all platforms
-    // Note: YouTube integration not yet migrated, passing undefined
     const stats = await aggregateFollowerStats({
       dragverseFollowerCount: creator.dragverse_follower_count || 0,
       dragverseFollowingCount: creator.following_count || 0,
@@ -81,8 +81,8 @@ export async function GET(request: NextRequest) {
       blueskyFollowerCount: creator.bluesky_follower_count,
       farcasterFid: creator.farcaster_fid,
       farcasterFollowerCount: creator.farcaster_follower_count,
-      youtubeChannelId: undefined,
-      youtubeFollowerCount: undefined,
+      youtubeChannelId: creator.youtube_channel_id,
+      youtubeFollowerCount: creator.youtube_subscriber_count,
     });
 
     // Update cached counts in database (async, don't wait)
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
           .update({
             bluesky_follower_count: stats.blueskyFollowers,
             farcaster_follower_count: stats.farcasterFollowers,
-            youtube_follower_count: stats.youtubeSubscribers,
+            youtube_subscriber_count: stats.youtubeSubscribers,
             follower_count: stats.totalFollowers, // Update total in main column
             updated_at: new Date().toISOString(),
           })

@@ -15,6 +15,10 @@ export interface Creator {
   bluesky_handle?: string;
   bluesky_did?: string;
   farcaster_handle?: string;
+  youtube_channel_id?: string;
+  youtube_channel_name?: string;
+  youtube_subscriber_count?: number;
+  youtube_synced_at?: string;
   follower_count: number;
   following_count: number;
   dragverse_follower_count: number;

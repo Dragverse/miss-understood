@@ -364,15 +364,17 @@ export default function DynamicProfilePage() {
                     </div>
                     <div className="group relative">
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {/* Show aggregated count if Bluesky is connected (either from hook or connected stats) */}
-                        {(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount)
-                          ? ((creator.followerCount || 0) + (connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0)).toLocaleString()
-                          : (creator.followerCount?.toLocaleString() || 0)
-                        }
+                        {/* Show aggregated count from Dragverse + Bluesky + YouTube */}
+                        {(() => {
+                          const dragverse = creator.followerCount || 0;
+                          const bluesky = connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0;
+                          const youtube = creator.youtubeSubscriberCount || 0;
+                          return (dragverse + bluesky + youtube).toLocaleString();
+                        })()}
                       </span>
                       <span className="text-white/80 ml-2">followers</span>
                       {/* Platform breakdown tooltip */}
-                      {(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount) && (connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 && (
+                      {((connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 || (creator.youtubeSubscriberCount || 0) > 0) && (
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                           <div className="bg-[#1a0b2e]/95 border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[160px] backdrop-blur-sm">
                             <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Sources</div>
@@ -381,10 +383,18 @@ export default function DynamicProfilePage() {
                                 <span className="text-[#EB83EA]">Dragverse</span>
                                 <span className="text-white font-medium">{(creator.followerCount || 0).toLocaleString()}</span>
                               </div>
-                              <div className="flex items-center justify-between gap-4">
-                                <span className="text-[#0085ff]">Bluesky</span>
-                                <span className="text-white font-medium">{(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0).toLocaleString()}</span>
-                              </div>
+                              {(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 && (
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-[#0085ff]">Bluesky</span>
+                                  <span className="text-white font-medium">{(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0).toLocaleString()}</span>
+                                </div>
+                              )}
+                              {(creator.youtubeSubscriberCount || 0) > 0 && (
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-red-500">YouTube</span>
+                                  <span className="text-white font-medium">{(creator.youtubeSubscriberCount || 0).toLocaleString()}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>

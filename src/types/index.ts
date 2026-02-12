@@ -27,6 +27,8 @@ export interface Creator {
   blueskyAppPassword?: string; // Encrypted Bluesky app password
   youtubeChannelId?: string; // YouTube channel ID (if connected)
   youtubeChannelName?: string; // YouTube channel name
+  youtubeSubscriberCount?: number; // YouTube subscriber count
+  youtubeSyncedAt?: Date; // Last YouTube sync time
   website?: string;
   // Monetization (for future use)
   totalEarningsUSD?: number;
