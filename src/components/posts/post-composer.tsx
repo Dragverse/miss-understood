@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { FiImage, FiX, FiSmile, FiSend, FiLoader, FiShare, FiMessageSquare } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import { usePrivy } from "@privy-io/react-auth";
 import toast from "react-hot-toast";
+import type { EmojiClickData } from "emoji-picker-react";
+
+// Lazy load emoji picker (it's heavy)
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
 interface PostComposerProps {
   onPostCreated?: () => void;
@@ -18,8 +23,10 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   // Cross-posting state
   const [selectedPlatforms, setSelectedPlatforms] = useState({
@@ -69,6 +76,36 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
     }
   }, [content]);
 
+  // Close emoji picker on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    if (showEmojiPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showEmojiPicker]);
+
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newContent = content.slice(0, start) + emojiData.emoji + content.slice(end);
+      setContent(newContent);
+      // Restore cursor position after emoji
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + emojiData.emoji.length;
+        textarea.focus();
+      }, 0);
+    } else {
+      setContent((prev) => prev + emojiData.emoji);
+    }
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -107,6 +144,9 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
 
     try {
       const authToken = await getAccessToken();
+      if (!authToken) {
+        throw new Error("Please log in to create a post");
+      }
 
       const uploadedMediaUrls: string[] = [];
       const mediaTypes: string[] = [];
@@ -156,6 +196,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
         setContent("");
         setMediaFiles([]);
         setMediaPreviews([]);
+        setShowEmojiPicker(false);
 
         const crosspostSuccess: string[] = [];
         const crosspostErrors: string[] = [];
@@ -197,7 +238,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
 
   return (
     <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-5 sm:p-6 border-2 border-[#EB83EA]/20 shadow-xl shadow-[#EB83EA]/10">
-      {/* Text input - contentEditable-style textarea that auto-grows */}
+      {/* Text input */}
       <textarea
         ref={textareaRef}
         value={content}
@@ -222,6 +263,20 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Emoji picker dropdown */}
+      {showEmojiPicker && (
+        <div ref={emojiPickerRef} className="mb-4">
+          <EmojiPicker
+            onEmojiClick={onEmojiClick}
+            width="100%"
+            height={350}
+            theme={"dark" as any}
+            searchPlaceholder="Search emojis..."
+            lazyLoadEmojis
+          />
         </div>
       )}
 
@@ -272,33 +327,17 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
             onClick={() => fileInputRef.current?.click()}
             disabled={mediaFiles.length >= 4}
             className="p-2.5 rounded-full hover:bg-[#EB83EA]/10 text-[#EB83EA] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Add photos (up to 4)"
             aria-label="Add photos"
           >
             <FiImage size={20} />
           </button>
 
-          {/* Emoji - triggers native OS emoji picker */}
+          {/* Emoji picker toggle */}
           <button
-            onClick={() => {
-              // Focus textarea then trigger native emoji keyboard
-              const textarea = textareaRef.current;
-              if (textarea) {
-                textarea.focus();
-                // On macOS: Cmd+Ctrl+Space, on Windows: Win+.
-                // For mobile: focusing the textarea should bring up keyboard with emoji access
-                // For desktop: we show a hint
-                if (navigator.userAgent.includes("Mac")) {
-                  toast("Press ⌘ + Ctrl + Space for emoji keyboard", { icon: "😊", duration: 3000 });
-                } else if (navigator.userAgent.includes("Win")) {
-                  toast("Press Win + . for emoji keyboard", { icon: "😊", duration: 3000 });
-                } else {
-                  toast("Use your keyboard emoji picker", { icon: "😊", duration: 3000 });
-                }
-              }
-            }}
-            className="p-2.5 rounded-full hover:bg-[#EB83EA]/10 text-[#EB83EA] transition-all"
-            title="Add emoji"
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className={`p-2.5 rounded-full transition-all ${
+              showEmojiPicker ? "bg-[#EB83EA]/20 text-[#EB83EA]" : "hover:bg-[#EB83EA]/10 text-[#EB83EA]"
+            }`}
             aria-label="Add emoji"
           >
             <FiSmile size={20} />
@@ -310,7 +349,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
             className={`p-2.5 rounded-full transition-all ${
               showPlatformPicker ? "bg-[#EB83EA]/20 text-[#EB83EA]" : "hover:bg-[#EB83EA]/10 text-[#EB83EA]"
             }`}
-            title="Choose platforms"
             aria-label="Choose platforms"
           >
             <FiShare size={20} />

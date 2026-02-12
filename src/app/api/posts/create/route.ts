@@ -135,20 +135,18 @@ export async function POST(request: NextRequest) {
     const hasVideoLink = textContent && (textContent.includes('/watch/') || textContent.includes('/listen/'));
 
     // Format crosspost message for Bluesky (300 char limit)
-    const suffix = `\n\n${postUrl}`;
+    // Regular feed posts: just the text, no link appended
+    // Video/audio posts: keep as-is (already contain the link)
     let crosspostText: string;
 
     if (hasVideoLink) {
       crosspostText = textContent;
     } else if (textContent) {
-      // Truncate text to fit within Bluesky's limit with the link
-      const maxTextLen = 300 - suffix.length;
-      const truncatedText = textContent.length > maxTextLen
-        ? textContent.slice(0, maxTextLen - 3) + "..."
+      crosspostText = textContent.length > 300
+        ? textContent.slice(0, 297) + "..."
         : textContent;
-      crosspostText = truncatedText + suffix;
     } else {
-      crosspostText = `New post on Dragverse ${postUrl}`;
+      crosspostText = "New post on Dragverse";
     }
 
     // Cross-post to Bluesky
