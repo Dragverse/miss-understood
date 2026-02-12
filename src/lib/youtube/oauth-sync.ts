@@ -150,14 +150,17 @@ export async function fetchAuthenticatedChannelInfo(
     const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true`;
 
     console.log("[YouTube OAuth] Fetching channel info with access token");
+    console.log("[YouTube OAuth] Request URL:", url);
 
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
       },
     });
 
     console.log("[YouTube OAuth] YouTube API response status:", response.status);
+    console.log("[YouTube OAuth] Response headers:", Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -165,21 +168,30 @@ export async function fetchAuthenticatedChannelInfo(
       let errorMessage = `YouTube API error: ${response.status}`;
       try {
         const error = JSON.parse(errorText);
+        console.error("[YouTube OAuth] Parsed error:", error);
         errorMessage = error.error?.message || errorMessage;
+        // Include error details for debugging
+        if (error.error?.errors) {
+          console.error("[YouTube OAuth] Error details:", error.error.errors);
+        }
       } catch (e) {
-        // Response wasn't JSON
+        console.error("[YouTube OAuth] Could not parse error response as JSON");
       }
       throw new Error(errorMessage);
     }
 
     const data = await response.json();
     console.log("[YouTube OAuth] YouTube API response data:", JSON.stringify(data, null, 2));
+    console.log("[YouTube OAuth] Number of items returned:", data.items?.length || 0);
+    console.log("[YouTube OAuth] Page info:", data.pageInfo);
 
     const channel = data.items?.[0];
 
     if (!channel) {
-      console.error("[YouTube OAuth] No channel found in response. Items:", data.items);
-      throw new Error("No YouTube channel found for this account");
+      console.error("[YouTube OAuth] No channel found in response.");
+      console.error("[YouTube OAuth] Full response:", data);
+      console.error("[YouTube OAuth] This account may not have a YouTube channel created yet.");
+      throw new Error("No YouTube channel found for this account. Please create a channel first at youtube.com");
     }
 
     const channelInfo = {
