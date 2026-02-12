@@ -7,6 +7,7 @@ import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiZap, FiHeadphones, FiMessageSqu
 import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
 import { FarcasterBadge } from "@/components/profile/farcaster-badge";
+import { YouTubeBadge } from "@/components/profile/youtube-badge";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { BytesSlider } from "@/components/profile/bytes-slider";
@@ -337,6 +338,9 @@ export default function DynamicProfilePage() {
                     )}
                     {creator.farcasterHandle && (
                       <FarcasterBadge username={creator.farcasterHandle} />
+                    )}
+                    {creator.youtubeChannelId && (
+                      <YouTubeBadge channelId={creator.youtubeChannelId} channelName={creator.youtubeChannelName} />
                     )}
                   </div>
                   {/* Stats inline */}
@@ -758,6 +762,8 @@ export default function DynamicProfilePage() {
                         ...post,
                         description: post.text_content || post.description || "",
                         createdAt: post.created_at || post.createdAt,
+                        thumbnail: post.media_urls?.[0] || post.thumbnail,
+                        likes: post.likes || 0,
                         creator: post.creator ? {
                           displayName: post.creator.display_name || post.creator.displayName || creator?.displayName,
                           handle: post.creator.handle || creator?.handle,

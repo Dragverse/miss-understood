@@ -374,6 +374,7 @@ function FeedContent() {
                       ...post,
                       description: post.text_content || post.description || "",
                       createdAt: post.created_at || post.createdAt,
+                      thumbnail: post.media_urls?.[0] || post.thumbnail,
                       creator: post.creator ? {
                         displayName: post.creator.display_name || post.creator.displayName,
                         handle: post.creator.handle,

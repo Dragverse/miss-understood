@@ -346,7 +346,7 @@ export function PostCard({ post }: PostCardProps) {
                 </div>
               )}
             </div>
-          ) : post.creator.did ? (
+          ) : post.creator.did && (post as any).source !== "youtube" ? (
             <button
               onClick={toggleFollow}
               disabled={isFollowLoading}
