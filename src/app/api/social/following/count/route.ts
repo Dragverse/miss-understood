@@ -1,29 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyPrivyToken } from "@/lib/privy/verify-token";
+import { verifyAuth } from "@/lib/auth/verify";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
 
 export async function GET(req: NextRequest) {
   try {
     // Verify authentication
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const auth = await verifyAuth(req);
+    if (!auth.authenticated || !auth.userId) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const verifiedClaims = await verifyPrivyToken(token);
-
-    if (!verifiedClaims || !verifiedClaims.userId) {
-      return NextResponse.json(
-        { success: false, error: "Invalid token" },
-        { status: 401 }
-      );
-    }
-
-    const userDID = verifiedClaims.userId;
+    const userDID = auth.userId;
 
     // Count follows where user is the follower (Dragverse only)
     const supabase = getSupabaseServerClient();
