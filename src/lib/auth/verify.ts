@@ -80,17 +80,23 @@ export function isPrivyConfigured(): boolean {
  */
 export async function verifyAuthFromCookies(request: NextRequest): Promise<AuthResult> {
   try {
+    // Log all cookies for debugging
+    const allCookies = Array.from(request.cookies.getAll()).map(c => c.name);
+    console.log("[Auth] All cookies present:", allCookies);
+
     const privyToken = request.cookies.get('privy-token')?.value ||
                        request.cookies.get('privy-access-token')?.value ||
                        request.cookies.get('privy-id-token')?.value;
 
     if (!privyToken) {
-      console.error("[Auth] No Privy auth cookie found");
+      console.error("[Auth] No Privy auth cookie found. Available cookies:", allCookies);
       return {
         authenticated: false,
         error: "No authentication cookie found",
       };
     }
+
+    console.log("[Auth] Found Privy token in cookies");
 
     const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
     if (!appId) {

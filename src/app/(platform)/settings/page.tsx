@@ -386,6 +386,9 @@ export default function SettingsPage() {
         denied: "YouTube authorization was cancelled",
         no_code: "No authorization code received from YouTube",
         token_exchange_failed: "Failed to exchange authorization code",
+        invalid_state: "Invalid OAuth state - please try again",
+        no_user_id: "Authentication error - please log in again",
+        not_authenticated: "Not authenticated - please log in again",
         unknown: "An unknown error occurred",
       };
       toast.error(

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuthFromCookies } from "@/lib/auth/verify";
 import {
   exchangeYouTubeAuthCode,
   syncYouTubeChannelViaOAuth,
@@ -25,6 +24,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
     const error = searchParams.get("error");
+    const state = searchParams.get("state");
 
     // Handle OAuth errors (user denied permission)
     if (error) {
@@ -40,14 +40,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify user authentication from cookies (OAuth callback doesn't have Bearer token)
-    const auth = await verifyAuthFromCookies(request);
-    if (!auth.authenticated || !auth.userId) {
-      console.error("[YouTube OAuth] Authentication failed:", auth.error);
+    // Extract user ID from state parameter
+    // Format: {csrfToken}:{userDID}
+    if (!state || !state.includes(':')) {
+      console.error("[YouTube OAuth] Invalid or missing state parameter");
       return NextResponse.redirect(
-        `${baseUrl}/settings?youtube_error=not_authenticated`
+        `${baseUrl}/settings?youtube_error=invalid_state`
       );
     }
+
+    const [csrfToken, userDID] = state.split(':');
+    if (!userDID) {
+      console.error("[YouTube OAuth] No user ID in state parameter");
+      return NextResponse.redirect(
+        `${baseUrl}/settings?youtube_error=no_user_id`
+      );
+    }
+
+    console.log(`[YouTube OAuth] Processing callback for user: ${userDID}`);
 
     // Exchange authorization code for OAuth tokens
     const tokenResult = await exchangeYouTubeAuthCode(code);
@@ -59,7 +69,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Sync YouTube channel with creator profile
-    const syncResult = await syncYouTubeChannelViaOAuth(auth.userId, tokenResult.tokens);
+    const syncResult = await syncYouTubeChannelViaOAuth(userDID, tokenResult.tokens);
     if (!syncResult.success) {
       console.error("[YouTube OAuth] Channel sync failed:", syncResult.error);
       return NextResponse.redirect(

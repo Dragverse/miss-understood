@@ -19,18 +19,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Generate CSRF state token
-    const state = crypto.randomBytes(32).toString("hex");
-
-    // TODO: Store state in session/Redis for verification in callback
-    // For now, we'll skip CSRF protection (should be added for production)
+    // Generate CSRF state token with encoded user ID
+    // Format: {randomToken}:{userDID}
+    const csrfToken = crypto.randomBytes(16).toString("hex");
+    const state = `${csrfToken}:${auth.userId}`;
 
     const authUrl = generateYouTubeOAuthUrl(state);
 
     return NextResponse.json({
       success: true,
       authUrl,
-      state,
     });
   } catch (error) {
     console.error("[YouTube Connect API] Error:", error);
