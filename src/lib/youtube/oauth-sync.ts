@@ -162,56 +162,68 @@ export async function fetchAuthenticatedChannelInfo(
       console.log("[YouTube OAuth] User data from People API:", userData);
     }
 
-    // Now fetch user's own channel (using "mine=true")
+    // Try both mine=true and managedByMe=true for brand channel support
     const apiKey = process.env.YOUTUBE_API_KEY;
-    const url = apiKey
+
+    // First attempt: mine=true (personal channels)
+    let url = apiKey
       ? `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true&key=${apiKey}`
       : `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true`;
 
     console.log("[YouTube OAuth] Step 2: Fetching channel info");
-    console.log("[YouTube OAuth] Request URL:", url.replace(apiKey || '', 'REDACTED'));
+    console.log("[YouTube OAuth] Attempt 1: mine=true (personal channels)");
     console.log("[YouTube OAuth] Using API key:", !!apiKey);
 
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
       },
     });
 
-    console.log("[YouTube OAuth] YouTube API response status:", response.status);
-    console.log("[YouTube OAuth] Response headers:", Object.fromEntries(response.headers.entries()));
+    console.log("[YouTube OAuth] mine=true response status:", response.status);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[YouTube OAuth] YouTube API error response:", errorText);
-      let errorMessage = `YouTube API error: ${response.status}`;
-      try {
-        const error = JSON.parse(errorText);
-        console.error("[YouTube OAuth] Parsed error:", error);
-        errorMessage = error.error?.message || errorMessage;
-        // Include error details for debugging
-        if (error.error?.errors) {
-          console.error("[YouTube OAuth] Error details:", error.error.errors);
-        }
-      } catch (e) {
-        console.error("[YouTube OAuth] Could not parse error response as JSON");
-      }
-      throw new Error(errorMessage);
+    let data = await response.json();
+    console.log("[YouTube OAuth] mine=true items count:", data.items?.length || 0);
+
+    // If no channel found with mine=true, try forUsername with email
+    if (!data.items || data.items.length === 0) {
+      console.log("[YouTube OAuth] Attempt 2: Trying managedByMe=true (brand channels)");
+
+      url = apiKey
+        ? `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&managedByMe=true&key=${apiKey}`
+        : `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&managedByMe=true`;
+
+      response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      });
+
+      console.log("[YouTube OAuth] managedByMe=true response status:", response.status);
+
+      data = await response.json();
+      console.log("[YouTube OAuth] managedByMe=true items count:", data.items?.length || 0);
     }
 
-    const data = await response.json();
-    console.log("[YouTube OAuth] YouTube API response data:", JSON.stringify(data, null, 2));
-    console.log("[YouTube OAuth] Number of items returned:", data.items?.length || 0);
+    console.log("[YouTube OAuth] Final API response data:", JSON.stringify(data, null, 2));
     console.log("[YouTube OAuth] Page info:", data.pageInfo);
+
+    // If API returned an error
+    if (data.error) {
+      console.error("[YouTube OAuth] YouTube API error:", data.error);
+      throw new Error(data.error.message || `YouTube API error: ${data.error.code}`);
+    }
 
     const channel = data.items?.[0];
 
     if (!channel) {
-      console.error("[YouTube OAuth] No channel found in response.");
+      console.error("[YouTube OAuth] No channel found after trying both methods.");
       console.error("[YouTube OAuth] Full response:", data);
-      console.error("[YouTube OAuth] This account may not have a YouTube channel created yet.");
-      throw new Error("No YouTube channel found for this account. Please create a channel first at youtube.com");
+      console.error("[YouTube OAuth] This Gmail account may not have a YouTube channel.");
+      console.error("[YouTube OAuth] Brand channels require managing permissions.");
+      throw new Error("No YouTube channel found. Brand channels must grant 'Manager' access to your Google account.");
     }
 
     const channelInfo = {
@@ -535,7 +547,8 @@ export function generateYouTubeOAuthUrl(state?: string): string {
     client_id: clientId!,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "https://www.googleapis.com/auth/youtube.readonly", // Read-only access (no verification required)
+    // Include youtubepartner scope for brand channel access
+    scope: "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtubepartner-channel-audit",
     access_type: "offline", // Request refresh token
     prompt: "consent", // Force consent screen to get refresh token
     state: state || "", // CSRF protection
