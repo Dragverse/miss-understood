@@ -146,11 +146,31 @@ export async function fetchAuthenticatedChannelInfo(
   accessToken: string
 ): Promise<YouTubeChannelInfo | null> {
   try {
-    // Fetch user's own channel (using "mine=true")
-    const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true`;
+    // First, try to get the authenticated user's info to find their channel ID
+    console.log("[YouTube OAuth] Step 1: Getting user info from People API");
+    const peopleUrl = "https://www.googleapis.com/oauth2/v2/userinfo";
 
-    console.log("[YouTube OAuth] Fetching channel info with access token");
-    console.log("[YouTube OAuth] Request URL:", url);
+    const peopleResponse = await fetch(peopleUrl, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    });
+
+    if (peopleResponse.ok) {
+      const userData = await peopleResponse.json();
+      console.log("[YouTube OAuth] User data from People API:", userData);
+    }
+
+    // Now fetch user's own channel (using "mine=true")
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    const url = apiKey
+      ? `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true&key=${apiKey}`
+      : `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true`;
+
+    console.log("[YouTube OAuth] Step 2: Fetching channel info");
+    console.log("[YouTube OAuth] Request URL:", url.replace(apiKey || '', 'REDACTED'));
+    console.log("[YouTube OAuth] Using API key:", !!apiKey);
 
     const response = await fetch(url, {
       headers: {
