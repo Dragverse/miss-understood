@@ -86,8 +86,7 @@ interface Creator {
 
 export default function FollowingPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = usePrivy();
-  const { getAccessToken } = usePrivy();
+  const { user, authenticated, getAccessToken } = usePrivy();
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -99,7 +98,7 @@ export default function FollowingPage() {
   const handleUnfollow = async (creatorDID: string, creatorName: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent navigation to profile
 
-    if (!isAuthenticated || !user?.id) {
+    if (!authenticated || !user?.id) {
       toast.error("Please sign in to unfollow");
       return;
     }
@@ -160,10 +159,10 @@ export default function FollowingPage() {
 
   useEffect(() => {
     loadFollowing();
-  }, [isAuthenticated, user?.id]);
+  }, [authenticated, user?.id]);
 
   async function loadFollowing() {
-    if (!isAuthenticated || !user?.id) {
+    if (!authenticated || !user?.id) {
       setLoading(false);
       return;
     }
@@ -212,7 +211,7 @@ export default function FollowingPage() {
     return true;
   });
 
-  if (!isAuthenticated) {
+  if (!authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center">
