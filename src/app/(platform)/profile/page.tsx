@@ -198,36 +198,12 @@ export default function ProfilePage() {
           console.error("Failed to get verified user ID:", error);
         }
 
-        // Get creator's YouTube channel ID if connected
-        let youtubeChannelId: string | undefined;
-        try {
-          const creatorProfile = await getCreatorByDID(verifiedUserId);
-          if (creatorProfile?.youtube_channel_id) {
-            youtubeChannelId = creatorProfile.youtube_channel_id;
-          }
-        } catch (e) {
-          // Non-critical, continue without YouTube
-        }
-
-        // Fetch Dragverse videos, Dragverse posts, and YouTube channel videos in parallel
-        const [supabaseVideos, postsResponse, youtubeVideos] = await Promise.all([
+        // Fetch Dragverse videos and Dragverse posts in parallel
+        const [supabaseVideos, postsResponse] = await Promise.all([
           getVideosByCreator(verifiedUserId),
           fetch(`/api/posts/feed?creatorDid=${encodeURIComponent(verifiedUserId)}&limit=50`),
-          youtubeChannelId
-            ? fetch(`/api/youtube/feed?channelId=${encodeURIComponent(youtubeChannelId)}&limit=15`)
-                .then(res => res.ok ? res.json() : { videos: [] })
-                .then(data => ((data.videos || []) as any[]).map((v: any) => ({
-                  ...v,
-                  createdAt: new Date(v.createdAt),
-                  creator: {
-                    ...v.creator,
-                    createdAt: new Date(v.creator?.createdAt || Date.now()),
-                  },
-                })) as Video[])
-                .catch(() => [] as Video[])
-            : Promise.resolve([] as Video[]),
         ]);
-        console.log(`[Profile] Loaded ${supabaseVideos.length} Dragverse videos, ${youtubeVideos.length} YouTube videos`);
+        console.log(`[Profile] Loaded ${supabaseVideos.length} Dragverse videos`);
 
         // Transform Supabase videos to Video type
         const transformedVideos: Video[] = supabaseVideos.map((sv) => {
@@ -263,10 +239,9 @@ export default function ProfilePage() {
           };
         });
 
-        // Merge Dragverse videos with YouTube channel videos
-        const allVideos = [...transformedVideos, ...youtubeVideos];
-        allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setUserVideos(allVideos);
+        // Sort Dragverse videos by date
+        transformedVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setUserVideos(transformedVideos);
 
         // Parse Dragverse posts
         if (postsResponse.ok) {
@@ -288,14 +263,14 @@ export default function ProfilePage() {
         }
 
         // Calculate stats from all videos
-        const totalViews = allVideos.reduce((sum, v) => sum + (v.views || 0), 0);
-        const totalLikes = allVideos.reduce((sum, v) => sum + (v.likes || 0), 0);
+        const totalViews = transformedVideos.reduce((sum, v) => sum + (v.views || 0), 0);
+        const totalLikes = transformedVideos.reduce((sum, v) => sum + (v.likes || 0), 0);
 
         setStats((prev) => ({
           ...prev,
           totalViews,
           totalLikes,
-          videoCount: allVideos.length,
+          videoCount: transformedVideos.length,
         }));
       } catch (error) {
         console.error("Failed to load videos from Supabase:", error);
