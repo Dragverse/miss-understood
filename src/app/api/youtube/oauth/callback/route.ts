@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const auth = await verifyAuth(request);
     if (!auth.authenticated || !auth.userId) {
       return NextResponse.redirect(
-        `${baseUrl}/login?redirect=/settings`
+        `${baseUrl}/settings?youtube_error=not_authenticated`
       );
     }
 
