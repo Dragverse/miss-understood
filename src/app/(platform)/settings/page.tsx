@@ -368,10 +368,12 @@ export default function SettingsPage() {
     const channelName = urlParams.get('channel');
     const subscribers = urlParams.get('subscribers');
 
+    console.log('[YouTube OAuth] Callback params:', { youtubeSuccess, youtubeError, channelName, subscribers });
+
     if (youtubeSuccess === 'true' && channelName) {
       toast.success(
         `Connected ${decodeURIComponent(channelName)}! Imported ${parseInt(subscribers || '0').toLocaleString()} subscribers.`,
-        { duration: 5000 }
+        { duration: 10000 }
       );
       setIsConnectingYouTube(false);
       setYoutubeChannelName(decodeURIComponent(channelName));
@@ -388,7 +390,7 @@ export default function SettingsPage() {
       };
       toast.error(
         errorMessages[youtubeError] || decodeURIComponent(youtubeError),
-        { duration: 5000 }
+        { duration: 10000 }
       );
       setIsConnectingYouTube(false);
       // Clean up URL
