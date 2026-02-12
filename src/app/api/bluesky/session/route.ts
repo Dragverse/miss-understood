@@ -69,6 +69,7 @@ export async function DELETE(request: NextRequest) {
           .update({
             bluesky_handle: null,
             bluesky_did: null,
+            bluesky_app_password: null,
             updated_at: new Date().toISOString(),
           })
           .eq("did", auth.userId);

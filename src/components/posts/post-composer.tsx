@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { FiImage, FiX, FiSmile, FiSend, FiLoader, FiHeart, FiActivity, FiFilm, FiAward, FiStar, FiShare, FiMessageSquare } from "react-icons/fi";
+import { FiImage, FiX, FiSmile, FiSend, FiLoader, FiShare, FiMessageSquare } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import { usePrivy } from "@privy-io/react-auth";
 import toast from "react-hot-toast";
@@ -11,17 +11,6 @@ interface PostComposerProps {
   onPostCreated?: () => void;
   placeholder?: string;
 }
-
-const MOODS = [
-  { icon: FiStar, label: "Sparkling", value: "sparkling" },
-  { icon: FiHeart, label: "Soft", value: "soft" },
-  { icon: FiActivity, label: "Fierce", value: "fierce" },
-  { icon: FiFilm, label: "Dramatic", value: "dramatic" },
-  { icon: FiSmile, label: "Playful", value: "playful" },
-  { icon: FiAward, label: "Regal", value: "regal" },
-  { icon: FiStar, label: "Slay", value: "slay" },
-  { icon: FiSmile, label: "Magical", value: "magical" },
-];
 
 // Curated emoji categories for the drag community
 const EMOJI_CATEGORIES = [
@@ -44,13 +33,11 @@ const EMOJI_CATEGORIES = [
 ];
 
 export function PostComposer({ onPostCreated, placeholder = "Share your story..." }: PostComposerProps) {
-  const { getAccessToken, user } = usePrivy();
+  const { getAccessToken } = usePrivy();
   const [content, setContent] = useState("");
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [showMoodPicker, setShowMoodPicker] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [activeEmojiCategory, setActiveEmojiCategory] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -117,7 +104,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
       const newContent = content.slice(0, start) + emoji + content.slice(end);
       if (newContent.length <= 500) {
         setContent(newContent);
-        // Restore cursor position after emoji
         requestAnimationFrame(() => {
           textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
           textarea.focus();
@@ -137,7 +123,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
     const newFiles = [...mediaFiles, ...files].slice(0, 4);
     setMediaFiles(newFiles);
 
-    // Create fresh previews from newFiles
     const newPreviews: string[] = [];
     let loaded = 0;
     newFiles.forEach((file) => {
@@ -170,7 +155,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
     try {
       const authToken = await getAccessToken();
 
-      // Upload media first if any
       const uploadedMediaUrls: string[] = [];
       const mediaTypes: string[] = [];
 
@@ -198,7 +182,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
         }
       }
 
-      // Create post
       const response = await fetch("/api/posts/create", {
         method: "POST",
         headers: {
@@ -209,7 +192,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
           textContent: content,
           mediaUrls: uploadedMediaUrls,
           mediaTypes,
-          mood: selectedMood,
           visibility: "public",
           platforms: selectedPlatforms,
         }),
@@ -218,15 +200,11 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
       if (response.ok) {
         const result = await response.json();
 
-        // Reset form
         setContent("");
         setMediaFiles([]);
         setMediaPreviews([]);
-        setSelectedMood(null);
-        setShowMoodPicker(false);
         setShowEmojiPicker(false);
 
-        // Check crosspost results
         const crosspostSuccess: string[] = [];
         const crosspostErrors: string[] = [];
 
@@ -281,7 +259,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
           <FiSmile className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
         </div>
         <div className="min-w-0">
-          <p className="text-white font-bold text-sm sm:text-base">What's your story, babe?</p>
+          <p className="text-white font-bold text-sm sm:text-base">What&apos;s your story, babe?</p>
           <p className="text-[#EB83EA]/60 text-xs sm:text-sm truncate">Share a moment, a look, a feeling...</p>
         </div>
       </div>
@@ -324,7 +302,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
       {/* Emoji Picker */}
       {showEmojiPicker && (
         <div ref={emojiPickerRef} className="mb-4 bg-[#0f071a]/80 rounded-2xl border-2 border-[#EB83EA]/20 overflow-hidden">
-          {/* Category tabs */}
           <div className="flex border-b border-[#EB83EA]/10 overflow-x-auto scrollbar-hide">
             {EMOJI_CATEGORIES.map((cat, i) => (
               <button
@@ -340,7 +317,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
               </button>
             ))}
           </div>
-          {/* Emoji grid */}
           <div className="p-3 grid grid-cols-10 gap-1 max-h-[160px] overflow-y-auto">
             {EMOJI_CATEGORIES[activeEmojiCategory].emojis.map((emoji) => (
               <button
@@ -356,51 +332,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
         </div>
       )}
 
-      {/* Mood picker */}
-      {showMoodPicker && (
-        <div className="mb-4 p-4 bg-[#0f071a]/60 rounded-2xl border-2 border-[#EB83EA]/20">
-          <p className="text-white font-semibold mb-3 flex items-center gap-2">
-            <FiSmile className="text-[#EB83EA]" />
-            What's the vibe?
-          </p>
-          <div className="grid grid-cols-4 gap-2">
-            {MOODS.map((mood) => {
-              const MoodIcon = mood.icon;
-              return (
-                <button
-                  key={mood.value}
-                  onClick={() => setSelectedMood(mood.value === selectedMood ? null : mood.value)}
-                  className={`p-2 sm:p-3 rounded-xl transition-all ${
-                    selectedMood === mood.value
-                      ? "bg-[#EB83EA] text-white scale-105"
-                      : "bg-[#2f2942] text-gray-300 hover:bg-[#2f2942]/80"
-                  }`}
-                >
-                  <MoodIcon className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-1" />
-                  <span className="text-[10px] sm:text-xs font-semibold block">{mood.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Selected mood display */}
-      {selectedMood && !showMoodPicker && (
-        <div className="mb-4 inline-flex items-center gap-2 px-4 py-2 bg-[#EB83EA]/20 rounded-full border border-[#EB83EA]/30">
-          {(() => {
-            const MoodIcon = MOODS.find((m) => m.value === selectedMood)?.icon;
-            return MoodIcon ? <MoodIcon className="w-5 h-5 text-white" /> : null;
-          })()}
-          <span className="text-white text-sm font-semibold">
-            {MOODS.find((m) => m.value === selectedMood)?.label}
-          </span>
-          <button onClick={() => setSelectedMood(null)} className="text-white/60 hover:text-white" aria-label="Remove mood">
-            <FiX size={16} />
-          </button>
-        </div>
-      )}
-
       {/* Platform picker */}
       {showPlatformPicker && (
         <div className="mb-4 p-4 bg-[#0f071a]/60 rounded-2xl border-2 border-[#EB83EA]/20">
@@ -409,7 +340,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
             Where to post?
           </p>
           <div className="space-y-3">
-            {/* Dragverse (always on) */}
             <div className="flex items-center justify-between p-3 bg-[#2f2942] rounded-xl">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center">
@@ -422,7 +352,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
               </span>
             </div>
 
-            {/* Bluesky */}
             <div className="flex items-center justify-between p-3 bg-[#2f2942] rounded-xl">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
@@ -475,7 +404,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
       {/* Action buttons */}
       <div className="flex items-center justify-between pt-4 border-t border-[#EB83EA]/10">
         <div className="flex gap-1.5 sm:gap-2">
-          {/* Photo upload */}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={mediaFiles.length >= 4}
@@ -486,12 +414,8 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
             <FiImage size={20} />
           </button>
 
-          {/* Emoji picker toggle */}
           <button
-            onClick={() => {
-              setShowEmojiPicker(!showEmojiPicker);
-              if (showMoodPicker) setShowMoodPicker(false);
-            }}
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             className={`p-2.5 sm:p-3 rounded-xl transition-all ${
               showEmojiPicker
                 ? "bg-[#EB83EA] text-white"
@@ -500,27 +424,9 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
             title="Add emoji"
             aria-label="Add emoji"
           >
-            <span className="text-lg leading-none">😊</span>
-          </button>
-
-          {/* Mood picker toggle */}
-          <button
-            onClick={() => {
-              setShowMoodPicker(!showMoodPicker);
-              if (showEmojiPicker) setShowEmojiPicker(false);
-            }}
-            className={`p-2.5 sm:p-3 rounded-xl transition-all ${
-              showMoodPicker
-                ? "bg-[#EB83EA] text-white"
-                : "bg-[#2f2942] hover:bg-[#EB83EA]/20 text-[#EB83EA]"
-            }`}
-            title="Set the mood"
-            aria-label="Set the mood"
-          >
             <FiSmile size={20} />
           </button>
 
-          {/* Platform picker toggle */}
           <button
             onClick={() => setShowPlatformPicker(!showPlatformPicker)}
             className={`p-2.5 sm:p-3 rounded-xl transition-all ${
@@ -535,7 +441,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
           </button>
         </div>
 
-        {/* Post button */}
         <button
           onClick={handlePost}
           disabled={!canPost}
@@ -555,7 +460,6 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
         </button>
       </div>
 
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"

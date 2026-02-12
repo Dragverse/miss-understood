@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
           }));
         }
 
-        const blueskyResult = await postToBluesky(request, blueskyParams);
+        const blueskyResult = await postToBluesky(request, blueskyParams, userDID);
 
         crosspostResults.bluesky = blueskyResult;
         if (blueskyResult.success) {

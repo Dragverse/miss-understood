@@ -1,11 +1,13 @@
 /**
  * Bluesky cross-posting utilities
  * Posts content to Bluesky using user's authenticated session from Privy
+ * Falls back to DB-stored credentials when session cookie is missing/expired
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, SessionData } from "@/lib/session/config";
+import { createClient } from "@supabase/supabase-js";
 
 interface BlueskyPostParams {
   text: string;
@@ -38,34 +40,57 @@ interface BlueskyDeleteResult {
  */
 export async function postToBluesky(
   request: NextRequest,
-  params: BlueskyPostParams
+  params: BlueskyPostParams,
+  userDID?: string
 ): Promise<BlueskyPostResult> {
   try {
-    // Get Bluesky session from iron-session
-    // Must use NextResponse (same as connect route) for cookie compatibility
+    // Try iron-session first, then fall back to DB credentials
+    let handle: string | undefined;
+    let appPassword: string | undefined;
+
+    // 1. Try iron-session cookie
     const response = NextResponse.json({ ok: true });
     const session = await getIronSession<SessionData>(request, response, sessionOptions);
 
-    console.log("[Bluesky Crosspost] ========== SESSION DEBUG ==========");
-    console.log("[Bluesky Crosspost] Request cookies:", request.cookies.getAll().map(c => c.name));
-    console.log("[Bluesky Crosspost] Session object:", session);
-    console.log("[Bluesky Crosspost] Session.bluesky exists:", !!session.bluesky);
-    console.log("[Bluesky Crosspost] Session.bluesky.handle:", session.bluesky?.handle);
-    console.log("[Bluesky Crosspost] Session.bluesky.appPassword length:", session.bluesky?.appPassword?.length);
+    if (session.bluesky?.handle && session.bluesky?.appPassword) {
+      handle = session.bluesky.handle;
+      appPassword = session.bluesky.appPassword;
+      console.log("[Bluesky Crosspost] ✅ Using session cookie credentials for:", handle);
+    }
 
-    if (!session.bluesky?.handle || !session.bluesky?.appPassword) {
-      console.error("[Bluesky Crosspost] ❌ No Bluesky session found in cookie.");
-      console.error("[Bluesky Crosspost] This means the user either:");
-      console.error("[Bluesky Crosspost] 1. Never connected Bluesky");
-      console.error("[Bluesky Crosspost] 2. Session expired (7 day limit)");
-      console.error("[Bluesky Crosspost] 3. Cookies are being blocked/cleared");
+    // 2. Fall back to DB credentials if session is missing/expired
+    if ((!handle || !appPassword) && userDID) {
+      console.log("[Bluesky Crosspost] Session cookie missing, trying DB fallback for DID:", userDID);
+      try {
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { data: creator } = await supabase
+          .from("creators")
+          .select("bluesky_handle, bluesky_app_password")
+          .eq("did", userDID)
+          .single();
+
+        if (creator?.bluesky_handle && creator?.bluesky_app_password) {
+          handle = creator.bluesky_handle;
+          appPassword = creator.bluesky_app_password;
+          console.log("[Bluesky Crosspost] ✅ Using DB fallback credentials for:", handle);
+        }
+      } catch (dbError) {
+        console.error("[Bluesky Crosspost] DB fallback failed:", dbError);
+      }
+    }
+
+    if (!handle || !appPassword) {
+      console.error("[Bluesky Crosspost] ❌ No credentials found (session or DB).");
       return {
         success: false,
         error: "Bluesky not connected. Please reconnect your Bluesky account in Settings."
       };
     }
 
-    const { handle, appPassword } = session.bluesky;
     console.log("[Bluesky Crosspost] Authenticating as:", handle);
 
     // Authenticate with Bluesky to get access token

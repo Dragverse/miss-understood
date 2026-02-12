@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
             url: mediaUrl,
             alt: `${title} - Watch on Dragverse`,
           }],
-        });
+        }, auth.userId);
         results.bluesky = blueskyResult;
 
         if (blueskyResult.success) {

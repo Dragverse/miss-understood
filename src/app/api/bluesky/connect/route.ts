@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
           .update({
             bluesky_handle: validation.data!.handle,
             bluesky_did: validation.data!.did || "",
+            bluesky_app_password: validation.data!.appPassword,
             updated_at: new Date().toISOString(),
           })
           .eq("did", auth.userId);
