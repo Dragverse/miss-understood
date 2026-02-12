@@ -91,7 +91,7 @@ export function FeedRightSidebar() {
 
       {/* Upload Video or Audio */}
       <Link
-        href="/feed/create"
+        href="/upload"
         className="block p-6 rounded-[24px] bg-gradient-to-br from-[#7c3aed]/20 to-[#6b2fd5]/20 border-2 border-[#7c3aed]/40 hover:border-[#7c3aed]/70 transition-all group shadow-lg hover:shadow-[#7c3aed]/20"
       >
         <div className="flex items-center gap-3 mb-2">

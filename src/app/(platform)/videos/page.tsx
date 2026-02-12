@@ -232,10 +232,9 @@ export default function VideosPage() {
                 onClick={() => loadVideos(true)}
                 disabled={refreshing}
                 className="flex items-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-full font-medium transition-all disabled:opacity-50 border border-white/10"
-                title="Refresh videos"
+                aria-label="Refresh videos"
               >
                 <FiRefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Refresh</span>
               </button>
             </div>
             <p className="text-gray-300 text-sm">
@@ -253,6 +252,7 @@ export default function VideosPage() {
               <button
                 onClick={() => setNewContentAvailable(false)}
                 className="text-gray-400 hover:text-white transition"
+                aria-label="Dismiss"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

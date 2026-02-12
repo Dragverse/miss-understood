@@ -232,6 +232,7 @@ function SnapshotsContent() {
             onClick={() => instanceRef.current?.prev()}
             disabled={currentSlide === 0}
             className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-30 disabled:cursor-not-allowed"
+            aria-label="Previous snapshot"
           >
             <FiChevronUp className="w-6 h-6 text-white" />
           </button>
@@ -239,6 +240,7 @@ function SnapshotsContent() {
             onClick={() => instanceRef.current?.next()}
             disabled={currentSlide === snapshots.length - 1}
             className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-30 disabled:cursor-not-allowed"
+            aria-label="Next snapshot"
           >
             <FiChevronDown className="w-6 h-6 text-white" />
           </button>
@@ -250,7 +252,7 @@ function SnapshotsContent() {
         onClick={() => loadSnapshots(true)}
         disabled={refreshing}
         className="fixed top-6 right-6 z-20 w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-50"
-        title="Refresh snapshots"
+        aria-label="Refresh snapshots"
       >
         <FiRefreshCw className={`w-6 h-6 text-white ${refreshing ? 'animate-spin' : ''}`} />
       </button>

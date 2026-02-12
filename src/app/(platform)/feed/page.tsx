@@ -223,11 +223,10 @@ function FeedContent() {
                 <button
                   onClick={() => loadFeed(true)}
                   disabled={refreshing}
-                  className="p-3 md:px-4 md:py-3 bg-white/5 hover:bg-white/10 rounded-full font-medium transition-all disabled:opacity-50 border border-white/10 flex items-center gap-2"
-                  title="Refresh feed"
+                  className="p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all disabled:opacity-50 border border-white/10"
+                  aria-label="Refresh feed"
                 >
                   <FiRefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-                  <span className="hidden md:inline">Refresh</span>
                 </button>
                 {isAuthenticated && !showBookmarks && (
                   <button
@@ -260,6 +259,7 @@ function FeedContent() {
               <button
                 onClick={() => setNewContentAvailable(false)}
                 className="text-gray-400 hover:text-white transition"
+                aria-label="Dismiss"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -275,83 +275,58 @@ function FeedContent() {
             </div>
           )}
 
-          {/* Sort and Filter Selectors - Compact on mobile */}
+          {/* Sort and Filter Controls */}
           {!showBookmarks && (
-            <>
-              <div className="flex items-center gap-2 md:gap-3 mb-4">
-                <span className="hidden sm:inline text-sm text-gray-400">Sort by:</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setSortBy("engagement")}
-                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
-                      sortBy === "engagement"
-                        ? "bg-[#EB83EA] text-white"
-                        : "bg-white/5 text-gray-400 hover:bg-white/10"
-                    }`}
-                  >
-                    <span className="hidden sm:inline">Trending</span>
-                    <span className="sm:hidden">Trending</span>
-                  </button>
-                  <button
-                    onClick={() => setSortBy("recent")}
-                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
-                      sortBy === "recent"
-                        ? "bg-[#EB83EA] text-white"
-                        : "bg-white/5 text-gray-400 hover:bg-white/10"
-                    }`}
-                  >
-                    <span className="hidden sm:inline">Recent</span>
-                    <span className="sm:hidden">Recent</span>
-                  </button>
-                </div>
+            <div className="flex flex-wrap items-center gap-2 mb-6">
+              <div className="flex gap-1.5 p-1 bg-white/5 rounded-xl border border-white/5">
+                <button
+                  onClick={() => setSortBy("engagement")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    sortBy === "engagement"
+                      ? "bg-[#EB83EA] text-white shadow-sm"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                  aria-label="Sort by trending"
+                >
+                  Trending
+                </button>
+                <button
+                  onClick={() => setSortBy("recent")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    sortBy === "recent"
+                      ? "bg-[#EB83EA] text-white shadow-sm"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                  aria-label="Sort by recent"
+                >
+                  Recent
+                </button>
               </div>
 
-              <div className="flex items-center gap-2 md:gap-3 mb-6">
-                <span className="hidden sm:inline text-sm text-gray-400">Show:</span>
-                <div className="flex gap-2 flex-wrap">
+              <div className="w-px h-5 bg-white/10 hidden sm:block" />
+
+              <div className="flex gap-1.5 flex-wrap">
+                {([
+                  { key: "all", label: "All", color: "bg-[#EB83EA]" },
+                  { key: "dragverse", label: "Dragverse", color: "bg-purple-500" },
+                  { key: "youtube", label: "YouTube", color: "bg-red-500" },
+                  { key: "bluesky", label: "Bluesky", color: "bg-blue-500" },
+                ] as const).map(({ key, label, color }) => (
                   <button
-                    onClick={() => setContentFilter("all")}
-                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
-                      contentFilter === "all"
-                        ? "bg-[#EB83EA] text-white"
-                        : "bg-white/5 text-gray-400 hover:bg-white/10"
+                    key={key}
+                    onClick={() => setContentFilter(key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      contentFilter === key
+                        ? `${color} text-white shadow-sm`
+                        : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
                     }`}
+                    aria-label={`Filter by ${label}`}
                   >
-                    All Content
+                    {label}
                   </button>
-                  <button
-                    onClick={() => setContentFilter("dragverse")}
-                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
-                      contentFilter === "dragverse"
-                        ? "bg-purple-500 text-white"
-                        : "bg-white/5 text-gray-400 hover:bg-white/10"
-                    }`}
-                  >
-                    Dragverse Only
-                  </button>
-                  <button
-                    onClick={() => setContentFilter("youtube")}
-                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
-                      contentFilter === "youtube"
-                        ? "bg-red-500 text-white"
-                        : "bg-white/5 text-gray-400 hover:bg-white/10"
-                    }`}
-                  >
-                    YouTube
-                  </button>
-                  <button
-                    onClick={() => setContentFilter("bluesky")}
-                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
-                      contentFilter === "bluesky"
-                        ? "bg-blue-500 text-white"
-                        : "bg-white/5 text-gray-400 hover:bg-white/10"
-                    }`}
-                  >
-                    Bluesky
-                  </button>
-                </div>
+                ))}
               </div>
-            </>
+            </div>
           )}
 
           {/* Search Error Alert */}
