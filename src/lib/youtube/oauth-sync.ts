@@ -483,7 +483,7 @@ export function generateYouTubeOAuthUrl(state?: string): string {
     client_id: clientId!,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "https://www.googleapis.com/auth/youtube.readonly",
+    scope: "https://www.googleapis.com/auth/youtube", // Full YouTube access (read + upload + manage)
     access_type: "offline", // Request refresh token
     prompt: "consent", // Force consent screen to get refresh token
     state: state || "", // CSRF protection
