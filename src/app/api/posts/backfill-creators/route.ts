@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
-import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
+import { verifyAuth, verifyAuthFromCookies, isPrivyConfigured } from "@/lib/auth/verify";
 
 /**
  * POST /api/posts/backfill-creators
@@ -17,7 +17,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const auth = await verifyAuth(request);
+    // Try Bearer token first, then fall back to cookie-based auth
+    let auth = await verifyAuth(request);
+    if (!auth.authenticated) {
+      auth = await verifyAuthFromCookies(request);
+    }
     if (!auth.authenticated || !auth.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

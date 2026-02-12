@@ -24,7 +24,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Get Bluesky agent and fetch full profile
-    const agent = await getBlueskyAgent();
+    let agent;
+    try {
+      agent = await getBlueskyAgent();
+    } catch (agentError) {
+      console.error("Bluesky agent initialization failed:", agentError);
+      return NextResponse.json(
+        { error: "Bluesky session expired. Please reconnect your Bluesky account." },
+        { status: 401 }
+      );
+    }
     const profileData = await agent.getProfile({ actor: session.bluesky.handle });
 
     // Extract profile information

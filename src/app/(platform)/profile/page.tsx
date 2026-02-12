@@ -347,7 +347,12 @@ export default function ProfilePage() {
           );
 
           setUserPhotos(photos);
-          setUserPosts(textPosts);
+          // Merge Bluesky text posts with existing Dragverse posts (don't overwrite)
+          setUserPosts(prev => {
+            const existingIds = new Set(prev.map((p: any) => p.id));
+            const newBlueskyPosts = textPosts.filter((p: any) => !existingIds.has(p.id));
+            return [...prev, ...newBlueskyPosts];
+          });
           setStats(prev => ({ ...prev, photoCount: photos.length }));
 
           console.log(`[Profile] Loaded ${photos.length} photos and ${textPosts.length} text posts from user's Bluesky`);
@@ -804,7 +809,7 @@ export default function ProfilePage() {
                       onClick={() => router.push(`/watch/${video.id}`)}
                     >
                       <Image
-                        src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', (video as any).playbackId)}
+                        src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.livepeerAssetId)}
                         alt={video.title}
                         fill
                         className="object-cover group-hover:opacity-80 transition-opacity"
@@ -1050,7 +1055,7 @@ export default function ProfilePage() {
                       className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/20 transition-all"
                     >
                       <p className="text-gray-200 mb-4 whitespace-pre-wrap leading-relaxed">
-                        {post.description}
+                        {post.text_content || post.description || ""}
                       </p>
                       <div className="flex items-center justify-between text-sm text-gray-400">
                         <span className="flex items-center gap-2">
@@ -1064,16 +1069,18 @@ export default function ProfilePage() {
                             });
                           })()}
                         </span>
-                        {post.externalUrl && (
+                        {post.source === "dragverse" ? (
+                          <span className="text-[#EB83EA] text-xs font-semibold">Dragverse</span>
+                        ) : post.externalUrl ? (
                           <a
                             href={post.externalUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[#EB83EA] hover:text-[#E748E6] transition font-semibold"
+                            className="text-[#0085ff] hover:text-[#0066cc] transition font-semibold"
                           >
                             View on Bluesky →
                           </a>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   ))}

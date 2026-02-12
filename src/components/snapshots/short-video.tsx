@@ -256,11 +256,12 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 aspectRatio={9 / 16}
                 volume={isMuted ? 0 : 1}
                 onError={(error) => {
-                  console.error("[ShortVideo] Livepeer playback error:", {
-                    error,
+                  console.error("[ShortVideo] Livepeer playback error:", error);
+                  console.error("[ShortVideo] Failed video details:", {
                     videoId: video.id,
                     title: video.title?.substring(0, 50),
-                    playbackUrl: video.playbackUrl?.substring(0, 100),
+                    playbackUrl: video.playbackUrl,
+                    livepeerAssetId: video.livepeerAssetId,
                     source: video.source
                   });
                   // Show error UI after failed playback attempt
@@ -270,7 +271,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                 <Player.Container className="h-full w-full">
                   <Player.Poster
                     className="object-cover"
-                    src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', (video as any).playbackId)}
+                    src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.livepeerAssetId)}
                   />
                   <Player.Video
                     ref={playerRef}
