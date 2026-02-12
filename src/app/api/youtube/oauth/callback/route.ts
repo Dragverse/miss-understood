@@ -71,9 +71,13 @@ export async function GET(request: NextRequest) {
     // Sync YouTube channel with creator profile
     const syncResult = await syncYouTubeChannelViaOAuth(userDID, tokenResult.tokens);
     if (!syncResult.success) {
-      console.error("[YouTube OAuth] Channel sync failed:", syncResult.error);
+      const errorDetail = syncResult.error || "sync_failed";
+      console.error("[YouTube OAuth] Channel sync failed:", errorDetail);
+      console.error("[YouTube OAuth] Full sync result:", JSON.stringify(syncResult));
+
+      // Include detailed error in URL for debugging
       return NextResponse.redirect(
-        `${baseUrl}/settings?youtube_error=${encodeURIComponent(syncResult.error || "sync_failed")}`
+        `${baseUrl}/settings?youtube_error=${encodeURIComponent(errorDetail)}&debug=true`
       );
     }
 

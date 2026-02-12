@@ -391,9 +391,16 @@ export default function SettingsPage() {
         not_authenticated: "Not authenticated - please log in again",
         unknown: "An unknown error occurred",
       };
+
+      const errorMessage = errorMessages[youtubeError] || decodeURIComponent(youtubeError);
+
+      // Log detailed error for debugging
+      console.error('[YouTube Settings] OAuth Error:', youtubeError);
+      console.error('[YouTube Settings] Decoded Error:', decodeURIComponent(youtubeError));
+
       toast.error(
-        errorMessages[youtubeError] || decodeURIComponent(youtubeError),
-        { duration: 10000 }
+        errorMessage,
+        { duration: 15000 }
       );
       setIsConnectingYouTube(false);
       // Clean up URL
