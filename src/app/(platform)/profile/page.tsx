@@ -275,7 +275,13 @@ export default function ProfilePage() {
             setUserPosts(prev => {
               // Merge with any existing Bluesky posts, avoiding duplicates
               const existingIds = new Set(prev.map((p: any) => p.id));
-              const newPosts = postsData.posts.filter((p: any) => !existingIds.has(p.id));
+              const newPosts = postsData.posts
+                .filter((p: any) => !existingIds.has(p.id))
+                .map((p: any) => ({
+                  ...p,
+                  // Normalize snake_case created_at to camelCase createdAt
+                  createdAt: p.createdAt || p.created_at || new Date().toISOString(),
+                }));
               return [...newPosts, ...prev];
             });
           }
@@ -549,11 +555,11 @@ export default function ProfilePage() {
                     </div>
                     <div className="group relative">
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {aggregatedStats ? aggregatedStats.totalFollowers.toLocaleString() : creator.followerCount.toLocaleString()}
+                        {aggregatedStats ? aggregatedStats.totalFollowers.toLocaleString() : (creator.dragverseFollowerCount || 0).toLocaleString()}
                       </span>
                       <span className="text-white/80 ml-2">followers</span>
                       {/* Platform breakdown tooltip */}
-                      {aggregatedStats && (aggregatedStats.platforms.bluesky || aggregatedStats.platforms.farcaster || aggregatedStats.platforms.youtube) && (
+                      {aggregatedStats && (
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                           <div className="bg-[#1a0b2e]/95 border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[160px] backdrop-blur-sm">
                             <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Sources</div>
@@ -587,7 +593,7 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {aggregatedStats ? aggregatedStats.totalFollowing.toLocaleString() : creator.followingCount.toLocaleString()}
+                        {aggregatedStats ? aggregatedStats.totalFollowing.toLocaleString() : "0"}
                       </span>
                       <span className="text-white/80 ml-2">following</span>
                     </div>
@@ -619,15 +625,26 @@ export default function ProfilePage() {
       {/* Content area */}
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
         {/* Bio and Social Links */}
-        {(creator.description || creator.instagramHandle || creator.tiktokHandle || creator.blueskyHandle || creator.farcasterHandle || creator.website) && (
+        {(creator.description || creator.instagramHandle || creator.tiktokHandle || creator.blueskyHandle || creator.farcasterHandle || creator.youtubeChannelId || creator.website) && (
           <div className="mb-8">
             {creator.description && (
               <p className="text-gray-200 text-base leading-relaxed mb-4 max-w-3xl">
                 {creator.description}
               </p>
             )}
-            {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle || creator.farcasterHandle) && (
+            {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle || creator.farcasterHandle || creator.youtubeChannelId) && (
               <div className="flex flex-wrap gap-2">
+                {creator.youtubeChannelId && (
+                  <a
+                    href={`https://www.youtube.com/channel/${creator.youtubeChannelId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#FF0000] to-[#CC0000] hover:from-[#EE0000] hover:to-[#BB0000] text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    <FaYoutube className="w-3.5 h-3.5" />
+                    <span>{creator.youtubeChannelName || "YouTube"}</span>
+                  </a>
+                )}
                 {creator.instagramHandle && (
                   <a
                     href={`https://instagram.com/${creator.instagramHandle}`}
@@ -1063,11 +1080,14 @@ export default function ProfilePage() {
                       <div className="flex items-center justify-between text-sm text-gray-400">
                         <span className="flex items-center gap-2">
                           <FiCalendar className="w-4 h-4" />
-                          {new Date(post.createdAt).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                          {(() => {
+                            const d = new Date(post.createdAt || post.created_at);
+                            return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            });
+                          })()}
                         </span>
                         {post.externalUrl && (
                           <a
@@ -1149,10 +1169,22 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Social Links */}
-                {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle) && (
+                {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle || creator.youtubeChannelId) && (
                   <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
                     <h3 className="text-lg font-bold text-[#EB83EA] mb-4 uppercase tracking-wide">Social Links</h3>
                     <div className="space-y-3">
+                      {creator.youtubeChannelId && (
+                        <a
+                          href={`https://www.youtube.com/channel/${creator.youtubeChannelId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 text-gray-300 hover:text-red-400 transition"
+                        >
+                          <FaYoutube className="w-5 h-5 text-red-500" />
+                          <span className="font-semibold">YouTube:</span>
+                          <span>{creator.youtubeChannelName || "Channel"}</span>
+                        </a>
+                      )}
                       {creator.instagramHandle && (
                         <a
                           href={`https://instagram.com/${creator.instagramHandle}`}

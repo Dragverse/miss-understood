@@ -20,7 +20,7 @@ function SnapshotsContent() {
   const [sliderReady, setSliderReady] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load ONLY Dragverse snapshots (server-side API for full URLs)
+  // Load Dragverse + YouTube snapshots
   async function loadSnapshots(isRefresh = false) {
     if (isRefresh) {
       setRefreshing(true);
@@ -29,66 +29,89 @@ function SnapshotsContent() {
     }
 
     try {
-      // Fetch videos from server-side API (uses service role key for full URLs)
-      const response = await fetch("/api/videos/list?limit=100&contentType=short");
-      const data = await response.json();
+      // Fetch Dragverse shorts and YouTube shorts in parallel
+      const [dragverseResponse, youtubeResponse] = await Promise.all([
+        fetch("/api/videos/list?limit=100&contentType=short"),
+        fetch("/api/youtube/feed?shortsOnly=true&limit=30").catch(() => null),
+      ]);
 
-      if (!data.success || !data.videos) {
-        console.warn("[Snapshots] API returned no videos");
-        setSnapshots([]);
-        return;
+      const dragverseData = await dragverseResponse.json();
+
+      // Transform Dragverse videos
+      let dragverseShorts: Video[] = [];
+      if (dragverseData.success && dragverseData.videos) {
+        const allDragverse = dragverseData.videos.map((v: any) => ({
+          id: v.id,
+          title: v.title,
+          description: v.description || "",
+          thumbnail: v.thumbnail || null,
+          duration: v.duration || 0,
+          views: v.views || 0,
+          likes: v.likes || 0,
+          createdAt: new Date(v.created_at),
+          playbackUrl: v.playback_url || "",
+          livepeerAssetId: v.playback_id || v.livepeer_asset_id || "",
+          contentType: v.content_type,
+          creator: v.creator ? {
+            did: v.creator.did,
+            handle: v.creator.handle,
+            displayName: v.creator.display_name,
+            avatar: v.creator.avatar || "/defaultpfp.png",
+            description: "",
+            followerCount: 0,
+            followingCount: 0,
+            createdAt: new Date(),
+            verified: v.creator.verified || false,
+          } : {
+            did: v.creator_did,
+            handle: "creator",
+            displayName: "Creator",
+            avatar: "/defaultpfp.png",
+            description: "",
+            followerCount: 0,
+            followingCount: 0,
+            createdAt: new Date(),
+            verified: false,
+          },
+          category: v.category || "Other",
+          tags: Array.isArray(v.tags) ? v.tags : (v.tags ? v.tags.split(',') : []),
+          source: "ceramic" as const,
+        }));
+        dragverseShorts = allDragverse.filter((v: Video) => v.contentType === "short");
       }
 
-      const supabaseVideos = data.videos;
+      // Transform YouTube shorts
+      let youtubeShorts: Video[] = [];
+      if (youtubeResponse?.ok) {
+        const youtubeData = await youtubeResponse.json();
+        if (youtubeData.success && youtubeData.videos) {
+          youtubeShorts = (youtubeData.videos as any[]).map((v: any) => ({
+            ...v,
+            createdAt: new Date(v.createdAt),
+            creator: {
+              ...v.creator,
+              createdAt: new Date(v.creator?.createdAt || Date.now()),
+            },
+          })) as Video[];
+        }
+      }
 
-      // Manual transformation (matching homepage pattern - NO URL fixing)
-      const allVideos = supabaseVideos.map((v: any) => ({
-        id: v.id,
-        title: v.title,
-        description: v.description || "",
-        thumbnail: v.thumbnail || null,
-        duration: v.duration || 0,
-        views: v.views || 0,
-        likes: v.likes || 0,
-        createdAt: new Date(v.created_at),
-        playbackUrl: v.playback_url || "",
-        livepeerAssetId: v.playback_id || v.livepeer_asset_id || "",
-        contentType: v.content_type,
-        creator: v.creator ? {
-          did: v.creator.did,
-          handle: v.creator.handle,
-          displayName: v.creator.display_name,
-          avatar: v.creator.avatar || "/defaultpfp.png",
-          description: "",
-          followerCount: 0,
-          followingCount: 0,
-          createdAt: new Date(),
-          verified: v.creator.verified || false,
-        } : {
-          did: v.creator_did,
-          handle: "creator",
-          displayName: "Creator",
-          avatar: "/defaultpfp.png",
-          description: "",
-          followerCount: 0,
-          followingCount: 0,
-          createdAt: new Date(),
-          verified: false,
-        },
-        category: v.category || "Other",
-        tags: Array.isArray(v.tags) ? v.tags : (v.tags ? v.tags.split(',') : []),
-      }));
-
-      // Filter for shorts only (matching homepage)
-      const shorts = allVideos.filter((v: Video) => v.contentType === "short");
+      // Merge and deduplicate by ID
+      const seenIds = new Set<string>();
+      const merged: Video[] = [];
+      for (const v of [...dragverseShorts, ...youtubeShorts]) {
+        if (!seenIds.has(v.id)) {
+          seenIds.add(v.id);
+          merged.push(v);
+        }
+      }
 
       // Sort by date (newest first)
-      shorts.sort((a: Video, b: Video) => b.createdAt.getTime() - a.createdAt.getTime());
+      merged.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-      // Simple, efficient logging (no verbose playbackUrl)
-      console.log(`[Snapshots] Loaded ${shorts.length} Dragverse shorts`);
+      console.log(`[Snapshots] Loaded ${dragverseShorts.length} Dragverse + ${youtubeShorts.length} YouTube shorts (${merged.length} total)`);
 
-      setSnapshots(shorts);
+      setSnapshots(merged);
     } catch (error) {
       console.error("[Snapshots] Failed to load:", error);
       // Fallback to local videos

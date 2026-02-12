@@ -259,7 +259,9 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
       const allVideos: Video[] = [];
 
       // Fetch all sources in parallel for speed
-      const [ceramicResult, youtubeData, blueskyData] = await Promise.all([
+      // If current video is YouTube, also fetch that channel's videos for "More from Creator"
+      const channelId = video?.youtubeChannelId || video?.creator?.youtubeChannelId;
+      const [ceramicResult, youtubeData, blueskyData, channelData] = await Promise.all([
         getVideos(10).catch(() => []),
         fetch("/api/youtube/feed?limit=10&rssOnly=true")
           .then(res => res.ok ? res.json() : { videos: [] })
@@ -267,6 +269,11 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         fetch("/api/bluesky/feed?limit=5")
           .then(res => res.ok ? res.json() : { posts: [] })
           .catch(() => ({ posts: [] })),
+        channelId
+          ? fetch(`/api/youtube/feed?channelId=${encodeURIComponent(channelId)}&limit=10`)
+              .then(res => res.ok ? res.json() : { videos: [] })
+              .catch(() => ({ videos: [] }))
+          : Promise.resolve({ videos: [] }),
       ]);
 
       // Transform Supabase videos
@@ -298,9 +305,15 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         allVideos.push(...transformed as Video[]);
       }
 
-      // Add YouTube and Bluesky
+      // Add YouTube, Bluesky, and channel-specific videos
       if (youtubeData.videos) allVideos.push(...youtubeData.videos);
       if (blueskyData.posts) allVideos.push(...blueskyData.posts);
+      if (channelData.videos) {
+        // Add channel videos, deduplicating against already-loaded YouTube videos
+        const existingIds = new Set(allVideos.map(v => v.id));
+        const newChannelVideos = channelData.videos.filter((v: Video) => !existingIds.has(v.id));
+        allVideos.push(...newChannelVideos);
+      }
       allVideos.push(...getLocalVideos());
 
       // Filter videos from the same creator
