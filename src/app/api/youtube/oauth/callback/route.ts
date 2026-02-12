@@ -15,23 +15,28 @@ import {
  * - error: Error from OAuth provider (if authorization denied)
  */
 export async function GET(request: NextRequest) {
+  // Use production URL or fallback to localhost for development
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+                  (process.env.NODE_ENV === 'production'
+                    ? 'https://www.dragverse.app'
+                    : 'http://localhost:3000');
+
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
     const error = searchParams.get("error");
-    const state = searchParams.get("state");
 
     // Handle OAuth errors (user denied permission)
     if (error) {
       console.log(`[YouTube OAuth] User denied permission: ${error}`);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/settings?youtube_error=denied`
+        `${baseUrl}/settings?youtube_error=denied`
       );
     }
 
     if (!code) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/settings?youtube_error=no_code`
+        `${baseUrl}/settings?youtube_error=no_code`
       );
     }
 
@@ -39,7 +44,7 @@ export async function GET(request: NextRequest) {
     const auth = await verifyAuth(request);
     if (!auth.authenticated || !auth.userId) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/login?redirect=/settings`
+        `${baseUrl}/login?redirect=/settings`
       );
     }
 
@@ -48,7 +53,7 @@ export async function GET(request: NextRequest) {
     if (!tokenResult.success || !tokenResult.tokens) {
       console.error("[YouTube OAuth] Token exchange failed:", tokenResult.error);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/settings?youtube_error=token_exchange_failed`
+        `${baseUrl}/settings?youtube_error=token_exchange_failed`
       );
     }
 
@@ -57,7 +62,7 @@ export async function GET(request: NextRequest) {
     if (!syncResult.success) {
       console.error("[YouTube OAuth] Channel sync failed:", syncResult.error);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/settings?youtube_error=${encodeURIComponent(syncResult.error || "sync_failed")}`
+        `${baseUrl}/settings?youtube_error=${encodeURIComponent(syncResult.error || "sync_failed")}`
       );
     }
 
@@ -66,12 +71,12 @@ export async function GET(request: NextRequest) {
       `[YouTube OAuth] ✅ Successfully connected channel: ${syncResult.channelInfo?.channelName}`
     );
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/settings?youtube_success=true&channel=${encodeURIComponent(syncResult.channelInfo?.channelName || "")}&subscribers=${syncResult.channelInfo?.subscriberCount || 0}`
+      `${baseUrl}/settings?youtube_success=true&channel=${encodeURIComponent(syncResult.channelInfo?.channelName || "")}&subscribers=${syncResult.channelInfo?.subscriberCount || 0}`
     );
   } catch (error) {
     console.error("[YouTube OAuth] Callback error:", error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/settings?youtube_error=unknown`
+      `${baseUrl}/settings?youtube_error=unknown`
     );
   }
 }
