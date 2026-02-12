@@ -69,6 +69,9 @@ export default function SettingsPage() {
   const [youtubeSubscriberCount, setYoutubeSubscriberCount] = useState<number>(0);
   const [youtubeSyncedAt, setYoutubeSyncedAt] = useState<string | null>(null);
   const [isConnectingYouTube, setIsConnectingYouTube] = useState(false);
+  const [showYouTubeManualEntry, setShowYouTubeManualEntry] = useState(false);
+  const [youtubeManualInput, setYoutubeManualInput] = useState("");
+  const [youtubeManualError, setYoutubeManualError] = useState<string | null>(null);
 
   // Delete account state
   const [isDeleting, setIsDeleting] = useState(false);
@@ -365,10 +368,9 @@ export default function SettingsPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const youtubeSuccess = urlParams.get('youtube_success');
     const youtubeError = urlParams.get('youtube_error');
+    const youtubeManual = urlParams.get('youtube_manual');
     const channelName = urlParams.get('channel');
     const subscribers = urlParams.get('subscribers');
-
-    console.log('[YouTube OAuth] Callback params:', { youtubeSuccess, youtubeError, channelName, subscribers });
 
     if (youtubeSuccess === 'true' && channelName) {
       toast.success(
@@ -379,7 +381,16 @@ export default function SettingsPage() {
       setYoutubeChannelName(decodeURIComponent(channelName));
       setYoutubeSubscriberCount(parseInt(subscribers || '0'));
       setYoutubeSyncedAt(new Date().toISOString());
-      // Clean up URL
+      window.history.replaceState({}, '', '/settings?tab=accounts');
+    } else if (youtubeManual === 'true') {
+      // Brand/creator channel detected - show manual entry form
+      toast(
+        "We detected a brand/creator channel. Please enter your YouTube channel handle below.",
+        { duration: 10000, icon: "📺" }
+      );
+      setIsConnectingYouTube(false);
+      setShowYouTubeManualEntry(true);
+      setActiveSection("accounts");
       window.history.replaceState({}, '', '/settings?tab=accounts');
     } else if (youtubeError) {
       const errorMessages: Record<string, string> = {
@@ -393,17 +404,10 @@ export default function SettingsPage() {
       };
 
       const errorMessage = errorMessages[youtubeError] || decodeURIComponent(youtubeError);
-
-      // Log detailed error for debugging
       console.error('[YouTube Settings] OAuth Error:', youtubeError);
-      console.error('[YouTube Settings] Decoded Error:', decodeURIComponent(youtubeError));
 
-      toast.error(
-        errorMessage,
-        { duration: 15000 }
-      );
+      toast.error(errorMessage, { duration: 15000 });
       setIsConnectingYouTube(false);
-      // Clean up URL
       window.history.replaceState({}, '', '/settings?tab=accounts');
     }
   }, []);
@@ -732,6 +736,53 @@ export default function SettingsPage() {
     } catch (error) {
       console.error("YouTube disconnect error:", error);
       toast.error("Failed to disconnect YouTube channel");
+    }
+  };
+
+  const handleManualYouTubeEntry = async () => {
+    if (!youtubeManualInput.trim()) {
+      setYoutubeManualError("Please enter your YouTube channel handle or URL");
+      return;
+    }
+
+    setIsConnectingYouTube(true);
+    setYoutubeManualError(null);
+
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Authentication required");
+
+      const response = await fetch("/api/youtube/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ channelInput: youtubeManualInput.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to connect channel");
+      }
+
+      toast.success(
+        `Connected ${data.channelInfo.channelName}! Imported ${data.channelInfo.subscriberCount.toLocaleString()} subscribers.`,
+        { duration: 10000 }
+      );
+      setYoutubeChannelName(data.channelInfo.channelName);
+      setYoutubeSubscriberCount(data.channelInfo.subscriberCount);
+      setYoutubeSyncedAt(new Date().toISOString());
+      setShowYouTubeManualEntry(false);
+      setYoutubeManualInput("");
+    } catch (error) {
+      console.error("YouTube manual entry error:", error);
+      setYoutubeManualError(
+        error instanceof Error ? error.message : "Failed to connect channel"
+      );
+    } finally {
+      setIsConnectingYouTube(false);
     }
   };
 
@@ -1681,7 +1732,7 @@ export default function SettingsPage() {
                               Disconnect
                             </button>
                           </>
-                        ) : (
+                        ) : !showYouTubeManualEntry ? (
                           <button
                             onClick={handleConnectYouTube}
                             disabled={isConnectingYouTube}
@@ -1689,9 +1740,43 @@ export default function SettingsPage() {
                           >
                             {isConnectingYouTube ? "Connecting..." : "Connect Channel"}
                           </button>
-                        )}
+                        ) : null}
                       </div>
                     </div>
+
+                    {/* Manual Channel Entry (shown for brand/creator channels) */}
+                    {showYouTubeManualEntry && !youtubeChannelName && (
+                      <div className="pt-3 border-t border-[#2f2942]">
+                        <p className="text-sm text-gray-300 mb-3">
+                          Google connected! Now enter your YouTube channel handle or URL to complete setup.
+                        </p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={youtubeManualInput}
+                            onChange={(e) => {
+                              setYoutubeManualInput(e.target.value);
+                              setYoutubeManualError(null);
+                            }}
+                            placeholder="@YourChannel or channel URL"
+                            className="flex-1 px-3 py-2 bg-[#1a0b2e] border border-[#2f2942] rounded-lg text-sm focus:outline-none focus:border-[#EB83EA] placeholder-gray-600"
+                          />
+                          <button
+                            onClick={handleManualYouTubeEntry}
+                            disabled={isConnectingYouTube || !youtubeManualInput.trim()}
+                            className="px-4 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 hover:border-red-500 rounded-lg transition font-semibold text-sm disabled:opacity-50"
+                          >
+                            {isConnectingYouTube ? "..." : "Connect"}
+                          </button>
+                        </div>
+                        {youtubeManualError && (
+                          <p className="text-xs text-red-400 mt-2">{youtubeManualError}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">
+                          Examples: @TrixieMattel, youtube.com/@YourChannel, or UCxxxxxxxx
+                        </p>
+                      </div>
+                    )}
 
                     {/* Import Subscribers Info */}
                     {youtubeChannelName && (

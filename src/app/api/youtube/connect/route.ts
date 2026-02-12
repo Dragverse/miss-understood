@@ -4,6 +4,7 @@ import {
   generateYouTubeOAuthUrl,
   resyncYouTubeChannel,
   disconnectYouTubeChannel,
+  syncYouTubeChannelManual,
 } from "@/lib/youtube/oauth-sync";
 import crypto from "crypto";
 
@@ -41,7 +42,9 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/youtube/connect
- * Re-sync YouTube channel data (refresh subscriber count)
+ * Two modes:
+ * 1. Manual channel entry: { channelInput: "@handle" or "UC..." or URL }
+ * 2. Re-sync: { resync: true }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +53,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const body = await request.json().catch(() => ({}));
+
+    // Mode 1: Manual channel entry (for brand/creator channels)
+    if (body.channelInput) {
+      const result = await syncYouTubeChannelManual(auth.userId, body.channelInput);
+
+      if (!result.success) {
+        return NextResponse.json(
+          { error: result.error || "Failed to connect channel" },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        channelInfo: result.channelInfo,
+      });
+    }
+
+    // Mode 2: Re-sync existing channel
     const result = await resyncYouTubeChannel(auth.userId);
 
     if (!result.success) {
@@ -66,7 +89,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[YouTube Connect API] Error:", error);
     return NextResponse.json(
-      { error: "Failed to re-sync YouTube channel" },
+      { error: "Failed to process YouTube request" },
       { status: 500 }
     );
   }

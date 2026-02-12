@@ -70,14 +70,21 @@ export async function GET(request: NextRequest) {
 
     // Sync YouTube channel with creator profile
     const syncResult = await syncYouTubeChannelViaOAuth(userDID, tokenResult.tokens);
+
+    if (syncResult.needsManualEntry) {
+      // Brand/creator channel - OAuth tokens saved, need manual channel entry
+      console.log("[YouTube OAuth] Brand channel detected - redirecting for manual entry");
+      return NextResponse.redirect(
+        `${baseUrl}/settings?youtube_manual=true`
+      );
+    }
+
     if (!syncResult.success) {
       const errorDetail = syncResult.error || "sync_failed";
       console.error("[YouTube OAuth] Channel sync failed:", errorDetail);
-      console.error("[YouTube OAuth] Full sync result:", JSON.stringify(syncResult));
 
-      // Include detailed error in URL for debugging
       return NextResponse.redirect(
-        `${baseUrl}/settings?youtube_error=${encodeURIComponent(errorDetail)}&debug=true`
+        `${baseUrl}/settings?youtube_error=${encodeURIComponent(errorDetail)}`
       );
     }
 

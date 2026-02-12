@@ -31,6 +31,7 @@ interface SyncResult {
   success: boolean;
   error?: string;
   channelInfo?: YouTubeChannelInfo;
+  needsManualEntry?: boolean; // true when brand channel detected, user must enter handle/URL
 }
 
 /**
@@ -141,33 +142,20 @@ export async function refreshYouTubeAccessToken(
 /**
  * Fetch authenticated user's YouTube channel info
  * Requires valid OAuth access token
+ *
+ * Returns { channelInfo, needsManualEntry }
+ * - channelInfo: The channel data if auto-detected
+ * - needsManualEntry: true if mine=true returned empty (brand channel case)
  */
 export async function fetchAuthenticatedChannelInfo(
   accessToken: string
-): Promise<YouTubeChannelInfo | null> {
+): Promise<{ channelInfo: YouTubeChannelInfo | null; needsManualEntry: boolean }> {
   try {
-    // First, try to get the authenticated user's info to find their channel ID
-    console.log("[YouTube OAuth] Step 1: Getting user info from People API");
-    const peopleUrl = "https://www.googleapis.com/oauth2/v2/userinfo";
-
-    const peopleResponse = await fetch(peopleUrl, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    });
-
-    if (peopleResponse.ok) {
-      const userData = await peopleResponse.json();
-      console.log("[YouTube OAuth] User data from People API:", userData);
-    }
-
-    // Strategy: Try mine=true first (works for personal channels AND brand channels
+    // Try mine=true first (works for personal channels AND brand channels
     // if the user selected the brand channel during Google's OAuth consent screen).
-    // NOTE: mine=true and managedByMe=true are MUTUALLY EXCLUSIVE - do NOT combine them.
     const mineUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true`;
 
-    console.log("[YouTube OAuth] Step 2: Fetching channel info with mine=true");
+    console.log("[YouTube OAuth] Fetching channel info with mine=true");
 
     const response = await fetch(mineUrl, {
       headers: {
@@ -180,81 +168,155 @@ export async function fetchAuthenticatedChannelInfo(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[YouTube OAuth] YouTube API error response:", errorText);
-
-      try {
-        const error = JSON.parse(errorText);
-        console.error("[YouTube OAuth] Parsed error:", error);
-        if (error.error?.errors) {
-          console.error("[YouTube OAuth] Error details:", error.error.errors);
-        }
-        throw new Error(error.error?.message || `YouTube API error: ${response.status}`);
-      } catch (e) {
-        throw new Error(`YouTube API error: ${response.status} - ${errorText}`);
-      }
+      console.error("[YouTube OAuth] YouTube API error:", errorText);
+      throw new Error(`YouTube API error: ${response.status}`);
     }
 
     const data = await response.json();
     console.log("[YouTube OAuth] mine=true returned items:", data.items?.length || 0);
 
-    // If mine=true returned nothing, try managedByMe=true as fallback (for partner/CMS accounts)
-    if (!data.items || data.items.length === 0) {
-      console.log("[YouTube OAuth] Step 2b: mine=true returned empty, trying managedByMe=true fallback");
+    if (data.items && data.items.length > 0) {
+      const channel = data.items[0];
+      console.log("[YouTube OAuth] Auto-detected channel:", channel.snippet?.title);
 
-      const managedUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&managedByMe=true`;
-      const managedResponse = await fetch(managedUrl, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
+      return {
+        channelInfo: {
+          channelId: channel.id,
+          channelName: channel.snippet.title,
+          subscriberCount: parseInt(channel.statistics.subscriberCount || "0"),
+          avatarUrl: channel.snippet.thumbnails?.medium?.url,
+          customUrl: channel.snippet.customUrl,
         },
-      });
+        needsManualEntry: false,
+      };
+    }
 
-      console.log("[YouTube OAuth] managedByMe=true response status:", managedResponse.status);
+    // mine=true returned empty - this is the brand/creator channel case
+    // The OAuth token is valid but associated with the Google Account, not the brand channel
+    console.log("[YouTube OAuth] mine=true returned empty - brand/creator channel detected.");
+    console.log("[YouTube OAuth] Will redirect user to enter their channel handle/URL manually.");
+    return { channelInfo: null, needsManualEntry: true };
+  } catch (error) {
+    console.error("[YouTube OAuth] Failed to fetch channel info:", error);
+    return { channelInfo: null, needsManualEntry: false };
+  }
+}
 
-      if (managedResponse.ok) {
-        const managedData = await managedResponse.json();
-        console.log("[YouTube OAuth] managedByMe=true returned items:", managedData.items?.length || 0);
+/**
+ * Look up a YouTube channel by handle (@username) or channel ID
+ * Uses the YouTube Data API with API key (no OAuth needed for public data)
+ * This is the fallback for brand/creator channels where mine=true doesn't work
+ */
+export async function fetchChannelByHandleOrId(
+  input: string
+): Promise<YouTubeChannelInfo | null> {
+  try {
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.error("[YouTube OAuth] YOUTUBE_API_KEY not configured for channel lookup");
+      return null;
+    }
 
-        if (managedData.items && managedData.items.length > 0) {
-          data.items = managedData.items;
+    // Parse the input - could be a handle, channel ID, or full URL
+    let channelId: string | null = null;
+    let handle: string | null = null;
+
+    const trimmed = input.trim();
+
+    if (trimmed.startsWith("UC") && trimmed.length >= 20) {
+      // Direct channel ID (e.g., UCxxxxxxxx)
+      channelId = trimmed;
+    } else if (trimmed.startsWith("@")) {
+      // Handle format (e.g., @TrixieMattel)
+      handle = trimmed;
+    } else if (trimmed.includes("youtube.com")) {
+      // URL format - extract handle or channel ID
+      const channelIdMatch = trimmed.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]+)/);
+      const handleMatch = trimmed.match(/youtube\.com\/@([a-zA-Z0-9_.-]+)/);
+      const customUrlMatch = trimmed.match(/youtube\.com\/c\/([a-zA-Z0-9_.-]+)/);
+
+      if (channelIdMatch) {
+        channelId = channelIdMatch[1];
+      } else if (handleMatch) {
+        handle = `@${handleMatch[1]}`;
+      } else if (customUrlMatch) {
+        handle = `@${customUrlMatch[1]}`;
+      }
+    } else {
+      // Assume it's a handle without @ prefix
+      handle = `@${trimmed}`;
+    }
+
+    console.log("[YouTube OAuth] Looking up channel - ID:", channelId, "Handle:", handle);
+
+    const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
+
+    // Try by channel ID first (most reliable)
+    if (channelId) {
+      const url = `${YOUTUBE_API_BASE}/channels?part=snippet,statistics&id=${channelId}&key=${apiKey}`;
+      const response = await fetch(url);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.items && data.items.length > 0) {
+          const channel = data.items[0];
+          console.log("[YouTube OAuth] Found channel by ID:", channel.snippet.title);
+          return {
+            channelId: channel.id,
+            channelName: channel.snippet.title,
+            subscriberCount: parseInt(channel.statistics.subscriberCount || "0"),
+            avatarUrl: channel.snippet.thumbnails?.medium?.url,
+            customUrl: channel.snippet.customUrl,
+          };
         }
-      } else {
-        console.log("[YouTube OAuth] managedByMe=true also failed (expected for non-partner accounts)");
       }
     }
 
-    if (data.items && data.items.length > 0) {
-      // Found channel(s) - use the first one
-      const channel = data.items[0];
-      console.log("[YouTube OAuth] ✅ Found channel:", channel.snippet?.title);
-      console.log("[YouTube OAuth] Channel ID:", channel.id);
-      console.log("[YouTube OAuth] Custom URL:", channel.snippet?.customUrl || "none");
+    // Try by handle (forHandle parameter)
+    if (handle) {
+      const url = `${YOUTUBE_API_BASE}/channels?part=snippet,statistics&forHandle=${encodeURIComponent(handle)}&key=${apiKey}`;
+      const response = await fetch(url);
 
-      const channelInfo = {
-        channelId: channel.id,
-        channelName: channel.snippet.title,
-        subscriberCount: parseInt(channel.statistics.subscriberCount || "0"),
-        avatarUrl: channel.snippet.thumbnails?.medium?.url,
-        customUrl: channel.snippet.customUrl,
-      };
+      if (response.ok) {
+        const data = await response.json();
+        if (data.items && data.items.length > 0) {
+          const channel = data.items[0];
+          console.log("[YouTube OAuth] Found channel by handle:", channel.snippet.title);
+          return {
+            channelId: channel.id,
+            channelName: channel.snippet.title,
+            subscriberCount: parseInt(channel.statistics.subscriberCount || "0"),
+            avatarUrl: channel.snippet.thumbnails?.medium?.url,
+            customUrl: channel.snippet.customUrl,
+          };
+        }
+      }
 
-      console.log("[YouTube OAuth] ✅ Successfully fetched channel:", channelInfo.channelName,
-        "with", channelInfo.subscriberCount.toLocaleString(), "subscribers");
+      // Also try without the @ prefix for forHandle
+      const handleWithout = handle.replace(/^@/, "");
+      const url2 = `${YOUTUBE_API_BASE}/channels?part=snippet,statistics&forHandle=${encodeURIComponent(handleWithout)}&key=${apiKey}`;
+      const response2 = await fetch(url2);
 
-      return channelInfo;
+      if (response2.ok) {
+        const data2 = await response2.json();
+        if (data2.items && data2.items.length > 0) {
+          const channel = data2.items[0];
+          console.log("[YouTube OAuth] Found channel by handle (no @):", channel.snippet.title);
+          return {
+            channelId: channel.id,
+            channelName: channel.snippet.title,
+            subscriberCount: parseInt(channel.statistics.subscriberCount || "0"),
+            avatarUrl: channel.snippet.thumbnails?.medium?.url,
+            customUrl: channel.snippet.customUrl,
+          };
+        }
+      }
     }
 
-    // No channel found from either approach
-    console.error("[YouTube OAuth] No channel found from mine=true or managedByMe=true.");
-    console.error("[YouTube OAuth] The OAuth token may not be associated with a YouTube channel.");
-    console.error("[YouTube OAuth] For brand channels: user must select the brand account (not personal Google account) during the OAuth consent screen.");
-    throw new Error(
-      "No YouTube channel found. If you have a brand channel, try disconnecting and reconnecting - " +
-      "make sure to select your YouTube channel (not your personal Google account) during the Google sign-in step."
-    );
+    console.error("[YouTube OAuth] Channel not found for input:", input);
+    return null;
   } catch (error) {
-    console.error("[YouTube OAuth] Failed to fetch channel info:", error);
-    console.error("[YouTube OAuth] Error details:", error instanceof Error ? error.message : String(error));
+    console.error("[YouTube OAuth] Error looking up channel:", error);
     return null;
   }
 }
@@ -320,75 +382,111 @@ function decryptToken(encryptedToken: string): string {
 }
 
 /**
+ * Save OAuth tokens and channel info to the database
+ * Shared helper used by both auto-detect and manual entry flows
+ */
+async function saveChannelToDatabase(
+  userDID: string,
+  channelInfo: YouTubeChannelInfo,
+  tokens: YouTubeOAuthTokens
+): Promise<SyncResult> {
+  // Get creator ID
+  const { data: creator } = await supabase
+    .from("creators")
+    .select("id")
+    .eq("did", userDID)
+    .single();
+
+  if (!creator) {
+    return { success: false, error: "Creator profile not found" };
+  }
+
+  // Encrypt tokens before storing
+  const encryptedAccessToken = encryptToken(tokens.accessToken);
+  const encryptedRefreshToken = encryptToken(tokens.refreshToken);
+
+  // Update creator with YouTube channel info and OAuth tokens
+  const { error: updateError } = await supabase
+    .from("creators")
+    .update({
+      youtube_channel_id: channelInfo.channelId,
+      youtube_channel_name: channelInfo.channelName,
+      youtube_subscriber_count: channelInfo.subscriberCount,
+      youtube_access_token: encryptedAccessToken,
+      youtube_refresh_token: encryptedRefreshToken,
+      youtube_token_expires_at: tokens.expiresAt.toISOString(),
+      youtube_synced_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("did", userDID);
+
+  if (updateError) {
+    console.error("[YouTube OAuth] Failed to update creator:", updateError);
+    return { success: false, error: "Failed to save channel information" };
+  }
+
+  // Create placeholder followers for subscriber count
+  await createYouTubePlaceholderFollowers(creator.id, channelInfo.subscriberCount);
+
+  console.log(
+    `[YouTube OAuth] ✅ Synced channel ${channelInfo.channelName} (${channelInfo.subscriberCount.toLocaleString()} subscribers)`
+  );
+
+  return { success: true, channelInfo };
+}
+
+/**
  * Sync YouTube channel to creator profile via OAuth
- * Verifies channel ownership and imports subscriber count
+ * Tries auto-detection first; if brand channel, signals manual entry needed
  */
 export async function syncYouTubeChannelViaOAuth(
   userDID: string,
   tokens: YouTubeOAuthTokens
 ): Promise<SyncResult> {
   try {
-    // Fetch authenticated channel info
-    const channelInfo = await fetchAuthenticatedChannelInfo(tokens.accessToken);
-    if (!channelInfo) {
+    const result = await fetchAuthenticatedChannelInfo(tokens.accessToken);
+
+    if (result.needsManualEntry) {
+      // Brand/creator channel - save tokens but signal manual entry needed
+      // Store tokens temporarily so user doesn't need to re-auth
+      const { data: creator } = await supabase
+        .from("creators")
+        .select("id")
+        .eq("did", userDID)
+        .single();
+
+      if (creator) {
+        const encryptedAccessToken = encryptToken(tokens.accessToken);
+        const encryptedRefreshToken = encryptToken(tokens.refreshToken);
+
+        await supabase
+          .from("creators")
+          .update({
+            youtube_access_token: encryptedAccessToken,
+            youtube_refresh_token: encryptedRefreshToken,
+            youtube_token_expires_at: tokens.expiresAt.toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("did", userDID);
+
+        console.log("[YouTube OAuth] Stored OAuth tokens, awaiting manual channel entry");
+      }
+
       return {
         success: false,
-        error: "Failed to fetch YouTube channel. Ensure you have a YouTube channel.",
+        needsManualEntry: true,
+        error: "Brand/creator channel detected. Please enter your YouTube channel handle or URL.",
       };
     }
 
-    // Get creator ID
-    const { data: creator } = await supabase
-      .from("creators")
-      .select("id")
-      .eq("did", userDID)
-      .single();
-
-    if (!creator) {
+    if (!result.channelInfo) {
       return {
         success: false,
-        error: "Creator profile not found",
+        error: "Failed to fetch YouTube channel. Please try again.",
       };
     }
 
-    // Encrypt tokens before storing
-    const encryptedAccessToken = encryptToken(tokens.accessToken);
-    const encryptedRefreshToken = encryptToken(tokens.refreshToken);
-
-    // Update creator with YouTube channel info and OAuth tokens
-    const { error: updateError } = await supabase
-      .from("creators")
-      .update({
-        youtube_channel_id: channelInfo.channelId,
-        youtube_channel_name: channelInfo.channelName,
-        youtube_subscriber_count: channelInfo.subscriberCount,
-        youtube_access_token: encryptedAccessToken,
-        youtube_refresh_token: encryptedRefreshToken,
-        youtube_token_expires_at: tokens.expiresAt.toISOString(),
-        youtube_synced_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("did", userDID);
-
-    if (updateError) {
-      console.error("[YouTube OAuth] Failed to update creator:", updateError);
-      return {
-        success: false,
-        error: "Failed to save channel information",
-      };
-    }
-
-    // Create placeholder followers for subscriber count
-    await createYouTubePlaceholderFollowers(creator.id, channelInfo.subscriberCount);
-
-    console.log(
-      `[YouTube OAuth] ✅ Synced channel ${channelInfo.channelName} (${channelInfo.subscriberCount.toLocaleString()} subscribers)`
-    );
-
-    return {
-      success: true,
-      channelInfo,
-    };
+    return await saveChannelToDatabase(userDID, result.channelInfo, tokens);
   } catch (error) {
     console.error("[YouTube OAuth] Error syncing channel:", error);
     return {
@@ -399,15 +497,61 @@ export async function syncYouTubeChannelViaOAuth(
 }
 
 /**
+ * Complete YouTube channel sync using manual handle/URL entry
+ * Called after OAuth tokens are already stored but mine=true failed (brand channel)
+ */
+export async function syncYouTubeChannelManual(
+  userDID: string,
+  channelInput: string
+): Promise<SyncResult> {
+  try {
+    // Look up channel by handle or ID
+    const channelInfo = await fetchChannelByHandleOrId(channelInput);
+    if (!channelInfo) {
+      return {
+        success: false,
+        error: "Channel not found. Please check your YouTube handle or URL and try again.",
+      };
+    }
+
+    // Get stored OAuth tokens
+    const { data: creator } = await supabase
+      .from("creators")
+      .select("id, youtube_access_token, youtube_refresh_token, youtube_token_expires_at")
+      .eq("did", userDID)
+      .single();
+
+    if (!creator) {
+      return { success: false, error: "Creator profile not found" };
+    }
+
+    // Use stored tokens (already encrypted in DB)
+    const tokens: YouTubeOAuthTokens = {
+      accessToken: creator.youtube_access_token ? decryptToken(creator.youtube_access_token) : "",
+      refreshToken: creator.youtube_refresh_token ? decryptToken(creator.youtube_refresh_token) : "",
+      expiresAt: creator.youtube_token_expires_at ? new Date(creator.youtube_token_expires_at) : new Date(),
+    };
+
+    return await saveChannelToDatabase(userDID, channelInfo, tokens);
+  } catch (error) {
+    console.error("[YouTube OAuth] Error in manual sync:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
  * Re-sync YouTube channel data (refresh subscriber count)
- * Uses stored refresh token to get new access token
+ * Uses stored refresh token and channel ID for reliable re-sync
  */
 export async function resyncYouTubeChannel(userDID: string): Promise<SyncResult> {
   try {
-    // Get creator with stored OAuth tokens
+    // Get creator with stored OAuth tokens and channel ID
     const { data: creator } = await supabase
       .from("creators")
-      .select("id, youtube_refresh_token, youtube_token_expires_at")
+      .select("id, youtube_channel_id, youtube_refresh_token, youtube_token_expires_at")
       .eq("did", userDID)
       .single();
 
@@ -430,8 +574,20 @@ export async function resyncYouTubeChannel(userDID: string): Promise<SyncResult>
       };
     }
 
-    // Fetch updated channel info
-    const channelInfo = await fetchAuthenticatedChannelInfo(refreshResult.accessToken);
+    // For re-sync, use stored channel ID for reliable lookup (works for brand channels)
+    let channelInfo: YouTubeChannelInfo | null = null;
+
+    if (creator.youtube_channel_id) {
+      // Use stored channel ID - most reliable for brand channels
+      channelInfo = await fetchChannelByHandleOrId(creator.youtube_channel_id);
+    }
+
+    if (!channelInfo) {
+      // Fallback to mine=true
+      const result = await fetchAuthenticatedChannelInfo(refreshResult.accessToken);
+      channelInfo = result.channelInfo;
+    }
+
     if (!channelInfo) {
       return {
         success: false,
