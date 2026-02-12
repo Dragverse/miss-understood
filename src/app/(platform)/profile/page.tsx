@@ -2,11 +2,9 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import Image from "next/image";
-import { FiUser, FiEdit2, FiLogIn, FiHeart, FiVideo, FiUsers, FiEye, FiStar, FiCalendar, FiGlobe, FiShare2, FiCheck, FiMusic, FiGrid, FiFilm, FiImage, FiMessageSquare, FiInfo, FiZap, FiHeadphones } from "react-icons/fi";
+import { FiUser, FiLogIn, FiHeart, FiVideo, FiEye, FiStar, FiCalendar, FiGlobe, FiShare2, FiCheck, FiMusic, FiGrid, FiImage, FiMessageSquare, FiInfo, FiZap, FiHeadphones, FiPlay } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { VideoCard } from "@/components/video/video-card";
 import { BytesSlider } from "@/components/profile/bytes-slider";
 import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
 import { LivestreamEmbed } from "@/components/profile/livestream-embed";
@@ -15,12 +13,13 @@ import { transformSupabaseCreator } from "@/lib/supabase/transformers";
 import { getVideosByCreator } from "@/lib/supabase/videos";
 import { Creator, Video } from "@/types";
 import { getLocalVideos } from "@/lib/utils/local-storage";
-import { StatsCard, LoadingShimmer } from "@/components/shared";
+import { LoadingShimmer } from "@/components/shared";
 import { usePrivy } from "@privy-io/react-auth";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
 import { FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
 import { SiBluesky } from "react-icons/si";
+import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -29,11 +28,10 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "audio" | "photos" | "posts" | "about">("videos");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isLoadingContent, setIsLoadingContent] = useState(true);
   const [userVideos, setUserVideos] = useState<Video[]>([]);
   const [userPhotos, setUserPhotos] = useState<any[]>([]);
   const [userPosts, setUserPosts] = useState<any[]>([]);
-  const [blueskyProfile, setBlueskyProfile] = useState<any>(null);
   const [stats, setStats] = useState({
     totalViews: 0,
     totalLikes: 0,
@@ -178,7 +176,7 @@ export default function ProfilePage() {
     async function loadVideos() {
       if (!user?.id) return;
 
-      setLoading(true);
+      setIsLoadingContent(true);
       try {
         // CRITICAL FIX: Get the verified user ID from the backend
         const authToken = await getAccessToken();
@@ -200,17 +198,40 @@ export default function ProfilePage() {
           console.error("Failed to get verified user ID:", error);
         }
 
-        // Fetch user's videos from Supabase using the verified DID
-        const supabaseVideos = await getVideosByCreator(verifiedUserId);
-        console.log(`📹 Loaded ${supabaseVideos.length} videos from Supabase for profile`);
+        // Get creator's YouTube channel ID if connected
+        let youtubeChannelId: string | undefined;
+        try {
+          const creatorProfile = await getCreatorByDID(verifiedUserId);
+          if (creatorProfile?.youtube_channel_id) {
+            youtubeChannelId = creatorProfile.youtube_channel_id;
+          }
+        } catch (e) {
+          // Non-critical, continue without YouTube
+        }
+
+        // Fetch Dragverse videos, Dragverse posts, and YouTube channel videos in parallel
+        const [supabaseVideos, postsResponse, youtubeVideos] = await Promise.all([
+          getVideosByCreator(verifiedUserId),
+          fetch(`/api/posts/feed?creatorDid=${encodeURIComponent(verifiedUserId)}&limit=50`),
+          youtubeChannelId
+            ? fetch(`/api/youtube/feed?channelId=${encodeURIComponent(youtubeChannelId)}&limit=15`)
+                .then(res => res.ok ? res.json() : { videos: [] })
+                .then(data => ((data.videos || []) as any[]).map((v: any) => ({
+                  ...v,
+                  createdAt: new Date(v.createdAt),
+                  creator: {
+                    ...v.creator,
+                    createdAt: new Date(v.creator?.createdAt || Date.now()),
+                  },
+                })) as Video[])
+                .catch(() => [] as Video[])
+            : Promise.resolve([] as Video[]),
+        ]);
+        console.log(`[Profile] Loaded ${supabaseVideos.length} Dragverse videos, ${youtubeVideos.length} YouTube videos`);
 
         // Transform Supabase videos to Video type
-        // Use the actual creator data from the join, not the current user's profile
         const transformedVideos: Video[] = supabaseVideos.map((sv) => {
-          // Get creator data from the joined result
           const videoCreator = sv.creator;
-
-          // Fallback avatar if needed
           const avatarFallback = "/defaultpfp.png";
 
           return {
@@ -222,8 +243,6 @@ export default function ProfilePage() {
             duration: sv.duration || 0,
             views: sv.views || 0,
             likes: sv.likes || 0,
-            comments: 0, // Not in SupabaseVideo type
-            shares: 0, // Not in SupabaseVideo type
             createdAt: new Date(sv.created_at),
             creator: {
               did: sv.creator_did,
@@ -244,17 +263,33 @@ export default function ProfilePage() {
           };
         });
 
-        setUserVideos(transformedVideos);
+        // Merge Dragverse videos with YouTube channel videos
+        const allVideos = [...transformedVideos, ...youtubeVideos];
+        allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setUserVideos(allVideos);
 
-        // Calculate stats from loaded videos
-        const totalViews = transformedVideos.reduce((sum, v) => sum + (v.views || 0), 0);
-        const totalLikes = transformedVideos.reduce((sum, v) => sum + (v.likes || 0), 0);
+        // Parse Dragverse posts
+        if (postsResponse.ok) {
+          const postsData = await postsResponse.json();
+          if (postsData.success && postsData.posts) {
+            setUserPosts(prev => {
+              // Merge with any existing Bluesky posts, avoiding duplicates
+              const existingIds = new Set(prev.map((p: any) => p.id));
+              const newPosts = postsData.posts.filter((p: any) => !existingIds.has(p.id));
+              return [...newPosts, ...prev];
+            });
+          }
+        }
+
+        // Calculate stats from all videos
+        const totalViews = allVideos.reduce((sum, v) => sum + (v.views || 0), 0);
+        const totalLikes = allVideos.reduce((sum, v) => sum + (v.likes || 0), 0);
 
         setStats((prev) => ({
           ...prev,
           totalViews,
           totalLikes,
-          videoCount: transformedVideos.length,
+          videoCount: allVideos.length,
         }));
       } catch (error) {
         console.error("Failed to load videos from Supabase:", error);
@@ -272,7 +307,7 @@ export default function ProfilePage() {
           videoCount: localVideos.length,
         }));
       } finally {
-        setLoading(false);
+        setIsLoadingContent(false);
       }
     }
 
@@ -298,7 +333,6 @@ export default function ProfilePage() {
         ]);
 
         if (profileData.success && profileData.profile) {
-          setBlueskyProfile(profileData.profile);
           // CRITICAL: Only use Bluesky data as fallback if Supabase data doesn't exist
           // This ensures user settings (from Supabase) take priority
           setCreator((prev) => {
@@ -646,8 +680,12 @@ export default function ProfilePage() {
         {/* Content Section with Icon Tabs */}
         <div>
           {/* Icon-Based Tabs (Instagram Style) */}
-          <div className="flex justify-center gap-12 border-t border-[#2f2942] mb-8">
+          <div className="flex justify-center gap-12 border-t border-[#2f2942] mb-8" role="tablist" aria-label="Profile content">
             <button
+              role="tab"
+              aria-selected={activeTab === "videos"}
+              aria-label="View videos content"
+              aria-current={activeTab === "videos" ? "page" : undefined}
               onClick={() => setActiveTab("videos")}
               className={`flex items-center gap-2 py-4 px-2 transition relative ${
                 activeTab === "videos"
@@ -656,7 +694,7 @@ export default function ProfilePage() {
               }`}
             >
               <FiGrid className="w-6 h-6" />
-              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Videos</span>
+              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Videos</span>
               {activeTab === "videos" && (
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
               )}
@@ -664,6 +702,10 @@ export default function ProfilePage() {
 
             {bytesList.length > 0 && (
               <button
+                role="tab"
+                aria-selected={activeTab === "bytes"}
+                aria-label="View bytes content"
+                aria-current={activeTab === "bytes" ? "page" : undefined}
                 onClick={() => setActiveTab("bytes")}
                 className={`flex items-center gap-2 py-4 px-2 transition relative ${
                   activeTab === "bytes"
@@ -672,7 +714,7 @@ export default function ProfilePage() {
                 }`}
               >
                 <FiZap className="w-6 h-6" />
-                <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Bytes</span>
+                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Bytes</span>
                 {activeTab === "bytes" && (
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
                 )}
@@ -681,6 +723,10 @@ export default function ProfilePage() {
 
             {audioList.length > 0 && (
               <button
+                role="tab"
+                aria-selected={activeTab === "audio"}
+                aria-label="View audio content"
+                aria-current={activeTab === "audio" ? "page" : undefined}
                 onClick={() => setActiveTab("audio")}
                 className={`flex items-center gap-2 py-4 px-2 transition relative ${
                   activeTab === "audio"
@@ -689,7 +735,7 @@ export default function ProfilePage() {
                 }`}
               >
                 <FiHeadphones className="w-6 h-6" />
-                <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Audio</span>
+                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Audio</span>
                 {activeTab === "audio" && (
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
                 )}
@@ -697,6 +743,10 @@ export default function ProfilePage() {
             )}
 
             <button
+              role="tab"
+              aria-selected={activeTab === "photos"}
+              aria-label="View photos content"
+              aria-current={activeTab === "photos" ? "page" : undefined}
               onClick={() => setActiveTab("photos")}
               className={`flex items-center gap-2 py-4 px-2 transition relative ${
                 activeTab === "photos"
@@ -705,13 +755,17 @@ export default function ProfilePage() {
               }`}
             >
               <FiImage className="w-6 h-6" />
-              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Photos</span>
+              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Photos</span>
               {activeTab === "photos" && (
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
               )}
             </button>
 
             <button
+              role="tab"
+              aria-selected={activeTab === "posts"}
+              aria-label="View posts content"
+              aria-current={activeTab === "posts" ? "page" : undefined}
               onClick={() => setActiveTab("posts")}
               className={`flex items-center gap-2 py-4 px-2 transition relative ${
                 activeTab === "posts"
@@ -720,13 +774,17 @@ export default function ProfilePage() {
               }`}
             >
               <FiMessageSquare className="w-6 h-6" />
-              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Posts</span>
+              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Posts</span>
               {activeTab === "posts" && (
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
               )}
             </button>
 
             <button
+              role="tab"
+              aria-selected={activeTab === "about"}
+              aria-label="View about content"
+              aria-current={activeTab === "about" ? "page" : undefined}
               onClick={() => setActiveTab("about")}
               className={`flex items-center gap-2 py-4 px-2 transition relative ${
                 activeTab === "about"
@@ -735,7 +793,7 @@ export default function ProfilePage() {
               }`}
             >
               <FiInfo className="w-6 h-6" />
-              <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">About</span>
+              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">About</span>
               {activeTab === "about" && (
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
               )}
@@ -746,7 +804,7 @@ export default function ProfilePage() {
           {activeTab === "videos" && (
             <div>
               {videosList.length > 0 ? (
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
                   {videosList.map((video) => (
                     <div
                       key={video.id}
@@ -754,7 +812,7 @@ export default function ProfilePage() {
                       onClick={() => router.push(`/watch/${video.id}`)}
                     >
                       <Image
-                        src={video.thumbnail || "/default-thumbnail.jpg"}
+                        src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', (video as any).playbackId)}
                         alt={video.title}
                         fill
                         className="object-cover group-hover:opacity-80 transition-opacity"
@@ -764,17 +822,27 @@ export default function ProfilePage() {
                         <div className="flex items-center gap-4 text-white">
                           <div className="flex items-center gap-1">
                             <FiEye className="w-5 h-5" />
-                            <span className="font-semibold">{video.views.toLocaleString()}</span>
+                            <span className="font-semibold">{(video.views || 0).toLocaleString()}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <FiHeart className="w-5 h-5" />
-                            <span className="font-semibold">{video.likes.toLocaleString()}</span>
+                            <span className="font-semibold">{(video.likes || 0).toLocaleString()}</span>
                           </div>
                         </div>
                       </div>
+                      {/* YouTube Badge */}
+                      {video.source === "youtube" && (
+                        <div className="absolute top-2 left-2 bg-red-600 p-1.5 rounded-md flex items-center gap-1">
+                          <FaYoutube className="w-3.5 h-3.5 text-white" />
+                        </div>
+                      )}
                       {/* Duration Badge */}
                       <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-white text-xs font-semibold">
-                        {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+                        {video.source === "youtube" ? (
+                          <FiPlay className="w-3 h-3 inline" />
+                        ) : (
+                          `${Math.floor((video.duration || 0) / 60)}:${((video.duration || 0) % 60).toString().padStart(2, '0')}`
+                        )}
                       </div>
                     </div>
                   ))}
@@ -802,7 +870,7 @@ export default function ProfilePage() {
               {bytesList.length > 0 ? (
                 <>
                   {/* Grid of Bytes Thumbnails */}
-                  <div className="grid grid-cols-3 gap-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
                     {bytesList.map((byte, index) => (
                       <div
                         key={byte.id}
@@ -873,7 +941,7 @@ export default function ProfilePage() {
           {activeTab === "audio" && (
             <div>
               {audioList.length > 0 ? (
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
                   {audioList.map((audio) => (
                     <div
                       key={audio.id}
@@ -928,7 +996,7 @@ export default function ProfilePage() {
             <div>
               {userPhotos.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-3 gap-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
                     {userPhotos.map((photo, index) => (
                       <div
                         key={photo.id}

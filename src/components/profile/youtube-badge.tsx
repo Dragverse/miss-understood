@@ -7,9 +7,9 @@ interface YouTubeBadgeProps {
 }
 
 export function YouTubeBadge({ channelId, channelName, className = "" }: YouTubeBadgeProps) {
-  const url = channelId
-    ? `https://www.youtube.com/channel/${channelId}`
-    : "#";
+  if (!channelId) return null;
+
+  const url = `https://www.youtube.com/channel/${channelId}`;
 
   return (
     <a

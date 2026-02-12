@@ -7,6 +7,7 @@ import { Creator } from "@/types";
 import { useWalletClient, usePublicClient, useReadContract } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
 import { base } from "wagmi/chains";
+import toast from "react-hot-toast";
 
 interface ProfileActionButtonsProps {
   creator: Creator;
@@ -141,7 +142,7 @@ export function ProfileActionButtons({
     // Get user's wallet address
     const wallet = user.wallet || user.linkedAccounts?.find((account: any) => account.type === 'wallet');
     if (!wallet || !('address' in wallet)) {
-      alert("Please connect a wallet in settings first");
+      toast.error("Please connect a wallet in settings first");
       return;
     }
 
@@ -153,27 +154,27 @@ export function ProfileActionButtons({
 
     const amount = parseFloat(tipAmount);
     if (isNaN(amount) || amount <= 0) {
-      alert("Please enter a valid amount");
+      toast.error("Please enter a valid amount");
       return;
     }
 
     // Maximum tip cap of $100
     if (amount > 100) {
-      alert("Maximum tip amount is $100");
+      toast.error("Maximum tip amount is $100");
       return;
     }
 
     setIsSendingTip(true);
     try {
       if (!walletAddress) {
-        alert("No wallet connected");
+        toast.error("No wallet connected");
         setIsSendingTip(false);
         return;
       }
 
       // Check if creator has a wallet to receive tips
       if (!creator.walletAddress) {
-        alert("This creator hasn't set up their wallet yet");
+        toast.error("This creator hasn't set up their wallet yet");
         setIsSendingTip(false);
         return;
       }
@@ -185,14 +186,14 @@ export function ProfileActionButtons({
       const balance = usdcBalance as bigint | undefined;
       if (!balance || balance < amountInUsdc) {
         // Insufficient balance - open fund wallet modal
-        alert("Insufficient USDC balance. Please fund your wallet first.");
+        toast.error("Insufficient USDC balance. Please fund your wallet first.");
         await fundWallet({ address: walletAddress });
         setIsSendingTip(false);
         return;
       }
 
       if (!walletClient) {
-        alert("Wallet not ready. Please try again.");
+        toast.error("Wallet not ready. Please try again.");
         setIsSendingTip(false);
         return;
       }
@@ -224,16 +225,16 @@ export function ProfileActionButtons({
           }),
         });
 
-        alert(`Tip sent successfully! 💰`);
+        toast.success("Tip sent successfully!");
         setShowTipModal(false);
         setTipAmount("5");
       }
     } catch (error: any) {
       console.error("Tip error:", error);
       if (error.message?.includes("User rejected") || error.message?.includes("rejected")) {
-        alert("Transaction cancelled");
+        toast("Transaction cancelled", { icon: "✋" });
       } else {
-        alert("Failed to send tip. Please try again.");
+        toast.error("Failed to send tip. Please try again.");
       }
     } finally {
       setIsSendingTip(false);

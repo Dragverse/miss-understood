@@ -33,8 +33,8 @@ export function SocialLinks({ creator }: SocialLinksProps) {
     },
     {
       name: "Bluesky",
-      handle: creator.handle ? `${creator.handle}.bsky.social` : null,
-      url: creator.handle ? `https://bsky.app/profile/${creator.handle}.bsky.social` : null,
+      handle: creator.blueskyHandle || null,
+      url: creator.blueskyHandle ? `https://bsky.app/profile/${creator.blueskyHandle}` : null,
       icon: <SiBluesky className="w-5 h-5" />,
       color: "text-blue-500",
     },
@@ -63,7 +63,7 @@ export function SocialLinks({ creator }: SocialLinksProps) {
             className="flex items-center gap-2 text-[#EB83EA] hover:text-[#E748E6] transition"
           >
             <FiGlobe className="w-4 h-4" />
-            <span className="text-sm">{creator.website && new URL(creator.website).hostname}</span>
+            <span className="text-sm">{(() => { try { return new URL(creator.website!).hostname; } catch { return creator.website; } })()}</span>
           </a>
         )}
 
