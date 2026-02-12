@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiZap, FiHeadphones, FiMessageSquare, FiInfo, FiMusic, FiGrid, FiCalendar, FiGlobe, FiShare2, FiCheck } from "react-icons/fi";
+import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiZap, FiHeadphones, FiMessageSquare, FiInfo, FiMusic, FiGrid, FiCalendar, FiGlobe, FiShare2, FiCheck, FiPlay } from "react-icons/fi";
+import { FaYoutube } from "react-icons/fa";
 import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
 import { FarcasterBadge } from "@/components/profile/farcaster-badge";
@@ -77,8 +78,8 @@ export default function DynamicProfilePage() {
           setCreator(transformSupabaseCreator(ceramicProfile));
           setProfileType("dragverse");
 
-          // Load content for Dragverse user (Dragverse data only for performance)
-          loadUserContent(ceramicProfile.did);
+          // Load content for Dragverse user (Dragverse + connected YouTube channel)
+          loadUserContent(ceramicProfile.did, ceramicProfile.youtube_channel_id || undefined);
 
           // Fetch Bluesky stats if user has connected Bluesky
           if (ceramicProfile.bluesky_handle) {
@@ -132,13 +133,26 @@ export default function DynamicProfilePage() {
   }, [handle, blueskyProfile, blueskyLoading, blueskyError, isBlueskyHandle]);
 
   // Load videos and other content from database
-  async function loadUserContent(creatorDID: string) {
+  async function loadUserContent(creatorDID: string, youtubeChannelId?: string) {
     setIsLoadingContent(true);
     try {
-      // Fetch videos and posts in parallel
-      const [videos, postsResponse] = await Promise.all([
+      // Fetch Dragverse videos, posts, and YouTube videos in parallel
+      const [videos, postsResponse, youtubeVideos] = await Promise.all([
         getVideosByCreator(creatorDID),
-        fetch(`/api/posts/feed?creatorDid=${encodeURIComponent(creatorDID)}&limit=50`)
+        fetch(`/api/posts/feed?creatorDid=${encodeURIComponent(creatorDID)}&limit=50`),
+        youtubeChannelId
+          ? fetch(`/api/youtube/feed?channelId=${encodeURIComponent(youtubeChannelId)}&limit=15`)
+              .then(res => res.ok ? res.json() : { videos: [] })
+              .then(data => ((data.videos || []) as any[]).map((v: any) => ({
+                ...v,
+                createdAt: new Date(v.createdAt),
+                creator: {
+                  ...v.creator,
+                  createdAt: new Date(v.creator?.createdAt || Date.now()),
+                },
+              })) as Video[])
+              .catch(() => [] as Video[])
+          : Promise.resolve([] as Video[]),
       ]);
 
       const transformedVideos: Video[] = videos.map((sv) => ({
@@ -161,7 +175,10 @@ export default function DynamicProfilePage() {
         source: (sv as any).source,
       }));
 
-      setUserVideos(transformedVideos);
+      // Merge Dragverse videos with YouTube channel videos
+      const allVideos = [...transformedVideos, ...youtubeVideos];
+      allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setUserVideos(allVideos);
 
       // Parse posts data
       if (postsResponse.ok) {
@@ -353,25 +370,15 @@ export default function DynamicProfilePage() {
                     </div>
                     <div className="group relative">
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {/* Show aggregated count from Dragverse + Bluesky + YouTube */}
-                        {(() => {
-                          const dragverse = creator.followerCount || 0;
-                          const bluesky = connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0;
-                          const youtube = creator.youtubeSubscriberCount || 0;
-                          return (dragverse + bluesky + youtube).toLocaleString();
-                        })()}
+                        {(creator.followerCount || 0).toLocaleString()}
                       </span>
                       <span className="text-white/80 ml-2">followers</span>
-                      {/* Platform breakdown tooltip */}
+                      {/* Tooltip showing connected platform stats */}
                       {((connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 || (creator.youtubeSubscriberCount || 0) > 0) && (
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                           <div className="bg-[#1a0b2e]/95 border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[160px] backdrop-blur-sm">
-                            <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Sources</div>
+                            <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Also on</div>
                             <div className="space-y-1.5 text-sm">
-                              <div className="flex items-center justify-between gap-4">
-                                <span className="text-[#EB83EA]">Dragverse</span>
-                                <span className="text-white font-medium">{(creator.followerCount || 0).toLocaleString()}</span>
-                              </div>
                               {(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 && (
                                 <div className="flex items-center justify-between gap-4">
                                   <span className="text-[#0085ff]">Bluesky</span>
@@ -391,10 +398,7 @@ export default function DynamicProfilePage() {
                     </div>
                     <div>
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {(connectedBlueskyStats?.followsCount || blueskyProfile?.followsCount)
-                          ? ((creator.followingCount || 0) + (connectedBlueskyStats?.followsCount || blueskyProfile?.followsCount || 0)).toLocaleString()
-                          : (creator.followingCount?.toLocaleString() || 0)
-                        }
+                        {(creator.followingCount || 0).toLocaleString()}
                       </span>
                       <span className="text-white/80 ml-2">following</span>
                     </div>
@@ -627,9 +631,19 @@ export default function DynamicProfilePage() {
                           </div>
                         </div>
                       </div>
+                      {/* YouTube Badge */}
+                      {video.source === "youtube" && (
+                        <div className="absolute top-2 left-2 bg-red-600 p-1.5 rounded-md flex items-center gap-1">
+                          <FaYoutube className="w-3.5 h-3.5 text-white" />
+                        </div>
+                      )}
                       {/* Duration Badge */}
                       <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-white text-xs font-semibold">
-                        {Math.floor((video.duration || 0) / 60)}:{((video.duration || 0) % 60).toString().padStart(2, '0')}
+                        {video.source === "youtube" ? (
+                          <FiPlay className="w-3 h-3 inline" />
+                        ) : (
+                          `${Math.floor((video.duration || 0) / 60)}:${((video.duration || 0) % 60).toString().padStart(2, '0')}`
+                        )}
                       </div>
                     </div>
                   ))}

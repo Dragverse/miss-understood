@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchDragContent } from "@/lib/youtube/client";
-import { fetchCuratedDragContent, fetchCuratedShorts, fetchCuratedMusicPlaylists } from "@/lib/youtube/rss-client";
+import { fetchCuratedDragContent, fetchCuratedShorts, fetchCuratedMusicPlaylists, fetchChannelVideos } from "@/lib/youtube/rss-client";
 import { getCachedVideos, setCachedVideos } from "@/lib/youtube/cache";
 import { getVideos } from "@/lib/supabase/videos";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
@@ -20,6 +20,7 @@ import type { Video } from "@/types";
  * - rssOnly: "true" | "false" (default: "false") - force RSS-only, skip API
  * - includeDatabase: "true" | "false" (default: "false") - include uploaded videos from database
  * - includePlaylists: "true" | "false" (default: "false") - include videos from curated music playlists
+ * - channelId: string - fetch videos from a specific YouTube channel (for profile pages)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -30,6 +31,19 @@ export async function GET(request: NextRequest) {
     const rssOnly = searchParams.get("rssOnly") === "true";
     const includeDatabase = searchParams.get("includeDatabase") === "true";
     const includePlaylists = searchParams.get("includePlaylists") === "true";
+    const channelId = searchParams.get("channelId");
+
+    // If channelId is provided, fetch that specific channel's videos directly
+    if (channelId) {
+      console.log(`[YouTube Feed API] Fetching videos for channel ${channelId}...`);
+      const channelVideos = await fetchChannelVideos(channelId, undefined, undefined, limit);
+      return NextResponse.json({
+        success: true,
+        videos: channelVideos,
+        count: channelVideos.length,
+        source: "youtube-rss-channel",
+      });
+    }
 
     console.log(`[YouTube Feed API] Fetching ${limit} ${shortsOnly ? 'shorts' : 'videos'}...`);
 

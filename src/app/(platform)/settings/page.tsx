@@ -1290,6 +1290,24 @@ export default function SettingsPage() {
                   />
                 </div>
 
+                {/* YouTube Channel (read-only, managed in Accounts section) */}
+                {youtubeChannelName && (
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold mb-2 text-gray-300">
+                      YouTube Channel
+                      <span className="ml-2 text-xs text-gray-500">
+                        (managed in Accounts)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={youtubeChannelName}
+                      disabled
+                      className="w-full px-4 py-3 bg-[#0f071a] border border-[#2f2942] rounded-xl text-gray-400 cursor-not-allowed opacity-70"
+                    />
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="mt-6">
                   {/* Save Button */}

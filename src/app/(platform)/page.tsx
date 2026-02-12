@@ -20,139 +20,122 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [externalLoading, setExternalLoading] = useState(true);
 
-  // Fetch videos from Supabase, YouTube, and Bluesky in parallel
+  // Progressive loading: Dragverse first, then external sources
   useEffect(() => {
     async function loadVideos() {
       setLoading(true);
+      setExternalLoading(true);
 
       // Load local videos immediately (synchronous)
       const localVideos = getLocalVideos();
       if (localVideos.length > 0) {
         setVideos(localVideos);
-        console.log(`Loaded ${localVideos.length} videos from local storage`);
       }
 
-      // Fetch Supabase, YouTube, and Bluesky in parallel (non-blocking)
-      // Track failed sources to notify user
+      // STEP 1: Load Dragverse videos FIRST (fast, own DB)
+      let dragverseVideos: Video[] = [];
+      if (!USE_MOCK_DATA) {
+        try {
+          const result = await getVideos(200);
+          if (result && result.length > 0) {
+            dragverseVideos = result.map((v: any) => ({
+              id: v.id,
+              title: v.title,
+              description: v.description || "",
+              thumbnail: v.thumbnail || null,
+              duration: v.duration || 0,
+              views: v.views || 0,
+              likes: v.likes || 0,
+              createdAt: new Date(v.created_at),
+              playbackUrl: v.playback_url || "",
+              livepeerAssetId: v.playback_id || v.livepeer_asset_id || "",
+              contentType: v.content_type,
+              creator: v.creator ? {
+                did: v.creator.did,
+                handle: v.creator.handle,
+                displayName: v.creator.display_name,
+                avatar: v.creator.avatar || "/defaultpfp.png",
+                description: "",
+                followerCount: 0,
+                followingCount: 0,
+                createdAt: new Date(),
+                verified: v.creator.verified || false,
+              } : {
+                did: v.creator_did,
+                handle: "creator",
+                displayName: "Creator",
+                avatar: "/defaultpfp.png",
+                description: "",
+                followerCount: 0,
+                followingCount: 0,
+                createdAt: new Date(),
+                verified: false,
+              },
+              category: v.category || "Other",
+              tags: Array.isArray(v.tags) ? v.tags : (v.tags ? v.tags.split(',') : []),
+            }));
+            console.log(`[Homepage] Loaded ${dragverseVideos.length} Dragverse videos`);
+          }
+        } catch (error) {
+          console.warn("Failed to load videos from Supabase:", error);
+        }
+      }
+
+      // Show Dragverse content immediately (don't wait for external)
+      const initialVideos = [...localVideos, ...dragverseVideos];
+      initialVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setVideos(initialVideos);
+      setLoading(false);
+
+      // STEP 2: Load external sources in background (slower)
       const failedSources: string[] = [];
 
-      // Supabase videos
-      const supabasePromise = !USE_MOCK_DATA
-        ? getVideos(200)
-            .then((result) => {
-              if (result && result.length > 0) {
-                const ceramicVideos = result.map((v: any) => ({
-                  id: v.id,
-                  title: v.title,
-                  description: v.description || "",
-                  thumbnail: v.thumbnail || null,
-                  duration: v.duration || 0,
-                  views: v.views || 0,
-                  likes: v.likes || 0,
-                  createdAt: new Date(v.created_at),
-                  playbackUrl: v.playback_url || "",
-                  livepeerAssetId: v.playback_id || v.livepeer_asset_id || "",
-                  contentType: v.content_type,
-                  creator: v.creator ? {
-                    did: v.creator.did,
-                    handle: v.creator.handle,
-                    displayName: v.creator.display_name,
-                    avatar: v.creator.avatar || "/defaultpfp.png",
-                    description: "",
-                    followerCount: 0,
-                    followingCount: 0,
-                    createdAt: new Date(),
-                    verified: v.creator.verified || false,
-                  } : {
-                    did: v.creator_did,
-                    handle: "creator",
-                    displayName: "Creator",
-                    avatar: "/defaultpfp.png",
-                    description: "",
-                    followerCount: 0,
-                    followingCount: 0,
-                    createdAt: new Date(),
-                    verified: false,
-                  },
-                  category: v.category || "Other",
-                  tags: Array.isArray(v.tags) ? v.tags : (v.tags ? v.tags.split(',') : []),
-                }));
-                console.log(`Loaded ${ceramicVideos.length} videos from Supabase`);
-                return ceramicVideos;
-              }
-              return [];
-            })
-            .catch((error) => {
-              console.warn("Failed to load videos from Supabase:", error);
-              failedSources.push("Dragverse");
-              return [];
-            })
-        : Promise.resolve([]);
-
-      // YouTube videos (RSS feeds - no API quota)
-      const youtubePromise = fetch("/api/youtube/feed?limit=30&rssOnly=true")
-        .then((res) => (res.ok ? res.json() : { videos: [] }))
-        .then((data) => {
-          const videos = data.videos || [];
-          if (videos.length > 0) {
-            console.log(`Loaded ${videos.length} videos from YouTube RSS`);
-          }
-          return videos;
-        })
-        .catch((error) => {
-          console.warn("Failed to load videos from YouTube:", error);
-          failedSources.push("YouTube");
-          return [];
-        });
-
-      // Bluesky videos (curated accounts)
-      const blueskyPromise = fetch("/api/bluesky/feed?limit=30&sortBy=latest&contentType=all")
-        .then((res) => (res.ok ? res.json() : { posts: [], videos: [] }))
-        .then((data) => {
-          const posts = data.posts || data.videos || [];
-          if (posts.length > 0) {
-            console.log(`Loaded ${posts.length} posts from Bluesky`);
-          }
-          return posts;
-        })
-        .catch((error) => {
-          console.warn("Failed to load content from Bluesky:", error);
-          failedSources.push("Bluesky");
-          return [];
-        });
-
-      // Wait for all sources to load
-      const [supabaseVideos, youtubeVideos, blueskyVideos] = await Promise.all([
-        supabasePromise,
-        youtubePromise,
-        blueskyPromise,
+      const [youtubeVideos, blueskyVideos] = await Promise.all([
+        fetch("/api/youtube/feed?limit=30&rssOnly=true")
+          .then((res) => (res.ok ? res.json() : { videos: [] }))
+          .then((data) => {
+            const videos = data.videos || [];
+            if (videos.length > 0) console.log(`[Homepage] Loaded ${videos.length} YouTube videos`);
+            return videos;
+          })
+          .catch((error) => {
+            console.warn("Failed to load videos from YouTube:", error);
+            failedSources.push("YouTube");
+            return [];
+          }),
+        fetch("/api/bluesky/feed?limit=30&sortBy=latest&contentType=all")
+          .then((res) => (res.ok ? res.json() : { posts: [], videos: [] }))
+          .then((data) => {
+            const posts = data.posts || data.videos || [];
+            if (posts.length > 0) console.log(`[Homepage] Loaded ${posts.length} Bluesky posts`);
+            return posts;
+          })
+          .catch((error) => {
+            console.warn("Failed to load content from Bluesky:", error);
+            failedSources.push("Bluesky");
+            return [];
+          }),
       ]);
 
-      // Notify user if any source failed to load
       if (failedSources.length > 0) {
-        toast.error(`Failed to load content from: ${failedSources.join(", ")}`, {
-          duration: 4000,
-        });
+        toast.error(`Failed to load content from: ${failedSources.join(", ")}`, { duration: 4000 });
       }
 
-      // Merge all videos
+      // Merge all videos (Dragverse first, then external)
       const allVideos = [
         ...localVideos,
-        ...(Array.isArray(supabaseVideos) ? supabaseVideos : []),
+        ...dragverseVideos,
         ...(Array.isArray(youtubeVideos) ? youtubeVideos : []),
         ...(Array.isArray(blueskyVideos) ? blueskyVideos : []),
       ];
 
-      // Sort by date (newest first)
-      if (allVideos.length > 0) {
-        allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      }
-
-      console.log(`[Homepage] Loaded ${allVideos.length} total videos (Dragverse: ${supabaseVideos.length}, YouTube: ${youtubeVideos.length}, Bluesky: ${blueskyVideos.length})`);
+      allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      console.log(`[Homepage] Total: ${allVideos.length} (Dragverse: ${dragverseVideos.length}, YouTube: ${youtubeVideos.length}, Bluesky: ${blueskyVideos.length})`);
 
       setVideos(allVideos);
-      setLoading(false);
+      setExternalLoading(false);
     }
 
     loadVideos();

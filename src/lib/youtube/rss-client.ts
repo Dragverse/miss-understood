@@ -212,6 +212,41 @@ async function rssVideoToVideo(rssVideo: RSSVideo): Promise<Video> {
 }
 
 /**
+ * Fetch videos from a specific YouTube channel via RSS
+ * Used for displaying a user's connected YouTube channel videos on their profile
+ */
+export async function fetchChannelVideos(channelId: string, channelName?: string, channelAvatar?: string, limit: number = 15): Promise<Video[]> {
+  try {
+    console.log(`[YouTube RSS] Fetching videos for channel ${channelId}...`);
+    const entries = await fetchChannelRSS(channelId);
+
+    if (entries.length === 0) return [];
+
+    const videos = await Promise.all(
+      entries.slice(0, limit).map(async (rssVideo) => {
+        const video = await rssVideoToVideo(rssVideo);
+        // Override creator info with the actual connected user's info if provided
+        if (channelName) {
+          video.creator.displayName = channelName;
+          video.creator.youtubeChannelName = channelName;
+        }
+        if (channelAvatar) {
+          video.creator.avatar = channelAvatar;
+        }
+        return video;
+      })
+    );
+
+    videos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    console.log(`[YouTube RSS] Returning ${videos.length} videos for channel ${channelId}`);
+    return videos;
+  } catch (error) {
+    console.error(`[YouTube RSS] Failed to fetch channel ${channelId} videos:`, error);
+    return [];
+  }
+}
+
+/**
  * Fetch drag content from curated YouTube channels via RSS
  * No API quota limits!
  */

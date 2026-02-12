@@ -137,16 +137,18 @@ export async function POST(request: NextRequest) {
     // Format crosspost message for Bluesky (300 char limit)
     // Regular feed posts: just the text, no link appended
     // Video/audio posts: keep as-is (already contain the link)
+    // Image-only posts (no text): empty string — Bluesky allows image-only posts
     let crosspostText: string;
 
     if (hasVideoLink) {
       crosspostText = textContent;
-    } else if (textContent) {
+    } else if (textContent?.trim()) {
       crosspostText = textContent.length > 300
         ? textContent.slice(0, 297) + "..."
         : textContent;
     } else {
-      crosspostText = "New post on Dragverse";
+      // No text content — image-only post or empty. Don't add filler text.
+      crosspostText = "";
     }
 
     // Cross-post to Bluesky
