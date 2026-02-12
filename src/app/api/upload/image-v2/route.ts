@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
+import sharp from "sharp";
 
 // Force dynamic route
 export const dynamic = 'force-dynamic';
@@ -83,18 +84,39 @@ export async function POST(request: NextRequest) {
     // Generate unique filename
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 15);
-    const extension = file.name.split('.').pop() || 'jpg';
-    const fileName = `${timestamp}-${randomStr}.${extension}`;
-    const filePath = `images/${fileName}`;
 
-    // Convert file to arrayBuffer for Supabase upload
+    // Convert file to arrayBuffer
     const arrayBuffer = await file.arrayBuffer();
+    const inputBuffer = Buffer.from(arrayBuffer);
+
+    // Optimize image (skip GIFs to preserve animation)
+    let optimizedBuffer: Buffer;
+    let outputContentType: string;
+    let outputExtension: string;
+
+    if (file.type === "image/gif") {
+      optimizedBuffer = inputBuffer;
+      outputContentType = file.type;
+      outputExtension = "gif";
+    } else {
+      const originalSize = inputBuffer.byteLength;
+      optimizedBuffer = await sharp(inputBuffer)
+        .resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 82 })
+        .toBuffer();
+      outputContentType = "image/webp";
+      outputExtension = "webp";
+      console.log(`[ImageUpload] Optimized: ${(originalSize / 1024).toFixed(0)}KB → ${(optimizedBuffer.byteLength / 1024).toFixed(0)}KB`);
+    }
+
+    const fileName = `${timestamp}-${randomStr}.${outputExtension}`;
+    const filePath = `images/${fileName}`;
 
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('media')
-      .upload(filePath, arrayBuffer, {
-        contentType: file.type,
+      .upload(filePath, optimizedBuffer, {
+        contentType: outputContentType,
         cacheControl: '3600',
         upsert: false
       });

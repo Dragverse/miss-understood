@@ -244,7 +244,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 resize-none outline-none text-base sm:text-lg leading-relaxed min-h-[100px]"
+        className="no-ring w-full bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 resize-none outline-none text-base sm:text-lg leading-relaxed min-h-[100px]"
         maxLength={500}
       />
 
@@ -268,14 +268,19 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
 
       {/* Emoji picker dropdown */}
       {showEmojiPicker && (
-        <div ref={emojiPickerRef} className="mb-4">
+        <div ref={emojiPickerRef} className="mb-3 rounded-xl overflow-hidden border border-[#EB83EA]/10">
           <EmojiPicker
-            onEmojiClick={onEmojiClick}
+            onEmojiClick={(emojiData) => {
+              onEmojiClick(emojiData);
+              setShowEmojiPicker(false);
+            }}
             width="100%"
-            height={350}
+            height={280}
             theme={"dark" as any}
             searchPlaceholder="Search emojis..."
             lazyLoadEmojis
+            skinTonesDisabled
+            previewConfig={{ showPreview: false }}
           />
         </div>
       )}

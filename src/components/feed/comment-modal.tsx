@@ -47,13 +47,15 @@ export function CommentModal({
     }
   }, [isOpen, postUri]);
 
+  const isBlueskyPost = postUri && !postUri.startsWith("dragverse:") && postCid;
+
   const loadComments = async () => {
     setLoading(true);
     try {
       let blueskyComments: Comment[] = [];
 
-      // Try to fetch from Bluesky if post has URI
-      if (postUri) {
+      // Try to fetch from Bluesky if post has a real Bluesky URI
+      if (isBlueskyPost) {
         try {
           const response = await fetch(
             `/api/bluesky/comment?postUri=${encodeURIComponent(postUri)}`
@@ -90,6 +92,31 @@ export function CommentModal({
     }
   };
 
+  const saveLocalComment = (text: string) => {
+    const localComments = JSON.parse(
+      localStorage.getItem("dragverse_comments") || "{}"
+    );
+    const postKey = postUri || "local";
+
+    if (!localComments[postKey]) {
+      localComments[postKey] = [];
+    }
+
+    localComments[postKey].push({
+      id: `local-${Date.now()}`,
+      author: {
+        displayName: "You",
+        handle: "dragverse.user",
+        avatar: "/defaultpfp.png",
+      },
+      text,
+      createdAt: new Date().toISOString(),
+      likeCount: 0,
+    });
+
+    localStorage.setItem("dragverse_comments", JSON.stringify(localComments));
+  };
+
   const submitComment = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -97,6 +124,14 @@ export function CommentModal({
 
     setSubmitting(true);
     try {
+      // For Dragverse-only posts, save locally
+      if (!isBlueskyPost) {
+        saveLocalComment(commentText);
+        setCommentText("");
+        await loadComments();
+        return;
+      }
+
       const response = await fetch("/api/bluesky/comment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -112,33 +147,10 @@ export function CommentModal({
       if (data.success) {
         // If local-only (not synced to Bluesky), store in localStorage
         if (data.localOnly || !data.synced) {
-          const localComments = JSON.parse(
-            localStorage.getItem("dragverse_comments") || "{}"
-          );
-          const postKey = postUri || "local";
-
-          if (!localComments[postKey]) {
-            localComments[postKey] = [];
-          }
-
-          // Add the new comment
-          localComments[postKey].push({
-            id: `local-${Date.now()}`,
-            author: {
-              displayName: "You",
-              handle: "dragverse.user",
-              avatar: "/default-avatar.png",
-            },
-            text: commentText,
-            createdAt: new Date().toISOString(),
-            likeCount: 0,
-          });
-
-          localStorage.setItem("dragverse_comments", JSON.stringify(localComments));
+          saveLocalComment(commentText);
         }
 
         setCommentText("");
-        // Reload comments to show the new one
         await loadComments();
       } else {
         alert(data.error || "Failed to post comment");

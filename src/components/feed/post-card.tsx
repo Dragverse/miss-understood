@@ -56,6 +56,7 @@ export function PostCard({ post }: PostCardProps) {
   const [audioError, setAudioError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isOwnPost = user?.id && post.creator.did && post.creator.did === user.id;
@@ -291,11 +292,13 @@ export function PostCard({ post }: PostCardProps) {
       <div className="flex items-start gap-3 mb-4">
         <Link href={`/profile/${post.creator.handle}`}>
           <Image
-            src={post.creator.avatar}
+            src={avatarError ? "/defaultpfp.png" : post.creator.avatar}
             alt={post.creator.displayName}
             width={56}
             height={56}
             className="rounded-full hover:ring-2 hover:ring-[#EB83EA] transition"
+            onError={() => setAvatarError(true)}
+            unoptimized={post.creator.avatar?.includes("googleusercontent.com") || post.creator.avatar?.includes("ggpht.com")}
           />
         </Link>
         <div className="flex-1">
@@ -593,18 +596,16 @@ export function PostCard({ post }: PostCardProps) {
     </div>
 
     {/* Comment Modal */}
-    {post.uri && post.cid && (
-      <CommentModal
-        isOpen={isCommentModalOpen}
-        onClose={() => setIsCommentModalOpen(false)}
-        postUri={post.uri}
-        postCid={post.cid}
-        postAuthor={{
-          displayName: post.creator.displayName,
-          handle: post.creator.handle,
-        }}
-      />
-    )}
+    <CommentModal
+      isOpen={isCommentModalOpen}
+      onClose={() => setIsCommentModalOpen(false)}
+      postUri={post.uri || `dragverse:${post.id}`}
+      postCid={post.cid || ""}
+      postAuthor={{
+        displayName: post.creator.displayName,
+        handle: post.creator.handle,
+      }}
+    />
     </>
   );
 }

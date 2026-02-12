@@ -40,6 +40,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "yt3.googleusercontent.com", // YouTube channel avatars (alternate CDN)
+      },
+      {
+        protocol: "https",
         hostname: "*.supabase.co", // Supabase Storage
       },
     ],

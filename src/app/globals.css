@@ -382,7 +382,8 @@
     border-radius: 0.375rem;
   }
 
-  input:focus, textarea:focus, select:focus {
+  input:focus, select:focus,
+  textarea:not(.no-ring):focus {
     @apply ring-2 ring-[#EB83EA] ring-offset-2 ring-offset-[#0f071a];
     @apply border-[#EB83EA];
   }

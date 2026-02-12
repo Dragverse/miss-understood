@@ -8,6 +8,42 @@ import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, SessionData } from "@/lib/session/config";
 import { createClient } from "@supabase/supabase-js";
+import sharp from "sharp";
+
+const BLUESKY_MAX_BLOB_SIZE = 950_000; // ~950KB (Bluesky limit is 976.56KB, leave margin)
+
+/**
+ * Compress an image buffer to fit within Bluesky's blob size limit
+ */
+async function compressImageForBluesky(buffer: ArrayBuffer, contentType: string): Promise<Blob> {
+  const inputBuffer = Buffer.from(buffer);
+
+  // If already small enough, return as-is
+  if (inputBuffer.byteLength <= BLUESKY_MAX_BLOB_SIZE) {
+    return new Blob([new Uint8Array(buffer)], { type: contentType });
+  }
+
+  console.log(`[Bluesky] Image too large (${(inputBuffer.byteLength / 1024).toFixed(0)}KB), compressing...`);
+
+  // Try progressive quality reduction
+  let quality = 80;
+  let result = await sharp(inputBuffer)
+    .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality, mozjpeg: true })
+    .toBuffer();
+
+  while (result.byteLength > BLUESKY_MAX_BLOB_SIZE && quality > 20) {
+    quality -= 15;
+    result = await sharp(inputBuffer)
+      .resize({ width: 1500, height: 1500, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality, mozjpeg: true })
+      .toBuffer();
+  }
+
+  console.log(`[Bluesky] Compressed to ${(result.byteLength / 1024).toFixed(0)}KB (quality: ${quality})`);
+  const ab = result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength) as ArrayBuffer;
+  return new Blob([ab], { type: "image/jpeg" });
+}
 
 interface BlueskyPostParams {
   text: string;
@@ -130,19 +166,18 @@ export async function postToBluesky(
           const thumbResponse = await fetch(params.external.thumb);
           if (thumbResponse.ok) {
             const thumbBuffer = await thumbResponse.arrayBuffer();
-            const thumbBlobData = new Blob([thumbBuffer], {
-              type: thumbResponse.headers.get("content-type") || "image/jpeg"
-            });
+            const contentType = thumbResponse.headers.get("content-type") || "image/jpeg";
+            const compressedBlob = await compressImageForBluesky(thumbBuffer, contentType);
 
             const uploadResponse = await fetch(
               "https://bsky.social/xrpc/com.atproto.repo.uploadBlob",
               {
                 method: "POST",
                 headers: {
-                  "Content-Type": thumbBlobData.type,
+                  "Content-Type": compressedBlob.type,
                   Authorization: `Bearer ${accessJwt}`,
                 },
-                body: thumbBlobData,
+                body: compressedBlob,
               }
             );
 
@@ -190,9 +225,8 @@ export async function postToBluesky(
 
             const imageBuffer = await imageResponse.arrayBuffer();
             console.log("[Bluesky] Image downloaded, size:", imageBuffer.byteLength, "bytes");
-            const imageBlob = new Blob([imageBuffer], {
-              type: imageResponse.headers.get("content-type") || "image/jpeg"
-            });
+            const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+            const imageBlob = await compressImageForBluesky(imageBuffer, contentType);
 
             // Upload to Bluesky
             const uploadResponse = await fetch(
