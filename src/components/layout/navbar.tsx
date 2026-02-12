@@ -16,6 +16,7 @@ import {
   FiHeadphones,
   FiInfo,
   FiGlobe,
+  FiHeart,
 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
