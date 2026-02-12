@@ -19,6 +19,8 @@ export interface Creator {
   youtube_channel_name?: string;
   youtube_subscriber_count?: number;
   youtube_synced_at?: string;
+  youtube_verified?: boolean;
+  youtube_verification_code?: string;
   follower_count: number;
   following_count: number;
   dragverse_follower_count: number;

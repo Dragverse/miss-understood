@@ -72,6 +72,11 @@ export default function SettingsPage() {
   const [showYouTubeInput, setShowYouTubeInput] = useState(false);
   const [youtubeInput, setYoutubeInput] = useState("");
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
+  const [youtubeVerified, setYoutubeVerified] = useState(false);
+  const [youtubeVerificationCode, setYoutubeVerificationCode] = useState<string | null>(null);
+  const [youtubePreview, setYoutubePreview] = useState<any>(null);
+  const [verificationStep, setVerificationStep] = useState<"input" | "preview" | "verify">("input");
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Delete account state
   const [isDeleting, setIsDeleting] = useState(false);
@@ -211,6 +216,13 @@ export default function SettingsPage() {
             setYoutubeChannelName((supabaseProfile as any).youtube_channel_name);
             setYoutubeSubscriberCount((supabaseProfile as any).youtube_subscriber_count || 0);
             setYoutubeSyncedAt((supabaseProfile as any).youtube_synced_at);
+            setYoutubeVerified(!!(supabaseProfile as any).youtube_verified);
+            // Resume pending verification if code exists
+            if ((supabaseProfile as any).youtube_verification_code) {
+              setYoutubeVerificationCode((supabaseProfile as any).youtube_verification_code);
+              setVerificationStep("verify");
+              setShowYouTubeInput(true);
+            }
           }
 
           return;
@@ -653,31 +665,34 @@ export default function SettingsPage() {
   const handleConnectYouTube = () => {
     setShowYouTubeInput(true);
     setYoutubeError(null);
+    setVerificationStep("input");
+    setYoutubePreview(null);
   };
 
   const handleDisconnectYouTube = async () => {
-    if (!confirm("Disconnect your YouTube channel? This will remove imported subscribers.")) {
+    if (!confirm("Disconnect your YouTube channel? This will remove imported subscribers and verification.")) {
       return;
     }
 
     try {
       const token = await getAccessToken();
-      if (!token) {
-        throw new Error("Authentication required");
-      }
+      if (!token) throw new Error("Authentication required");
 
       const response = await fetch("/api/youtube/connect", {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to disconnect YouTube channel");
-      }
+      if (!response.ok) throw new Error("Failed to disconnect YouTube channel");
 
       setYoutubeChannelName(null);
       setYoutubeSubscriberCount(0);
       setYoutubeSyncedAt(null);
+      setYoutubeVerified(false);
+      setYoutubeVerificationCode(null);
+      setYoutubePreview(null);
+      setVerificationStep("input");
+      setShowYouTubeInput(false);
       toast.success("YouTube channel disconnected");
     } catch (error) {
       console.error("YouTube disconnect error:", error);
@@ -685,7 +700,8 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSubmitYouTube = async () => {
+  // Step 1: Look up channel (preview only)
+  const handleLookupYouTube = async () => {
     if (!youtubeInput.trim()) {
       setYoutubeError("Please enter your YouTube channel handle or URL");
       return;
@@ -704,29 +720,124 @@ export default function SettingsPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ channelInput: youtubeInput.trim() }),
+        body: JSON.stringify({ mode: "lookup", channelInput: youtubeInput.trim() }),
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Channel not found");
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to connect channel");
-      }
+      setYoutubePreview(data.channelInfo);
+      setVerificationStep("preview");
+    } catch (error) {
+      console.error("YouTube lookup error:", error);
+      setYoutubeError(error instanceof Error ? error.message : "Channel not found");
+    } finally {
+      setIsConnectingYouTube(false);
+    }
+  };
+
+  // Step 2: Initiate verification (save channel + generate code)
+  const handleInitiateVerification = async () => {
+    setIsConnectingYouTube(true);
+    setYoutubeError(null);
+
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Authentication required");
+
+      const response = await fetch("/api/youtube/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ mode: "initiate", channelInput: youtubeInput.trim() }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to initiate verification");
+
+      setYoutubeVerificationCode(data.verificationCode);
+      setYoutubeChannelName(data.channelInfo.channelName);
+      setYoutubeSubscriberCount(data.channelInfo.subscriberCount);
+      setVerificationStep("verify");
+    } catch (error) {
+      console.error("YouTube initiate error:", error);
+      setYoutubeError(error instanceof Error ? error.message : "Failed to initiate verification");
+    } finally {
+      setIsConnectingYouTube(false);
+    }
+  };
+
+  // Step 3: Verify (check description for code)
+  const handleVerifyYouTube = async () => {
+    setIsVerifying(true);
+    setYoutubeError(null);
+
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Authentication required");
+
+      const response = await fetch("/api/youtube/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ mode: "verify" }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Verification failed");
 
       toast.success(
-        `Connected ${data.channelInfo.channelName}! Imported ${data.channelInfo.subscriberCount.toLocaleString()} subscribers.`,
+        `Verified ${data.channelInfo.channelName}! You can now remove the code from your channel description.`,
         { duration: 10000 }
       );
-      setYoutubeChannelName(data.channelInfo.channelName);
+      setYoutubeVerified(true);
+      setYoutubeVerificationCode(null);
       setYoutubeSubscriberCount(data.channelInfo.subscriberCount);
       setYoutubeSyncedAt(new Date().toISOString());
       setShowYouTubeInput(false);
-      setYoutubeInput("");
+      setVerificationStep("input");
+      setYoutubePreview(null);
     } catch (error) {
-      console.error("YouTube connect error:", error);
-      setYoutubeError(
-        error instanceof Error ? error.message : "Failed to connect channel"
-      );
+      console.error("YouTube verify error:", error);
+      setYoutubeError(error instanceof Error ? error.message : "Verification failed");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // Re-initiate verification for unverified legacy channels
+  const handleStartVerification = async () => {
+    if (!youtubeChannelName) return;
+    setShowYouTubeInput(true);
+    setIsConnectingYouTube(true);
+    setYoutubeError(null);
+
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Authentication required");
+
+      // Use the stored channel name to initiate
+      const response = await fetch("/api/youtube/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ mode: "initiate", channelInput: youtubeChannelName }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to initiate verification");
+
+      setYoutubeVerificationCode(data.verificationCode);
+      setVerificationStep("verify");
+    } catch (error) {
+      console.error("YouTube verification start error:", error);
+      setYoutubeError(error instanceof Error ? error.message : "Failed to start verification");
     } finally {
       setIsConnectingYouTube(false);
     }
@@ -735,9 +846,7 @@ export default function SettingsPage() {
   const handleResyncYouTube = async () => {
     try {
       const token = await getAccessToken();
-      if (!token) {
-        throw new Error("Authentication required");
-      }
+      if (!token) throw new Error("Authentication required");
 
       const toastId = toast.loading("Re-syncing YouTube channel...");
 
@@ -746,9 +855,7 @@ export default function SettingsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to re-sync channel");
-      }
+      if (!response.ok) throw new Error("Failed to re-sync channel");
 
       const data = await response.json();
 
@@ -1668,9 +1775,24 @@ export default function SettingsPage() {
                       <div className="flex items-center gap-2">
                         {youtubeChannelName ? (
                           <>
-                            <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
-                              Connected
-                            </span>
+                            {youtubeVerified ? (
+                              <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                                Verified
+                              </span>
+                            ) : (
+                              <>
+                                <span className="text-xs px-3 py-1 bg-amber-500/10 text-amber-400 rounded-full">
+                                  Unverified
+                                </span>
+                                <button
+                                  onClick={handleStartVerification}
+                                  disabled={isConnectingYouTube}
+                                  className="text-sm px-3 py-1 text-[#EB83EA] hover:text-[#E748E6] border border-[#EB83EA]/30 hover:border-[#EB83EA] rounded-lg transition disabled:opacity-50"
+                                >
+                                  Verify
+                                </button>
+                              </>
+                            )}
                             <button
                               onClick={handleDisconnectYouTube}
                               className="text-sm px-3 py-1 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition"
@@ -1684,14 +1806,14 @@ export default function SettingsPage() {
                             disabled={isConnectingYouTube}
                             className="text-sm px-4 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 hover:border-red-500 rounded-lg transition font-semibold disabled:opacity-50"
                           >
-                            {isConnectingYouTube ? "Connecting..." : "Connect Channel"}
+                            Connect Channel
                           </button>
                         ) : null}
                       </div>
                     </div>
 
-                    {/* Channel Entry Form */}
-                    {showYouTubeInput && !youtubeChannelName && (
+                    {/* Step 1: Channel Input */}
+                    {showYouTubeInput && verificationStep === "input" && (
                       <div className="pt-3 border-t border-[#2f2942]">
                         <p className="text-sm text-gray-300 mb-3">
                           Enter your YouTube channel handle or URL:
@@ -1708,11 +1830,11 @@ export default function SettingsPage() {
                             className="flex-1 px-3 py-2 bg-[#1a0b2e] border border-[#2f2942] rounded-lg text-sm focus:outline-none focus:border-[#EB83EA] placeholder-gray-600"
                           />
                           <button
-                            onClick={handleSubmitYouTube}
+                            onClick={handleLookupYouTube}
                             disabled={isConnectingYouTube || !youtubeInput.trim()}
                             className="px-4 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 hover:border-red-500 rounded-lg transition font-semibold text-sm disabled:opacity-50"
                           >
-                            {isConnectingYouTube ? "..." : "Connect"}
+                            {isConnectingYouTube ? "..." : "Look Up"}
                           </button>
                         </div>
                         {youtubeError && (
@@ -1724,8 +1846,109 @@ export default function SettingsPage() {
                       </div>
                     )}
 
-                    {/* Import Subscribers Info */}
-                    {youtubeChannelName && (
+                    {/* Step 2: Channel Preview */}
+                    {showYouTubeInput && verificationStep === "preview" && youtubePreview && (
+                      <div className="pt-3 border-t border-[#2f2942]">
+                        <p className="text-sm text-gray-300 mb-3">Is this your channel?</p>
+                        <div className="flex items-center gap-3 p-3 bg-[#1a0b2e] rounded-lg mb-3">
+                          {youtubePreview.avatarUrl && (
+                            <img
+                              src={youtubePreview.avatarUrl}
+                              alt={youtubePreview.channelName}
+                              className="w-12 h-12 rounded-full"
+                            />
+                          )}
+                          <div>
+                            <p className="font-semibold text-sm">{youtubePreview.channelName}</p>
+                            <p className="text-xs text-gray-400">
+                              {youtubePreview.subscriberCount.toLocaleString()} subscribers
+                            </p>
+                            {youtubePreview.customUrl && (
+                              <p className="text-xs text-gray-500">{youtubePreview.customUrl}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleInitiateVerification}
+                            disabled={isConnectingYouTube}
+                            className="flex-1 px-4 py-2 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg transition font-semibold text-sm disabled:opacity-50"
+                          >
+                            {isConnectingYouTube ? "..." : "This is my channel"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setVerificationStep("input");
+                              setYoutubePreview(null);
+                              setYoutubeError(null);
+                            }}
+                            className="px-4 py-2 bg-[#1a0b2e] hover:bg-[#2f2942] rounded-lg transition text-sm text-gray-400"
+                          >
+                            Not mine
+                          </button>
+                        </div>
+                        {youtubeError && (
+                          <p className="text-xs text-red-400 mt-2">{youtubeError}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step 3: Verification Code */}
+                    {showYouTubeInput && verificationStep === "verify" && youtubeVerificationCode && (
+                      <div className="pt-3 border-t border-[#2f2942]">
+                        <p className="text-sm text-gray-300 mb-3">
+                          Add this code to your YouTube channel description to verify ownership:
+                        </p>
+                        <div className="flex items-center gap-2 p-3 bg-[#1a0b2e] rounded-lg mb-3 font-mono">
+                          <span className="flex-1 text-[#EB83EA] text-sm select-all">
+                            {youtubeVerificationCode}
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(youtubeVerificationCode);
+                              toast.success("Code copied!");
+                            }}
+                            className="text-xs px-3 py-1 bg-[#2f2942] hover:bg-[#3f3952] rounded-md transition text-gray-300"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <div className="text-xs text-gray-500 space-y-1 mb-3">
+                          <p>1. Go to <strong className="text-gray-400">YouTube Studio</strong> &rarr; Customization &rarr; Basic Info</p>
+                          <p>2. Add the code anywhere in your channel description</p>
+                          <p>3. Save changes on YouTube</p>
+                          <p>4. Click &quot;Verify&quot; below</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleVerifyYouTube}
+                            disabled={isVerifying}
+                            className="flex-1 px-4 py-2 bg-[#EB83EA] hover:bg-[#E748E6] rounded-lg transition font-semibold text-sm disabled:opacity-50"
+                          >
+                            {isVerifying ? "Checking..." : "Verify"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowYouTubeInput(false);
+                              setVerificationStep("input");
+                              setYoutubeError(null);
+                            }}
+                            className="px-4 py-2 bg-[#1a0b2e] hover:bg-[#2f2942] rounded-lg transition text-sm text-gray-400"
+                          >
+                            Later
+                          </button>
+                        </div>
+                        {youtubeError && (
+                          <p className="text-xs text-red-400 mt-2">{youtubeError}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">
+                          You can remove the code from your description after verification. YouTube may take a few minutes to reflect changes.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Connected Channel Info */}
+                    {youtubeChannelName && !showYouTubeInput && (
                       <div className="pt-3 border-t border-[#2f2942]">
                         <div className="flex items-start gap-3">
                           <div className="flex-1">

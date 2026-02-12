@@ -17,12 +17,27 @@ interface YouTubeChannelInfo {
   subscriberCount: number;
   avatarUrl?: string;
   customUrl?: string;
+  description?: string;
 }
 
 interface SyncResult {
   success: boolean;
   error?: string;
   channelInfo?: YouTubeChannelInfo;
+  verificationCode?: string;
+}
+
+/**
+ * Generate a unique verification code for YouTube channel ownership.
+ * Uses unambiguous characters (no 0/O, 1/l/i).
+ */
+function generateVerificationCode(): string {
+  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `dragverse-${code}`;
 }
 
 /**
@@ -86,6 +101,7 @@ export async function fetchChannelByHandleOrId(
             subscriberCount: parseInt(channel.statistics.subscriberCount || "0"),
             avatarUrl: channel.snippet.thumbnails?.medium?.url,
             customUrl: channel.snippet.customUrl,
+            description: channel.snippet.description || "",
           };
         }
       }
@@ -107,6 +123,7 @@ export async function fetchChannelByHandleOrId(
             subscriberCount: parseInt(channel.statistics.subscriberCount || "0"),
             avatarUrl: channel.snippet.thumbnails?.medium?.url,
             customUrl: channel.snippet.customUrl,
+            description: channel.snippet.description || "",
           };
         }
       }
@@ -127,6 +144,7 @@ export async function fetchChannelByHandleOrId(
             subscriberCount: parseInt(channel.statistics.subscriberCount || "0"),
             avatarUrl: channel.snippet.thumbnails?.medium?.url,
             customUrl: channel.snippet.customUrl,
+            description: channel.snippet.description || "",
           };
         }
       }
@@ -176,6 +194,159 @@ async function createYouTubePlaceholderFollowers(
   } catch (error) {
     console.error("[YouTube] Error creating placeholder followers:", error);
     return 0;
+  }
+}
+
+/**
+ * Look up a YouTube channel without saving anything (preview only).
+ */
+export async function lookupYouTubeChannel(
+  input: string
+): Promise<YouTubeChannelInfo | null> {
+  return fetchChannelByHandleOrId(input);
+}
+
+/**
+ * Initiate YouTube channel verification.
+ * Looks up channel, checks no other user has it verified,
+ * generates a verification code, and saves it to the database.
+ */
+export async function initiateYouTubeVerification(
+  userDID: string,
+  channelInput: string
+): Promise<SyncResult> {
+  try {
+    const channelInfo = await fetchChannelByHandleOrId(channelInput);
+    if (!channelInfo) {
+      return {
+        success: false,
+        error: "Channel not found. Please check your YouTube handle or URL and try again.",
+      };
+    }
+
+    // Check if another user already has this channel verified
+    const { data: existingOwner } = await supabase
+      .from("creators")
+      .select("did")
+      .eq("youtube_channel_id", channelInfo.channelId)
+      .eq("youtube_verified", true)
+      .neq("did", userDID)
+      .maybeSingle();
+
+    if (existingOwner) {
+      return {
+        success: false,
+        error: "This YouTube channel is already verified by another user.",
+      };
+    }
+
+    const { data: creator } = await supabase
+      .from("creators")
+      .select("id")
+      .eq("did", userDID)
+      .single();
+
+    if (!creator) {
+      return { success: false, error: "Creator profile not found" };
+    }
+
+    const code = generateVerificationCode();
+
+    const { error: updateError } = await supabase
+      .from("creators")
+      .update({
+        youtube_channel_id: channelInfo.channelId,
+        youtube_channel_name: channelInfo.channelName,
+        youtube_subscriber_count: channelInfo.subscriberCount,
+        youtube_verification_code: code,
+        youtube_verified: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("did", userDID);
+
+    if (updateError) {
+      console.error("[YouTube] Failed to save verification code:", updateError);
+      return { success: false, error: "Failed to save verification code" };
+    }
+
+    console.log(
+      `[YouTube] Initiated verification for ${channelInfo.channelName} (code: ${code})`
+    );
+
+    return { success: true, channelInfo, verificationCode: code };
+  } catch (error) {
+    console.error("[YouTube] Error initiating verification:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Verify YouTube channel ownership by checking for verification code
+ * in the channel's description (About section).
+ */
+export async function verifyYouTubeChannel(userDID: string): Promise<SyncResult> {
+  try {
+    const { data: creator } = await supabase
+      .from("creators")
+      .select("id, youtube_channel_id, youtube_verification_code")
+      .eq("did", userDID)
+      .single();
+
+    if (!creator?.youtube_channel_id || !creator?.youtube_verification_code) {
+      return {
+        success: false,
+        error: "No pending verification found. Please start the connection process first.",
+      };
+    }
+
+    const channelInfo = await fetchChannelByHandleOrId(creator.youtube_channel_id);
+    if (!channelInfo) {
+      return {
+        success: false,
+        error: "Could not fetch channel data. Please try again.",
+      };
+    }
+
+    if (
+      !channelInfo.description ||
+      !channelInfo.description.includes(creator.youtube_verification_code)
+    ) {
+      return {
+        success: false,
+        error: `Verification code not found in your channel description. Make sure "${creator.youtube_verification_code}" appears in your YouTube channel's About section, then try again. YouTube may take a few minutes to reflect description changes.`,
+      };
+    }
+
+    // Verified! Mark as verified, clear the code
+    const { error: updateError } = await supabase
+      .from("creators")
+      .update({
+        youtube_verified: true,
+        youtube_verification_code: null,
+        youtube_subscriber_count: channelInfo.subscriberCount,
+        youtube_synced_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("did", userDID);
+
+    if (updateError) {
+      return { success: false, error: "Failed to update verification status" };
+    }
+
+    await createYouTubePlaceholderFollowers(creator.id, channelInfo.subscriberCount);
+
+    console.log(`[YouTube] Verified channel ${channelInfo.channelName}`);
+
+    return { success: true, channelInfo };
+  } catch (error) {
+    console.error("[YouTube] Error verifying channel:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
   }
 }
 
@@ -324,6 +495,8 @@ export async function disconnectYouTubeChannel(userDID: string): Promise<SyncRes
         youtube_channel_name: null,
         youtube_subscriber_count: 0,
         youtube_synced_at: null,
+        youtube_verified: false,
+        youtube_verification_code: null,
         updated_at: new Date().toISOString(),
       })
       .eq("did", userDID);

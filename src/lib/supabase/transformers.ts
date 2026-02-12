@@ -24,6 +24,8 @@ export function transformSupabaseCreator(creator: SupabaseCreator): Creator {
     youtubeChannelName: creator.youtube_channel_name,
     youtubeSubscriberCount: creator.youtube_subscriber_count || 0,
     youtubeSyncedAt: creator.youtube_synced_at ? new Date(creator.youtube_synced_at) : undefined,
+    youtubeVerified: creator.youtube_verified || false,
+    youtubeVerificationCode: creator.youtube_verification_code || undefined,
     followerCount: creator.follower_count,
     followingCount: creator.following_count,
     dragverseFollowerCount: creator.dragverse_follower_count,

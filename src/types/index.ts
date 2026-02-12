@@ -29,6 +29,8 @@ export interface Creator {
   youtubeChannelName?: string; // YouTube channel name
   youtubeSubscriberCount?: number; // YouTube subscriber count
   youtubeSyncedAt?: Date; // Last YouTube sync time
+  youtubeVerified?: boolean; // Whether YouTube channel ownership is verified
+  youtubeVerificationCode?: string; // Pending verification code
   website?: string;
   // Monetization (for future use)
   totalEarningsUSD?: number;
