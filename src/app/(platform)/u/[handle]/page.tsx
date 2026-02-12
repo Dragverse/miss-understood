@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiZap, FiHeadphones, FiImage, FiMessageSquare, FiInfo, FiMusic, FiGrid, FiCalendar, FiGlobe, FiShare2, FiCheck, FiStar, FiUser } from "react-icons/fi";
+import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiZap, FiHeadphones, FiMessageSquare, FiInfo, FiMusic, FiGrid, FiCalendar, FiGlobe, FiShare2, FiCheck } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
 import { FarcasterBadge } from "@/components/profile/farcaster-badge";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
 import { VerificationBadge } from "@/components/profile/verification-badge";
-import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
 import { BytesSlider } from "@/components/profile/bytes-slider";
 import { LivestreamEmbed } from "@/components/profile/livestream-embed";
 import { getCreatorByHandleOrDID } from "@/lib/supabase/creators";
@@ -36,18 +35,16 @@ export default function DynamicProfilePage() {
 
   const [profileType, setProfileType] = useState<"loading" | "dragverse" | "bluesky" | "not-found">("loading");
   const [creator, setCreator] = useState<Creator | null>(null);
-  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "audio" | "photos" | "posts" | "about">("videos");
+  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "audio" | "posts" | "about">("videos");
   const currentUserDID = user?.id;
 
   // Content states
   const [userVideos, setUserVideos] = useState<Video[]>([]);
-  const [userPhotos, setUserPhotos] = useState<any[]>([]);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [profileLinkCopied, setProfileLinkCopied] = useState(false);
   const [showBytePlayer, setShowBytePlayer] = useState(false);
   const [selectedByteIndex, setSelectedByteIndex] = useState(0);
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [connectedBlueskyStats, setConnectedBlueskyStats] = useState<{ followersCount: number; followsCount: number } | null>(null);
 
   // Try to fetch Bluesky profile if it looks like a Bluesky handle
@@ -196,28 +193,17 @@ export default function DynamicProfilePage() {
     }
   }
 
-  // Fetch Bluesky posts and photos
+  // Fetch Bluesky posts for external profiles
   async function fetchBlueskyContent(blueskyHandle: string) {
     try {
       const response = await fetch(`/api/bluesky/feed?limit=50`);
       const data = await response.json();
 
       if (data.success && data.posts) {
-        // Filter posts for this specific user
         const userBlueskyPosts = data.posts.filter((post: any) =>
           post.creator?.handle === blueskyHandle || post.author?.handle === blueskyHandle
         );
-
-        // Separate into photos (images without video) and text posts
-        const photos = userBlueskyPosts.filter(
-          (post: any) => post.thumbnail && !post.playbackUrl?.includes("m3u8")
-        );
-        const textPosts = userBlueskyPosts.filter(
-          (post: any) => !post.thumbnail && !post.playbackUrl
-        );
-
-        setUserPhotos(photos);
-        setUserPosts(textPosts);
+        setUserPosts(userBlueskyPosts);
       }
     } catch (error) {
       console.error("Failed to fetch Bluesky content:", error);
@@ -265,12 +251,11 @@ export default function DynamicProfilePage() {
   const bytesList = userVideos.filter(v => v.contentType === 'short' && v.source !== 'youtube' && v.source !== 'bluesky');
   const audioList = userVideos.filter(v => v.contentType === 'podcast' || v.contentType === 'music');
 
-  // Stats
+  // Stats - total content count across all types
   const stats = {
-    videoCount: userVideos.length,
+    contentCount: userVideos.length + userPosts.length,
     totalViews: userVideos.reduce((sum, v) => sum + (v.views || 0), 0),
     totalLikes: userVideos.reduce((sum, v) => sum + (v.likes || 0), 0),
-    photoCount: userPhotos.length,
   };
 
   // Render profile - Hybrid Style (Banner + Instagram tabs)
@@ -358,7 +343,7 @@ export default function DynamicProfilePage() {
                   <div className="flex gap-6 text-sm md:text-base">
                     <div>
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {stats.videoCount}
+                        {stats.contentCount}
                       </span>
                       <span className="text-white/80 ml-2">posts</span>
                     </div>
@@ -570,30 +555,13 @@ export default function DynamicProfilePage() {
             )}
 
             <button
-              onClick={() => setActiveTab("photos")}
-              className={`flex items-center gap-2 py-4 px-2 transition relative ${
-                activeTab === "photos"
-                  ? "text-[#EB83EA]"
-                  : "text-gray-500 hover:text-gray-300"
-              }`}
-              aria-label="View photos content"
-              aria-current={activeTab === "photos" ? "page" : undefined}
-            >
-              <FiImage className="w-6 h-6" />
-              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Photos</span>
-              {activeTab === "photos" && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
-              )}
-            </button>
-
-            <button
               onClick={() => setActiveTab("posts")}
               className={`flex items-center gap-2 py-4 px-2 transition relative ${
                 activeTab === "posts"
                   ? "text-[#EB83EA]"
                   : "text-gray-500 hover:text-gray-300"
               }`}
-              aria-label="View posts content"
+              aria-label="View posts and photos"
               aria-current={activeTab === "posts" ? "page" : undefined}
             >
               <FiMessageSquare className="w-6 h-6" />
@@ -779,47 +747,6 @@ export default function DynamicProfilePage() {
             </div>
           )}
 
-          {activeTab === "photos" && (
-            <div>
-              {userPhotos.length > 0 ? (
-                <>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
-                    {userPhotos.map((photo, index) => (
-                      <div
-                        key={photo.id}
-                        onClick={() => setSelectedPhotoIndex(index)}
-                        className="group relative aspect-square bg-black overflow-hidden cursor-pointer"
-                      >
-                        <Image
-                          src={getSafeThumbnail(photo.thumbnail, '/default-thumbnail.jpg', (photo as any).playbackId)}
-                          alt={photo.description || "Photo"}
-                          fill
-                          className="object-cover group-hover:opacity-80 transition-opacity"
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {selectedPhotoIndex !== null && (
-                    <PhotoViewerModal
-                      photos={userPhotos}
-                      initialIndex={selectedPhotoIndex}
-                      onClose={() => setSelectedPhotoIndex(null)}
-                    />
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
-                    <FiImage className="w-10 h-10 text-gray-500" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">No Photos Yet</h3>
-                  <p className="text-gray-400">Photos will appear here</p>
-                </div>
-              )}
-            </div>
-          )}
-
           {activeTab === "posts" && (
             <div>
               {userPosts.length > 0 ? (
@@ -830,7 +757,18 @@ export default function DynamicProfilePage() {
                       post={{
                         ...post,
                         description: post.text_content || post.description || "",
-                        createdAt: post.created_at,
+                        createdAt: post.created_at || post.createdAt,
+                        creator: post.creator ? {
+                          displayName: post.creator.display_name || post.creator.displayName || creator?.displayName,
+                          handle: post.creator.handle || creator?.handle,
+                          avatar: post.creator.avatar || creator?.avatar,
+                          did: post.creator.did || creator?.did,
+                        } : {
+                          displayName: creator?.displayName || "Unknown",
+                          handle: creator?.handle || "",
+                          avatar: creator?.avatar || "/defaultpfp.png",
+                          did: creator?.did || "",
+                        },
                       }}
                     />
                   ))}
@@ -841,7 +779,7 @@ export default function DynamicProfilePage() {
                     <FiMessageSquare className="w-10 h-10 text-gray-500" />
                   </div>
                   <h3 className="text-xl font-bold mb-2">No Posts Yet</h3>
-                  <p className="text-gray-400">Text posts will appear here</p>
+                  <p className="text-gray-400">When {creator?.displayName} shares stories, they'll appear here</p>
                 </div>
               )}
             </div>

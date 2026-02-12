@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { FiMessageSquare, FiTrendingUp, FiPlus, FiRefreshCw } from "react-icons/fi";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -9,7 +9,6 @@ import { PostCard as BlueskyPostCard } from "@/components/feed/post-card";
 import { PostCard } from "@/components/posts/post-card";
 import { PostComposer } from "@/components/posts/post-composer";
 import { FeedRightSidebar } from "@/components/feed/feed-right-sidebar";
-import { ConnectionGate } from "@/components/feed/connection-gate";
 import { CardSkeleton } from "@/components/shared";
 
 function FeedContent() {
@@ -21,7 +20,8 @@ function FeedContent() {
 
   const [posts, setPosts] = useState<any[]>([]);
   const [dragversePosts, setDragversePosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [dragverseLoading, setDragverseLoading] = useState(true);
+  const [externalLoading, setExternalLoading] = useState(true);
   const [hasBluesky, setHasBluesky] = useState(false);
   const [sortBy, setSortBy] = useState<"engagement" | "recent">("engagement");
   const [contentFilter, setContentFilter] = useState<"all" | "youtube" | "bluesky" | "dragverse">("all");
@@ -36,7 +36,7 @@ function FeedContent() {
     console.error = (...args) => {
       const msg = args[0]?.toString() || '';
       if (msg.includes('youtube.com/youtubei') || msg.includes('ERR_BLOCKED_BY_CLIENT')) {
-        return; // Suppress YouTube tracking errors
+        return;
       }
       originalError.apply(console, args);
     };
@@ -45,33 +45,16 @@ function FeedContent() {
     };
   }, []);
 
-  // Check Bluesky session status and backfill posts
+  // Check Bluesky session status (non-blocking)
   useEffect(() => {
-    async function checkBlueskySession() {
-      try {
-        const response = await fetch("/api/bluesky/session");
-        const data = await response.json();
-        setHasBluesky(data.connected);
-      } catch (error) {
-        console.error("Failed to check Bluesky session:", error);
-      }
-    }
-
-    // Backfill any posts missing creator_id
-    async function backfillPosts() {
-      try {
-        await fetch("/api/posts/backfill-creators", {
-          method: "POST",
-          credentials: "include",
-        });
-      } catch (error) {
-        // Silent fail - this is just a background fix
-      }
-    }
-
     if (isAuthenticated) {
-      checkBlueskySession();
-      backfillPosts();
+      fetch("/api/bluesky/session")
+        .then((res) => res.json())
+        .then((data) => setHasBluesky(data.connected))
+        .catch(() => {});
+
+      // Background backfill
+      fetch("/api/posts/backfill-creators", { method: "POST", credentials: "include" }).catch(() => {});
     }
   }, [isAuthenticated]);
 
@@ -81,7 +64,7 @@ function FeedContent() {
   };
 
   // Deduplicate content by ID/URI
-  const deduplicateContent = (content: any[]) => {
+  const deduplicateContent = useCallback((content: any[]) => {
     const seen = new Set<string>();
     return content.filter(item => {
       const id = item.id || item.uri || item.externalUrl || `${item.type}-${item.title}`;
@@ -89,60 +72,53 @@ function FeedContent() {
       seen.add(id);
       return true;
     });
-  };
+  }, []);
 
-  // Sort content by date (no quality filtering - curated sources are already high quality)
-  const sortContent = (dragversePosts: any[], externalPosts: any[]) => {
-    // Sort by date (newest first)
-    const sortedDragverse = [...dragversePosts].sort((a, b) =>
-      new Date(b.createdAt || b.indexedAt).getTime() - new Date(a.createdAt || a.indexedAt).getTime()
-    );
-    const sortedExternal = [...externalPosts].sort((a, b) =>
-      new Date(b.createdAt || b.indexedAt).getTime() - new Date(a.createdAt || a.indexedAt).getTime()
-    );
-
-    console.log(`[Feed] Dragverse: ${dragversePosts.length} posts, External: ${externalPosts.length} posts (no filtering)`);
-
-    return {
-      dragverse: sortedDragverse,
-      external: sortedExternal,
-    };
-  };
-
-  // Load feed with quality scoring and filtering
-  async function loadFeed(isRefresh = false) {
+  // Progressive feed loading - Dragverse first, then external sources
+  const loadFeed = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
     } else {
-      setLoading(true);
+      setDragverseLoading(true);
+      setExternalLoading(true);
     }
     setSearchError(null);
 
+    // Load Dragverse posts FIRST (fast, our own DB)
     try {
-      // Fetch from all sources in parallel for maximum content diversity
-      const [dragverseRes, blueskyRes, youtubeRes] = await Promise.all([
-        // Native Dragverse posts
-        fetch("/api/posts/feed?limit=20").catch(() => null),
+      const dragverseRes = await fetch("/api/posts/feed?limit=20");
+      if (dragverseRes.ok) {
+        const data = await dragverseRes.json();
+        let dragverseData = deduplicateContent(data.posts || []);
+        dragverseData.sort((a: any, b: any) =>
+          new Date(b.createdAt || b.created_at || b.indexedAt).getTime() -
+          new Date(a.createdAt || a.created_at || a.indexedAt).getTime()
+        );
 
-        // Bluesky content (or search if hashtag) - fetch ALL content types
+        if (showBookmarks) {
+          const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
+          dragverseData = dragverseData.filter((post: any) => bookmarks.includes(post.id));
+        }
+
+        setDragversePosts(dragverseData);
+      }
+    } catch (error) {
+      console.error("Failed to load Dragverse posts:", error);
+    } finally {
+      setDragverseLoading(false);
+    }
+
+    // Load external sources in background (slower, don't block UI)
+    try {
+      const [blueskyRes, youtubeRes] = await Promise.all([
         fetch(
           hashtag
             ? `/api/bluesky/search?q=${encodeURIComponent(hashtag)}&limit=30&contentType=all`
             : `/api/bluesky/feed?limit=30&sortBy=${sortBy}&contentType=all`
         ).catch(() => null),
-
-        // YouTube drag content from curated channels (RSS feeds - no quota!)
-        fetch("/api/youtube/feed?limit=20&rssOnly=true").catch(() => null)
+        fetch("/api/youtube/feed?limit=20&rssOnly=true").catch(() => null),
       ]);
 
-      // Parse Dragverse posts
-      let dragverseData: any[] = [];
-      if (dragverseRes?.ok) {
-        const data = await dragverseRes.json();
-        dragverseData = data.posts || [];
-      }
-
-      // Parse Bluesky and YouTube content
       let externalPosts: any[] = [];
 
       if (blueskyRes?.ok) {
@@ -150,7 +126,6 @@ function FeedContent() {
         if (blueskyData.error) {
           setSearchError(blueskyData.error);
         } else {
-          // Bluesky posts already have the correct structure from blueskyPostToContent/blueskyPostToVideo
           externalPosts = [...externalPosts, ...(blueskyData.posts || [])];
         }
       }
@@ -158,7 +133,6 @@ function FeedContent() {
       if (youtubeRes?.ok) {
         const youtubeData = await youtubeRes.json();
         if (youtubeData.success && youtubeData.videos) {
-          // Convert YouTube videos to post format for unified feed display
           const youtubePosts = youtubeData.videos.map((video: any) => ({
             id: video.id,
             type: "youtube-video",
@@ -167,7 +141,6 @@ function FeedContent() {
             thumbnail: video.thumbnail,
             likes: video.likes || 0,
             views: video.views || 0,
-            // Map creator properly (NOT author)
             creator: {
               displayName: video.creator?.displayName || "YouTube Channel",
               handle: video.creator?.handle || "youtube",
@@ -183,74 +156,58 @@ function FeedContent() {
         }
       }
 
-      // Deduplicate content
-      dragverseData = deduplicateContent(dragverseData);
       externalPosts = deduplicateContent(externalPosts);
+      externalPosts.sort((a: any, b: any) =>
+        new Date(b.createdAt || b.indexedAt).getTime() -
+        new Date(a.createdAt || a.indexedAt).getTime()
+      );
 
-      // Sort content by date (curated sources don't need quality filtering)
-      const { dragverse, external } = sortContent(dragverseData, externalPosts);
-
-      // Filter by bookmarks if needed
       if (showBookmarks) {
         const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
-        setDragversePosts(dragverse.filter((post: any) => bookmarks.includes(post.id)));
-        setPosts(external.filter((post: any) => bookmarks.includes(post.id)));
-      } else {
-        setDragversePosts(dragverse);
-        setPosts(external);
+        externalPosts = externalPosts.filter((post: any) => bookmarks.includes(post.id));
       }
 
-      // If this was a refresh, show notification if new content was found
-      if (isRefresh && (dragverse.length > 0 || external.length > 0)) {
+      setPosts(externalPosts);
+
+      if (isRefresh && externalPosts.length > 0) {
         setNewContentAvailable(true);
         setTimeout(() => setNewContentAvailable(false), 5000);
       }
     } catch (error) {
-      console.error("Failed to load feed:", error);
-      setSearchError(error instanceof Error ? error.message : "Failed to load feed");
+      console.error("Failed to load external feed:", error);
     } finally {
-      setLoading(false);
+      setExternalLoading(false);
       setRefreshing(false);
     }
-  }
+  }, [sortBy, showBookmarks, hashtag, deduplicateContent]);
 
   // Initial load
   useEffect(() => {
     loadFeed();
-  }, [sortBy, showBookmarks, hashtag]);
+  }, [loadFeed]);
 
   // Auto-refresh every 15 minutes
   useEffect(() => {
-    const interval = setInterval(() => {
-      loadFeed(true);
-    }, 15 * 60 * 1000); // 15 minutes
-
+    const interval = setInterval(() => loadFeed(true), 15 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [sortBy, showBookmarks, hashtag]);
+  }, [loadFeed]);
 
   const handlePostCreated = () => {
-    // Reload Dragverse posts
     fetch("/api/posts/feed?limit=20")
       .then((res) => res.json())
       .then((data) => setDragversePosts(data.posts || []))
       .catch((error) => console.error("Failed to reload posts:", error));
-
     setShowComposer(false);
   };
 
-  // Show connection gate if user doesn't have Bluesky connected
-  const hasConnection = hasBluesky;
+  // Compute loading state - show skeleton only while Dragverse (primary) is loading
+  const loading = dragverseLoading;
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
       <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-8">
         {/* Main Content */}
         <div className="lg:col-span-9 space-y-6">
-          {/* Connection Gate */}
-          {!loading && !hasConnection ? (
-            <ConnectionGate hasBluesky={hasBluesky} />
-          ) : (
-            <>
           {/* Header - Compact on mobile */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
@@ -263,7 +220,6 @@ function FeedContent() {
                   : "What's Happening"}
               </h1>
               <div className="flex items-center gap-2">
-                {/* Manual Refresh Button - Icon only on mobile */}
                 <button
                   onClick={() => loadFeed(true)}
                   disabled={refreshing}
@@ -334,7 +290,7 @@ function FeedContent() {
                     }`}
                   >
                     <span className="hidden sm:inline">Trending</span>
-                    <span className="sm:hidden">🔥</span>
+                    <span className="sm:hidden">Trending</span>
                   </button>
                   <button
                     onClick={() => setSortBy("recent")}
@@ -345,7 +301,7 @@ function FeedContent() {
                     }`}
                   >
                     <span className="hidden sm:inline">Recent</span>
-                    <span className="sm:hidden">🕐</span>
+                    <span className="sm:hidden">Recent</span>
                   </button>
                 </div>
               </div>
@@ -429,7 +385,7 @@ function FeedContent() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Dragverse Native Posts - Use BlueskyPostCard for audio player support */}
+              {/* Dragverse Native Posts */}
               {dragversePosts
                 .filter((post) => {
                   if (contentFilter === "all") return true;
@@ -454,13 +410,21 @@ function FeedContent() {
                   />
                 ))}
 
+              {/* External content loading indicator */}
+              {externalLoading && contentFilter !== "dragverse" && (
+                <div className="flex items-center justify-center py-4 gap-3 text-gray-400">
+                  <FiRefreshCw className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Loading more content...</span>
+                </div>
+              )}
+
               {/* External Posts (Bluesky, YouTube, etc.) */}
               {posts
                 .filter((post) => {
                   if (contentFilter === "all") return true;
                   if (contentFilter === "youtube") return (post as any).source === "youtube";
                   if (contentFilter === "bluesky") return (post as any).source !== "youtube" && (post as any).source !== "dragverse" && (post as any).source !== "ceramic";
-                  if (contentFilter === "dragverse") return false; // External posts are not Dragverse
+                  if (contentFilter === "dragverse") return false;
                   return false;
                 })
                 .map((post) => (
@@ -477,7 +441,7 @@ function FeedContent() {
                 if (contentFilter === "bluesky") return (post as any).source !== "youtube" && (post as any).source !== "dragverse" && (post as any).source !== "ceramic";
                 if (contentFilter === "dragverse") return false;
                 return false;
-              }).length === 0 && !searchError && (
+              }).length === 0 && !externalLoading && !searchError && (
                 <div className="text-center py-20">
                   <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
                     <FiMessageSquare className="w-10 h-10 text-[#EB83EA]" />
@@ -498,8 +462,6 @@ function FeedContent() {
                 </div>
               )}
             </div>
-          )}
-          </>
           )}
         </div>
 

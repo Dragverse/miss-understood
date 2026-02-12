@@ -134,14 +134,22 @@ export async function POST(request: NextRequest) {
     // Check if text already contains a watch/listen link (video/audio post)
     const hasVideoLink = textContent && (textContent.includes('/watch/') || textContent.includes('/listen/'));
 
-    // Format crosspost message
-    // For video/audio posts, use text as-is (already has link)
-    // For regular posts, append Dragverse link
-    const crosspostText = hasVideoLink
-      ? textContent // Video/audio posts already have the link
-      : textContent
-        ? `${textContent}\n\nWatch @${username} at the Dragverse: ${postUrl}`
-        : `Check out this post from @${username} at the Dragverse: ${postUrl}`;
+    // Format crosspost message for Bluesky (300 char limit)
+    const suffix = `\n\n${postUrl}`;
+    let crosspostText: string;
+
+    if (hasVideoLink) {
+      crosspostText = textContent;
+    } else if (textContent) {
+      // Truncate text to fit within Bluesky's limit with the link
+      const maxTextLen = 300 - suffix.length;
+      const truncatedText = textContent.length > maxTextLen
+        ? textContent.slice(0, maxTextLen - 3) + "..."
+        : textContent;
+      crosspostText = truncatedText + suffix;
+    } else {
+      crosspostText = `New post on Dragverse ${postUrl}`;
+    }
 
     // Cross-post to Bluesky
     console.log("[Posts] ========== CROSSPOSTING DEBUG ==========");

@@ -3,7 +3,7 @@
  * Posts content to Bluesky using user's authenticated session from Privy
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, SessionData } from "@/lib/session/config";
 
@@ -42,17 +42,22 @@ export async function postToBluesky(
 ): Promise<BlueskyPostResult> {
   try {
     // Get Bluesky session from iron-session
-    const response = new Response();
+    // Must use NextResponse (same as connect route) for cookie compatibility
+    const response = NextResponse.json({ ok: true });
     const session = await getIronSession<SessionData>(request, response, sessionOptions);
 
+    console.log("[Bluesky Crosspost] Session loaded - has bluesky data:", !!session.bluesky, "has handle:", !!session.bluesky?.handle);
+
     if (!session.bluesky?.handle || !session.bluesky?.appPassword) {
+      console.error("[Bluesky Crosspost] No Bluesky session found in cookie. User needs to reconnect.");
       return {
         success: false,
-        error: "Bluesky not connected. Please connect your Bluesky account first."
+        error: "Bluesky not connected. Please connect your Bluesky account in Settings."
       };
     }
 
     const { handle, appPassword } = session.bluesky;
+    console.log("[Bluesky Crosspost] Authenticating as:", handle);
 
     // Authenticate with Bluesky to get access token
     const authResponse = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
@@ -65,9 +70,11 @@ export async function postToBluesky(
     });
 
     if (!authResponse.ok) {
+      const authError = await authResponse.text().catch(() => "Unknown auth error");
+      console.error("[Bluesky Crosspost] Auth failed:", authResponse.status, authError);
       return {
         success: false,
-        error: "Failed to authenticate with Bluesky. Please reconnect your account."
+        error: "Failed to authenticate with Bluesky. Please reconnect your account in Settings."
       };
     }
 
@@ -257,7 +264,7 @@ export async function deleteFromBluesky(
     console.log("[Bluesky] Deleting post:", postUri);
 
     // Get Bluesky session from iron-session
-    const response = new Response();
+    const response = NextResponse.json({ ok: true });
     const session = await getIronSession<SessionData>(request, response, sessionOptions);
 
     if (!session.bluesky?.handle || !session.bluesky?.appPassword) {
