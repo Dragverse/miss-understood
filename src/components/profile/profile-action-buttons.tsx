@@ -122,6 +122,10 @@ export function ProfileActionButtons({
 
       if (response.ok) {
         setIsFollowing(!isFollowing);
+        // Trigger a custom event to notify other components that follow state changed
+        window.dispatchEvent(new CustomEvent('followStateChanged', {
+          detail: { action: isFollowing ? 'unfollow' : 'follow' }
+        }));
       } else {
         console.error("Follow failed:", await response.text());
       }

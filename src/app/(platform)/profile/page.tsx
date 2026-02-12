@@ -53,6 +53,7 @@ export default function ProfilePage() {
       youtube: boolean;
     };
   } | null>(null);
+  const [dragverseFollowingCount, setDragverseFollowingCount] = useState<number>(0);
   const [profileLinkCopied, setProfileLinkCopied] = useState(false);
   const [showBytePlayer, setShowBytePlayer] = useState(false);
   const [selectedByteIndex, setSelectedByteIndex] = useState(0);
@@ -398,6 +399,47 @@ export default function ProfilePage() {
     }
   }, [isAuthenticated, user?.id, getAccessToken]);
 
+  // Fetch Dragverse-only following count
+  useEffect(() => {
+    async function loadDragverseFollowing() {
+      if (!user?.id) return;
+
+      try {
+        const authToken = await getAccessToken();
+        const response = await fetch("/api/social/following/count", {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setDragverseFollowingCount(data.count || 0);
+          }
+        }
+      } catch (error) {
+        console.error("[Profile] Failed to fetch Dragverse following count:", error);
+      }
+    }
+
+    if (isAuthenticated && user?.id) {
+      loadDragverseFollowing();
+    }
+
+    // Listen for follow state changes and refetch count
+    const handleFollowStateChange = () => {
+      if (isAuthenticated && user?.id) {
+        loadDragverseFollowing();
+      }
+    };
+
+    window.addEventListener('followStateChanged', handleFollowStateChange);
+    return () => {
+      window.removeEventListener('followStateChanged', handleFollowStateChange);
+    };
+  }, [isAuthenticated, user?.id, getAccessToken]);
+
   if (!isReady || (isAuthenticated && isLoadingProfile)) {
     return (
       <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
@@ -571,12 +613,16 @@ export default function ProfilePage() {
                         </div>
                       )}
                     </div>
-                    <div>
+                    <button
+                      onClick={() => router.push("/profile/following")}
+                      className="hover:opacity-80 transition-opacity text-left"
+                      title="View who you're following"
+                    >
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {aggregatedStats ? aggregatedStats.totalFollowing.toLocaleString() : "0"}
+                        {dragverseFollowingCount.toLocaleString()}
                       </span>
                       <span className="text-white/80 ml-2">following</span>
-                    </div>
+                    </button>
                   </div>
                 </div>
 
@@ -1048,41 +1094,98 @@ export default function ProfilePage() {
           {activeTab === "posts" && (
             <div>
               {userPosts.length > 0 ? (
-                <div className="max-w-3xl mx-auto space-y-4">
-                  {userPosts.map((post) => (
-                    <div
+                <div className="max-w-4xl mx-auto space-y-6">
+                  {userPosts.filter(post => post && typeof post === 'object').map((post) => (
+                    <article
                       key={post.id}
-                      className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/20 transition-all"
+                      className="group relative bg-gradient-to-br from-[#1a0b2e] via-[#2f1942] to-[#1a0b2e] rounded-3xl p-8 border-2 border-transparent hover:border-[#EB83EA]/30 transition-all duration-300 overflow-hidden"
+                      style={{
+                        backgroundImage: 'linear-gradient(135deg, rgba(235, 131, 234, 0.03) 0%, rgba(124, 58, 237, 0.03) 100%)',
+                      }}
                     >
-                      <p className="text-gray-200 mb-4 whitespace-pre-wrap leading-relaxed">
-                        {post.text_content || post.description || ""}
-                      </p>
-                      <div className="flex items-center justify-between text-sm text-gray-400">
-                        <span className="flex items-center gap-2">
-                          <FiCalendar className="w-4 h-4" />
-                          {(() => {
-                            const d = new Date(post.createdAt || post.created_at);
-                            return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            });
-                          })()}
-                        </span>
+                      {/* Holographic border effect */}
+                      <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                        style={{
+                          background: 'linear-gradient(90deg, rgba(235, 131, 234, 0.1), rgba(124, 58, 237, 0.1), rgba(235, 131, 234, 0.1))',
+                          backgroundSize: '200% 100%',
+                          animation: 'shimmer-bg 3s linear infinite',
+                        }}
+                      />
+
+                      {/* Source badge - Top right */}
+                      <div className="absolute top-6 right-6">
                         {post.source === "dragverse" ? (
-                          <span className="text-[#EB83EA] text-xs font-semibold">Dragverse</span>
-                        ) : post.externalUrl ? (
-                          <a
-                            href={post.externalUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[#0085ff] hover:text-[#0066cc] transition font-semibold"
-                          >
-                            View on Bluesky →
-                          </a>
-                        ) : null}
+                          <div className="px-4 py-1.5 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-full text-xs font-bold text-white shadow-lg shadow-[#EB83EA]/30 flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                            Dragverse
+                          </div>
+                        ) : (
+                          <div className="px-4 py-1.5 bg-gradient-to-r from-[#0085ff] to-[#0066cc] rounded-full text-xs font-bold text-white shadow-lg">
+                            Bluesky
+                          </div>
+                        )}
                       </div>
-                    </div>
+
+                      {/* Media preview if available */}
+                      {post.thumbnail && (
+                        <div className="relative w-full h-64 mb-6 rounded-2xl overflow-hidden border-2 border-[#EB83EA]/20">
+                          <Image
+                            src={post.thumbnail}
+                            alt="Post media"
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      )}
+
+                      {/* Post content */}
+                      <div className="relative z-10">
+                        <p className="text-gray-100 text-lg mb-6 whitespace-pre-wrap leading-relaxed font-light">
+                          {post.text_content || post.description || ""}
+                        </p>
+
+                        {/* Footer with metadata */}
+                        <div className="flex items-center justify-between pt-4 border-t border-[#EB83EA]/10">
+                          <div className="flex items-center gap-4">
+                            {/* Date */}
+                            <span className="flex items-center gap-2 text-gray-400 text-sm">
+                              <FiCalendar className="w-4 h-4" />
+                              {(() => {
+                                const d = new Date(post.createdAt || post.created_at);
+                                return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                });
+                              })()}
+                            </span>
+
+                            {/* Engagement metrics if available */}
+                            {post.likes !== undefined && post.likes > 0 && (
+                              <span className="flex items-center gap-1.5 text-gray-400 text-sm">
+                                <FiHeart className="w-4 h-4 text-[#EB83EA]" />
+                                {post.likes.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* External link for Bluesky posts */}
+                          {post.externalUrl && (
+                            <a
+                              href={post.externalUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 px-4 py-2 bg-[#0085ff]/10 hover:bg-[#0085ff]/20 border border-[#0085ff]/30 rounded-full text-[#0085ff] text-sm font-semibold transition-all"
+                            >
+                              View on Bluesky
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </article>
                   ))}
                 </div>
               ) : (

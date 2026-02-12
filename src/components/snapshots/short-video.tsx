@@ -30,6 +30,8 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
   const [playbackError, setPlaybackError] = useState(false);
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [tipModalOpen, setTipModalOpen] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
   const playerRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -43,6 +45,81 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
   useEffect(() => {
     setPlaybackError(false);
   }, [video.id]);
+
+  // Check initial like status on mount
+  useEffect(() => {
+    async function checkLikeStatus() {
+      if (!user?.id || video.source !== "ceramic") return;
+
+      try {
+        const authToken = await getAccessToken();
+        const response = await fetch(
+          `/api/social/like?videoId=${video.id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setIsLiked(data.liked || false);
+        }
+      } catch (error) {
+        console.error("[ShortVideo] Failed to check like status:", error);
+      }
+    }
+
+    checkLikeStatus();
+  }, [video.id, user?.id, getAccessToken, video.source]);
+
+  // Check follow status on mount
+  useEffect(() => {
+    async function checkFollowStatus() {
+      if (!user?.id || !video.creator?.did || isCreator) return;
+
+      try {
+        const authToken = await getAccessToken();
+        const response = await fetch(
+          `/api/social/follow?followingDID=${encodeURIComponent(video.creator.did)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setIsFollowing(data.following || false);
+        }
+      } catch (error) {
+        console.error("[ShortVideo] Failed to check follow status:", error);
+      }
+    }
+
+    checkFollowStatus();
+  }, [video.creator?.did, user?.id, isCreator, getAccessToken]);
+
+  // Fetch comment count on mount
+  useEffect(() => {
+    async function fetchCommentCount() {
+      if (video.source !== "ceramic") return;
+
+      try {
+        const response = await fetch(`/api/comments?videoId=${video.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setCommentCount(data.comments?.length || 0);
+        }
+      } catch (error) {
+        console.error("[ShortVideo] Failed to fetch comments:", error);
+      }
+    }
+
+    fetchCommentCount();
+  }, [video.id, video.source]);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -110,16 +187,40 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowMenu(false);
-    // TODO: Navigate to edit page or open edit modal
-    console.log("Edit video:", video.id);
+    // Navigate to edit page
+    window.location.href = `/upload?edit=${video.id}`;
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowMenu(false);
-    if (confirm("Are you sure you want to delete this video?")) {
-      // TODO: Call delete API
-      console.log("Delete video:", video.id);
+
+    if (!confirm("Are you sure you want to delete this video? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const authToken = await getAccessToken();
+      const response = await fetch(`/api/videos/${video.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      if (response.ok) {
+        // Move to next video and refresh the list
+        onNext?.();
+        alert("Video deleted successfully");
+        // Refresh page after a short delay
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        const data = await response.json();
+        alert(`Failed to delete video: ${data.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("[ShortVideo] Delete error:", error);
+      alert("Failed to delete video. Please try again.");
     }
   };
 
@@ -373,23 +474,74 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
 
             {/* Interaction Buttons - Right Side */}
             <div className="absolute bottom-20 right-2 md:right-4 flex flex-col gap-3 md:gap-4 z-20" style={{ pointerEvents: 'auto' }}>
-              {/* Creator Avatar */}
+              {/* Creator Avatar with Follow Button */}
               {video.creator?.avatar && (
-                <Link
-                  href={`/profile/${video.creator.handle || video.creator.did}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="relative"
-                >
-                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-lg">
-                    <Image
-                      src={getSafeThumbnail(video.creator.avatar, "/defaultpfp.png")}
-                      alt={video.creator.displayName || "Creator"}
-                      width={48}
-                      height={48}
-                      className="object-cover"
-                    />
-                  </div>
-                </Link>
+                <div className="relative flex flex-col items-center gap-2">
+                  <Link
+                    href={`/u/${video.creator.handle || video.creator.did}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="relative"
+                  >
+                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-lg">
+                      <Image
+                        src={getSafeThumbnail(video.creator.avatar, "/defaultpfp.png")}
+                        alt={video.creator.displayName || "Creator"}
+                        width={48}
+                        height={48}
+                        className="object-cover"
+                      />
+                    </div>
+                  </Link>
+
+                  {/* Follow Button - Only show for non-creators */}
+                  {!isCreator && user?.id && video.source === "ceramic" && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!video.creator?.did) return;
+
+                        const newFollowing = !isFollowing;
+                        setIsFollowing(newFollowing);
+
+                        try {
+                          const authToken = await getAccessToken();
+                          const response = await fetch("/api/social/follow", {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${authToken}`,
+                            },
+                            body: JSON.stringify({
+                              followingDID: video.creator.did,
+                              action: newFollowing ? "follow" : "unfollow",
+                            }),
+                          });
+
+                          if (!response.ok) {
+                            setIsFollowing(!newFollowing);
+                          } else {
+                            window.dispatchEvent(new CustomEvent('followStateChanged'));
+                          }
+                        } catch (error) {
+                          setIsFollowing(!newFollowing);
+                          console.error("[ShortVideo] Follow error:", error);
+                        }
+                      }}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                        isFollowing
+                          ? "bg-[#2f2942] text-white border border-[#EB83EA]/50"
+                          : "bg-[#EB83EA] text-white hover:bg-[#E748E6]"
+                      }`}
+                      aria-label={isFollowing ? "Unfollow" : "Follow"}
+                    >
+                      {isFollowing ? (
+                        <span className="text-xs font-bold">✓</span>
+                      ) : (
+                        <span className="text-lg font-bold leading-none">+</span>
+                      )}
+                    </button>
+                  )}
+                </div>
               )}
 
               {/* Like Button - Only for Dragverse videos */}
@@ -416,7 +568,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                   <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
                     <FiMessageCircle className="w-6 h-6 text-white" />
                   </div>
-                  <span className="text-white text-xs font-semibold">{video.creator?.followerCount || 0}</span>
+                  <span className="text-white text-xs font-semibold">{commentCount > 0 ? commentCount : ''}</span>
                 </button>
               )}
 
@@ -458,7 +610,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
             {/* Video Info - Bottom Left */}
             <div className="absolute bottom-4 left-2 md:left-4 right-16 md:right-20 z-20 text-white" style={{ pointerEvents: 'auto' }}>
               <Link
-                href={`/profile/${video.creator?.handle || video.creator?.did}`}
+                href={`/u/${video.creator?.handle || video.creator?.did}`}
                 onClick={(e) => e.stopPropagation()}
                 className="font-bold text-sm mb-2 hover:underline block"
               >

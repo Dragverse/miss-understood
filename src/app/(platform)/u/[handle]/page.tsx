@@ -138,8 +138,15 @@ export default function DynamicProfilePage() {
     try {
       // Fetch Dragverse videos, posts, and YouTube videos in parallel
       const [videos, postsResponse, youtubeVideos] = await Promise.all([
-        getVideosByCreator(creatorDID),
-        fetch(`/api/posts/feed?creatorDid=${encodeURIComponent(creatorDID)}&limit=50`),
+        getVideosByCreator(creatorDID).catch(err => {
+          console.error("Failed to fetch videos:", err);
+          return [] as any[];
+        }),
+        fetch(`/api/posts/feed?creatorDid=${encodeURIComponent(creatorDID)}&limit=50`)
+          .catch(err => {
+            console.error("Failed to fetch posts:", err);
+            return new Response(JSON.stringify({ success: false, posts: [] }), { status: 500 });
+          }),
         youtubeChannelId
           ? fetch(`/api/youtube/feed?channelId=${encodeURIComponent(youtubeChannelId)}&limit=15`)
               .then(res => res.ok ? res.json() : { videos: [] })
@@ -164,8 +171,6 @@ export default function DynamicProfilePage() {
         duration: sv.duration || 0,
         views: sv.views || 0,
         likes: sv.likes || 0,
-        comments: 0,
-        shares: 0,
         createdAt: new Date(sv.created_at),
         creator: creator!,
         contentType: sv.content_type || ((sv.duration || 0) <= 60 ? "short" : "long"),
@@ -768,29 +773,98 @@ export default function DynamicProfilePage() {
           {activeTab === "posts" && (
             <div>
               {userPosts.length > 0 ? (
-                <div className="max-w-3xl mx-auto space-y-6">
-                  {userPosts.map((post) => (
-                    <FeedPostCard
+                <div className="max-w-4xl mx-auto space-y-6">
+                  {userPosts.filter(post => post && typeof post === 'object').map((post) => (
+                    <article
                       key={post.id}
-                      post={{
-                        ...post,
-                        description: post.text_content || post.description || "",
-                        createdAt: post.created_at || post.createdAt,
-                        thumbnail: post.media_urls?.[0] || post.thumbnail,
-                        likes: post.likes || 0,
-                        creator: post.creator ? {
-                          displayName: post.creator.display_name || post.creator.displayName || creator?.displayName,
-                          handle: post.creator.handle || creator?.handle,
-                          avatar: post.creator.avatar || creator?.avatar,
-                          did: post.creator.did || creator?.did,
-                        } : {
-                          displayName: creator?.displayName || "Unknown",
-                          handle: creator?.handle || "",
-                          avatar: creator?.avatar || "/defaultpfp.png",
-                          did: creator?.did || "",
-                        },
+                      className="group relative bg-gradient-to-br from-[#1a0b2e] via-[#2f1942] to-[#1a0b2e] rounded-3xl p-8 border-2 border-transparent hover:border-[#EB83EA]/30 transition-all duration-300 overflow-hidden"
+                      style={{
+                        backgroundImage: 'linear-gradient(135deg, rgba(235, 131, 234, 0.03) 0%, rgba(124, 58, 237, 0.03) 100%)',
                       }}
-                    />
+                    >
+                      {/* Holographic border effect */}
+                      <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                        style={{
+                          background: 'linear-gradient(90deg, rgba(235, 131, 234, 0.1), rgba(124, 58, 237, 0.1), rgba(235, 131, 234, 0.1))',
+                          backgroundSize: '200% 100%',
+                          animation: 'shimmer-bg 3s linear infinite',
+                        }}
+                      />
+
+                      {/* Source badge - Top right */}
+                      <div className="absolute top-6 right-6">
+                        {post.source === "dragverse" ? (
+                          <div className="px-4 py-1.5 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-full text-xs font-bold text-white shadow-lg shadow-[#EB83EA]/30 flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                            Dragverse
+                          </div>
+                        ) : (
+                          <div className="px-4 py-1.5 bg-gradient-to-r from-[#0085ff] to-[#0066cc] rounded-full text-xs font-bold text-white shadow-lg">
+                            Bluesky
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Media preview if available */}
+                      {(post.media_urls?.[0] || post.thumbnail) && (
+                        <div className="relative w-full h-64 mb-6 rounded-2xl overflow-hidden border-2 border-[#EB83EA]/20">
+                          <Image
+                            src={post.media_urls?.[0] || post.thumbnail}
+                            alt="Post media"
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      )}
+
+                      {/* Post content */}
+                      <div className="relative z-10">
+                        <p className="text-gray-100 text-lg mb-6 whitespace-pre-wrap leading-relaxed font-light">
+                          {post.text_content || post.description || ""}
+                        </p>
+
+                        {/* Footer with metadata */}
+                        <div className="flex items-center justify-between pt-4 border-t border-[#EB83EA]/10">
+                          <div className="flex items-center gap-4">
+                            {/* Date */}
+                            <span className="flex items-center gap-2 text-gray-400 text-sm">
+                              <FiCalendar className="w-4 h-4" />
+                              {(() => {
+                                const d = new Date(post.created_at || post.createdAt);
+                                return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                });
+                              })()}
+                            </span>
+
+                            {/* Engagement metrics if available */}
+                            {post.likes !== undefined && post.likes > 0 && (
+                              <span className="flex items-center gap-1.5 text-gray-400 text-sm">
+                                <FiHeart className="w-4 h-4 text-[#EB83EA]" />
+                                {post.likes.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* External link for Bluesky posts */}
+                          {post.externalUrl && (
+                            <a
+                              href={post.externalUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 px-4 py-2 bg-[#0085ff]/10 hover:bg-[#0085ff]/20 border border-[#0085ff]/30 rounded-full text-[#0085ff] text-sm font-semibold transition-all"
+                            >
+                              View on Bluesky
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </article>
                   ))}
                 </div>
               ) : (

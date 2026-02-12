@@ -264,6 +264,13 @@ export function Navbar() {
                   >
                     Profile
                   </Link>
+                  <Link
+                    href="/profile/following"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
+                  >
+                    <FiHeart className="w-4 h-4" />
+                    Following
+                  </Link>
                   {canStream && (
                     <Link
                       href="/live"

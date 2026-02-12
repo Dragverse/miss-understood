@@ -12,7 +12,7 @@ export function ShortOverlayTop({ video }: ShortOverlayTopProps) {
   return (
     <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent z-10">
       <Link
-        href={`/creator/${video.creator.handle}`}
+        href={`/u/${video.creator.handle}`}
         className="flex items-center gap-3 hover:opacity-80 transition"
       >
         <Image
