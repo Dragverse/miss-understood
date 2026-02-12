@@ -1,50 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth/verify";
 import {
-  generateYouTubeOAuthUrl,
   resyncYouTubeChannel,
   disconnectYouTubeChannel,
   syncYouTubeChannelManual,
 } from "@/lib/youtube/oauth-sync";
-import crypto from "crypto";
-
-/**
- * GET /api/youtube/connect
- * Generate YouTube OAuth authorization URL
- * Returns URL for frontend to redirect user to Google consent screen
- */
-export async function GET(request: NextRequest) {
-  try {
-    const auth = await verifyAuth(request);
-    if (!auth.authenticated || !auth.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Generate CSRF state token with encoded user ID
-    // Format: {randomToken}:{userDID}
-    const csrfToken = crypto.randomBytes(16).toString("hex");
-    const state = `${csrfToken}:${auth.userId}`;
-
-    const authUrl = generateYouTubeOAuthUrl(state);
-
-    return NextResponse.json({
-      success: true,
-      authUrl,
-    });
-  } catch (error) {
-    console.error("[YouTube Connect API] Error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate OAuth URL" },
-      { status: 500 }
-    );
-  }
-}
 
 /**
  * POST /api/youtube/connect
  * Two modes:
- * 1. Manual channel entry: { channelInput: "@handle" or "UC..." or URL }
- * 2. Re-sync: { resync: true }
+ * 1. Connect channel: { channelInput: "@handle" or "UC..." or URL }
+ * 2. Re-sync: no body (or empty body)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -55,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
 
-    // Mode 1: Manual channel entry (for brand/creator channels)
+    // Mode 1: Connect channel by handle/URL
     if (body.channelInput) {
       const result = await syncYouTubeChannelManual(auth.userId, body.channelInput);
 
@@ -115,9 +81,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      success: true,
-    });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[YouTube Connect API] Error:", error);
     return NextResponse.json(
