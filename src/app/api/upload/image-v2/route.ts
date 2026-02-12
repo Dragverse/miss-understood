@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
-import sharp from "sharp";
 
 // Force dynamic route
 export const dynamic = 'force-dynamic';
@@ -90,23 +89,25 @@ export async function POST(request: NextRequest) {
     const inputBuffer = Buffer.from(arrayBuffer);
 
     // Optimize image (skip GIFs to preserve animation)
-    let optimizedBuffer: Buffer;
-    let outputContentType: string;
-    let outputExtension: string;
+    let optimizedBuffer: Buffer = inputBuffer;
+    let outputContentType: string = file.type;
+    let outputExtension: string = file.name.split('.').pop() || 'jpg';
 
-    if (file.type === "image/gif") {
-      optimizedBuffer = inputBuffer;
-      outputContentType = file.type;
-      outputExtension = "gif";
-    } else {
-      const originalSize = inputBuffer.byteLength;
-      optimizedBuffer = await sharp(inputBuffer)
-        .resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 82 })
-        .toBuffer();
-      outputContentType = "image/webp";
-      outputExtension = "webp";
-      console.log(`[ImageUpload] Optimized: ${(originalSize / 1024).toFixed(0)}KB → ${(optimizedBuffer.byteLength / 1024).toFixed(0)}KB`);
+    if (file.type !== "image/gif") {
+      try {
+        const sharp = (await import("sharp")).default;
+        const originalSize = inputBuffer.byteLength;
+        optimizedBuffer = await sharp(inputBuffer)
+          .resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true })
+          .webp({ quality: 82 })
+          .toBuffer();
+        outputContentType = "image/webp";
+        outputExtension = "webp";
+        console.log(`[ImageUpload] Optimized: ${(originalSize / 1024).toFixed(0)}KB → ${(optimizedBuffer.byteLength / 1024).toFixed(0)}KB`);
+      } catch (sharpError) {
+        console.warn("[ImageUpload] Sharp optimization failed, uploading original:", sharpError);
+        // Fall back to original buffer
+      }
     }
 
     const fileName = `${timestamp}-${randomStr}.${outputExtension}`;

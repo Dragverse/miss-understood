@@ -8,7 +8,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, SessionData } from "@/lib/session/config";
 import { createClient } from "@supabase/supabase-js";
-import sharp from "sharp";
 
 const BLUESKY_MAX_BLOB_SIZE = 950_000; // ~950KB (Bluesky limit is 976.56KB, leave margin)
 
@@ -25,24 +24,31 @@ async function compressImageForBluesky(buffer: ArrayBuffer, contentType: string)
 
   console.log(`[Bluesky] Image too large (${(inputBuffer.byteLength / 1024).toFixed(0)}KB), compressing...`);
 
-  // Try progressive quality reduction
-  let quality = 80;
-  let result = await sharp(inputBuffer)
-    .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
-    .jpeg({ quality, mozjpeg: true })
-    .toBuffer();
+  try {
+    const sharp = (await import("sharp")).default;
 
-  while (result.byteLength > BLUESKY_MAX_BLOB_SIZE && quality > 20) {
-    quality -= 15;
-    result = await sharp(inputBuffer)
-      .resize({ width: 1500, height: 1500, fit: "inside", withoutEnlargement: true })
+    // Try progressive quality reduction
+    let quality = 80;
+    let result = await sharp(inputBuffer)
+      .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
       .jpeg({ quality, mozjpeg: true })
       .toBuffer();
-  }
 
-  console.log(`[Bluesky] Compressed to ${(result.byteLength / 1024).toFixed(0)}KB (quality: ${quality})`);
-  const ab = result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength) as ArrayBuffer;
-  return new Blob([ab], { type: "image/jpeg" });
+    while (result.byteLength > BLUESKY_MAX_BLOB_SIZE && quality > 20) {
+      quality -= 15;
+      result = await sharp(inputBuffer)
+        .resize({ width: 1500, height: 1500, fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality, mozjpeg: true })
+        .toBuffer();
+    }
+
+    console.log(`[Bluesky] Compressed to ${(result.byteLength / 1024).toFixed(0)}KB (quality: ${quality})`);
+    const ab = result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength) as ArrayBuffer;
+    return new Blob([ab], { type: "image/jpeg" });
+  } catch (sharpError) {
+    console.warn("[Bluesky] Sharp compression failed, using original image:", sharpError);
+    return new Blob([new Uint8Array(buffer)], { type: contentType });
+  }
 }
 
 interface BlueskyPostParams {
