@@ -149,33 +149,53 @@ export async function fetchAuthenticatedChannelInfo(
     // Fetch user's own channel (using "mine=true")
     const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true`;
 
+    console.log("[YouTube OAuth] Fetching channel info with access token");
+
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     });
 
+    console.log("[YouTube OAuth] YouTube API response status:", response.status);
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || `YouTube API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error("[YouTube OAuth] YouTube API error response:", errorText);
+      let errorMessage = `YouTube API error: ${response.status}`;
+      try {
+        const error = JSON.parse(errorText);
+        errorMessage = error.error?.message || errorMessage;
+      } catch (e) {
+        // Response wasn't JSON
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
+    console.log("[YouTube OAuth] YouTube API response data:", JSON.stringify(data, null, 2));
+
     const channel = data.items?.[0];
 
     if (!channel) {
+      console.error("[YouTube OAuth] No channel found in response. Items:", data.items);
       throw new Error("No YouTube channel found for this account");
     }
 
-    return {
+    const channelInfo = {
       channelId: channel.id,
       channelName: channel.snippet.title,
       subscriberCount: parseInt(channel.statistics.subscriberCount || "0"),
       avatarUrl: channel.snippet.thumbnails?.medium?.url,
       customUrl: channel.snippet.customUrl,
     };
+
+    console.log("[YouTube OAuth] ✅ Successfully fetched channel:", channelInfo.channelName);
+
+    return channelInfo;
   } catch (error) {
     console.error("[YouTube OAuth] Failed to fetch channel info:", error);
+    console.error("[YouTube OAuth] Error details:", error instanceof Error ? error.message : String(error));
     return null;
   }
 }
