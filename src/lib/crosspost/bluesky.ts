@@ -46,13 +46,22 @@ export async function postToBluesky(
     const response = NextResponse.json({ ok: true });
     const session = await getIronSession<SessionData>(request, response, sessionOptions);
 
-    console.log("[Bluesky Crosspost] Session loaded - has bluesky data:", !!session.bluesky, "has handle:", !!session.bluesky?.handle);
+    console.log("[Bluesky Crosspost] ========== SESSION DEBUG ==========");
+    console.log("[Bluesky Crosspost] Request cookies:", request.cookies.getAll().map(c => c.name));
+    console.log("[Bluesky Crosspost] Session object:", session);
+    console.log("[Bluesky Crosspost] Session.bluesky exists:", !!session.bluesky);
+    console.log("[Bluesky Crosspost] Session.bluesky.handle:", session.bluesky?.handle);
+    console.log("[Bluesky Crosspost] Session.bluesky.appPassword length:", session.bluesky?.appPassword?.length);
 
     if (!session.bluesky?.handle || !session.bluesky?.appPassword) {
-      console.error("[Bluesky Crosspost] No Bluesky session found in cookie. User needs to reconnect.");
+      console.error("[Bluesky Crosspost] ❌ No Bluesky session found in cookie.");
+      console.error("[Bluesky Crosspost] This means the user either:");
+      console.error("[Bluesky Crosspost] 1. Never connected Bluesky");
+      console.error("[Bluesky Crosspost] 2. Session expired (7 day limit)");
+      console.error("[Bluesky Crosspost] 3. Cookies are being blocked/cleared");
       return {
         success: false,
-        error: "Bluesky not connected. Please connect your Bluesky account in Settings."
+        error: "Bluesky not connected. Please reconnect your Bluesky account in Settings."
       };
     }
 
