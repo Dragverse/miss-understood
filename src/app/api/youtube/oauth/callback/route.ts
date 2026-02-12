@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth/verify";
+import { verifyAuthFromCookies } from "@/lib/auth/verify";
 import {
   exchangeYouTubeAuthCode,
   syncYouTubeChannelViaOAuth,
@@ -40,9 +40,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify user authentication
-    const auth = await verifyAuth(request);
+    // Verify user authentication from cookies (OAuth callback doesn't have Bearer token)
+    const auth = await verifyAuthFromCookies(request);
     if (!auth.authenticated || !auth.userId) {
+      console.error("[YouTube OAuth] Authentication failed:", auth.error);
       return NextResponse.redirect(
         `${baseUrl}/settings?youtube_error=not_authenticated`
       );

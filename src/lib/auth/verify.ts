@@ -73,3 +73,54 @@ export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
 export function isPrivyConfigured(): boolean {
   return !!process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 }
+
+/**
+ * Verify authentication from cookies (for OAuth callbacks and redirects)
+ * Uses Privy's cookie-based authentication instead of Bearer token
+ */
+export async function verifyAuthFromCookies(request: NextRequest): Promise<AuthResult> {
+  try {
+    const privyToken = request.cookies.get('privy-token')?.value ||
+                       request.cookies.get('privy-access-token')?.value ||
+                       request.cookies.get('privy-id-token')?.value;
+
+    if (!privyToken) {
+      console.error("[Auth] No Privy auth cookie found");
+      return {
+        authenticated: false,
+        error: "No authentication cookie found",
+      };
+    }
+
+    const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+    if (!appId) {
+      console.error("[Auth] NEXT_PUBLIC_PRIVY_APP_ID not configured");
+      return {
+        authenticated: false,
+        error: "Privy not configured",
+      };
+    }
+
+    console.log("[Auth] Verifying cookie token for app:", appId);
+
+    // Verify the access token using PrivyClient
+    const privyClient = getPrivyClient();
+    const verifiedClaims = await privyClient.utils().auth().verifyAccessToken(privyToken);
+
+    console.log("[Auth] ✓ Cookie token verified for user:", verifiedClaims.user_id);
+
+    return {
+      authenticated: true,
+      userId: verifiedClaims.user_id,
+    };
+  } catch (error) {
+    console.error("[Auth] Cookie verification failed:", error instanceof Error ? error.message : String(error));
+    console.error("[Auth] Full error:", error);
+
+    const errorMessage = error instanceof Error ? error.message : "Invalid or expired cookie token";
+    return {
+      authenticated: false,
+      error: `Invalid or expired token: ${errorMessage}`,
+    };
+  }
+}
