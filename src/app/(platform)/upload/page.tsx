@@ -680,20 +680,17 @@ function UploadPageContent() {
         authToken
       );
 
-      toast.success(`Upload complete! Processing ${formData.mediaType}...`);
-      setUploadStage("processing");
-
       let readyAsset;
 
-      // Skip processing wait for audio files since Livepeer doesn't transcode audio
-      // Audio files are ready immediately after upload
       if (formData.mediaType === 'audio') {
+        // Audio files don't need Livepeer transcoding — skip processing stage entirely
         console.log("[Upload] Audio file detected - skipping processing wait");
-        setProcessingProgress(100);
-        readyAsset = asset; // Use the asset directly
-        toast.success("Audio processing complete! 🎉");
+        readyAsset = asset;
+        toast.success("Audio uploaded! 🎉");
       } else {
         // For video files, wait for Livepeer transcoding to complete
+        toast.success("Upload complete! Processing video...");
+        setUploadStage("processing");
         readyAsset = await waitForAssetReady(asset.id, (progress) => {
           setProcessingProgress(Math.round(progress * 100));
         });
