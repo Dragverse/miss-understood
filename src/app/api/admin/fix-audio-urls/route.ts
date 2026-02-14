@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
         // If no downloadUrl, construct it from asset UUID (not playbackId)
         if (!downloadUrl && asset.id) {
-          downloadUrl = `https://livepeercdn.com/asset/${asset.id}/video`;
+          downloadUrl = `https://vod-cdn.lp-playback.studio/raw/jxf4iblf6wlsyor6526t4tcmtmqa/catalyst-vod-com/hls/${asset.playbackId}/video`;
         }
 
         if (!downloadUrl) {
