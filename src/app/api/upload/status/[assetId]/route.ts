@@ -38,7 +38,7 @@ export async function GET(
 
     // If Livepeer didn't provide full URL, construct it from playbackId
     if (!playbackUrl && playbackId) {
-      playbackUrl = `https://nyc-prod-catalyst-0.lp-playback.studio/hls/video+${playbackId}/index.m3u8`;
+      playbackUrl = `https://nyc-prod-catalyst-0.lp-playback.studio/hls/${playbackId}/index.m3u8`;
       console.log(`[AssetStatus] Constructed playback URL from playbackId: ${playbackId}`);
     }
 

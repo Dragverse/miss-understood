@@ -82,7 +82,7 @@ export async function GET(request: Request) {
 
       // Construct from playback_id if no URL at all
       if (!playbackUrl && playbackId) {
-        playbackUrl = `https://nyc-prod-catalyst-0.lp-playback.studio/hls/video+${playbackId}/index.m3u8`;
+        playbackUrl = `https://nyc-prod-catalyst-0.lp-playback.studio/hls/${playbackId}/index.m3u8`;
       }
 
       // Log warning if content has no playback URL at all
