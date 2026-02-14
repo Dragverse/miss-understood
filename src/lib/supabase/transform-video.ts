@@ -53,24 +53,21 @@ export async function transformVideoWithCreator(supabaseVideo: SupabaseVideo): P
   let playbackUrl = supabaseVideo.playback_url || '';
   const playbackId = supabaseVideo.playback_id || supabaseVideo.livepeer_asset_id || '';
   const contentType = supabaseVideo.content_type || 'long';
-  const isAudio = contentType === 'podcast' || contentType === 'music';
 
-  // Only append /index.m3u8 for VIDEO content (not audio)
-  if (!isAudio) {
-    // Append /index.m3u8 if URL is incomplete (database has truncated URLs)
-    if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
-      playbackUrl = `${playbackUrl}/index.m3u8`;
-    }
+  // Append /index.m3u8 if URL is incomplete (database has truncated URLs)
+  // HLS works for both video AND audio (especially on iOS Safari)
+  if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
+    playbackUrl = `${playbackUrl}/index.m3u8`;
+  }
 
-    // Construct from playback_id if no URL at all
-    if (!playbackUrl && playbackId) {
-      playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
-    }
+  // Construct from playback_id if no URL at all
+  if (!playbackUrl && playbackId) {
+    playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
   }
 
   // Only log errors, not every successful transformation
   if (!playbackUrl && !playbackId) {
-    console.warn(`[Transform] Warning: No playback URL or ID for ${isAudio ? 'audio' : 'video'}: ${supabaseVideo.title}`);
+    console.warn(`[Transform] Warning: No playback URL or ID for content: ${supabaseVideo.title}`);
   }
 
   return {
@@ -142,24 +139,21 @@ export async function transformVideosWithCreators(supabaseVideos: SupabaseVideo[
     let playbackUrl = v.playback_url || '';
     const playbackId = v.playback_id || v.livepeer_asset_id || '';
     const contentType = v.content_type || 'long';
-    const isAudio = contentType === 'podcast' || contentType === 'music';
 
-    // Only append /index.m3u8 for VIDEO content (not audio)
-    if (!isAudio) {
-      // Append /index.m3u8 if URL is incomplete (database has truncated URLs)
-      if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
-        playbackUrl = `${playbackUrl}/index.m3u8`;
-      }
+    // Append /index.m3u8 if URL is incomplete (database has truncated URLs)
+    // HLS works for both video AND audio (especially on iOS Safari)
+    if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
+      playbackUrl = `${playbackUrl}/index.m3u8`;
+    }
 
-      // Construct from playback_id if no URL at all
-      if (!playbackUrl && playbackId) {
-        playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
-      }
+    // Construct from playback_id if no URL at all
+    if (!playbackUrl && playbackId) {
+      playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
     }
 
     // Only log errors for missing URLs
     if (!playbackUrl && !playbackId) {
-      console.warn(`[TransformBatch] Warning: No playback URL or ID for ${isAudio ? 'audio' : 'video'}: ${v.title}`);
+      console.warn(`[TransformBatch] Warning: No playback URL or ID for content: ${v.title}`);
     }
 
     return {

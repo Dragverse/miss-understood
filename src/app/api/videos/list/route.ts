@@ -70,27 +70,24 @@ export async function GET(request: Request) {
     // Map creators to videos and fix playback URLs
     const videosWithCreators = videos.map(video => {
       // Fix incomplete Livepeer playback URLs (ensure they're complete HLS URLs)
+      // HLS works for both video AND audio (especially on iOS Safari)
       let playbackUrl = video.playback_url || '';
       const playbackId = video.playback_id || video.livepeer_asset_id || '';
       const contentType = video.content_type || 'long';
-      const isAudio = contentType === 'podcast' || contentType === 'music';
 
-      // Only append /index.m3u8 for VIDEO content (not audio)
-      if (!isAudio) {
-        // Append /index.m3u8 if URL is incomplete
-        if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
-          playbackUrl = `${playbackUrl}/index.m3u8`;
-        }
+      // Append /index.m3u8 if URL is incomplete
+      if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
+        playbackUrl = `${playbackUrl}/index.m3u8`;
+      }
 
-        // Construct from playback_id if no URL at all
-        if (!playbackUrl && playbackId) {
-          playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
-        }
+      // Construct from playback_id if no URL at all
+      if (!playbackUrl && playbackId) {
+        playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
       }
 
       // Log warning if content has no playback URL at all
       if (!playbackUrl) {
-        console.warn(`[Videos API] Warning: ${isAudio ? 'Audio' : 'Video'} ${video.id} (${video.title}) has no playback URL or ID`);
+        console.warn(`[Videos API] Warning: Content ${video.id} (${video.title}) has no playback URL or ID`);
       }
 
       return {
