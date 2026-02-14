@@ -135,57 +135,68 @@ export function PostCard({ post }: PostCardProps) {
   const toggleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
 
-    // If no Bluesky URI/CID, just update local state
-    if (!post.uri || !post.cid) {
+    // Optimistic UI update
+    const previousLikeState = isLiked;
+    const previousLikeCount = likeCount;
+    setIsLiked(!isLiked);
+    setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
+    setIsLiking(true);
+
+    try {
+      // If has Bluesky URI/CID, sync to Bluesky
+      if (post.uri && post.cid) {
+        const response = await fetch("/api/bluesky/like", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            postUri: post.uri,
+            postCid: post.cid,
+            action: previousLikeState ? "unlike" : "like",
+          }),
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.error);
+        }
+      }
+
+      // Always persist Dragverse posts to database
+      // (even if they also sync to Bluesky)
+      if (post.id && !post.type?.includes('youtube')) {
+        const response = await fetch("/api/posts/like", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            postId: post.id,
+            action: previousLikeState ? "unlike" : "like",
+          }),
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+          console.error("Failed to persist like to database:", data.error);
+          // Don't throw - Bluesky sync already succeeded
+        }
+      }
+
+      // Update localStorage as backup
       const likes = JSON.parse(localStorage.getItem("dragverse_likes") || "[]");
-      if (isLiked) {
+      if (previousLikeState) {
         const updated = likes.filter((id: string) => id !== post.id);
         localStorage.setItem("dragverse_likes", JSON.stringify(updated));
-        setIsLiked(false);
-        setLikeCount(likeCount - 1);
       } else {
-        likes.push(post.id);
-        localStorage.setItem("dragverse_likes", JSON.stringify(likes));
-        setIsLiked(true);
-        setLikeCount(likeCount + 1);
-      }
-      return;
-    }
-
-    // Try to like/unlike on Bluesky
-    setIsLiking(true);
-    try {
-      const response = await fetch("/api/bluesky/like", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          postUri: post.uri,
-          postCid: post.cid,
-          action: isLiked ? "unlike" : "like",
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        // Update local state
-        const likes = JSON.parse(localStorage.getItem("dragverse_likes") || "[]");
-        if (isLiked) {
-          const updated = likes.filter((id: string) => id !== post.id);
-          localStorage.setItem("dragverse_likes", JSON.stringify(updated));
-          setIsLiked(false);
-          setLikeCount(likeCount - 1);
-        } else {
+        if (!likes.includes(post.id)) {
           likes.push(post.id);
           localStorage.setItem("dragverse_likes", JSON.stringify(likes));
-          setIsLiked(true);
-          setLikeCount(likeCount + 1);
         }
-      } else {
-        console.error("Failed to like/unlike post:", data.error);
       }
     } catch (error) {
       console.error("Error liking/unliking post:", error);
+      // Revert optimistic update
+      setIsLiked(previousLikeState);
+      setLikeCount(previousLikeCount);
+      toast.error("Failed to update like. Please try again.");
     } finally {
       setIsLiking(false);
     }

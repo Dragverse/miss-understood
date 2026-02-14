@@ -4,7 +4,7 @@ import type { Video } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FiHeart, FiExternalLink } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import { VideoOptionsMenu } from "./video-options-menu";
@@ -23,11 +23,34 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
   const router = useRouter();
   const { userId } = useAuthUser();
   const [thumbnailError, setThumbnailError] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(video.likes);
+  const [isLiking, setIsLiking] = useState(false);
 
   // Check if this is external content (from Bluesky, YouTube, etc.)
   const isExternal = (video as any).source === "bluesky" || (video as any).source === "youtube";
   const externalUrl = (video as any).externalUrl;
   const isOwner = userId && video.creator.did === userId;
+
+  // Check like status on mount
+  useEffect(() => {
+    if (!userId || isExternal) return;
+
+    const checkLikeStatus = async () => {
+      try {
+        const response = await fetch(
+          `/api/social/like?videoId=${video.id}`,
+          { credentials: 'include' }
+        );
+        const data = await response.json();
+        setIsLiked(data.liked);
+      } catch (error) {
+        console.error("Error checking like status:", error);
+      }
+    };
+
+    checkLikeStatus();
+  }, [video.id, userId, isExternal]);
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
@@ -49,6 +72,50 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
     const isAudio = video.contentType === 'podcast' || video.contentType === 'music';
     const targetPage = isAudio ? 'listen' : 'watch';
     router.push(`/${targetPage}/${video.id}`);
+  };
+
+  const handleLike = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent card click navigation
+
+    if (!userId) {
+      toast.error("Please sign in to like videos");
+      return;
+    }
+
+    if (isLiking || isExternal) return;
+
+    // Optimistic update
+    const previousState = isLiked;
+    const previousCount = likeCount;
+    setIsLiked(!isLiked);
+    setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
+    setIsLiking(true);
+
+    try {
+      const response = await fetch("/api/social/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          videoId: video.id,
+          action: previousState ? "unlike" : "like",
+        }),
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error("Like failed");
+      }
+    } catch (error) {
+      console.error("Error liking video:", error);
+      // Revert optimistic update
+      setIsLiked(previousState);
+      setLikeCount(previousCount);
+      toast.error("Failed to like video");
+    } finally {
+      setIsLiking(false);
+    }
   };
 
   const handleEdit = () => {
@@ -269,8 +336,24 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
               />
             </Link>
             <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-              <FiHeart className="w-3 h-3" />
-              <span>{formatNumber(video.likes)}</span>
+              {!isExternal ? (
+                <button
+                  onClick={handleLike}
+                  disabled={isLiking}
+                  className="flex items-center gap-1 transition-colors hover:text-[#EB83EA] disabled:opacity-50"
+                  aria-label={isLiked ? "Unlike video" : "Like video"}
+                >
+                  <FiHeart
+                    className={`w-3 h-3 ${isLiked ? 'fill-[#EB83EA] text-[#EB83EA]' : ''}`}
+                  />
+                  <span>{formatNumber(likeCount)}</span>
+                </button>
+              ) : (
+                <>
+                  <FiHeart className="w-3 h-3" />
+                  <span>{formatNumber(video.likes)}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
