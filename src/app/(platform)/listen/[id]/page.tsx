@@ -35,6 +35,8 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
   const [accessDenied, setAccessDenied] = useState(false);
   const [relatedAudio, setRelatedAudio] = useState<Video[]>([]);
   const [volume, setVolume] = useState(0.8);
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [volumePercent, setVolumePercent] = useState(80);
 
   const isOwner = !!(user?.id && audio?.creator?.did && audio.creator.did === user.id);
 
@@ -177,8 +179,21 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
     const audioElement = audioRef.current;
     if (!audioElement) return;
 
-    const handleTimeUpdate = () => setCurrentTime(audioElement.currentTime);
-    const handleDurationChange = () => setDuration(audioElement.duration);
+    const handleTimeUpdate = () => {
+      const time = audioElement.currentTime;
+      setCurrentTime(time);
+      // Update progress percent for CSS variable
+      if (duration > 0) {
+        setProgressPercent((time / duration) * 100);
+      }
+    };
+
+    const handleDurationChange = () => {
+      const dur = audioElement.duration;
+      setDuration(dur);
+      // Initialize progress percent
+      setProgressPercent(0);
+    };
 
     audioElement.addEventListener("timeupdate", handleTimeUpdate);
     audioElement.addEventListener("durationchange", handleDurationChange);
@@ -187,7 +202,7 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
       audioElement.removeEventListener("timeupdate", handleTimeUpdate);
       audioElement.removeEventListener("durationchange", handleDurationChange);
     };
-  }, [audioRef]);
+  }, [audioRef, duration]);
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -219,6 +234,7 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
+    setVolumePercent(newVolume * 100);
     if (audioRef.current) {
       audioRef.current.volume = newVolume;
     }
@@ -417,7 +433,11 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
                       max={duration || 100}
                       value={currentTime}
                       onChange={handleSeek}
-                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#EB83EA]"
+                      className="audio-progress-slider"
+                      style={{
+                        '--progress-percent': `${progressPercent}%`
+                      } as React.CSSProperties}
+                      aria-label="Audio progress"
                     />
                     <div className="flex justify-between text-sm text-gray-400">
                       <span>{formatTime(currentTime)}</span>
@@ -439,18 +459,22 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
                     </button>
                   </div>
 
-                  {/* Volume Control */}
+                  {/* Volume Control - Responsive */}
                   <div className="flex items-center gap-3 px-4">
                     <button
                       onClick={() => {
                         const newVolume = volume > 0 ? 0 : 0.8;
                         setVolume(newVolume);
+                        setVolumePercent(newVolume * 100);
                         if (audioRef.current) audioRef.current.volume = newVolume;
                       }}
-                      className="text-gray-400 hover:text-white transition-colors"
+                      className="text-gray-400 hover:text-white transition-colors flex-shrink-0"
+                      aria-label={volume === 0 ? "Unmute" : "Mute"}
                     >
                       {volume === 0 ? <FiVolumeX className="w-5 h-5" /> : <FiVolume2 className="w-5 h-5" />}
                     </button>
+
+                    {/* Desktop: full-width slider */}
                     <input
                       type="range"
                       min="0"
@@ -458,8 +482,32 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
                       step="0.01"
                       value={volume}
                       onChange={handleVolumeChange}
-                      className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#EB83EA]"
+                      className="audio-volume-slider hidden sm:block flex-1"
+                      style={{
+                        '--volume-percent': `${volumePercent}%`
+                      } as React.CSSProperties}
+                      aria-label="Volume"
                     />
+
+                    {/* Mobile: compact slider + percentage */}
+                    <div className="sm:hidden flex items-center gap-2 flex-1">
+                      <span className="text-gray-400 text-sm font-mono min-w-[3ch]">
+                        {Math.round(volume * 100)}%
+                      </span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={volume}
+                        onChange={handleVolumeChange}
+                        className="audio-volume-slider w-20"
+                        style={{
+                          '--volume-percent': `${volumePercent}%`
+                        } as React.CSSProperties}
+                        aria-label="Volume"
+                      />
+                    </div>
                   </div>
                 </div>
 

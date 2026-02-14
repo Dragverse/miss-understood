@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from "react";
+import toast from "react-hot-toast";
 
 export interface AudioTrack {
   id: string;
@@ -114,7 +115,25 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     audio.load();
     audio.play()
       .then(() => setIsPlaying(true))
-      .catch(err => console.error("[AudioPlayer] Playback failed:", err));
+      .catch(err => {
+        console.error("[AudioPlayer] Playback failed:", err);
+
+        // Show user-friendly error message
+        if (err.name === "NotAllowedError" || err.name === "NotSupportedError") {
+          toast.error(
+            "Playback blocked. Please tap the play button to start.",
+            {
+              duration: 5000,
+              id: 'audio-autoplay-blocked', // Prevent duplicate toasts
+            }
+          );
+        } else {
+          toast.error("Failed to play audio. Please try again.");
+        }
+
+        // Keep track loaded but not playing
+        setIsPlaying(false);
+      });
   }, []);
 
   const pause = useCallback(() => {
@@ -130,7 +149,17 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     if (audio) {
       audio.play()
         .then(() => setIsPlaying(true))
-        .catch(err => console.error("[AudioPlayer] Resume failed:", err));
+        .catch(err => {
+          console.error("[AudioPlayer] Resume failed:", err);
+
+          if (err.name === "NotAllowedError") {
+            toast.error("Please tap play to resume playback.");
+          } else {
+            toast.error("Failed to resume audio.");
+          }
+
+          setIsPlaying(false);
+        });
     }
   }, []);
 

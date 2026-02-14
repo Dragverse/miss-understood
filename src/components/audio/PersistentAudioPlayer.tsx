@@ -31,6 +31,20 @@ export function PersistentAudioPlayer() {
 
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [volumePercent, setVolumePercent] = useState(volume * 100);
+
+  // Track progress percent for CSS variable
+  useEffect(() => {
+    if (duration > 0) {
+      setProgressPercent((currentTime / duration) * 100);
+    }
+  }, [currentTime, duration]);
+
+  // Track volume percent for CSS variable
+  useEffect(() => {
+    setVolumePercent(volume * 100);
+  }, [volume]);
 
   // Don't render if no track
   if (!currentTrack) return null;
@@ -47,7 +61,9 @@ export function PersistentAudioPlayer() {
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setVolume(parseFloat(e.target.value));
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    setVolumePercent(newVolume * 100);
   };
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -86,15 +102,19 @@ export function PersistentAudioPlayer() {
           max={duration || 0}
           value={currentTime}
           onChange={handleSeek}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+          className="absolute inset-0 w-full opacity-0 cursor-pointer z-10 audio-progress-slider"
+          style={{
+            '--progress-percent': `${progressPercent}%`
+          } as React.CSSProperties}
+          aria-label="Audio progress"
         />
         <div
-          className="h-full bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] transition-all"
-          style={{ width: `${progress}%` }}
+          className="h-full bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] transition-all pointer-events-none"
+          style={{ width: `${progressPercent}%` }}
         />
         <div
-          className="absolute top-0 h-full w-1 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ left: `${progress}%`, transform: "translateX(-50%)" }}
+          className="absolute top-0 h-full w-1 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+          style={{ left: `${progressPercent}%`, transform: "translateX(-50%)" }}
         />
       </div>
 
@@ -159,12 +179,14 @@ export function PersistentAudioPlayer() {
             <span>{formatTime(duration)}</span>
           </div>
 
-          {/* Volume Control */}
-          <div className="hidden md:flex items-center gap-2 relative">
+          {/* Volume Control - Mobile Friendly */}
+          <div className="flex items-center gap-2 relative">
             <button
               onClick={() => setShowVolumeSlider(!showVolumeSlider)}
               className="w-10 h-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center transition-colors"
               title="Volume"
+              aria-label="Toggle volume control"
+              aria-expanded={showVolumeSlider}
             >
               {volume === 0 ? (
                 <FiVolumeX className="w-5 h-5 text-white" />
@@ -174,7 +196,7 @@ export function PersistentAudioPlayer() {
             </button>
 
             {showVolumeSlider && (
-              <div className="absolute bottom-full right-0 mb-2 p-3 bg-[#18122D] rounded-xl border-2 border-[#EB83EA]/20 shadow-lg">
+              <div className="absolute bottom-full right-0 mb-2 p-3 bg-[#18122D] rounded-xl border-2 border-[#EB83EA]/20 shadow-lg z-20">
                 <input
                   type="range"
                   min="0"
@@ -182,8 +204,15 @@ export function PersistentAudioPlayer() {
                   step="0.01"
                   value={volume}
                   onChange={handleVolumeChange}
-                  className="w-24 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#EB83EA]"
+                  className="audio-volume-slider w-24"
+                  style={{
+                    '--volume-percent': `${volumePercent}%`
+                  } as React.CSSProperties}
+                  aria-label="Volume level"
                 />
+                <div className="text-center text-xs text-gray-400 mt-1 font-mono">
+                  {Math.round(volume * 100)}%
+                </div>
               </div>
             )}
           </div>
