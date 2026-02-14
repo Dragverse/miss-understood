@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from "react";
 import toast from "react-hot-toast";
+import Hls from "hls.js";
 
 export interface AudioTrack {
   id: string;
@@ -45,6 +46,7 @@ const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(und
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const [currentTrack, setCurrentTrack] = useState<AudioTrack | null>(null);
   const [playlist, setPlaylist] = useState<AudioTrack[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -84,6 +86,12 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("durationchange", handleDurationChange);
       audio.removeEventListener("ended", handleEnded);
+
+      // Clean up HLS instance on unmount
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
     };
   }, [currentIndex, playlist.length]);
 
@@ -121,31 +129,106 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       return;
     }
 
-    console.log("[AudioPlayerContext] Setting audio.src to:", track.audioUrl);
-    audio.src = track.audioUrl;
-    audio.load();
-    console.log("[AudioPlayerContext] Calling audio.play()...");
-    audio.play()
-      .then(() => setIsPlaying(true))
-      .catch(err => {
-        console.error("[AudioPlayer] Playback failed:", err);
+    // Destroy existing HLS instance if any
+    if (hlsRef.current) {
+      console.log("[AudioPlayerContext] Destroying previous HLS instance");
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
 
-        // Show user-friendly error message
-        if (err.name === "NotAllowedError" || err.name === "NotSupportedError") {
-          toast.error(
-            "Playback blocked. Please tap the play button to start.",
-            {
-              duration: 5000,
-              id: 'audio-autoplay-blocked', // Prevent duplicate toasts
-            }
-          );
-        } else {
-          toast.error("Failed to play audio. Please try again.");
-        }
+    const audioUrl = track.audioUrl;
+    const isHLS = audioUrl.includes('.m3u8');
 
-        // Keep track loaded but not playing
-        setIsPlaying(false);
+    console.log("[AudioPlayerContext] Loading audio:", {
+      url: audioUrl,
+      isHLS,
+      hlsSupported: Hls.isSupported(),
+      nativeHLS: audio.canPlayType('application/vnd.apple.mpegurl')
+    });
+
+    // If HLS stream and browser doesn't support HLS natively, use HLS.js
+    if (isHLS && Hls.isSupported()) {
+      console.log("[AudioPlayerContext] Using HLS.js for playback");
+      const hls = new Hls({
+        debug: false,
+        enableWorker: true,
       });
+      hlsRef.current = hls;
+
+      hls.loadSource(audioUrl);
+      hls.attachMedia(audio);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log("[AudioPlayerContext] HLS manifest parsed, attempting playback");
+        audio.play()
+          .then(() => {
+            console.log("[AudioPlayerContext] ✅ HLS playback started");
+            setIsPlaying(true);
+          })
+          .catch(err => {
+            console.error("[AudioPlayer] HLS playback failed:", err);
+            handlePlaybackError(err);
+          });
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        console.error("[AudioPlayer] HLS error:", data.type, data.details);
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.error("[AudioPlayer] Fatal network error, trying to recover");
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.error("[AudioPlayer] Fatal media error, trying to recover");
+              hls.recoverMediaError();
+              break;
+            default:
+              console.error("[AudioPlayer] Fatal error, cannot recover");
+              hls.destroy();
+              toast.error("Failed to load audio stream");
+              break;
+          }
+        }
+      });
+    } else if (isHLS && audio.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari can play HLS natively
+      console.log("[AudioPlayerContext] Using native HLS playback (Safari)");
+      audio.src = audioUrl;
+      audio.load();
+      audio.play()
+        .then(() => setIsPlaying(true))
+        .catch(err => {
+          console.error("[AudioPlayer] Native HLS playback failed:", err);
+          handlePlaybackError(err);
+        });
+    } else {
+      // Regular audio file (MP3, MP4, etc.)
+      console.log("[AudioPlayerContext] Using standard audio playback");
+      audio.src = audioUrl;
+      audio.load();
+      audio.play()
+        .then(() => setIsPlaying(true))
+        .catch(err => {
+          console.error("[AudioPlayer] Standard playback failed:", err);
+          handlePlaybackError(err);
+        });
+    }
+
+    function handlePlaybackError(err: Error) {
+      if (err.name === "NotAllowedError" || err.name === "NotSupportedError") {
+        toast.error(
+          "Playback blocked. Please tap the play button to start.",
+          {
+            duration: 5000,
+            id: 'audio-autoplay-blocked',
+          }
+        );
+      } else {
+        toast.error("Failed to play audio. Please try again.");
+      }
+      setIsPlaying(false);
+    }
   }, []);
 
   const pause = useCallback(() => {
@@ -183,6 +266,12 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       setIsPlaying(false);
       setCurrentTrack(null);
       setPlaylist([]);
+    }
+
+    // Clean up HLS instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
     }
   }, []);
 
