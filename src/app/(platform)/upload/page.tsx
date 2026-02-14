@@ -510,27 +510,49 @@ function UploadPageContent() {
           authToken
         );
 
-        // Audio files don't need Livepeer transcoding — skip waitForAssetReady
-        toast.success("Audio uploaded!");
+        // Audio files don't need Livepeer transcoding — but verify upload was received
         newLivepeerAssetId = asset.id;
         newPlaybackId = asset.playbackId;
 
-        // Poll briefly for downloadUrl (Livepeer needs a moment to make it available)
-        for (let i = 0; i < 8; i++) {
+        // Poll to verify asset moved past "uploading" and get downloadUrl
+        toast("Verifying upload...", { icon: "🔍" });
+        let uploadVerified = false;
+        for (let i = 0; i < 10; i++) {
           try {
             const statusRes = await fetch(`/api/upload/status/${asset.id}`);
             if (statusRes.ok) {
               const statusData = await statusRes.json();
-              if (statusData.downloadUrl) {
-                newPlaybackUrl = statusData.downloadUrl;
-                console.log("[Upload] Got downloadUrl from Livepeer:", newPlaybackUrl);
+              const phase = statusData.status?.phase;
+              console.log(`[Upload] Re-upload verification attempt ${i + 1}: phase=${phase}`);
+
+              if (phase === "ready" || phase === "processing" || statusData.downloadUrl) {
+                uploadVerified = true;
+                if (statusData.downloadUrl) {
+                  newPlaybackUrl = statusData.downloadUrl;
+                  console.log("[Upload] Got downloadUrl from Livepeer:", newPlaybackUrl);
+                }
                 break;
+              }
+              if (phase === "failed") {
+                toast.error("Livepeer failed to process the audio file. Please try again.");
+                setUploading(false);
+                setUploadStage("idle");
+                return;
               }
             }
           } catch (e) {
             console.warn("[Upload] Status check failed:", e);
           }
-          if (i < 7) await new Promise(r => setTimeout(r, 3000)); // Wait 3s between polls
+          if (i < 9) await new Promise(r => setTimeout(r, 3000)); // Wait 3s between polls
+        }
+
+        if (!uploadVerified) {
+          toast("Upload sent but Livepeer is still processing. If playback doesn't work, try re-uploading.", {
+            icon: "⚠️",
+            duration: 8000,
+          });
+        } else {
+          toast.success("Audio uploaded!");
         }
 
         // Fallback: use livepeercdn.studio direct download format (NOT vod-cdn which is HLS-only)
@@ -685,10 +707,57 @@ function UploadPageContent() {
       let readyAsset;
 
       if (formData.mediaType === 'audio') {
-        // Audio files don't need Livepeer transcoding — skip processing stage entirely
-        console.log("[Upload] Audio file detected - skipping processing wait");
-        readyAsset = asset;
-        toast.success("Audio uploaded! 🎉");
+        // Audio files don't need Livepeer transcoding — but verify the upload was received
+        console.log("[Upload] Audio file detected - verifying upload was received...");
+        toast("Verifying upload...", { icon: "🔍" });
+
+        // Poll briefly to confirm asset moved past "uploading" status
+        let verified = false;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          try {
+            const statusRes = await fetch(`/api/upload/status/${asset.id}`);
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              const phase = statusData.status?.phase;
+              console.log(`[Upload] Audio verification attempt ${attempt + 1}: phase=${phase}`);
+
+              if (phase === "ready" || phase === "processing") {
+                verified = true;
+                // Update asset with latest data from Livepeer
+                readyAsset = { ...asset, ...statusData };
+                break;
+              }
+              if (phase === "failed") {
+                toast.error("Livepeer failed to process the audio file. Please try again.");
+                setUploading(false);
+                setUploadStage("idle");
+                return;
+              }
+              // "waiting" or "uploading" — keep polling
+              if (statusData.downloadUrl) {
+                // Asset has a download URL even if status hasn't updated yet
+                verified = true;
+                readyAsset = { ...asset, ...statusData };
+                break;
+              }
+            }
+          } catch (e) {
+            console.warn("[Upload] Verification poll failed:", e);
+          }
+          await new Promise(r => setTimeout(r, 3000)); // Wait 3s between polls
+        }
+
+        if (!verified) {
+          // Asset still stuck in "uploading" after 30 seconds — warn but don't block
+          console.warn("[Upload] Audio asset may be stuck in uploading state");
+          toast("Upload sent but Livepeer is still processing. If playback doesn't work, try re-uploading.", {
+            icon: "⚠️",
+            duration: 8000,
+          });
+          readyAsset = asset;
+        } else {
+          toast.success("Audio uploaded! 🎉");
+        }
       } else {
         // For video files, wait for Livepeer transcoding to complete
         toast.success("Upload complete! Processing video...");

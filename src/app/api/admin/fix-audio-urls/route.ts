@@ -46,8 +46,11 @@ export async function POST(request: NextRequest) {
       total: audioRecords.length,
       updated: 0,
       skipped: 0,
+      stuck: 0,
       failed: 0,
       errors: [] as string[],
+      stuckAssets: [] as { title: string; assetId: string; status: string }[],
+      details: [] as { title: string; status: string; url: string }[],
     };
 
     // Process each audio record
@@ -83,11 +86,20 @@ export async function POST(request: NextRequest) {
         }
 
         const asset: LivepeerAsset = await livepeerResponse.json();
+        const phase = asset.status?.phase || 'unknown';
+
+        // Skip assets stuck in "uploading" — their URLs won't work
+        if (phase === 'uploading' || phase === 'waiting') {
+          console.warn(`[Fix Audio URLs] ${record.title}: asset ${assetId} stuck in "${phase}" — needs re-upload`);
+          results.stuck++;
+          results.stuckAssets.push({ title: record.title, assetId, status: phase });
+          continue;
+        }
 
         // Get download URL from Livepeer response
         let downloadUrl = asset.downloadUrl;
 
-        // If no downloadUrl, use livepeercdn.studio direct download (NOT vod-cdn which is HLS-only)
+        // If no downloadUrl, use livepeercdn.studio direct download
         if (!downloadUrl && asset.id) {
           downloadUrl = `https://livepeercdn.studio/asset/${asset.id}/original`;
         }
@@ -99,7 +111,7 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        console.log(`[Fix Audio URLs] Found URL for ${record.title}: ${downloadUrl}`);
+        console.log(`[Fix Audio URLs] Found URL for ${record.title}: ${downloadUrl} (status: ${phase})`);
 
         // Update database
         const { error: updateError } = await supabase
@@ -118,6 +130,7 @@ export async function POST(request: NextRequest) {
         }
 
         results.updated++;
+        results.details.push({ title: record.title, status: phase, url: downloadUrl });
         console.log(`[Fix Audio URLs] ✅ Updated ${record.title}`);
 
       } catch (error) {
@@ -129,9 +142,14 @@ export async function POST(request: NextRequest) {
 
     console.log("[Fix Audio URLs] Migration complete:", results);
 
+    let message = `Updated ${results.updated} of ${results.total} audio files`;
+    if (results.stuck > 0) {
+      message += `. ${results.stuck} tracks stuck on Livepeer (need re-upload)`;
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Updated ${results.updated} of ${results.total} audio files`,
+      message,
       ...results,
     });
 
