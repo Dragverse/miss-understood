@@ -230,7 +230,7 @@ export async function waitForAssetReady(
   assetId: string,
   onProgress?: (progress: number) => void
 ): Promise<LivepeerAsset> {
-  const maxAttempts = 180; // 15 minutes (5s intervals) - increased for large videos
+  const maxAttempts = 240; // 20 minutes (5s intervals) - increased for very large videos (up to 5GB)
   let attempts = 0;
 
   while (attempts < maxAttempts) {
@@ -287,7 +287,7 @@ export async function waitForAssetReady(
     }
   }
 
-  throw new Error("Asset processing timeout after 15 minutes. The video may be very large or there may be a processing issue.");
+  throw new Error("Asset processing timeout after 20 minutes. The video may be very large or there may be a processing issue. Please try again or use a smaller file.");
 }
 
 /**
