@@ -75,14 +75,15 @@ export async function GET(request: Request) {
       const playbackId = video.playback_id || video.livepeer_asset_id || '';
       const contentType = video.content_type || 'long';
 
-      // Append /index.m3u8 if URL is incomplete
-      if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
+      // Append /index.m3u8 if URL is incomplete (skip download URLs)
+      const isDownloadUrl = playbackUrl.includes('/asset/') || playbackUrl.includes('/raw/');
+      if (playbackUrl && !isDownloadUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
         playbackUrl = `${playbackUrl}/index.m3u8`;
       }
 
       // Construct from playback_id if no URL at all
       if (!playbackUrl && playbackId) {
-        playbackUrl = `https://nyc-prod-catalyst-0.lp-playback.studio/hls/${playbackId}/index.m3u8`;
+        playbackUrl = `https://vod-cdn.lp-playback.studio/raw/jxf4iblf6wlsyor6526t4tcmtmqa/catalyst-vod-com/hls/${playbackId}/index.m3u8`;
       }
 
       // Log warning if content has no playback URL at all
