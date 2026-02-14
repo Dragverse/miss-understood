@@ -628,12 +628,22 @@ function UploadPageContent() {
       toast.success(`Upload complete! Processing ${formData.mediaType}...`);
       setUploadStage("processing");
 
-      const readyAsset = await waitForAssetReady(asset.id, (progress) => {
-        setProcessingProgress(Math.round(progress * 100));
-      });
+      let readyAsset;
 
-      const mediaLabel = formData.mediaType === 'video' ? 'Video' : 'Audio';
-      toast.success(`${mediaLabel} processing complete! 🎉`);
+      // Skip processing wait for audio files since Livepeer doesn't transcode audio
+      // Audio files are ready immediately after upload
+      if (formData.mediaType === 'audio') {
+        console.log("[Upload] Audio file detected - skipping processing wait");
+        setProcessingProgress(100);
+        readyAsset = asset; // Use the asset directly
+        toast.success("Audio processing complete! 🎉");
+      } else {
+        // For video files, wait for Livepeer transcoding to complete
+        readyAsset = await waitForAssetReady(asset.id, (progress) => {
+          setProcessingProgress(Math.round(progress * 100));
+        });
+        toast.success("Video processing complete! 🎉");
+      }
 
       // Save video metadata to Supabase via backend API
       try {
