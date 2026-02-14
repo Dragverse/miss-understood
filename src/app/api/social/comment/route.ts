@@ -92,24 +92,15 @@ export async function GET(request: Request) {
       comments = await getComments(videoId!);
     }
 
-    // Enrich comments with author data
-    const enrichedComments = await Promise.all(
-      comments.map(async (comment: any) => {
-        const author = await getCreatorByDID(comment.author_did);
-        return {
-          ...comment,
-          author: author ? {
-            display_name: author.display_name,
-            handle: author.handle,
-            avatar: author.avatar || '/defaultpfp.png',
-          } : {
-            display_name: 'Dragverse User',
-            handle: `user-${comment.author_did.substring(0, 8)}`,
-            avatar: '/defaultpfp.png',
-          }
-        };
-      })
-    );
+    // Comments now come with author data from JOIN - just add fallback for missing authors
+    const enrichedComments = comments.map((comment: any) => ({
+      ...comment,
+      author: comment.author || {
+        display_name: 'Dragverse User',
+        handle: `user-${comment.author_did.substring(0, 8)}`,
+        avatar: '/defaultpfp.png',
+      }
+    }));
 
     return NextResponse.json({ comments: enrichedComments });
   } catch (error) {

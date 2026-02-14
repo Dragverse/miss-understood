@@ -103,6 +103,11 @@ export async function GET(request: Request) {
       success: true,
       videos: videosWithCreators,
       count: videosWithCreators.length,
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+        'CDN-Cache-Control': 's-maxage=120'
+      }
     });
   } catch (error) {
     console.error("[Videos API] Unexpected error:", error);

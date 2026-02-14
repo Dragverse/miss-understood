@@ -18,9 +18,11 @@ interface ShortVideoProps {
   isActive: boolean;
   onNext?: () => void;
   onEnded?: () => void;
+  initialLiked?: boolean;
+  initialFollowing?: boolean;
 }
 
-export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps) {
+export function ShortVideo({ video, isActive, onNext, onEnded, initialLiked, initialFollowing }: ShortVideoProps) {
   const { user, getAccessToken } = usePrivy();
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -46,8 +48,15 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
     setPlaybackError(false);
   }, [video.id]);
 
-  // Check initial like status on mount
+  // Check initial like status on mount (or use batch-fetched value)
   useEffect(() => {
+    // If initialLiked prop provided (from batch check), use it directly
+    if (initialLiked !== undefined) {
+      setIsLiked(initialLiked);
+      return;
+    }
+
+    // Otherwise, fall back to individual API call
     async function checkLikeStatus() {
       if (!user?.id || video.source !== "ceramic") return;
 
@@ -72,10 +81,17 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
     }
 
     checkLikeStatus();
-  }, [video.id, user?.id, getAccessToken, video.source]);
+  }, [video.id, user?.id, getAccessToken, video.source, initialLiked]);
 
-  // Check follow status on mount
+  // Check follow status on mount (or use batch-fetched value)
   useEffect(() => {
+    // If initialFollowing prop provided (from batch check), use it directly
+    if (initialFollowing !== undefined) {
+      setIsFollowing(initialFollowing);
+      return;
+    }
+
+    // Otherwise, fall back to individual API call
     async function checkFollowStatus() {
       if (!user?.id || !video.creator?.did || isCreator) return;
 
@@ -100,7 +116,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
     }
 
     checkFollowStatus();
-  }, [video.creator?.did, user?.id, isCreator, getAccessToken]);
+  }, [video.creator?.did, user?.id, isCreator, getAccessToken, initialFollowing]);
 
   // Fetch comment count on mount
   useEffect(() => {

@@ -61,6 +61,11 @@ export async function GET(request: NextRequest) {
       success: true,
       posts: transformedPosts,
       count: transformedPosts.length,
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+        'CDN-Cache-Control': 's-maxage=120'
+      }
     });
   } catch (error) {
     console.error("Posts feed error:", error);

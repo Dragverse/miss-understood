@@ -97,6 +97,11 @@ export async function GET(request: NextRequest) {
       totalPosts: posts.length, // For debugging
       source: "bluesky",
       sortedBy: sortBy,
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+        'CDN-Cache-Control': 's-maxage=600'
+      }
     });
   } catch (error) {
     console.error("[Bluesky Feed API] Error:", error);

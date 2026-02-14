@@ -160,6 +160,11 @@ export async function GET(request: NextRequest) {
       message: source === "youtube-api"
         ? "Videos fetched from YouTube Data API"
         : "Videos fetched from RSS feeds",
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+        'CDN-Cache-Control': 's-maxage=600'
+      }
     });
   } catch (error) {
     console.error("[YouTube Feed API] Exception:", error);

@@ -19,6 +19,10 @@ function SnapshotsContent() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [sliderReady, setSliderReady] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [socialStatus, setSocialStatus] = useState<{
+    likes: Record<string, boolean>;
+    follows: Record<string, boolean>;
+  }>({ likes: {}, follows: {} });
 
   // Load Dragverse snapshots
   async function loadSnapshots(isRefresh = false) {
@@ -109,6 +113,37 @@ function SnapshotsContent() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Batch fetch social status (likes/follows) when snapshots load
+  useEffect(() => {
+    if (snapshots.length === 0) return;
+
+    async function fetchSocialStatus() {
+      try {
+        const videoIds = snapshots.map(v => v.id);
+        const creatorDIDs = [...new Set(snapshots.map(v => v.creator.did))];
+
+        const response = await fetch('/api/social/batch-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ videoIds, creatorDIDs }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          setSocialStatus({
+            likes: data.likes || {},
+            follows: data.follows || {},
+          });
+        }
+      } catch (error) {
+        console.error('[Snapshots] Failed to fetch social status:', error);
+      }
+    }
+
+    fetchSocialStatus();
+  }, [snapshots]);
 
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
     initial: 0,
@@ -216,6 +251,8 @@ function SnapshotsContent() {
               isActive={currentSlide === idx}
               onNext={() => instanceRef.current?.next()}
               onEnded={handleVideoEnded}
+              initialLiked={socialStatus.likes[video.id]}
+              initialFollowing={socialStatus.follows[video.creator.did]}
             />
           </div>
         ))}

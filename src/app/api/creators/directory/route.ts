@@ -63,18 +63,30 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch video statistics for each creator
-    const creatorsWithStats = await Promise.all(
-      creators.map(async (creator) => {
-        // Get video count and total views for this creator
-        const { data: videos, error: videoError } = await supabase
-          .from("videos")
-          .select("views, likes")
-          .eq("creator_did", creator.did);
+    // Batch fetch video statistics for ALL creators in one query
+    const creatorDIDs = creators.map(c => c.did);
+    const { data: allVideos } = await supabase
+      .from("videos")
+      .select("creator_did, views, likes")
+      .in("creator_did", creatorDIDs);
 
-        const videoCount = videos?.length || 0;
-        const totalViews = videos?.reduce((sum, v) => sum + (v.views || 0), 0) || 0;
-        const totalLikes = videos?.reduce((sum, v) => sum + (v.likes || 0), 0) || 0;
+    // Group videos by creator_did for quick lookup
+    const videoStatsByCreator = new Map<string, { count: number; totalViews: number; totalLikes: number }>();
+    allVideos?.forEach((video: any) => {
+      const existing = videoStatsByCreator.get(video.creator_did) || { count: 0, totalViews: 0, totalLikes: 0 };
+      existing.count++;
+      existing.totalViews += video.views || 0;
+      existing.totalLikes += video.likes || 0;
+      videoStatsByCreator.set(video.creator_did, existing);
+    });
+
+    // Build creator stats using batch-fetched data
+    const creatorsWithStats = creators.map((creator) => {
+        // Get video stats from batch-fetched data
+        const stats = videoStatsByCreator.get(creator.did) || { count: 0, totalViews: 0, totalLikes: 0 };
+        const videoCount = stats.count;
+        const totalViews = stats.totalViews;
+        const totalLikes = stats.totalLikes;
 
         // Calculate days since joining
         const joinDate = new Date(creator.created_at);
@@ -202,6 +214,11 @@ export async function GET(request: NextRequest) {
       creators: limitedCreators,
       count: limitedCreators.length,
       total: creatorsWithStats.length,
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+        'CDN-Cache-Control': 's-maxage=600'
+      }
     });
   } catch (error) {
     console.error("Failed to fetch creators directory:", error);

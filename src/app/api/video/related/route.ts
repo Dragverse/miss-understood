@@ -108,7 +108,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ videos: videos || [] });
+    return NextResponse.json({ videos: videos || [] }, {
+      headers: {
+        'Cache-Control': 'public, max-age=120, stale-while-revalidate=300',
+        'CDN-Cache-Control': 's-maxage=240'
+      }
+    });
   } catch (error) {
     console.error("[RelatedVideos] Unexpected error:", error);
     return NextResponse.json({ videos: [] }, { status: 500 });
