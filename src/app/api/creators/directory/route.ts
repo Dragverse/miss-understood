@@ -143,8 +143,7 @@ export async function GET(request: NextRequest) {
           farcasterHandle: (creator as any).farcaster_handle,
           joinedAt: creator.created_at,
         };
-      })
-    );
+      });
 
     // Calculate "Best Overall" score for each creator
     function calculateCreatorScore(creator: any): number {
