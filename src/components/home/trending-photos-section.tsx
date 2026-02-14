@@ -78,7 +78,7 @@ export function TrendingPhotosSection({ photos }: { photos: PhotoPost[] }) {
               className="flex-shrink-0 snap-start group cursor-pointer"
             >
               <div className="relative w-[280px] aspect-square rounded-2xl overflow-hidden shadow-lg">
-                <Image src={photo.thumbnail} alt={photo.description} fill className="object-cover group-hover:scale-110 transition-transform duration-700" />
+                <Image src={photo.thumbnail || "/default-thumbnail.jpg"} alt={photo.description} fill className="object-cover group-hover:scale-110 transition-transform duration-700" />
 
                 {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />

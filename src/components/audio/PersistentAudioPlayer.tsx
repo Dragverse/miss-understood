@@ -125,7 +125,7 @@ export function PersistentAudioPlayer() {
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border-2 border-[#EB83EA]/20">
               <Image
-                src={currentTrack.thumbnail}
+                src={currentTrack.thumbnail || "/default-thumbnail.jpg"}
                 alt={currentTrack.title}
                 fill
                 className="object-cover"

@@ -30,7 +30,7 @@ import { getSafeAvatar } from "@/lib/utils/thumbnail-helpers";
 
 export function Navbar() {
   const { login, logout, authenticated, user } = usePrivy();
-  const { setSession, clearAuth } = useAuth();
+  const { setSession, clearAuth, creator } = useAuth();
   const { canStream } = useCanLivestream();
   const { blueskyProfile, blueskyConnected, farcasterHandle } = useAuthUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -230,7 +230,7 @@ export function Navbar() {
                     height={40}
                     className="w-full h-full object-cover"
                     src={getSafeAvatar(
-                      blueskyProfile?.avatar || user?.twitter?.profilePictureUrl,
+                      creator?.avatar || blueskyProfile?.avatar || user?.twitter?.profilePictureUrl,
                       "/defaultpfp.png"
                     )}
                   />

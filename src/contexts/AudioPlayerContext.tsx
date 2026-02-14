@@ -22,6 +22,7 @@ interface AudioPlayerContextType {
   currentTime: number;
   duration: number;
   volume: number;
+  playbackError: string | null;
 
   // Playlist
   playlist: AudioTrack[];
@@ -54,6 +55,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(1);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
 
   // Update audio element volume when state changes
   useEffect(() => {
@@ -121,6 +123,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }
 
     setCurrentTrack(track);
+    setPlaybackError(null); // Clear any previous error
 
     // For YouTube tracks, we'll need to use YouTube embedded player
     // For now, if it's a YouTube track without direct audio URL, skip
@@ -249,13 +252,16 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         console.log("[AudioPlayer] Play interrupted by new load (harmless)");
         return;
       }
-      if (err.name === "NotAllowedError" || err.name === "NotSupportedError") {
+      if (err.name === "NotSupportedError") {
+        // Source returned 404 or file format not playable — the file doesn't exist on Livepeer
+        const errorMsg = "Audio file unavailable. It may need to be re-uploaded.";
+        setPlaybackError(errorMsg);
+        toast.error(errorMsg, { duration: 6000, id: 'audio-unavailable' });
+      } else if (err.name === "NotAllowedError") {
+        // Autoplay blocked by browser — user needs to tap play
         toast.error(
           "Playback blocked. Please tap the play button to start.",
-          {
-            duration: 5000,
-            id: 'audio-autoplay-blocked',
-          }
+          { duration: 5000, id: 'audio-autoplay-blocked' }
         );
       } else {
         toast.error("Failed to play audio. Please try again.");
@@ -359,6 +365,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         currentTime,
         duration,
         volume,
+        playbackError,
         playlist,
         currentIndex,
         playTrack,

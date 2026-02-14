@@ -21,7 +21,7 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
   const shareToken = searchParams.token;
   const router = useRouter();
   const { getAccessToken, login, user } = usePrivy();
-  const { playTrack, pause, resume, isPlaying: isGlobalPlaying, currentTrack, audioRef } = useAudioPlayer();
+  const { playTrack, pause, resume, isPlaying: isGlobalPlaying, currentTrack, audioRef, playbackError } = useAudioPlayer();
 
   const [audio, setAudio] = useState<Video | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -423,6 +423,21 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
                     </div>
                   </div>
                 </div>
+
+                {/* Playback Error Banner */}
+                {playbackError && currentTrack?.id === audio.id && (
+                  <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-center">
+                    <p className="text-red-300 text-sm font-medium">{playbackError}</p>
+                    {isOwner && (
+                      <button
+                        onClick={handleEdit}
+                        className="mt-2 px-4 py-1.5 text-xs font-semibold bg-[#EB83EA]/20 text-[#EB83EA] rounded-lg hover:bg-[#EB83EA]/30 transition"
+                      >
+                        Re-upload Audio
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Track Info - Centered */}
                 <div className="text-center mb-6">

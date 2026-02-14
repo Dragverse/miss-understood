@@ -134,7 +134,7 @@ export function PhotoViewerModal({ photos, initialIndex, onClose }: PhotoViewerM
         <div className="flex-1 h-full flex items-center justify-center">
           <div className="relative w-full h-full max-h-[85vh] flex items-center justify-center">
             <Image
-              src={currentPhoto.thumbnail}
+              src={currentPhoto.thumbnail || "/default-thumbnail.jpg"}
               alt={currentPhoto.description || "Photo"}
               width={1200}
               height={1200}

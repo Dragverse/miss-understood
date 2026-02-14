@@ -1047,7 +1047,7 @@ export default function ProfilePage() {
                         className="group relative aspect-square bg-black overflow-hidden cursor-pointer"
                       >
                         <Image
-                          src={photo.thumbnail}
+                          src={photo.thumbnail || "/default-thumbnail.jpg"}
                           alt={photo.description || "Photo"}
                           fill
                           className="object-cover group-hover:opacity-80 transition-opacity"

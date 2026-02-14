@@ -82,7 +82,7 @@ export function LiveNowSection() {
             {/* Thumbnail with Live Badge */}
             <div className="relative aspect-video">
               <Image
-                src={stream.thumbnail}
+                src={stream.thumbnail || "/default-thumbnail.jpg"}
                 alt={stream.title}
                 fill
                 className="object-cover"
