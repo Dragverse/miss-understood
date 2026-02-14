@@ -87,10 +87,9 @@ export async function POST(request: NextRequest) {
         // Get download URL from Livepeer response
         let downloadUrl = asset.downloadUrl;
 
-        // If no downloadUrl, construct it from playbackId
-        if (!downloadUrl && asset.playbackId) {
-          // Try the documented format
-          downloadUrl = `https://livepeercdn.com/asset/${asset.playbackId}/video`;
+        // If no downloadUrl, construct it from asset UUID (not playbackId)
+        if (!downloadUrl && asset.id) {
+          downloadUrl = `https://livepeercdn.com/asset/${asset.id}/video`;
         }
 
         if (!downloadUrl) {

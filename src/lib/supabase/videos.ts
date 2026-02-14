@@ -263,23 +263,18 @@ export async function incrementVideoViews(
     return;
   }
 
-  // Generate session ID if user not authenticated
-  let sessionId = null;
-  if (!viewerDID) {
-    // Check if session ID exists in localStorage (client-side only)
-    if (typeof window !== 'undefined') {
-      sessionId = localStorage.getItem('viewer_session_id');
-      if (!sessionId) {
-        // Generate new session ID
-        sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        localStorage.setItem('viewer_session_id', sessionId);
-      }
+  // Use DID as session identifier, or generate anonymous session ID
+  let sessionId = viewerDID || null;
+  if (!sessionId && typeof window !== 'undefined') {
+    sessionId = localStorage.getItem('viewer_session_id');
+    if (!sessionId) {
+      sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      localStorage.setItem('viewer_session_id', sessionId);
     }
   }
 
   const { error } = await supabase.rpc('increment_video_views', {
     video_id_param: videoId,
-    viewer_did_param: viewerDID || null,
     viewer_session_param: sessionId
   });
 

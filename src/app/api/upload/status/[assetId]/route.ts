@@ -42,8 +42,9 @@ export async function GET(
       console.log(`[AssetStatus] Constructed playback URL from playbackId: ${playbackId}`);
     }
 
-    // Ensure URL ends with .m3u8 for HLS playback
-    if (playbackUrl && !playbackUrl.endsWith('.m3u8')) {
+    // Ensure HLS URLs end with .m3u8 (skip download URLs)
+    const isDownloadUrl = playbackUrl.includes('/asset/') || playbackUrl.includes('/raw/');
+    if (playbackUrl && !isDownloadUrl && !playbackUrl.endsWith('.m3u8')) {
       playbackUrl = `${playbackUrl}/index.m3u8`;
     }
 

@@ -244,6 +244,11 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }
 
     function handlePlaybackError(err: Error) {
+      // AbortError is harmless — just means a new load() interrupted a pending play()
+      if (err.name === "AbortError") {
+        console.log("[AudioPlayer] Play interrupted by new load (harmless)");
+        return;
+      }
       if (err.name === "NotAllowedError" || err.name === "NotSupportedError") {
         toast.error(
           "Playback blocked. Please tap the play button to start.",
