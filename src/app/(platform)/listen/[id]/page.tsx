@@ -152,6 +152,14 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
   // Play audio when page loads
   useEffect(() => {
     if (audio && audio.playbackUrl) {
+      console.log("[Listen] 🎵 Auto-playing audio:", {
+        id: audio.id,
+        title: audio.title,
+        playbackUrl: audio.playbackUrl,
+        contentType: audio.contentType,
+        livepeerAssetId: audio.livepeerAssetId,
+      });
+
       // Create audio track for global player
       const track = {
         id: audio.id,
@@ -164,6 +172,14 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
       };
 
       playTrack(track, [track]); // Play track with single-item playlist
+    } else if (audio) {
+      console.error("[Listen] ❌ No playback URL for audio:", {
+        id: audio.id,
+        title: audio.title,
+        playbackUrl: audio.playbackUrl,
+        contentType: audio.contentType,
+      });
+      toast.error("This audio file is missing a playback URL");
     }
   }, [audio, playTrack]);
 
@@ -205,9 +221,18 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
   }, [audioRef, duration]);
 
   const handlePlayPause = () => {
+    console.log("[Listen] 🎵 Play button clicked:", {
+      isPlaying,
+      hasAudio: !!audio,
+      hasPlaybackUrl: !!audio?.playbackUrl,
+      playbackUrl: audio?.playbackUrl,
+    });
+
     if (isPlaying) {
+      console.log("[Listen] Pausing audio");
       pause();
     } else if (audio && audio.playbackUrl) {
+      console.log("[Listen] Playing audio:", audio.playbackUrl);
       const track = {
         id: audio.id,
         title: audio.title,
@@ -219,6 +244,7 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
       };
       playTrack(track, [track]);
     } else {
+      console.log("[Listen] Resuming audio");
       resume();
     }
   };

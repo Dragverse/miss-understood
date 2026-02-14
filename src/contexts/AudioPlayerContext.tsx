@@ -89,7 +89,17 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   const playTrack = useCallback((track: AudioTrack, newPlaylist?: AudioTrack[]) => {
     const audio = audioRef.current;
-    if (!audio) return;
+    console.log("[AudioPlayerContext] 🎵 playTrack called:", {
+      trackId: track.id,
+      trackTitle: track.title,
+      audioUrl: track.audioUrl,
+      hasAudioElement: !!audio,
+    });
+
+    if (!audio) {
+      console.error("[AudioPlayerContext] ❌ No audio element found!");
+      return;
+    }
 
     // Update playlist if provided
     if (newPlaylist) {
@@ -111,8 +121,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       return;
     }
 
+    console.log("[AudioPlayerContext] Setting audio.src to:", track.audioUrl);
     audio.src = track.audioUrl;
     audio.load();
+    console.log("[AudioPlayerContext] Calling audio.play()...");
     audio.play()
       .then(() => setIsPlaying(true))
       .catch(err => {
