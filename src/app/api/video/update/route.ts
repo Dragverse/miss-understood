@@ -39,6 +39,9 @@ export async function PATCH(request: NextRequest) {
       category,
       tags,
       visibility,
+      livepeerAssetId,
+      playbackId,
+      playbackUrl,
     } = body;
 
     if (!videoId) {
@@ -87,6 +90,9 @@ export async function PATCH(request: NextRequest) {
     if (category !== undefined) updateData.category = category;
     if (tags !== undefined) updateData.tags = Array.isArray(tags) ? tags : [];
     if (visibility !== undefined) updateData.visibility = visibility;
+    if (livepeerAssetId !== undefined) updateData.livepeer_asset_id = livepeerAssetId;
+    if (playbackId !== undefined) updateData.playback_id = playbackId;
+    if (playbackUrl !== undefined) updateData.playback_url = playbackUrl;
 
     // Update video in Supabase
     const { data: updatedVideo, error: updateError } = await supabase

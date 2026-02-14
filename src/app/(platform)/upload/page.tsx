@@ -493,6 +493,47 @@ function UploadPageContent() {
         }
       }
 
+      // If user selected a new audio file, re-upload to Livepeer
+      let newLivepeerAssetId: string | undefined;
+      let newPlaybackId: string | undefined;
+      let newPlaybackUrl: string | undefined;
+
+      if (formData.video && formData.mediaType === 'audio') {
+        toast("Uploading new audio file...");
+        setUploadStage("uploading");
+
+        const asset = await uploadVideoToLivepeer(
+          formData.video,
+          (progress) => {
+            setUploadProgress(progress.percentage);
+          },
+          authToken
+        );
+
+        toast.success("Audio uploaded! Fetching download URL...");
+        setUploadStage("processing");
+
+        // Query Livepeer API to get download URL for the new asset
+        const statusRes = await fetch(`/api/upload/status/${asset.id}`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        const statusData = statusRes.ok ? await statusRes.json() : null;
+
+        newLivepeerAssetId = asset.id;
+        newPlaybackId = statusData?.playbackId || asset.playbackId;
+
+        // For audio, use the download URL (not HLS)
+        if (asset.downloadUrl) {
+          newPlaybackUrl = asset.downloadUrl;
+        } else {
+          // Construct download URL from asset UUID
+          newPlaybackUrl = `https://livepeercdn.com/asset/${asset.id}/video`;
+        }
+
+        console.log("[Upload] Re-uploaded audio:", { newLivepeerAssetId, newPlaybackId, newPlaybackUrl });
+        setUploadStage("idle");
+      }
+
       // Only send thumbnail URL if it's a valid HTTP(S) URL, not a base64 string
       const updatePayload: any = {
         videoId: editId,
@@ -506,6 +547,13 @@ function UploadPageContent() {
       // Only include thumbnail if it's a new upload (HTTP URL)
       if (thumbnailUrl && (thumbnailUrl.startsWith('http://') || thumbnailUrl.startsWith('https://'))) {
         updatePayload.thumbnail = thumbnailUrl;
+      }
+
+      // Include new Livepeer fields if audio was re-uploaded
+      if (newLivepeerAssetId) {
+        updatePayload.livepeerAssetId = newLivepeerAssetId;
+        updatePayload.playbackId = newPlaybackId;
+        updatePayload.playbackUrl = newPlaybackUrl;
       }
 
       const response = await fetch("/api/video/update", {
@@ -522,7 +570,7 @@ function UploadPageContent() {
         throw new Error(errorData.error || "Failed to update video");
       }
 
-      toast.success("Video updated successfully!");
+      toast.success(newLivepeerAssetId ? "Audio re-uploaded and updated!" : "Content updated successfully!");
       router.push("/profile");
     } catch (error) {
       console.error("Update error:", error);
@@ -1118,8 +1166,35 @@ function UploadPageContent() {
           </div>
         )}
 
-        {/* Edit mode message */}
-        {editId && (
+        {/* Edit mode: re-upload option for audio, info message for video */}
+        {editId && formData.mediaType === 'audio' && (
+          <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942] space-y-4">
+            <p className="text-gray-400 text-center text-sm">
+              {formData.video
+                ? `New audio file selected: ${formData.video.name}`
+                : "Audio file not playing? Re-upload it below."}
+            </p>
+            <label className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-[#EB83EA]/40 bg-[#0f071a] hover:border-[#EB83EA] transition cursor-pointer">
+              <FiUpload className="text-[#EB83EA]" />
+              <span className="text-sm text-[#EB83EA] font-medium">
+                {formData.video ? "Change Audio File" : "Re-upload Audio File"}
+              </span>
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setFormData((prev) => ({ ...prev, video: file }));
+                    toast.success(`Selected: ${file.name}`);
+                  }
+                }}
+                className="hidden"
+              />
+            </label>
+          </div>
+        )}
+        {editId && formData.mediaType !== 'audio' && (
           <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
             <p className="text-gray-400 text-center">
               Media file cannot be changed when editing. Upload a new file to create a new post.
