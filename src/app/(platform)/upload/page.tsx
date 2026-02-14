@@ -510,23 +510,28 @@ function UploadPageContent() {
           authToken
         );
 
-        toast.success("Audio uploaded! Processing...");
-        setUploadStage("processing");
+        // Audio files don't need Livepeer transcoding — skip waitForAssetReady
+        // (Livepeer doesn't transcode audio, so status may never reach "ready")
+        toast.success("Audio uploaded!");
+        newLivepeerAssetId = asset.id;
+        newPlaybackId = asset.playbackId;
 
-        // Wait for Livepeer to finish processing the audio file
-        const readyAsset = await waitForAssetReady(asset.id, (progress) => {
-          setUploadProgress(progress);
-        });
+        // Fetch the asset status once to get downloadUrl
+        try {
+          const statusRes = await fetch(`/api/upload/status/${asset.id}`);
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            if (statusData.downloadUrl) {
+              newPlaybackUrl = statusData.downloadUrl;
+            }
+          }
+        } catch (e) {
+          console.warn("[Upload] Could not fetch download URL:", e);
+        }
 
-        newLivepeerAssetId = readyAsset.id;
-        newPlaybackId = readyAsset.playbackId || asset.playbackId;
-
-        // For audio, use the download URL (not HLS)
-        if (readyAsset.downloadUrl) {
-          newPlaybackUrl = readyAsset.downloadUrl;
-        } else {
-          // Fallback: construct from playbackId using vod-cdn (NOT livepeercdn.com which 404s)
-          const pid = newPlaybackId || readyAsset.playbackId;
+        // Fallback: construct from playbackId using vod-cdn
+        if (!newPlaybackUrl) {
+          const pid = newPlaybackId || asset.playbackId;
           if (pid) {
             newPlaybackUrl = `https://vod-cdn.lp-playback.studio/raw/jxf4iblf6wlsyor6526t4tcmtmqa/catalyst-vod-com/hls/${pid}/video`;
           }
