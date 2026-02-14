@@ -704,6 +704,15 @@ function UploadPageContent() {
           console.log("[Upload] No thumbnail uploaded - will use dynamic Livepeer fallback");
         }
 
+        // For audio files, use downloadUrl instead of playbackUrl
+        // Livepeer's playbackUrl returns HLS (.m3u8) which HTML5 <audio> can't play
+        // downloadUrl provides direct MP3/audio file that browsers can play
+        const audioUrl = formData.mediaType === 'audio' && readyAsset.downloadUrl
+          ? readyAsset.downloadUrl
+          : readyAsset.playbackUrl;
+
+        console.log("[Upload] Using playback URL for", formData.mediaType, ":", audioUrl);
+
         const metadataResponse = await fetch("/api/video/create", {
           method: "POST",
           headers: {
@@ -716,7 +725,7 @@ function UploadPageContent() {
             thumbnail: thumbnailUrl,
             livepeerAssetId: readyAsset.id,
             playbackId: readyAsset.playbackId,
-            playbackUrl: readyAsset.playbackUrl,
+            playbackUrl: audioUrl,
             contentType: formData.contentType,
             category: formData.category,
             tags: formData.tags ? formData.tags.split(",").map((t: string) => t.trim()) : [],
