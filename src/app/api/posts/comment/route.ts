@@ -56,8 +56,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Increment comment count on the post
-    await supabase.rpc("increment_post_comments", { post_uuid: postId }).catch(() => {});
+    // Increment comment count on the post (best-effort, don't fail if RPC missing)
+    try {
+      await supabase.rpc("increment_post_comments", { post_uuid: postId });
+    } catch {
+      // RPC may not exist yet — ignore
+    }
 
     return NextResponse.json({ success: true, comment });
   } catch (error) {
