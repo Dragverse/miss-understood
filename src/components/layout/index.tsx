@@ -1,7 +1,10 @@
+"use client";
+
 import React from "react";
 import { Navbar } from "./navbar";
 import { Sidebar } from "./sidebar";
 import { Footer } from "./footer";
+import { PersistentAudioPlayer } from "@/components/audio/PersistentAudioPlayer";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -12,6 +15,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="md:ml-20">
         <Footer />
       </div>
+      <PersistentAudioPlayer />
     </div>
   );
 }

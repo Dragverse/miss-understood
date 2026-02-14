@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "@privy-io/wagmi";
 import { config } from "@/lib/privy/config";
 import { base, mainnet, optimism } from "wagmi/chains";
+import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
 
 const queryClient = new QueryClient();
 
@@ -38,9 +39,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={config}>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-            {children}
-            <Toaster
+          <AudioPlayerProvider>
+            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+              {children}
+              <Toaster
               position="bottom-right"
               toastOptions={{
                 style: {
@@ -83,7 +85,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 },
               }}
             />
-          </ThemeProvider>
+            </ThemeProvider>
+          </AudioPlayerProvider>
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>
