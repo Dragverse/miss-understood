@@ -174,6 +174,34 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error("[AudioPlayer] HLS error:", data.type, data.details);
         if (data.fatal) {
+          // Audio files on Livepeer don't have HLS manifests — fall back to direct download URL
+          if (data.details === 'manifestParsingError' || data.details === 'manifestLoadError') {
+            console.warn("[AudioPlayer] HLS manifest unavailable, falling back to direct URL");
+            hls.destroy();
+            hlsRef.current = null;
+
+            const hlsMatch = audioUrl.match(/\/hls\/([^/]+)\//);
+            if (hlsMatch) {
+              const playbackId = hlsMatch[1];
+              const directUrl = `https://livepeercdn.com/asset/${playbackId}/video`;
+              console.log("[AudioPlayer] Trying direct URL:", directUrl);
+              audio.src = directUrl;
+              audio.load();
+              audio.play()
+                .then(() => {
+                  console.log("[AudioPlayer] ✅ Direct playback started");
+                  setIsPlaying(true);
+                })
+                .catch(err => {
+                  console.error("[AudioPlayer] Direct playback also failed:", err);
+                  handlePlaybackError(err);
+                });
+            } else {
+              toast.error("Failed to load audio stream");
+            }
+            return;
+          }
+
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
               console.error("[AudioPlayer] Fatal network error, trying to recover");
