@@ -411,11 +411,6 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-                    {/* Content Type Badge */}
-                    <div className="absolute top-4 left-4">
-                      <MoodBadge mood={audio.contentType === 'podcast' ? 'podcast' : 'music'} />
-                    </div>
-
                     {/* Options Menu */}
                     <div className="absolute top-4 right-4 z-10">
                       <VideoOptionsMenu
