@@ -67,13 +67,35 @@ export async function GET(request: Request) {
       }
     }
 
-    // Map creators to videos
-    const videosWithCreators = videos.map(video => ({
-      ...video,
-      creator: video.creator_id ? creatorsMap.get(video.creator_id) || null : null
-    }));
+    // Map creators to videos and fix playback URLs
+    const videosWithCreators = videos.map(video => {
+      // Fix incomplete Livepeer playback URLs (ensure they're complete HLS URLs)
+      let playbackUrl = video.playback_url || '';
+      const playbackId = video.playback_id || video.livepeer_asset_id || '';
 
-    console.log(`[Videos API] Returning ${videosWithCreators.length} videos with full URLs`);
+      // Append /index.m3u8 if URL is incomplete
+      if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
+        playbackUrl = `${playbackUrl}/index.m3u8`;
+      }
+
+      // Construct from playback_id if no URL at all
+      if (!playbackUrl && playbackId) {
+        playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
+      }
+
+      // Log warning if video has no playback URL at all
+      if (!playbackUrl) {
+        console.warn(`[Videos API] Warning: Video ${video.id} (${video.title}) has no playback URL or ID`);
+      }
+
+      return {
+        ...video,
+        playback_url: playbackUrl, // Return fixed URL
+        creator: video.creator_id ? creatorsMap.get(video.creator_id) || null : null
+      };
+    });
+
+    console.log(`[Videos API] Returning ${videosWithCreators.length} videos with fixed URLs`);
 
     return NextResponse.json({
       success: true,

@@ -32,12 +32,27 @@ export async function GET(
 
     const asset = await response.json();
 
+    // Ensure we always have a playback URL - construct from playbackId if needed
+    let playbackUrl = asset.playbackUrl || '';
+    const playbackId = asset.playbackId || '';
+
+    // If Livepeer didn't provide full URL, construct it from playbackId
+    if (!playbackUrl && playbackId) {
+      playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
+      console.log(`[AssetStatus] Constructed playback URL from playbackId: ${playbackId}`);
+    }
+
+    // Ensure URL ends with .m3u8 for HLS playback
+    if (playbackUrl && !playbackUrl.endsWith('.m3u8')) {
+      playbackUrl = `${playbackUrl}/index.m3u8`;
+    }
+
     return NextResponse.json({
       id: asset.id,
       name: asset.name,
       status: asset.status,
-      playbackUrl: asset.playbackUrl,
-      playbackId: asset.playbackId,
+      playbackUrl,
+      playbackId,
       // downloadUrl intentionally excluded for security
     });
   } catch (error) {

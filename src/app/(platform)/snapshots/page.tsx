@@ -38,22 +38,8 @@ function SnapshotsContent() {
         return;
       }
 
-      const shorts: Video[] = data.videos.map((v: any) => {
-        // Fix incomplete Livepeer playback URLs (same logic as transform-video.ts)
-        let playbackUrl = v.playback_url || '';
-        const playbackId = v.playback_id || v.livepeer_asset_id || '';
-
-        // Append /index.m3u8 if URL is incomplete
-        if (playbackUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
-          playbackUrl = `${playbackUrl}/index.m3u8`;
-        }
-
-        // Construct from playback_id if no URL at all
-        if (!playbackUrl && playbackId) {
-          playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
-        }
-
-        return {
+      // API now returns fixed URLs, so we just map the data directly
+      const shorts: Video[] = data.videos.map((v: any) => ({
         id: v.id,
         title: v.title,
         description: v.description || "",
@@ -62,8 +48,8 @@ function SnapshotsContent() {
         views: v.views || 0,
         likes: v.likes || 0,
         createdAt: new Date(v.created_at),
-        playbackUrl,
-        livepeerAssetId: playbackId,
+        playbackUrl: v.playback_url || '',
+        livepeerAssetId: v.playback_id || v.livepeer_asset_id || '',
         contentType: v.content_type,
         creator: v.creator ? {
           did: v.creator.did,
@@ -89,7 +75,7 @@ function SnapshotsContent() {
         category: v.category || "Other",
         tags: Array.isArray(v.tags) ? v.tags : (v.tags ? v.tags.split(',') : []),
         source: "ceramic" as const,
-      };}).filter((v: Video) => v.contentType === "short");
+      })).filter((v: Video) => v.contentType === "short");
 
       // Sort by date (newest first)
       shorts.sort((a: Video, b: Video) => b.createdAt.getTime() - a.createdAt.getTime());

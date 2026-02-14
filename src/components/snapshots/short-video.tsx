@@ -303,17 +303,34 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
   // Only use Livepeer for confirmed HLS URLs, not YouTube, and not generic HTTP URLs
   const canPlayWithLivepeer = hasValidPlaybackUrl && isHLSUrl && !isYouTubeVideo;
 
-  // Log for debugging
-  if (hasValidPlaybackUrl && !isYouTubeVideo && !canPlayWithLivepeer) {
-    console.log('[ShortVideo] Video will use fallback UI:', {
-      id: video.id,
-      title: video.title?.substring(0, 50),
-      playbackUrl: video.playbackUrl?.substring(0, 100),
-      isHLSUrl,
-      isYouTubeVideo,
-      source: video.source
-    });
-  }
+  // Enhanced logging for debugging playback issues
+  useEffect(() => {
+    if (!hasValidPlaybackUrl) {
+      console.error('[ShortVideo] ❌ No playback URL:', {
+        videoId: video.id,
+        title: video.title?.substring(0, 50),
+        livepeerAssetId: video.livepeerAssetId,
+        playbackUrl: video.playbackUrl,
+        source: video.source
+      });
+    } else if (!isHLSUrl && !isYouTubeVideo) {
+      console.warn('[ShortVideo] ⚠️ Unsupported video format:', {
+        videoId: video.id,
+        title: video.title?.substring(0, 50),
+        playbackUrl: video.playbackUrl?.substring(0, 100),
+        isHLSUrl,
+        isYouTubeVideo,
+        source: video.source
+      });
+    } else {
+      console.log('[ShortVideo] ✓ Video loaded:', {
+        videoId: video.id,
+        title: video.title?.substring(0, 50),
+        canPlayWithLivepeer,
+        isYouTubeVideo
+      });
+    }
+  }, [video.id, hasValidPlaybackUrl, isHLSUrl, isYouTubeVideo, canPlayWithLivepeer, video.title, video.playbackUrl, video.livepeerAssetId, video.source]);
 
   return (
     <div className="keen-slider__slide flex justify-center items-center focus-visible:outline-none">
@@ -332,7 +349,16 @@ export function ShortVideo({ video, isActive, onNext, onEnded }: ShortVideoProps
                   <FiAlertCircle className="w-8 h-8 text-[#EB83EA]" />
                 </div>
                 <p className="text-gray-300 font-semibold mb-2">{video.title || "Video Unavailable"}</p>
-                <p className="text-gray-400 text-sm mb-4">This video cannot be played</p>
+                <p className="text-gray-400 text-sm mb-4">
+                  {!video.playbackUrl
+                    ? "This video is missing playback information"
+                    : "This video cannot be played right now"}
+                </p>
+                <p className="text-gray-500 text-xs mb-4">
+                  {!video.playbackUrl
+                    ? "The video may still be processing or was not uploaded correctly"
+                    : "Try refreshing the page or skip to the next video"}
+                </p>
                 <button
                   onClick={() => onNext?.()}
                   className="px-4 py-2 bg-[#EB83EA] hover:bg-[#E748E6] text-white text-sm font-medium rounded-full transition"
