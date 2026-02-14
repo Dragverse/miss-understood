@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
         views: 0,
         likes: 0,
         createdAt: new Date(),
-        playback_url: playbackUrl || `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`,
+        playback_url: playbackUrl || `https://nyc-prod-catalyst-0.lp-playback.studio/hls/video+${playbackId}/index.m3u8`,
         livepeer_asset_id: livepeerAssetId,
         content_type: contentType,
         category,
