@@ -510,24 +510,26 @@ function UploadPageContent() {
           authToken
         );
 
-        toast.success("Audio uploaded! Fetching download URL...");
+        toast.success("Audio uploaded! Processing...");
         setUploadStage("processing");
 
-        // Query Livepeer API to get download URL for the new asset
-        const statusRes = await fetch(`/api/upload/status/${asset.id}`, {
-          headers: { Authorization: `Bearer ${authToken}` },
+        // Wait for Livepeer to finish processing the audio file
+        const readyAsset = await waitForAssetReady(asset.id, (progress) => {
+          setUploadProgress(progress);
         });
-        const statusData = statusRes.ok ? await statusRes.json() : null;
 
-        newLivepeerAssetId = asset.id;
-        newPlaybackId = statusData?.playbackId || asset.playbackId;
+        newLivepeerAssetId = readyAsset.id;
+        newPlaybackId = readyAsset.playbackId || asset.playbackId;
 
         // For audio, use the download URL (not HLS)
-        if (asset.downloadUrl) {
-          newPlaybackUrl = asset.downloadUrl;
+        if (readyAsset.downloadUrl) {
+          newPlaybackUrl = readyAsset.downloadUrl;
         } else {
-          // Construct download URL from asset UUID
-          newPlaybackUrl = `https://livepeercdn.com/asset/${asset.id}/video`;
+          // Fallback: construct from playbackId using vod-cdn (NOT livepeercdn.com which 404s)
+          const pid = newPlaybackId || readyAsset.playbackId;
+          if (pid) {
+            newPlaybackUrl = `https://vod-cdn.lp-playback.studio/raw/jxf4iblf6wlsyor6526t4tcmtmqa/catalyst-vod-com/hls/${pid}/video`;
+          }
         }
 
         console.log("[Upload] Re-uploaded audio:", { newLivepeerAssetId, newPlaybackId, newPlaybackUrl });

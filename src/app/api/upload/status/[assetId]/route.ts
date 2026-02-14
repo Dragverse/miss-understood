@@ -54,7 +54,7 @@ export async function GET(
       status: asset.status,
       playbackUrl,
       playbackId,
-      // downloadUrl intentionally excluded for security
+      downloadUrl: asset.downloadUrl || null,
     });
   } catch (error) {
     console.error("Asset status error:", error);
