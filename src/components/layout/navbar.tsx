@@ -17,6 +17,7 @@ import {
   FiInfo,
   FiGlobe,
   FiHeart,
+  FiSettings,
 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
@@ -340,6 +341,13 @@ export function Navbar() {
         <div className="md:hidden bg-[#1a0b2e] border-t border-white/10">
           <div className="flex flex-col p-4 space-y-2">
             <Link
+              href="/profile"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
+            >
+              <FiUser className="w-5 h-5" /> My Profile
+            </Link>
+            <Link
               href="/upload"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
@@ -358,7 +366,7 @@ export function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
             >
-              <FiUser className="w-5 h-5" /> Settings
+              <FiSettings className="w-5 h-5" /> Settings
             </Link>
             <div className="my-1 h-px bg-white/10" />
             <button
