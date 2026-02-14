@@ -511,30 +511,32 @@ function UploadPageContent() {
         );
 
         // Audio files don't need Livepeer transcoding — skip waitForAssetReady
-        // (Livepeer doesn't transcode audio, so status may never reach "ready")
         toast.success("Audio uploaded!");
         newLivepeerAssetId = asset.id;
         newPlaybackId = asset.playbackId;
 
-        // Fetch the asset status once to get downloadUrl
-        try {
-          const statusRes = await fetch(`/api/upload/status/${asset.id}`);
-          if (statusRes.ok) {
-            const statusData = await statusRes.json();
-            if (statusData.downloadUrl) {
-              newPlaybackUrl = statusData.downloadUrl;
+        // Poll briefly for downloadUrl (Livepeer needs a moment to make it available)
+        for (let i = 0; i < 8; i++) {
+          try {
+            const statusRes = await fetch(`/api/upload/status/${asset.id}`);
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              if (statusData.downloadUrl) {
+                newPlaybackUrl = statusData.downloadUrl;
+                console.log("[Upload] Got downloadUrl from Livepeer:", newPlaybackUrl);
+                break;
+              }
             }
+          } catch (e) {
+            console.warn("[Upload] Status check failed:", e);
           }
-        } catch (e) {
-          console.warn("[Upload] Could not fetch download URL:", e);
+          if (i < 7) await new Promise(r => setTimeout(r, 3000)); // Wait 3s between polls
         }
 
-        // Fallback: construct from playbackId using vod-cdn
-        if (!newPlaybackUrl) {
-          const pid = newPlaybackId || asset.playbackId;
-          if (pid) {
-            newPlaybackUrl = `https://vod-cdn.lp-playback.studio/raw/jxf4iblf6wlsyor6526t4tcmtmqa/catalyst-vod-com/hls/${pid}/video`;
-          }
+        // Fallback: use livepeercdn.studio direct download format (NOT vod-cdn which is HLS-only)
+        if (!newPlaybackUrl && newLivepeerAssetId) {
+          newPlaybackUrl = `https://livepeercdn.studio/asset/${newLivepeerAssetId}/original`;
+          console.log("[Upload] Using livepeercdn.studio fallback:", newPlaybackUrl);
         }
 
         console.log("[Upload] Re-uploaded audio:", { newLivepeerAssetId, newPlaybackId, newPlaybackUrl });
@@ -756,9 +758,28 @@ function UploadPageContent() {
           console.log("[Upload] No thumbnail uploaded - will use dynamic Livepeer fallback");
         }
 
-        // Use Livepeer's playbackUrl for both video and audio
-        // HLS works for audio on modern browsers (especially iOS Safari)
-        console.log("[Upload] Using playback URL for", formData.mediaType, ":", readyAsset.playbackUrl);
+        // For audio, use direct download URL (HLS doesn't work for audio on Livepeer)
+        // For video, use Livepeer's HLS playbackUrl
+        let finalPlaybackUrl = readyAsset.playbackUrl;
+        if (formData.mediaType === 'audio') {
+          // Try to get downloadUrl from status endpoint
+          try {
+            const statusRes = await fetch(`/api/upload/status/${readyAsset.id}`);
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              if (statusData.downloadUrl) {
+                finalPlaybackUrl = statusData.downloadUrl;
+              }
+            }
+          } catch (e) {
+            console.warn("[Upload] Could not fetch audio download URL:", e);
+          }
+          // Fallback to livepeercdn.studio direct download
+          if (!finalPlaybackUrl || finalPlaybackUrl.includes('.m3u8')) {
+            finalPlaybackUrl = `https://livepeercdn.studio/asset/${readyAsset.id}/original`;
+          }
+        }
+        console.log("[Upload] Using playback URL for", formData.mediaType, ":", finalPlaybackUrl);
 
         const metadataResponse = await fetch("/api/video/create", {
           method: "POST",
@@ -772,7 +793,7 @@ function UploadPageContent() {
             thumbnail: thumbnailUrl,
             livepeerAssetId: readyAsset.id,
             playbackId: readyAsset.playbackId,
-            playbackUrl: readyAsset.playbackUrl,
+            playbackUrl: finalPlaybackUrl,
             contentType: formData.contentType,
             category: formData.category,
             tags: formData.tags ? formData.tags.split(",").map((t: string) => t.trim()) : [],
