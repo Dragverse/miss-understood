@@ -83,84 +83,36 @@ export default function HomePage() {
         }
       }
 
-      // Show Dragverse content immediately (don't wait for external)
-      const initialVideos = [...localVideos, ...dragverseVideos];
-      initialVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setVideos(initialVideos);
-      setLoading(false);
-
-      // STEP 2: Load external sources in background (slower)
-      const failedSources: string[] = [];
-
-      const [youtubeVideos, blueskyVideos] = await Promise.all([
-        fetch("/api/youtube/feed?limit=30&rssOnly=true")
-          .then((res) => (res.ok ? res.json() : { videos: [] }))
-          .then((data) => {
-            const videos = data.videos || [];
-            if (videos.length > 0) console.log(`[Homepage] Loaded ${videos.length} YouTube videos`);
-            return videos;
-          })
-          .catch((error) => {
-            console.warn("Failed to load videos from YouTube:", error);
-            failedSources.push("YouTube");
-            return [];
-          }),
-        fetch("/api/bluesky/feed?limit=30&sortBy=latest&contentType=all")
-          .then((res) => (res.ok ? res.json() : { posts: [], videos: [] }))
-          .then((data) => {
-            const posts = data.posts || data.videos || [];
-            if (posts.length > 0) console.log(`[Homepage] Loaded ${posts.length} Bluesky posts`);
-            return posts;
-          })
-          .catch((error) => {
-            console.warn("Failed to load content from Bluesky:", error);
-            failedSources.push("Bluesky");
-            return [];
-          }),
-      ]);
-
-      if (failedSources.length > 0) {
-        toast.error(`Failed to load content from: ${failedSources.join(", ")}`, { duration: 4000 });
-      }
-
-      // Merge all videos (Dragverse first, then external)
-      const allVideos = [
-        ...localVideos,
-        ...dragverseVideos,
-        ...(Array.isArray(youtubeVideos) ? youtubeVideos : []),
-        ...(Array.isArray(blueskyVideos) ? blueskyVideos : []),
-      ];
-
+      // Homepage now shows ONLY Dragverse content (YouTube moved to /feed)
+      const allVideos = [...localVideos, ...dragverseVideos];
       allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      console.log(`[Homepage] Total: ${allVideos.length} (Dragverse: ${dragverseVideos.length}, YouTube: ${youtubeVideos.length}, Bluesky: ${blueskyVideos.length})`);
+
+      console.log(`[Homepage] Loaded ${allVideos.length} Dragverse videos (Curated drag content only)`);
 
       setVideos(allVideos);
+      setLoading(false);
       setExternalLoading(false);
     }
 
     loadVideos();
   }, []);
 
-  // Bytes/Shorts - ONLY Dragverse vertical videos (native content only)
+  // Bytes/Shorts - ONLY Dragverse vertical videos (curated drag content)
   const shorts = videos.filter((v) =>
     v.contentType === "short" &&
     ((v as any).source === "ceramic" || !(v as any).source)
   );
 
-  // Behind the Scenes - Prioritize Dragverse, include some YouTube horizontal videos
-  const dragverseHorizontal = videos.filter((v) =>
+  // Behind the Scenes - ONLY Dragverse horizontal videos (curated drag content)
+  const horizontalVideos = videos.filter((v) =>
     v.contentType === "long" &&
     ((v as any).source === "ceramic" || !(v as any).source)
   );
-  const youtubeHorizontal = videos.filter((v) =>
-    v.contentType === "long" &&
-    (v as any).source === "youtube"
-  ).slice(0, 6); // Limit YouTube to 6 videos
-  const horizontalVideos = [...dragverseHorizontal, ...youtubeHorizontal];
 
-  // Bangers and Podcasts - Audio content from all sources (Dragverse, YouTube, Bluesky)
+  // Bangers and Podcasts - ONLY Dragverse audio (curated drag music/podcasts)
   const audios = videos.filter((v) =>
-    v.contentType === "podcast" || v.contentType === "music"
+    (v.contentType === "podcast" || v.contentType === "music") &&
+    ((v as any).source === "ceramic" || !(v as any).source)
   );
 
   const filteredVideos = videos.filter((video) => {
