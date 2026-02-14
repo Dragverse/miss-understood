@@ -1076,6 +1076,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         videoTitle={video.title}
         videoVisibility={video.visibility || "public"}
         isOwner={isOwner}
+        contentType={video.contentType}
       />
     </div>
   );

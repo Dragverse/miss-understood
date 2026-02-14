@@ -47,7 +47,7 @@ export function AudiosSection({ audios }: AudiosSectionProps) {
         {audios.map((audio) => (
           <Link
             key={audio.id}
-            href={`/watch/${audio.id}`}
+            href={`/listen/${audio.id}`}
             className="group cursor-pointer"
           >
             {/* Square Album Cover */}

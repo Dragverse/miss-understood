@@ -607,6 +607,7 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
         videoTitle={audio.title}
         videoVisibility={audio.visibility || "public"}
         isOwner={user?.id === audio.creator?.did}
+        contentType={audio.contentType}
       />
       <VideoCommentModal
         isOpen={commentModalOpen}

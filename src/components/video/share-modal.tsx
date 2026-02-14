@@ -14,6 +14,7 @@ interface ShareModalProps {
   videoTitle: string;
   videoVisibility: "public" | "unlisted" | "private";
   isOwner: boolean;
+  contentType?: "short" | "long" | "podcast" | "music" | "live";
 }
 
 export function ShareModal({
@@ -23,6 +24,7 @@ export function ShareModal({
   videoTitle,
   videoVisibility,
   isOwner,
+  contentType = "long",
 }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
   const [generatingToken, setGeneratingToken] = useState(false);
@@ -33,7 +35,9 @@ export function ShareModal({
   if (!isOpen) return null;
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const directLink = `${baseUrl}/watch/${videoId}`;
+  const isAudio = contentType === 'podcast' || contentType === 'music';
+  const targetPage = isAudio ? 'listen' : 'watch';
+  const directLink = `${baseUrl}/${targetPage}/${videoId}`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
