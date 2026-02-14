@@ -370,12 +370,12 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
 
   return (
     <div className="min-h-screen pb-24 px-4 sm:px-6 lg:px-8 py-6">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-xl lg:max-w-lg mx-auto">
         <div className="space-y-6">
           {/* Audio Player Card - Centered and Compact */}
           <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/20 shadow-2xl">
                 {/* Album Art - Compact and Centered */}
-                <div className="relative w-full max-w-md mx-auto mb-6">
+                <div className="relative w-full max-w-sm lg:max-w-xs mx-auto mb-6">
                   <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-[#EB83EA]/30">
                     <Image
                       src={audio.thumbnail || "/default-thumbnail.jpg"}
@@ -405,7 +405,7 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
 
                 {/* Track Info - Centered */}
                 <div className="text-center mb-6">
-                  <h1 className="text-2xl md:text-3xl font-bold text-white mb-3 line-clamp-2">{audio.title}</h1>
+                  <h1 className="text-xl md:text-2xl lg:text-xl font-bold text-white mb-3 line-clamp-2">{audio.title}</h1>
                   <Link
                     href={`/u/${audio.creator?.handle || audio.creator?.did}`}
                     className="inline-flex items-center gap-2 group"
@@ -449,12 +449,12 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
                   <div className="flex items-center justify-center gap-4">
                     <button
                       onClick={handlePlayPause}
-                      className="w-16 h-16 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-[#EB83EA]/50"
+                      className="w-14 h-14 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-[#EB83EA]/50"
                     >
                       {isPlaying ? (
-                        <FiPause className="w-8 h-8 text-white" />
+                        <FiPause className="w-7 h-7 lg:w-6 lg:h-6 text-white" />
                       ) : (
-                        <FiPlay className="w-8 h-8 text-white ml-1" />
+                        <FiPlay className="w-7 h-7 lg:w-6 lg:h-6 text-white ml-1" />
                       )}
                     </button>
                   </div>
