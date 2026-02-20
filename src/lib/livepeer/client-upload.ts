@@ -25,7 +25,6 @@ interface LivepeerAsset {
 
 /**
  * Clear all stale TUS upload sessions from localStorage
- * This prevents 409 Conflict errors from previous interrupted uploads
  */
 function clearStaleTusFingerprints() {
   try {
@@ -36,12 +35,9 @@ function clearStaleTusFingerprints() {
         keysToRemove.push(key);
       }
     }
-    keysToRemove.forEach(key => {
-      localStorage.removeItem(key);
-      console.log('🧹 Cleared stale TUS fingerprint:', key);
-    });
+    keysToRemove.forEach(key => localStorage.removeItem(key));
     if (keysToRemove.length > 0) {
-      console.log(`✅ Cleared ${keysToRemove.length} stale TUS fingerprint(s)`);
+      console.log(`🧹 Cleared ${keysToRemove.length} stale TUS fingerprint(s)`);
     }
   } catch (e) {
     console.warn('Failed to clear TUS fingerprints:', e);
@@ -49,90 +45,64 @@ function clearStaleTusFingerprints() {
 }
 
 /**
- * Upload video file to Livepeer via backend API
+ * Request a fresh upload URL from our backend (creates a new Livepeer asset)
  */
-export async function uploadVideoToLivepeer(
-  file: File,
-  onProgress?: (progress: UploadProgress) => void,
-  authToken?: string | null
-): Promise<LivepeerAsset> {
-  // Clear any stale TUS fingerprints to prevent 409 conflicts
-  clearStaleTusFingerprints();
-
-  // Step 1: Request upload URL from our backend
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  // Add authorization header if token is provided
-  if (authToken) {
-    headers["Authorization"] = `Bearer ${authToken}`;
-    console.log("✓ Auth token added to upload request");
-  } else {
-    console.warn("⚠ No auth token provided - upload may fail if authentication is required");
-  }
-
-  console.log("Requesting upload URL for:", file.name);
-
-  // Create AbortController for fetch timeout
+async function requestUploadUrl(
+  fileName: string,
+  headers: Record<string, string>
+): Promise<{ tusEndpoint: string; asset: LivepeerAsset }> {
   const controller = new AbortController();
-  const fetchTimeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout for request
-
-  let tusEndpoint: string;
-  let asset: LivepeerAsset;
+  const timeout = setTimeout(() => controller.abort(), 60000);
 
   try {
-    const uploadUrlResponse = await fetch("/api/upload/request", {
+    const response = await fetch("/api/upload/request", {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        name: file.name,
-      }),
+      body: JSON.stringify({ name: fileName }),
       signal: controller.signal,
     });
+    clearTimeout(timeout);
 
-    clearTimeout(fetchTimeout);
-    console.log("Upload URL response status:", uploadUrlResponse.status);
-
-    if (!uploadUrlResponse.ok) {
-      // Try to get detailed error message from response
+    if (!response.ok) {
       let errorMessage = "Failed to get upload URL";
       try {
-        const errorData = await uploadUrlResponse.json();
+        const errorData = await response.json();
         if (errorData.error) {
           errorMessage = errorData.error;
-          if (errorData.details) {
-            errorMessage += `: ${errorData.details}`;
-          }
+          if (errorData.details) errorMessage += `: ${errorData.details}`;
         }
       } catch {
-        // If JSON parsing fails, use the generic error
-        errorMessage = `Failed to get upload URL (${uploadUrlResponse.status})`;
+        errorMessage = `Failed to get upload URL (${response.status})`;
       }
       throw new Error(errorMessage);
     }
 
-    const response = await uploadUrlResponse.json();
-    tusEndpoint = response.tusEndpoint;
-    asset = response.asset;
+    const data = await response.json();
+    return { tusEndpoint: data.tusEndpoint, asset: data.asset };
   } catch (error: any) {
-    clearTimeout(fetchTimeout);
+    clearTimeout(timeout);
     if (error.name === 'AbortError') {
       throw new Error('Upload request timed out. Please check your connection and try again.');
     }
     throw error;
   }
+}
 
-  // Step 2: Upload file using TUS protocol (direct to Livepeer)
+/**
+ * Run a single TUS upload attempt to Livepeer
+ */
+function runTusUpload(
+  file: File,
+  tusEndpoint: string,
+  asset: LivepeerAsset,
+  onProgress?: (progress: UploadProgress) => void
+): Promise<LivepeerAsset> {
   return new Promise((resolve, reject) => {
-    // Create AbortController for timeout handling
-    const abortController = new AbortController();
-    const uploadTimeout = 30 * 60 * 1000; // 30 minutes max for entire upload
+    const uploadTimeout = 30 * 60 * 1000; // 30 minutes max
 
-    // Set overall upload timeout
     const timeoutId = setTimeout(() => {
-      abortController.abort();
-      reject(new Error('Upload timed out after 30 minutes. Please check your connection and try again.'));
+      upload.abort(true);
+      reject(new Error('Upload timed out after 30 minutes.'));
     }, uploadTimeout);
 
     const upload = new tus.Upload(file, {
@@ -142,60 +112,22 @@ export async function uploadVideoToLivepeer(
         filetype: file.type,
       },
       uploadSize: file.size,
-      chunkSize: 50 * 1024 * 1024, // 50MB chunks for faster upload
-      // Improved retry strategy with exponential backoff for better reliability
-      retryDelays: [0, 2000, 5000, 10000, 30000], // More retries with longer delays
-      parallelUploads: 1, // Sequential for stability
-      // CRITICAL: Disable fingerprint storage entirely to prevent 409 conflicts
-      // Each upload gets a fresh URL from our backend, so resumability isn't needed
-      // and causes stale session conflicts when Livepeer expires the upload
+      chunkSize: 50 * 1024 * 1024, // 50MB chunks
+      retryDelays: [0, 2000, 5000, 10000, 30000],
+      parallelUploads: 1,
+      // Disable fingerprint storage — each upload gets a fresh URL
       urlStorage: undefined,
-      fingerprint: () => Promise.resolve(undefined as unknown as string), // Also disable fingerprint generation
-      removeFingerprintOnSuccess: true, // Clean up after success (belt and suspenders)
-      // CRITICAL: Also remove fingerprint on error to prevent 409 conflicts on retry
-      onShouldRetry: (err, retryAttempt, options) => {
-        const errorMessage = err?.message || String(err);
-
-        // Don't retry on 409 conflicts - clear all fingerprints and fail
-        if (errorMessage.includes('409')) {
-          console.error('❌ 409 Conflict detected - clearing all TUS fingerprints');
-          clearStaleTusFingerprints();
-          return false; // Don't retry, let it fail and user can try again fresh
-        }
-
-        // Retry on 500 errors but only up to the configured retry attempts
-        if (errorMessage.includes('500')) {
-          console.warn(`⚠️ 500 Server error - retry attempt ${retryAttempt}`);
-          const maxRetries = options?.retryDelays?.length || 5;
-          return retryAttempt < maxRetries;
-        }
-
-        // Default retry behavior for other errors
+      fingerprint: () => Promise.resolve(undefined as unknown as string),
+      removeFingerprintOnSuccess: true,
+      onShouldRetry: (err) => {
+        const msg = err?.message || String(err);
+        // Never retry 409 within TUS — we handle it at the outer level
+        if (msg.includes('409')) return false;
         return true;
       },
       onError: (error) => {
-        clearTimeout(timeoutId); // Clear timeout on error
-        console.error("TUS upload error:", error);
-
-        // Handle specific error codes
-        const errorMessage = error?.message || String(error);
-
-        if (errorMessage.includes('409')) {
-          // Conflict error - upload session already exists, clear fingerprints
-          console.error('❌ Upload conflict (409): Stale session detected. Fingerprints cleared.');
-          clearStaleTusFingerprints();
-          reject(new Error('Upload session expired. Please try uploading again.'));
-        } else if (errorMessage.includes('500')) {
-          // Server error - likely Livepeer storage issue
-          console.error('❌ Server error (500): Livepeer storage issue');
-          reject(new Error('Upload failed due to server error. Please try again in a few moments.'));
-        } else if (errorMessage.includes('timeout') || errorMessage.includes('network')) {
-          // Network timeout or connection error
-          console.error('❌ Network error: Connection timed out or network issue');
-          reject(new Error('Network error during upload. Please check your connection and try again.'));
-        } else {
-          reject(error);
-        }
+        clearTimeout(timeoutId);
+        reject(error);
       },
       onProgress: (bytesUploaded, bytesTotal) => {
         if (onProgress) {
@@ -207,20 +139,64 @@ export async function uploadVideoToLivepeer(
         }
       },
       onSuccess: () => {
-        clearTimeout(timeoutId); // Clear timeout on success
+        clearTimeout(timeoutId);
         console.log("✅ TUS upload completed successfully");
         resolve(asset);
       },
     });
 
-    // Handle abort signal
-    abortController.signal.addEventListener('abort', () => {
-      upload.abort(true); // Abort the upload
-    });
-
-    // Start the upload
     upload.start();
   });
+}
+
+/**
+ * Upload video file to Livepeer via backend API.
+ * Automatically retries with a fresh upload URL on 409 conflict.
+ */
+export async function uploadVideoToLivepeer(
+  file: File,
+  onProgress?: (progress: UploadProgress) => void,
+  authToken?: string | null
+): Promise<LivepeerAsset> {
+  clearStaleTusFingerprints();
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+
+  const MAX_ATTEMPTS = 3;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    console.log(`📤 Upload attempt ${attempt}/${MAX_ATTEMPTS} for: ${file.name}`);
+
+    const { tusEndpoint, asset } = await requestUploadUrl(file.name, headers);
+
+    try {
+      return await runTusUpload(file, tusEndpoint, asset, onProgress);
+    } catch (error: any) {
+      const msg = error?.message || String(error);
+
+      if (msg.includes('409') && attempt < MAX_ATTEMPTS) {
+        // 409 = stale server-side TUS session. Get a fresh URL and retry.
+        console.warn(`⚠️ 409 Conflict on attempt ${attempt} — getting fresh upload URL...`);
+        clearStaleTusFingerprints();
+        continue;
+      }
+
+      // Final attempt or non-retryable error
+      if (msg.includes('409')) {
+        throw new Error('Upload conflict persists. Please wait a minute and try again.');
+      } else if (msg.includes('500')) {
+        throw new Error('Upload failed due to server error. Please try again in a few moments.');
+      } else if (msg.includes('timeout') || msg.includes('network')) {
+        throw new Error('Network error during upload. Please check your connection and try again.');
+      }
+      throw error;
+    }
+  }
+
+  throw new Error('Upload failed after multiple attempts. Please try again.');
 }
 
 /**
@@ -230,14 +206,13 @@ export async function waitForAssetReady(
   assetId: string,
   onProgress?: (progress: number) => void
 ): Promise<LivepeerAsset> {
-  const maxAttempts = 240; // 20 minutes (5s intervals) - increased for very large videos (up to 5GB)
+  const maxAttempts = 240; // 20 minutes (5s intervals)
   let attempts = 0;
 
   while (attempts < maxAttempts) {
     try {
-      // Add timeout to status fetch to prevent hanging
       const controller = new AbortController();
-      const statusTimeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout per request
+      const statusTimeout = setTimeout(() => controller.abort(), 30000);
 
       const response = await fetch(`/api/upload/status/${assetId}`, {
         signal: controller.signal,
@@ -246,7 +221,6 @@ export async function waitForAssetReady(
       clearTimeout(statusTimeout);
 
       if (!response.ok) {
-        // Don't fail immediately on status check errors - retry
         console.warn(`Status check failed (attempt ${attempts + 1}/${maxAttempts}):`, response.status);
         await new Promise((resolve) => setTimeout(resolve, 5000));
         attempts++;
@@ -268,21 +242,17 @@ export async function waitForAssetReady(
         throw new Error("Asset processing failed. The video may be corrupted or in an unsupported format.");
       }
 
-      // Log progress for debugging
       console.log(`Processing... Phase: ${asset.status.phase}, Progress: ${asset.status.progress || 0}%`);
 
-      // Wait 5 seconds before polling again
       await new Promise((resolve) => setTimeout(resolve, 5000));
       attempts++;
     } catch (error: any) {
-      // Handle timeout errors
       if (error.name === 'AbortError') {
         console.warn(`Status check timed out (attempt ${attempts + 1}/${maxAttempts})`);
         await new Promise((resolve) => setTimeout(resolve, 5000));
         attempts++;
         continue;
       }
-      // Re-throw other errors
       throw error;
     }
   }

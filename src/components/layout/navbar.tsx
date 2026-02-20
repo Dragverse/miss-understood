@@ -29,7 +29,7 @@ import { formatUnits } from "viem";
 import { getSafeAvatar } from "@/lib/utils/thumbnail-helpers";
 
 export function Navbar() {
-  const { login, logout, authenticated, user } = usePrivy();
+  const { login, logout, authenticated, user, getAccessToken } = usePrivy();
   const { setSession, clearAuth, creator } = useAuth();
   const { canStream } = useCanLivestream();
   const { blueskyProfile, blueskyConnected, farcasterHandle } = useAuthUser();
@@ -71,22 +71,26 @@ export function Navbar() {
       if (!authenticated) return;
 
       try {
-        const response = await fetch("/api/notifications");
+        const token = await getAccessToken();
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const response = await fetch("/api/notifications", { headers });
+        if (!response.ok) return; // Silently skip auth failures
         const data = await response.json();
 
         if (data.success) {
           setNotificationCount(data.unreadCount || 0);
         }
       } catch (error) {
-        console.error("Failed to fetch notifications:", error);
+        // Silently ignore — notifications are non-critical
       }
     }
 
     fetchNotifications();
-    // Poll for new notifications every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
-  }, [authenticated]);
+  }, [authenticated, getAccessToken]);
 
   // Close create menu when clicking outside
   useEffect(() => {

@@ -33,7 +33,7 @@ const mobileNavItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { authenticated } = usePrivy();
+  const { authenticated, getAccessToken } = usePrivy();
   const [notificationCount, setNotificationCount] = useState(0);
 
   // Fetch notification count
@@ -41,19 +41,24 @@ export function Sidebar() {
     async function fetchNotifications() {
       if (!authenticated) return;
       try {
-        const response = await fetch("/api/notifications");
+        const token = await getAccessToken();
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const response = await fetch("/api/notifications", { headers });
+        if (!response.ok) return;
         const data = await response.json();
         if (data.success) {
           setNotificationCount(data.unreadCount || 0);
         }
-      } catch (error) {
-        console.error("Failed to fetch notifications:", error);
+      } catch {
+        // Silently ignore — notifications are non-critical
       }
     }
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
-  }, [authenticated]);
+  }, [authenticated, getAccessToken]);
 
   return (
     <>
