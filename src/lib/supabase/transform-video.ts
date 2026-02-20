@@ -54,10 +54,10 @@ export async function transformVideoWithCreator(supabaseVideo: SupabaseVideo): P
   const playbackId = supabaseVideo.playback_id || supabaseVideo.livepeer_asset_id || '';
   const contentType = supabaseVideo.content_type || 'long';
 
-  // Only append /index.m3u8 to HLS-style URLs (not direct download URLs)
-  // Download URLs (e.g. livepeercdn.com/asset/{id}/video) should NOT get .m3u8 appended
+  // Only append /index.m3u8 to HLS-style URLs (not direct download or Supabase Storage URLs)
+  const isSupabaseUrl = playbackUrl.includes('supabase.co/storage');
   const isDownloadUrl = playbackUrl.includes('/asset/') || playbackUrl.includes('/raw/');
-  if (playbackUrl && !isDownloadUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
+  if (playbackUrl && !isSupabaseUrl && !isDownloadUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
     playbackUrl = `${playbackUrl}/index.m3u8`;
   }
 
@@ -141,9 +141,10 @@ export async function transformVideosWithCreators(supabaseVideos: SupabaseVideo[
     const playbackId = v.playback_id || v.livepeer_asset_id || '';
     const contentType = v.content_type || 'long';
 
-    // Only append /index.m3u8 to HLS-style URLs (not direct download URLs)
+    // Only append /index.m3u8 to HLS-style URLs (not direct download or Supabase Storage URLs)
+    const isSupabaseUrl = playbackUrl.includes('supabase.co/storage');
     const isDownloadUrl = playbackUrl.includes('/asset/') || playbackUrl.includes('/raw/');
-    if (playbackUrl && !isDownloadUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
+    if (playbackUrl && !isSupabaseUrl && !isDownloadUrl && !playbackUrl.endsWith('/index.m3u8') && !playbackUrl.endsWith('.m3u8')) {
       playbackUrl = `${playbackUrl}/index.m3u8`;
     }
 

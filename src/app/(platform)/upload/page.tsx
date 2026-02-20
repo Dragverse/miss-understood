@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, Suspense } from "react";
 import { FiUploadCloud, FiCheck, FiFilm, FiZap, FiUpload, FiLoader, FiClock, FiMusic, FiMic } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { uploadVideoToLivepeer, waitForAssetReady } from "@/lib/livepeer/client-upload";
+import { uploadAudioToSupabase } from "@/lib/supabase/client-audio-upload";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { usePrivy } from "@privy-io/react-auth";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -493,16 +494,14 @@ function UploadPageContent() {
         }
       }
 
-      // If user selected a new audio file, re-upload to Livepeer
-      let newLivepeerAssetId: string | undefined;
-      let newPlaybackId: string | undefined;
+      // If user selected a new audio file, upload to Supabase Storage (not Livepeer)
       let newPlaybackUrl: string | undefined;
 
       if (formData.video && formData.mediaType === 'audio') {
         toast("Uploading new audio file...");
         setUploadStage("uploading");
 
-        const asset = await uploadVideoToLivepeer(
+        const result = await uploadAudioToSupabase(
           formData.video,
           (progress) => {
             setUploadProgress(progress.percentage);
@@ -510,58 +509,9 @@ function UploadPageContent() {
           authToken
         );
 
-        // Audio files don't need Livepeer transcoding — but verify upload was received
-        newLivepeerAssetId = asset.id;
-        newPlaybackId = asset.playbackId;
-
-        // Poll to verify asset moved past "uploading" and get downloadUrl
-        toast("Verifying upload...", { icon: "🔍" });
-        let uploadVerified = false;
-        for (let i = 0; i < 10; i++) {
-          try {
-            const statusRes = await fetch(`/api/upload/status/${asset.id}`);
-            if (statusRes.ok) {
-              const statusData = await statusRes.json();
-              const phase = statusData.status?.phase;
-              console.log(`[Upload] Re-upload verification attempt ${i + 1}: phase=${phase}`);
-
-              if (phase === "ready" || phase === "processing" || statusData.downloadUrl) {
-                uploadVerified = true;
-                if (statusData.downloadUrl) {
-                  newPlaybackUrl = statusData.downloadUrl;
-                  console.log("[Upload] Got downloadUrl from Livepeer:", newPlaybackUrl);
-                }
-                break;
-              }
-              if (phase === "failed") {
-                toast.error("Livepeer failed to process the audio file. Please try again.");
-                setUploading(false);
-                setUploadStage("idle");
-                return;
-              }
-            }
-          } catch (e) {
-            console.warn("[Upload] Status check failed:", e);
-          }
-          if (i < 9) await new Promise(r => setTimeout(r, 3000)); // Wait 3s between polls
-        }
-
-        if (!uploadVerified) {
-          toast("Upload sent but Livepeer is still processing. If playback doesn't work, try re-uploading.", {
-            icon: "⚠️",
-            duration: 8000,
-          });
-        } else {
-          toast.success("Audio uploaded!");
-        }
-
-        // Fallback: use livepeercdn.studio direct download format (NOT vod-cdn which is HLS-only)
-        if (!newPlaybackUrl && newLivepeerAssetId) {
-          newPlaybackUrl = `https://livepeercdn.studio/asset/${newLivepeerAssetId}/original`;
-          console.log("[Upload] Using livepeercdn.studio fallback:", newPlaybackUrl);
-        }
-
-        console.log("[Upload] Re-uploaded audio:", { newLivepeerAssetId, newPlaybackId, newPlaybackUrl });
+        newPlaybackUrl = result.publicUrl;
+        toast.success("Audio uploaded!");
+        console.log("[Upload] Audio uploaded to Supabase:", newPlaybackUrl);
         setUploadStage("idle");
       }
 
@@ -580,10 +530,8 @@ function UploadPageContent() {
         updatePayload.thumbnail = thumbnailUrl;
       }
 
-      // Include new Livepeer fields if audio was re-uploaded
-      if (newLivepeerAssetId) {
-        updatePayload.livepeerAssetId = newLivepeerAssetId;
-        updatePayload.playbackId = newPlaybackId;
+      // Include new playback URL if audio was re-uploaded
+      if (newPlaybackUrl) {
         updatePayload.playbackUrl = newPlaybackUrl;
       }
 
@@ -601,7 +549,7 @@ function UploadPageContent() {
         throw new Error(errorData.error || "Failed to update video");
       }
 
-      toast.success(newLivepeerAssetId ? "Audio re-uploaded and updated!" : "Content updated successfully!");
+      toast.success(newPlaybackUrl ? "Audio re-uploaded and updated!" : "Content updated successfully!");
       router.push("/profile");
     } catch (error) {
       console.error("Update error:", error);
@@ -671,95 +619,48 @@ function UploadPageContent() {
       let lastUpdate = startTime;
       let lastLoaded = 0;
 
-      const asset = await uploadVideoToLivepeer(
-        formData.video,
-        (progress) => {
-          setUploadProgress(progress.percentage);
-          setUploadedBytes(progress.loaded);
-          setTotalBytes(progress.total);
+      const onProgress = (progress: { loaded: number; total: number; percentage: number }) => {
+        setUploadProgress(progress.percentage);
+        setUploadedBytes(progress.loaded);
+        setTotalBytes(progress.total);
 
-          // Calculate upload speed and time remaining
-          const now = Date.now();
-          const timeDiff = (now - lastUpdate) / 1000; // seconds
-          if (timeDiff >= 1) { // Update speed every second
-            const bytesDiff = progress.loaded - lastLoaded;
-            const speedBps = bytesDiff / timeDiff;
-            const speedMBps = speedBps / (1024 * 1024);
-            setUploadSpeed(speedMBps.toFixed(2));
+        // Calculate upload speed and time remaining
+        const now = Date.now();
+        const timeDiff = (now - lastUpdate) / 1000;
+        if (timeDiff >= 1) {
+          const bytesDiff = progress.loaded - lastLoaded;
+          const speedBps = bytesDiff / timeDiff;
+          const speedMBps = speedBps / (1024 * 1024);
+          setUploadSpeed(speedMBps.toFixed(2));
 
-            // Calculate time remaining
-            const bytesRemaining = progress.total - progress.loaded;
-            const secondsRemaining = bytesRemaining / speedBps;
-            if (secondsRemaining < 60) {
-              setTimeRemaining(`${Math.ceil(secondsRemaining)}s remaining`);
-            } else {
-              const minutesRemaining = Math.ceil(secondsRemaining / 60);
-              setTimeRemaining(`${minutesRemaining} min remaining`);
-            }
-
-            lastUpdate = now;
-            lastLoaded = progress.loaded;
+          const bytesRemaining = progress.total - progress.loaded;
+          const secondsRemaining = bytesRemaining / speedBps;
+          if (secondsRemaining < 60) {
+            setTimeRemaining(`${Math.ceil(secondsRemaining)}s remaining`);
+          } else {
+            const minutesRemaining = Math.ceil(secondsRemaining / 60);
+            setTimeRemaining(`${minutesRemaining} min remaining`);
           }
-        },
-        authToken
-      );
 
-      let readyAsset;
+          lastUpdate = now;
+          lastLoaded = progress.loaded;
+        }
+      };
+
+      let readyAsset: { id: string; playbackId?: string; playbackUrl?: string };
 
       if (formData.mediaType === 'audio') {
-        // Audio files don't need Livepeer transcoding — but verify the upload was received
-        console.log("[Upload] Audio file detected - verifying upload was received...");
-        toast("Verifying upload...", { icon: "🔍" });
-
-        // Poll briefly to confirm asset moved past "uploading" status
-        let verified = false;
-        for (let attempt = 0; attempt < 10; attempt++) {
-          try {
-            const statusRes = await fetch(`/api/upload/status/${asset.id}`);
-            if (statusRes.ok) {
-              const statusData = await statusRes.json();
-              const phase = statusData.status?.phase;
-              console.log(`[Upload] Audio verification attempt ${attempt + 1}: phase=${phase}`);
-
-              if (phase === "ready" || phase === "processing") {
-                verified = true;
-                // Update asset with latest data from Livepeer
-                readyAsset = { ...asset, ...statusData };
-                break;
-              }
-              if (phase === "failed") {
-                toast.error("Livepeer failed to process the audio file. Please try again.");
-                setUploading(false);
-                setUploadStage("idle");
-                return;
-              }
-              // "waiting" or "uploading" — keep polling
-              if (statusData.downloadUrl) {
-                // Asset has a download URL even if status hasn't updated yet
-                verified = true;
-                readyAsset = { ...asset, ...statusData };
-                break;
-              }
-            }
-          } catch (e) {
-            console.warn("[Upload] Verification poll failed:", e);
-          }
-          await new Promise(r => setTimeout(r, 3000)); // Wait 3s between polls
-        }
-
-        if (!verified) {
-          // Asset still stuck in "uploading" after 30 seconds — warn but don't block
-          console.warn("[Upload] Audio asset may be stuck in uploading state");
-          toast("Upload sent but Livepeer is still processing. If playback doesn't work, try re-uploading.", {
-            icon: "⚠️",
-            duration: 8000,
-          });
-          readyAsset = asset;
-        } else {
-          toast.success("Audio uploaded! 🎉");
-        }
+        // Audio uploads go directly to Supabase Storage (not Livepeer)
+        console.log("[Upload] Audio file — uploading to Supabase Storage...");
+        const result = await uploadAudioToSupabase(formData.video, onProgress, authToken);
+        readyAsset = {
+          id: result.path,
+          playbackUrl: result.publicUrl,
+        };
+        toast.success("Audio uploaded! 🎉");
       } else {
-        // For video files, wait for Livepeer transcoding to complete
+        // Video uploads go through Livepeer (needs HLS transcoding)
+        const asset = await uploadVideoToLivepeer(formData.video, onProgress, authToken);
         toast.success("Upload complete! Processing video...");
         setUploadStage("processing");
         readyAsset = await waitForAssetReady(asset.id, (progress) => {
@@ -827,27 +728,9 @@ function UploadPageContent() {
           console.log("[Upload] No thumbnail uploaded - will use dynamic Livepeer fallback");
         }
 
-        // For audio, use direct download URL (HLS doesn't work for audio on Livepeer)
-        // For video, use Livepeer's HLS playbackUrl
-        let finalPlaybackUrl = readyAsset.playbackUrl;
-        if (formData.mediaType === 'audio') {
-          // Try to get downloadUrl from status endpoint
-          try {
-            const statusRes = await fetch(`/api/upload/status/${readyAsset.id}`);
-            if (statusRes.ok) {
-              const statusData = await statusRes.json();
-              if (statusData.downloadUrl) {
-                finalPlaybackUrl = statusData.downloadUrl;
-              }
-            }
-          } catch (e) {
-            console.warn("[Upload] Could not fetch audio download URL:", e);
-          }
-          // Fallback to livepeercdn.studio direct download
-          if (!finalPlaybackUrl || finalPlaybackUrl.includes('.m3u8')) {
-            finalPlaybackUrl = `https://livepeercdn.studio/asset/${readyAsset.id}/original`;
-          }
-        }
+        // For audio: playbackUrl is already the Supabase Storage public URL
+        // For video: playbackUrl comes from Livepeer's HLS
+        const finalPlaybackUrl = readyAsset.playbackUrl;
         console.log("[Upload] Using playback URL for", formData.mediaType, ":", finalPlaybackUrl);
 
         const metadataResponse = await fetch("/api/video/create", {
@@ -860,7 +743,7 @@ function UploadPageContent() {
             title: formData.title,
             description: formData.description,
             thumbnail: thumbnailUrl,
-            livepeerAssetId: readyAsset.id,
+            livepeerAssetId: formData.mediaType === 'audio' ? undefined : readyAsset.id,
             playbackId: readyAsset.playbackId,
             playbackUrl: finalPlaybackUrl,
             contentType: formData.contentType,

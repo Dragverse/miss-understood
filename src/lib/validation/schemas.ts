@@ -37,7 +37,7 @@ export const createVideoSchema = z.object({
     .max(5000, "Description must be less than 5000 characters")
     .optional(),
   thumbnail: z.string().url("Invalid thumbnail URL").nullish(),
-  livepeerAssetId: z.string().min(1, "Livepeer asset ID is required"),
+  livepeerAssetId: z.string().optional(),
   playbackId: z.string().optional(),
   playbackUrl: z.string().url("Invalid playback URL").optional(),
   duration: z.number().positive("Duration must be positive").optional(),
