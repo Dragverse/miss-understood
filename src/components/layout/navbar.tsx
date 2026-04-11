@@ -30,7 +30,7 @@ import { getSafeAvatar } from "@/lib/utils/thumbnail-helpers";
 
 export function Navbar() {
   const { login, logout, authenticated, user, getAccessToken } = usePrivy();
-  const { setSession, clearAuth, creator } = useAuth();
+  const { setSession, setCreator, clearAuth, creator } = useAuth();
   const { canStream } = useCanLivestream();
   const { blueskyProfile, blueskyConnected, farcasterHandle } = useAuthUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -116,7 +116,7 @@ export function Navbar() {
     clearAuth();
   };
 
-  // Sync Privy auth with our store
+  // Sync Privy auth with our store + fetch creator profile (avatar)
   React.useEffect(() => {
     if (authenticated && user) {
       setSession({
@@ -129,8 +129,38 @@ export function Navbar() {
         accessJwt: "",
         refreshJwt: "",
       });
+
+      // Fetch creator profile from Supabase to populate avatar in nav
+      (async () => {
+        try {
+          const token = await getAccessToken();
+          const res = await fetch("/api/user/me", {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.success && data.creator) {
+            setCreator({
+              did: data.creator.did,
+              handle: data.creator.handle,
+              displayName: data.creator.display_name,
+              avatar: data.creator.avatar || "",
+              banner: data.creator.banner || "",
+              description: data.creator.description || "",
+              followerCount: data.creator.follower_count || 0,
+              followingCount: data.creator.following_count || 0,
+              createdAt: new Date(data.creator.created_at),
+              verified: data.creator.verified || false,
+              walletAddress: data.creator.wallet_address,
+              tipCount: data.creator.tip_count || 0,
+            });
+          }
+        } catch {
+          // Non-critical — avatar will fall back to Bluesky/Twitter/default
+        }
+      })();
     }
-  }, [authenticated, user, setSession]);
+  }, [authenticated, user, setSession, setCreator, getAccessToken]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#1a0b2e] border-b border-white/10 h-16">
@@ -324,16 +354,28 @@ export function Navbar() {
             </button>
           )}
 
-          {/* Mobile Menu Toggle - Only show for authenticated users */}
+          {/* Mobile Menu Toggle - Avatar + hamburger */}
           {authenticated && (
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-white"
+              className="md:hidden flex items-center gap-2 p-1 text-white"
             >
+              <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[#EB83EA] flex-shrink-0">
+                <Image
+                  src={getSafeAvatar(
+                    creator?.avatar || blueskyProfile?.avatar || user?.twitter?.profilePictureUrl,
+                    "/defaultpfp.png"
+                  )}
+                  alt="Profile"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              </div>
               {mobileMenuOpen ? (
-                <FiX className="text-2xl" />
+                <FiX className="text-xl" />
               ) : (
-                <FiMenu className="text-2xl" />
+                <FiMenu className="text-xl" />
               )}
             </button>
           )}
@@ -349,7 +391,19 @@ export function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
             >
-              <FiUser className="w-5 h-5" /> My Profile
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-[#EB83EA] flex-shrink-0">
+                <Image
+                  src={getSafeAvatar(
+                    creator?.avatar || blueskyProfile?.avatar || user?.twitter?.profilePictureUrl,
+                    "/defaultpfp.png"
+                  )}
+                  alt="Profile"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              My Profile
             </Link>
             <Link
               href="/upload"
