@@ -36,6 +36,7 @@ export interface Creator {
   totalEarningsUSD?: number;
   stripeAccountId?: string;
   walletAddress?: string;
+  tipCount?: number;
 }
 
 // Content types

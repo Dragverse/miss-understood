@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import * as Player from "@livepeer/react/player";
-import { getSrc } from "@livepeer/react/external";
+import { useState, useRef, useEffect } from "react";
+import Hls from "hls.js";
 import { FiVolume2, FiVolumeX, FiHeart, FiMessageCircle, FiShare2, FiDollarSign, FiEdit2, FiTrash2, FiMoreVertical, FiAlertCircle, FiPlay } from "react-icons/fi";
 import type { Video } from "@/types";
 import Image from "next/image";
@@ -35,18 +34,105 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
   const [tipModalOpen, setTipModalOpen] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
-  const playerRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Check if current user is the creator
   const isCreator = user?.id === video.creator?.did;
 
-  // Reset error state when video changes
+  // ─── HLS.js Playback Setup ───
   useEffect(() => {
-    setPlaybackError(false);
-  }, [video.id]);
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
 
-  // Auto-skip broken videos after 2 seconds
+    const url = video.playbackUrl;
+    if (!url || url.trim() === '') {
+      setPlaybackError(true);
+      return;
+    }
+
+    // Clean up previous HLS instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    setPlaybackError(false);
+
+    const isHLSUrl = url.includes('.m3u8');
+
+    if (isHLSUrl && Hls.isSupported()) {
+      // Non-Safari: use HLS.js
+      const hls = new Hls({
+        enableWorker: true,
+        startLevel: -1, // Auto quality
+      });
+      hlsRef.current = hls;
+      hls.loadSource(url);
+      hls.attachMedia(videoEl);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (isActive) {
+          videoEl.play().catch(() => {});
+        }
+      });
+
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        console.error("[ShortVideo] HLS error:", data.type, data.details, {
+          videoId: video.id,
+          url: url.substring(0, 80),
+        });
+        if (data.fatal) {
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            // Try to recover from network error once
+            hls.startLoad();
+          } else {
+            setPlaybackError(true);
+          }
+        }
+      });
+    } else if (isHLSUrl && videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari: native HLS support
+      videoEl.src = url;
+      if (isActive) videoEl.play().catch(() => {});
+    } else if (url.includes('.mp4') || url.includes('supabase.co/storage')) {
+      // Direct MP4 or Supabase Storage URL
+      videoEl.src = url;
+      if (isActive) videoEl.play().catch(() => {});
+    } else {
+      // Unknown format
+      console.warn("[ShortVideo] Unknown URL format:", url.substring(0, 80));
+      setPlaybackError(true);
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [video.playbackUrl, video.id]);
+
+  // ─── Play/Pause based on isActive ───
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    if (isActive) {
+      videoEl.play().catch(() => {});
+    } else {
+      videoEl.pause();
+    }
+  }, [isActive]);
+
+  // ─── Mute sync ───
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  // ─── Auto-skip broken videos after 2 seconds ───
   useEffect(() => {
     if (playbackError && onError) {
       const timer = setTimeout(() => onError(), 2000);
@@ -54,7 +140,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
     }
   }, [playbackError, onError]);
 
-  // Close menu on outside click
+  // ─── Close menu on outside click ───
   useEffect(() => {
     if (!showMenu) return;
     const handleClick = (e: MouseEvent) => {
@@ -66,29 +152,20 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showMenu]);
 
-  // Check initial like status on mount (or use batch-fetched value)
+  // ─── Like status (batch or individual) ───
   useEffect(() => {
-    // If initialLiked prop provided (from batch check), use it directly
     if (initialLiked !== undefined) {
       setIsLiked(initialLiked);
       return;
     }
 
-    // Otherwise, fall back to individual API call
     async function checkLikeStatus() {
       if (!user?.id || video.source !== "ceramic") return;
-
       try {
         const authToken = await getAccessToken();
-        const response = await fetch(
-          `/api/social/like?videoId=${video.id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
-        );
-
+        const response = await fetch(`/api/social/like?videoId=${video.id}`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
         if (response.ok) {
           const data = await response.json();
           setIsLiked(data.liked || false);
@@ -101,29 +178,21 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
     checkLikeStatus();
   }, [video.id, user?.id, getAccessToken, video.source, initialLiked]);
 
-  // Check follow status on mount (or use batch-fetched value)
+  // ─── Follow status (batch or individual) ───
   useEffect(() => {
-    // If initialFollowing prop provided (from batch check), use it directly
     if (initialFollowing !== undefined) {
       setIsFollowing(initialFollowing);
       return;
     }
 
-    // Otherwise, fall back to individual API call
     async function checkFollowStatus() {
       if (!user?.id || !video.creator?.did || isCreator) return;
-
       try {
         const authToken = await getAccessToken();
         const response = await fetch(
           `/api/social/follow?followingDID=${encodeURIComponent(video.creator.did)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
+          { headers: { Authorization: `Bearer ${authToken}` } },
         );
-
         if (response.ok) {
           const data = await response.json();
           setIsFollowing(data.following || false);
@@ -136,11 +205,10 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
     checkFollowStatus();
   }, [video.creator?.did, user?.id, isCreator, getAccessToken, initialFollowing]);
 
-  // Fetch comment count on mount
+  // ─── Comment count ───
   useEffect(() => {
     async function fetchCommentCount() {
       if (video.source !== "ceramic") return;
-
       try {
         const response = await fetch(`/api/comments?videoId=${video.id}`);
         if (response.ok) {
@@ -155,9 +223,10 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
     fetchCommentCount();
   }, [video.id, video.source]);
 
+  // ─── Handlers ───
+
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-
     if (!user?.id) {
       alert("Please sign in to like videos");
       return;
@@ -165,8 +234,6 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
 
     const newLiked = !isLiked;
     const newCount = newLiked ? likeCount + 1 : likeCount - 1;
-
-    // Optimistic update
     setIsLiked(newLiked);
     setLikeCount(newCount);
 
@@ -178,19 +245,13 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
           "Content-Type": "application/json",
           Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify({
-          videoId: video.id,
-          action: newLiked ? "like" : "unlike",
-        }),
+        body: JSON.stringify({ videoId: video.id, action: newLiked ? "like" : "unlike" }),
       });
-
       if (!response.ok) {
-        // Revert on error
         setIsLiked(!newLiked);
         setLikeCount(likeCount);
       }
     } catch (error) {
-      // Revert on error
       setIsLiked(!newLiked);
       setLikeCount(likeCount);
       console.error("[ShortVideo] Like error:", error);
@@ -222,32 +283,23 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowMenu(false);
-    // Navigate to edit page
     window.location.href = `/upload?edit=${video.id}`;
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowMenu(false);
-
-    if (!confirm("Are you sure you want to delete this video? This action cannot be undone.")) {
-      return;
-    }
+    if (!confirm("Are you sure you want to delete this video? This action cannot be undone.")) return;
 
     try {
       const authToken = await getAccessToken();
       const response = await fetch(`/api/videos/${video.id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
-
       if (response.ok) {
-        // Move to next video and refresh the list
         onNext?.();
         alert("Video deleted successfully");
-        // Refresh page after a short delay
         setTimeout(() => window.location.reload(), 1000);
       } else {
         const data = await response.json();
@@ -264,159 +316,61 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
     setShowMenu(!showMenu);
   };
 
-  // Listen for play/pause events from the video element
-  useEffect(() => {
-    const player = playerRef.current;
-    if (!player) return;
-
-    const handlePlay = () => {
-      setIsPlaying(true);
-      // Clear error state when video successfully plays
-      setPlaybackError(false);
-    };
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => {
-      if (onEnded) {
-        onEnded();
-      }
-    };
-
-    player.addEventListener("play", handlePlay);
-    player.addEventListener("pause", handlePause);
-    player.addEventListener("ended", handleEnded);
-
-    return () => {
-      player.removeEventListener("play", handlePlay);
-      player.removeEventListener("pause", handlePause);
-      player.removeEventListener("ended", handleEnded);
-    };
-  }, [onEnded]);
-
-  // Control play/pause based on isActive prop
-  useEffect(() => {
-    const player = playerRef.current;
-    if (!player) return;
-
-    if (isActive) {
-      player.play().catch(() => {
-        // Autoplay may be blocked by browser
-      });
-    } else {
-      player.pause();
-    }
-  }, [isActive]);
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
-
   const handleVideoClick = () => {
-    if (playerRef.current) {
-      if (isPlaying) {
-        playerRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        playerRef.current.play();
-        setIsPlaying(true);
-      }
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+    if (isPlaying) {
+      videoEl.pause();
+    } else {
+      videoEl.play().catch(() => {});
     }
   };
 
-  // Validate playback URL before rendering
   const hasValidPlaybackUrl = video.playbackUrl && video.playbackUrl.trim() !== '';
-
-  // Check if URL is HLS/MP4 (Livepeer compatible)
-  const isHLSUrl = video.playbackUrl && (
-    video.playbackUrl.includes('.m3u8') ||
-    video.playbackUrl.includes('livepeer') ||
-    video.playbackUrl.includes('supabase.co/storage') ||
-    video.playbackUrl.includes('.mp4') ||
-    video.playbackUrl.startsWith('ipfs://')
-  );
-
-  // Determine which player to use
-  const canPlayWithLivepeer = hasValidPlaybackUrl && isHLSUrl;
-
 
   return (
     <div className="flex justify-center items-center h-full w-full focus-visible:outline-none">
       <div className="bg-gray-950 flex h-full w-full md:w-[420px] md:max-h-[90vh] md:rounded-3xl items-center overflow-hidden relative md:shadow-2xl md:shadow-black/50">
         {hasValidPlaybackUrl ? (
           <div className="w-full h-full relative" style={{ pointerEvents: 'none' }}>
+            {/* Click overlay for play/pause */}
             <div
               className="absolute inset-0 z-[1]"
               style={{ pointerEvents: 'auto' }}
               onClick={handleVideoClick}
             />
+
             {playbackError ? (
-              // Show error UI when playback fails
               <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
                 <div className="w-16 h-16 rounded-full bg-[#EB83EA]/20 flex items-center justify-center mb-4">
                   <FiAlertCircle className="w-8 h-8 text-[#EB83EA]" />
                 </div>
                 <p className="text-gray-300 font-semibold mb-2">{video.title || "Video Unavailable"}</p>
-                <p className="text-gray-400 text-sm mb-4">
-                  {!video.playbackUrl
-                    ? "This video is missing playback information"
-                    : "This video cannot be played right now"}
-                </p>
-                <p className="text-gray-500 text-xs mb-4">
-                  {!video.playbackUrl
-                    ? "The video may still be processing or was not uploaded correctly"
-                    : "Try refreshing the page or skip to the next video"}
-                </p>
+                <p className="text-gray-400 text-sm mb-4">This video cannot be played right now</p>
                 <button
                   onClick={() => onNext?.()}
                   className="px-4 py-2 bg-[#EB83EA] hover:bg-[#E748E6] text-white text-sm font-medium rounded-full transition"
+                  style={{ pointerEvents: 'auto' }}
                 >
                   Next Video
                 </button>
               </div>
-            ) : canPlayWithLivepeer ? (
-              // Livepeer Player for HLS streams (Dragverse, Bluesky native)
-              <Player.Root
-                src={getSrc(video.playbackUrl)}
-                volume={isMuted ? 0 : 1}
-                onError={(error) => {
-                  console.error("[ShortVideo] Livepeer playback error:", error);
-                  console.error("[ShortVideo] Failed video details:", {
-                    videoId: video.id,
-                    title: video.title?.substring(0, 50),
-                    playbackUrl: video.playbackUrl,
-                    livepeerAssetId: video.livepeerAssetId,
-                    source: video.source
-                  });
-                  // Show error UI after failed playback attempt
-                  setPlaybackError(true);
-                }}
-              >
-                <Player.Container className="h-full w-full">
-                  <Player.Poster
-                    className="object-cover"
-                    src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.livepeerAssetId)}
-                  />
-                  <Player.Video
-                    ref={playerRef}
-                    className="h-full w-full object-contain"
-                    playsInline
-                    muted={isMuted}
-                  />
-                </Player.Container>
-              </Player.Root>
             ) : (
-              // Unsupported format - show error UI
-              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
-                <div className="w-16 h-16 rounded-full bg-[#EB83EA]/20 flex items-center justify-center mb-4">
-                  <FiAlertCircle className="w-8 h-8 text-[#EB83EA]" />
-                </div>
-                <p className="text-gray-300 font-semibold mb-2">{video.title || "Video Unavailable"}</p>
-                <p className="text-gray-400 text-sm mb-4">This video format is not supported</p>
-              </div>
+              <video
+                ref={videoRef}
+                className="h-full w-full object-contain"
+                playsInline
+                muted={isMuted}
+                poster={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.livepeerAssetId)}
+                onEnded={() => onEnded?.()}
+                onPlay={() => { setIsPlaying(true); setPlaybackError(false); }}
+                onPause={() => setIsPlaying(false)}
+                onError={() => setPlaybackError(true)}
+              />
             )}
 
             {/* Top Right Controls */}
             <div className="absolute top-2 md:top-4 right-2 md:right-4 flex flex-col gap-2 z-10" style={{ pointerEvents: 'auto' }}>
-              {/* Creator Menu Button */}
               {isCreator && (
                 <div className="relative" ref={menuRef}>
                   <button
@@ -426,8 +380,6 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
                   >
                     <FiMoreVertical className="w-5 h-5 text-white" />
                   </button>
-
-                  {/* Dropdown Menu */}
                   {showMenu && (
                     <div className="absolute top-full right-0 mt-2 w-48 bg-[#1a0b2e] border border-[#EB83EA]/20 rounded-xl shadow-xl overflow-hidden">
                       <button
@@ -449,11 +401,10 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
                 </div>
               )}
 
-              {/* Mute/Unmute Button */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleMute();
+                  setIsMuted(!isMuted);
                 }}
                 className="p-3 bg-black/50 rounded-full hover:bg-black/70 transition"
                 aria-label={isMuted ? "Unmute" : "Mute"}
@@ -467,7 +418,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
             </div>
 
             {/* Play/Pause Indicator */}
-            {!isPlaying && (
+            {!isPlaying && !playbackError && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]">
                 <div className="w-20 h-20 bg-black/50 rounded-full flex items-center justify-center">
                   <div className="w-0 h-0 border-t-[15px] border-t-transparent border-l-[25px] border-l-white border-b-[15px] border-b-transparent ml-2" />
@@ -477,7 +428,6 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
 
             {/* Interaction Buttons - Right Side */}
             <div className="absolute bottom-20 right-2 md:right-4 flex flex-col gap-3 md:gap-4 z-20" style={{ pointerEvents: 'auto' }}>
-              {/* Creator Avatar with Follow Button */}
               {video.creator?.avatar && (
                 <div className="relative flex flex-col items-center gap-2">
                   <Link
@@ -495,17 +445,13 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
                       />
                     </div>
                   </Link>
-
-                  {/* Follow Button - Only show for non-creators */}
                   {!isCreator && user?.id && video.source === "ceramic" && (
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
                         if (!video.creator?.did) return;
-
                         const newFollowing = !isFollowing;
                         setIsFollowing(newFollowing);
-
                         try {
                           const authToken = await getAccessToken();
                           const response = await fetch("/api/social/follow", {
@@ -519,7 +465,6 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
                               action: newFollowing ? "follow" : "unfollow",
                             }),
                           });
-
                           if (!response.ok) {
                             setIsFollowing(!newFollowing);
                           } else {
@@ -547,29 +492,17 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
                 </div>
               )}
 
-              {/* Like Button - Only for Dragverse videos */}
               {video.source === "ceramic" && (
-                <button
-                  onClick={handleLike}
-                  className="flex flex-col items-center gap-1"
-                  aria-label={isLiked ? "Unlike" : "Like"}
-                >
+                <button onClick={handleLike} className="flex flex-col items-center gap-1" aria-label={isLiked ? "Unlike" : "Like"}>
                   <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
-                    <FiHeart
-                      className={`w-6 h-6 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`}
-                    />
+                    <FiHeart className={`w-6 h-6 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
                   </div>
                   <span className="text-white text-xs font-semibold">{likeCount > 0 ? likeCount : ''}</span>
                 </button>
               )}
 
-              {/* Comment Button - Only for Dragverse videos */}
               {video.source === "ceramic" && (
-                <button
-                  onClick={handleComment}
-                  className="flex flex-col items-center gap-1"
-                  aria-label="Comment"
-                >
+                <button onClick={handleComment} className="flex flex-col items-center gap-1" aria-label="Comment">
                   <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
                     <FiMessageCircle className="w-6 h-6 text-white" />
                   </div>
@@ -577,7 +510,6 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
                 </button>
               )}
 
-              {/* View Count - For external videos */}
               {video.source !== "ceramic" && (
                 <div className="flex flex-col items-center gap-1">
                   <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center">
@@ -587,25 +519,15 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
                 </div>
               )}
 
-              {/* Share Button */}
-              <button
-                onClick={handleShare}
-                className="flex flex-col items-center gap-1"
-                aria-label="Share"
-              >
+              <button onClick={handleShare} className="flex flex-col items-center gap-1" aria-label="Share">
                 <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
                   <FiShare2 className="w-6 h-6 text-white" />
                 </div>
                 <span className="text-white text-xs font-semibold">Share</span>
               </button>
 
-              {/* Tip Button */}
               {video.source === "ceramic" && !isCreator && video.creator?.walletAddress && (
-                <button
-                  onClick={handleTip}
-                  className="flex flex-col items-center gap-1"
-                  aria-label="Send tip"
-                >
+                <button onClick={handleTip} className="flex flex-col items-center gap-1" aria-label="Send tip">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-[#EB83EA]/50">
                     <FiDollarSign className="w-6 h-6 text-white" />
                   </div>
@@ -635,9 +557,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
                 <div className="text-center text-white p-6 max-w-sm">
                   <FiAlertCircle className="w-12 h-12 mx-auto mb-4 text-red-400" />
                   <p className="text-lg font-semibold mb-2">Unable to play video</p>
-                  <p className="text-sm text-white/70 mb-4">
-                    Skipping to next video...
-                  </p>
+                  <p className="text-sm text-white/70 mb-4">Skipping to next video...</p>
                 </div>
               </div>
             )}
@@ -655,7 +575,6 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
         )}
       </div>
 
-      {/* Comment Modal */}
       <VideoCommentModal
         isOpen={commentModalOpen}
         onClose={() => setCommentModalOpen(false)}
@@ -663,7 +582,6 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
         videoTitle={video.title}
       />
 
-      {/* Tip Modal */}
       <TipModal
         isOpen={tipModalOpen}
         onClose={() => setTipModalOpen(false)}

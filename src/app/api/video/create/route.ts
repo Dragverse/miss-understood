@@ -168,6 +168,23 @@ export async function POST(request: NextRequest) {
       }
 
       console.log("[Video Create] ✅ Video saved to Supabase successfully:", videoDoc.id);
+
+      // Create upload-complete notification
+      try {
+        const { createNotification } = await import("@/lib/supabase/notifications");
+        const mediaLabel = contentType === "music" || contentType === "podcast" ? "audio" : "video";
+        await createNotification({
+          recipientDID: userDID,
+          type: "video_ready",
+          source: "dragverse",
+          sourceId: videoDoc.id,
+          message: `Your ${mediaLabel} "${title.trim()}" has been uploaded successfully`,
+          link: `/watch/${videoDoc.id}`,
+        });
+      } catch (notifError) {
+        console.error("[Video Create] Notification failed:", notifError);
+      }
+
       return NextResponse.json({
         success: true,
         videoId: videoDoc.id,

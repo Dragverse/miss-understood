@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { FiBell, FiDollarSign, FiHeart, FiMessageCircle, FiUserPlus, FiVideo } from "react-icons/fi";
 import Image from "next/image";
 import Link from "next/link";
+import { usePrivy } from "@privy-io/react-auth";
 
 interface Notification {
   id: string;
@@ -15,9 +16,6 @@ interface Notification {
   actionUrl?: string;
   avatar?: string;
 }
-
-// Empty notifications - will be populated from Ceramic when notification system is implemented
-const mockNotifications: Notification[] = [];
 
 const notificationIcons = {
   tip: FiDollarSign,
@@ -35,22 +33,117 @@ const notificationColors = {
   video_ready: "text-yellow-500",
 };
 
-export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(mockNotifications);
+const notificationTitles: Record<string, string> = {
+  tip: "New Tip",
+  like: "New Like",
+  comment: "New Comment",
+  follow: "New Follower",
+  video_ready: "Upload Complete",
+  mention: "Mentioned You",
+  repost: "Reposted",
+};
 
-  const markAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) =>
-        n.id === id ? { ...n, isRead: true } : n
-      )
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function mapDBNotification(dbNotif: any): Notification {
+  const type = ["tip", "like", "comment", "follow", "video_ready"].includes(dbNotif.type)
+    ? dbNotif.type
+    : "comment";
+
+  return {
+    id: dbNotif.id,
+    type,
+    title: notificationTitles[dbNotif.type] || "Notification",
+    message: dbNotif.message,
+    timestamp: formatRelativeTime(dbNotif.created_at),
+    isRead: dbNotif.read,
+    actionUrl: dbNotif.link || undefined,
+    avatar: undefined,
+  };
+}
+
+export default function NotificationsPage() {
+  const { getAccessToken, user, authenticated } = usePrivy();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!authenticated) return;
+    try {
+      const token = await getAccessToken();
+      const res = await fetch("/api/notifications", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success && data.notifications) {
+        setNotifications(data.notifications.map(mapDBNotification));
+      }
+    } catch (err) {
+      console.error("[Notifications] Fetch failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [authenticated, getAccessToken]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const markAsRead = async (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
+    try {
+      await fetch("/api/notifications/mark-read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId: id }),
+      });
+    } catch (err) {
+      console.error("[Notifications] Mark read failed:", err);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
+  const markAllAsRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      await fetch("/api/notifications/mark-read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markAll: true, userDID: user?.id }),
+      });
+    } catch (err) {
+      console.error("[Notifications] Mark all read failed:", err);
+    }
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8">Notifications</h1>
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#EB83EA]" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">

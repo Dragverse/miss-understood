@@ -617,6 +617,14 @@ export default function ProfilePage() {
                       </span>
                       <span className="text-white/80 ml-2">following</span>
                     </button>
+                    {(creator.tipCount || 0) > 0 && (
+                      <div>
+                        <span className="font-bold text-xl text-white drop-shadow-lg">
+                          {(creator.tipCount || 0).toLocaleString()}
+                        </span>
+                        <span className="text-white/80 ml-2">tips</span>
+                      </div>
+                    )}
                   </div>
                   {/* Bio - Instagram style, under stats */}
                   {creator.description && (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth/verify";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
+import { createNotification } from "@/lib/supabase/notifications";
 
 export async function POST(request: NextRequest) {
   try {
@@ -83,6 +84,35 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("[Tips Record] Error:", error);
       return NextResponse.json({ error: "Failed to record tip" }, { status: 500 });
+    }
+
+    // Create tip notification for the recipient
+    try {
+      const { data: recipient } = await supabase
+        .from("creators")
+        .select("did, handle, display_name")
+        .eq("wallet_address", to)
+        .maybeSingle();
+
+      const { data: sender } = await supabase
+        .from("creators")
+        .select("display_name, handle")
+        .eq("did", auth.userId)
+        .maybeSingle();
+
+      if (recipient?.did && recipient.did !== auth.userId) {
+        await createNotification({
+          recipientDID: recipient.did,
+          senderDID: auth.userId,
+          type: "tip",
+          source: "dragverse",
+          sourceId: txHash,
+          message: `${sender?.display_name || sender?.handle || "Someone"} sent you a $${parseFloat(amountUSD).toFixed(2)} tip`,
+          link: `/u/${recipient.handle}`,
+        });
+      }
+    } catch (notifError) {
+      console.error("[Tips Record] Notification failed:", notifError);
     }
 
     return NextResponse.json({ success: true });

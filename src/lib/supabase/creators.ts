@@ -29,6 +29,7 @@ export interface Creator {
   total_earnings_usd: number;
   stripe_account_id?: string;
   wallet_address?: string;
+  tip_count?: number;
   created_at: string;
   updated_at: string;
 }

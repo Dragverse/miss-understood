@@ -34,6 +34,7 @@ export function transformSupabaseCreator(creator: SupabaseCreator): Creator {
     totalEarningsUSD: creator.total_earnings_usd,
     stripeAccountId: creator.stripe_account_id,
     walletAddress: creator.wallet_address,
+    tipCount: creator.tip_count || 0,
     createdAt: new Date(creator.created_at),
     updatedAt: new Date(creator.updated_at),
   };

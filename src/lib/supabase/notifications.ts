@@ -4,7 +4,7 @@ export interface Notification {
   id: string;
   recipient_did: string;
   sender_did?: string;
-  type: 'like' | 'comment' | 'follow' | 'tip' | 'mention' | 'repost';
+  type: 'like' | 'comment' | 'follow' | 'tip' | 'mention' | 'repost' | 'video_ready';
   source: 'dragverse' | 'bluesky';
   source_id?: string;
   message: string;
