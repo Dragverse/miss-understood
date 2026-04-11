@@ -11,6 +11,7 @@ import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { FiSearch, FiRefreshCw, FiVideo } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
+import { ExploreBroadcast } from "@/components/broadcast/explore-broadcast";
 
 export default function VideosPage() {
   const [activeCategory, setActiveCategory] = useState("All");
@@ -241,6 +242,11 @@ export default function VideosPage() {
               ))}
             </div>
           </div>
+
+          {/* Live Stream or Video Broadcast */}
+          {!isFiltering && (
+            <ExploreBroadcast videos={longVideos} />
+          )}
 
           {/* Snapshots Section (Shorts) - Always show unless empty */}
           {shorts.length > 0 && !isFiltering && (

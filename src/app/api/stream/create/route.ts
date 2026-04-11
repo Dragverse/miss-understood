@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name } = validation.data;
+    const { name, scheduledAt } = validation.data;
 
     // Check if user already has an active stream (one stream per profile limit)
     if (userId) {
@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
             rtmp_ingest_url: rtmpIngestUrl,
             title: name,
             is_active: false, // Stream starts inactive until user goes live
+            scheduled_at: scheduledAt || null,
           })
           .select("id")
           .single();
@@ -168,6 +169,7 @@ export async function POST(request: NextRequest) {
       playbackId: stream.playbackId,
       playbackUrl,
       rtmpIngestUrl,
+      scheduledAt: scheduledAt || null,
     });
   } catch (error) {
     console.error("Stream creation error:", error);

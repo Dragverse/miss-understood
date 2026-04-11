@@ -33,6 +33,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
   const [streamTitle, setStreamTitle] = useState("");
   const [titleError, setTitleError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [scheduleForLater, setScheduleForLater] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState("");
 
   // Streaming state
   const [isStreaming, setIsStreaming] = useState(false);
@@ -159,7 +161,10 @@ export function StreamModal({ onClose }: StreamModalProps) {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${authToken}`
         },
-        body: JSON.stringify({ name: streamTitle })
+        body: JSON.stringify({
+          name: streamTitle,
+          ...(scheduleForLater && scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}),
+        })
       });
 
       if (!response.ok) {
@@ -185,8 +190,13 @@ export function StreamModal({ onClose }: StreamModalProps) {
         title: streamTitle
       });
 
-      setStep('method');
-      toast.success("Stream created successfully!");
+      if (scheduleForLater && scheduledAt) {
+        toast.success(`Stream scheduled for ${new Date(scheduledAt).toLocaleString()}!`);
+        onClose();
+      } else {
+        setStep('method');
+        toast.success("Stream created successfully!");
+      }
     } catch (error) {
       console.error("Stream creation error:", error);
       if (error instanceof Error && error.message !== "Active stream already exists") {
@@ -906,13 +916,41 @@ export function StreamModal({ onClose }: StreamModalProps) {
                 )}
               </div>
 
+              {/* Schedule for later */}
+              <div>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={scheduleForLater}
+                    onChange={(e) => setScheduleForLater(e.target.checked)}
+                    className="w-5 h-5 rounded border-[#EB83EA]/30 bg-[#2f2942] text-[#EB83EA] focus:ring-[#EB83EA] cursor-pointer"
+                  />
+                  <span className="text-sm font-bold text-white">Schedule for later</span>
+                </label>
+                {scheduleForLater && (
+                  <div className="mt-3 ml-8">
+                    <input
+                      type="datetime-local"
+                      value={scheduledAt}
+                      onChange={(e) => setScheduledAt(e.target.value)}
+                      min={new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)}
+                      max={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)}
+                      className="w-full px-4 py-3 bg-[#2f2942] border-2 border-[#EB83EA]/20 rounded-xl text-white focus:outline-none focus:border-[#EB83EA] transition"
+                    />
+                    <p className="text-xs text-gray-400 mt-2">
+                      An &quot;Upcoming Live&quot; card will appear on your profile
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-3">
                 <button
                   onClick={handleCreateStream}
-                  disabled={isCreating || !!titleError || streamTitle.length === 0}
+                  disabled={isCreating || !!titleError || streamTitle.length === 0 || (scheduleForLater && !scheduledAt)}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] text-white font-bold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isCreating ? "Creating..." : "Create Stream"}
+                  {isCreating ? "Creating..." : scheduleForLater ? "Schedule Stream" : "Create Stream"}
                 </button>
                 <button
                   onClick={onClose}

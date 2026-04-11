@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/snapshots/short-video";
+import { HeroSlider } from "@/components/home/hero-slider";
+import { RightSidebar } from "@/components/home/right-sidebar";
 import { FiRefreshCw } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
 
@@ -171,55 +173,13 @@ function SnapshotsContent() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [snapshots.length]);
 
-  if (loading) {
-    return (
-      <div className="h-[100dvh] md:h-[calc(100vh-4rem)] bg-black p-4">
-        <div className="max-w-md mx-auto h-full">
-          <LoadingShimmer className="h-full" />
-        </div>
-      </div>
-    );
-  }
+  // Shared video player + overlays
+  const currentVideo = snapshots.length > 0 ? snapshots[currentIndex] : null;
+  const nextVideo = snapshots.length > 1 ? snapshots[(currentIndex + 1) % snapshots.length] : null;
 
-  if (snapshots.length === 0) {
-    return (
-      <div className="h-[100dvh] md:h-[calc(100vh-4rem)] flex items-center justify-center bg-black">
-        <div className="text-center px-6 max-w-md">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-[#EB83EA]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h2 className="text-white text-2xl font-bold mb-3 uppercase tracking-wide">The Spotlight Awaits</h2>
-          <p className="text-gray-400 mb-6 leading-relaxed">
-            No snapshots on stage yet. Be the first to serve looks and performances in vertical format!
-          </p>
-          <div className="space-y-3">
-            <Link
-              href="/upload"
-              className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30 text-white"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Upload Your First Short
-            </Link>
-            <p className="text-xs text-gray-500">
-              Tip: Snapshots work best in 9:16 vertical format (1080x1920)
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const currentVideo = snapshots[currentIndex];
-  const nextVideo = snapshots[(currentIndex + 1) % snapshots.length];
-
-  return (
-    <div className="relative h-[100dvh] md:h-[calc(100vh-4rem)] overflow-hidden bg-black w-full flex items-center justify-center">
-      {/* Single video - broadcast style */}
-      <div className="h-full w-full md:max-w-[420px]">
+  const videoPlayer = currentVideo ? (
+    <div className="relative h-full w-full flex items-center justify-center">
+      <div className="h-full w-full lg:max-w-[420px]">
         <ShortVideo
           key={currentVideo.id}
           video={currentVideo}
@@ -233,7 +193,7 @@ function SnapshotsContent() {
       </div>
 
       {/* Broadcast badge - Top Left */}
-      <div className="absolute top-20 left-4 z-20">
+      <div className="absolute top-4 left-4 z-20">
         <div className="flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full">
           <div className="w-2 h-2 rounded-full bg-[#EB83EA] animate-pulse" />
           <span className="text-white text-xs font-bold uppercase tracking-wider">Dragverse TV</span>
@@ -244,21 +204,139 @@ function SnapshotsContent() {
       <button
         onClick={() => loadSnapshots(true)}
         disabled={refreshing}
-        className="absolute top-20 right-4 z-20 w-10 h-10 md:w-12 md:h-12 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition disabled:opacity-50"
+        className="absolute top-4 right-4 z-20 w-10 h-10 md:w-12 md:h-12 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition disabled:opacity-50"
         aria-label="Refresh snapshots"
       >
         <FiRefreshCw className={`w-5 h-5 md:w-6 md:h-6 text-white ${refreshing ? 'animate-spin' : ''}`} />
       </button>
 
       {/* Up Next indicator - Bottom Left */}
-      {snapshots.length > 1 && (
+      {nextVideo && (
         <div className="absolute bottom-6 left-4 z-20 max-w-[200px]">
           <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Up Next</p>
           <p className="text-white/80 text-sm font-medium line-clamp-1">
-            {nextVideo?.title}
+            {nextVideo.title}
           </p>
         </div>
       )}
+    </div>
+  ) : null;
+
+  // ─── Loading State ───
+  if (loading) {
+    return (
+      <div className="bg-black min-h-[100dvh] md:min-h-[calc(100vh-4rem)]">
+        {/* Desktop: 3-column */}
+        <div className="hidden lg:grid grid-cols-12 gap-4 h-[calc(100vh-4rem)] px-4 py-4 max-w-[1600px] mx-auto">
+          <div className="col-span-3 rounded-[24px] overflow-hidden">
+            <HeroSlider />
+          </div>
+          <div className="col-span-6 flex items-center justify-center">
+            <div className="max-w-[420px] w-full h-full p-4">
+              <LoadingShimmer className="h-full" />
+            </div>
+          </div>
+          <div className="col-span-3 overflow-y-auto">
+            <RightSidebar />
+          </div>
+        </div>
+        {/* Mobile */}
+        <div className="lg:hidden h-[100dvh] p-4">
+          <div className="max-w-md mx-auto h-full">
+            <LoadingShimmer className="h-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Empty State ───
+  if (snapshots.length === 0) {
+    return (
+      <div className="bg-black min-h-[100dvh] md:min-h-[calc(100vh-4rem)]">
+        {/* Desktop: 3-column */}
+        <div className="hidden lg:grid grid-cols-12 gap-4 h-[calc(100vh-4rem)] px-4 py-4 max-w-[1600px] mx-auto">
+          <div className="col-span-3 rounded-[24px] overflow-hidden">
+            <HeroSlider />
+          </div>
+          <div className="col-span-6 flex items-center justify-center">
+            <div className="text-center px-6 max-w-md">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10 text-[#EB83EA]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h2 className="text-white text-2xl font-bold mb-3 uppercase tracking-wide">The Spotlight Awaits</h2>
+              <p className="text-gray-400 mb-6 leading-relaxed">
+                No snapshots on stage yet. Be the first to serve looks and performances in vertical format!
+              </p>
+              <Link
+                href="/upload"
+                className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30 text-white"
+              >
+                Upload Your First Short
+              </Link>
+            </div>
+          </div>
+          <div className="col-span-3 overflow-y-auto">
+            <RightSidebar />
+          </div>
+        </div>
+        {/* Mobile */}
+        <div className="lg:hidden h-[100dvh] md:h-[calc(100vh-4rem)] flex items-center justify-center">
+          <div className="text-center px-6 max-w-md">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-[#EB83EA]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h2 className="text-white text-2xl font-bold mb-3 uppercase tracking-wide">The Spotlight Awaits</h2>
+            <p className="text-gray-400 mb-6 leading-relaxed">
+              No snapshots on stage yet. Be the first to serve looks and performances in vertical format!
+            </p>
+            <Link
+              href="/upload"
+              className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] rounded-full font-bold transition-all shadow-lg shadow-[#EB83EA]/30 text-white"
+            >
+              Upload Your First Short
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Main Layout ───
+  return (
+    <div className="bg-black min-h-[100dvh] md:min-h-[calc(100vh-4rem)]">
+      {/* Desktop: 3-column TikTok layout */}
+      <div className="hidden lg:grid grid-cols-12 gap-4 h-[calc(100vh-4rem)] px-4 py-4 max-w-[1600px] mx-auto">
+        {/* Left Sidebar - HeroSlider */}
+        <div className="col-span-3 h-full rounded-[24px] overflow-hidden">
+          <HeroSlider />
+        </div>
+
+        {/* Center - Video Player */}
+        <div className="col-span-6 relative overflow-hidden">
+          {videoPlayer}
+        </div>
+
+        {/* Right Sidebar */}
+        <div className="col-span-3 h-full overflow-y-auto scrollbar-hide space-y-4 py-2">
+          <RightSidebar />
+        </div>
+      </div>
+
+      {/* Mobile: full-screen video, then sidebars below */}
+      <div className="lg:hidden">
+        <div className="relative h-[100dvh] overflow-hidden">
+          {videoPlayer}
+        </div>
+        <div className="px-4 py-6 space-y-6">
+          <HeroSlider />
+          <RightSidebar />
+        </div>
+      </div>
     </div>
   );
 }

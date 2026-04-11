@@ -38,6 +38,7 @@ interface AudioPlayerContextType {
   seek: (time: number) => void;
   setVolume: (volume: number) => void;
   togglePlayPause: () => void;
+  updatePlaylist: (playlist: AudioTrack[]) => void;
 
   // Audio element ref (for external control)
   audioRef: React.RefObject<HTMLAudioElement | null>;
@@ -357,6 +358,15 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, [isPlaying, pause, resume]);
 
+  // Update playlist without restarting current playback (for extending queue)
+  const updatePlaylist = useCallback((newPlaylist: AudioTrack[]) => {
+    setPlaylist(newPlaylist);
+    if (currentTrack) {
+      const idx = newPlaylist.findIndex(t => t.id === currentTrack.id);
+      if (idx >= 0) setCurrentIndex(idx);
+    }
+  }, [currentTrack]);
+
   return (
     <AudioPlayerContext.Provider
       value={{
@@ -377,6 +387,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         seek,
         setVolume,
         togglePlayPause,
+        updatePlaylist,
         audioRef,
       }}
     >

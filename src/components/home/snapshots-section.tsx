@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import Hls from "hls.js";
 import { FiChevronLeft, FiChevronRight, FiFilm, FiHeart } from "react-icons/fi";
 import type { Video } from "@/types";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
@@ -13,6 +14,8 @@ interface SnapshotsSectionProps {
 
 export function SnapshotsSection({ shorts }: SnapshotsSectionProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const broadcastRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -30,8 +33,59 @@ export function SnapshotsSection({ shorts }: SnapshotsSectionProps) {
     return num.toString();
   };
 
+  // HLS.js setup for the broadcast card (auto-play latest snapshot)
+  useEffect(() => {
+    if (shorts.length === 0) return;
+    const videoEl = broadcastRef.current;
+    if (!videoEl) return;
+
+    const url = shorts[0].playbackUrl;
+    if (!url || url.trim() === "") return;
+
+    // Clean up previous
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    const isHLS = url.includes(".m3u8");
+
+    if (isHLS && Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true, startLevel: -1 });
+      hlsRef.current = hls;
+      hls.loadSource(url);
+      hls.attachMedia(videoEl);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        videoEl.play().catch(() => {});
+      });
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          console.warn("[SnapshotsBroadcast] HLS error, hiding broadcast");
+          hls.destroy();
+          hlsRef.current = null;
+        }
+      });
+    } else if (isHLS && videoEl.canPlayType("application/vnd.apple.mpegurl")) {
+      videoEl.src = url;
+      videoEl.play().catch(() => {});
+    } else {
+      videoEl.src = url;
+      videoEl.play().catch(() => {});
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [shorts]);
+
   // Only show section if we have shorts
   if (shorts.length === 0) return null;
+
+  const latestShort = shorts[0];
+  const broadcastPoster = getSafeThumbnail(latestShort.thumbnail, "/default-thumbnail.jpg", (latestShort as any).playbackId);
 
   return (
     <section className="space-y-6">
@@ -67,6 +121,33 @@ export function SnapshotsSection({ shorts }: SnapshotsSectionProps) {
         className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
+        {/* Snapshots TV Broadcast Card — first item */}
+        <Link href="/snapshots" className="flex-shrink-0 snap-start">
+          <div className="relative w-[140px] sm:w-[160px] md:w-[180px] aspect-[9/16] rounded-[24px] overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-shadow bg-black border-2 border-[#EB83EA]/40">
+            {/* ONLINE badge */}
+            <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1.5 bg-[#4CAF50] rounded-full">
+              <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              <span className="text-white text-[10px] font-bold uppercase tracking-wide">Online</span>
+            </div>
+            {/* Auto-playing muted video */}
+            <video
+              ref={broadcastRef}
+              muted
+              autoPlay
+              playsInline
+              loop
+              poster={broadcastPoster}
+              className="h-full w-full object-cover"
+            />
+            {/* Label at bottom */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/95 via-black/50 to-transparent">
+              <p className="text-[#EB83EA] text-[10px] font-bold uppercase tracking-widest mb-1">Snapshots TV</p>
+              <p className="text-white text-sm font-bold">Watch Now</p>
+            </div>
+          </div>
+        </Link>
+
+        {/* Regular snapshot cards */}
         {shorts.map((video) => (
           <Link
             key={video.id}

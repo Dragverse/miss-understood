@@ -124,8 +124,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Also return upcoming scheduled streams
+    const now = new Date().toISOString();
+    const upcomingStreams = (streams || [])
+      .filter(s => s.scheduled_at && s.scheduled_at > now && !s.is_active)
+      .map(s => ({
+        id: s.livepeer_stream_id,
+        name: s.title,
+        isActive: false,
+        isScheduled: true,
+        scheduledAt: s.scheduled_at,
+        playbackUrl: s.playback_url,
+        playbackId: s.playback_id,
+      }));
+
     return NextResponse.json({
       streams: activeStreams,
+      upcoming: upcomingStreams,
     });
   } catch (error) {
     console.error("Stream fetch error:", error);

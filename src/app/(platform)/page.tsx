@@ -195,7 +195,7 @@ export default function HomePage() {
           ) : loading ? (
             <>
               {/* Hero Section */}
-              <HeroSection />
+              <HeroSection horizontalVideos={horizontalVideos} />
 
               {/* Loading skeletons while data fetches */}
               <div className="space-y-6">
@@ -214,12 +214,12 @@ export default function HomePage() {
               {/* Mobile: LiveNow first if active, else hero first */}
               <div className="lg:hidden">
                 <LiveNowSection />
-                <HeroSection />
+                <HeroSection horizontalVideos={horizontalVideos} />
               </div>
 
               {/* Desktop: Hero first, then LiveNow */}
               <div className="hidden lg:block">
-                <HeroSection />
+                <HeroSection horizontalVideos={horizontalVideos} />
                 <LiveNowSection />
               </div>
 

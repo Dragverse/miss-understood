@@ -21,7 +21,7 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
   const shareToken = searchParams.token;
   const router = useRouter();
   const { getAccessToken, login, user } = usePrivy();
-  const { playTrack, pause, resume, isPlaying: isGlobalPlaying, currentTrack, audioRef, playbackError } = useAudioPlayer();
+  const { playTrack, pause, resume, isPlaying: isGlobalPlaying, currentTrack, audioRef, playbackError, updatePlaylist } = useAudioPlayer();
 
   const [audio, setAudio] = useState<Video | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,14 +130,16 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
     checkUserInteractions();
   }, [user?.id, audio?.id]);
 
-  // Fetch related audio (similar content type and category)
+  // Fetch related audio (same creator first, then others — for smart queue)
   useEffect(() => {
+    let cancelled = false;
     async function fetchRelatedAudio() {
       if (!audio?.id) return;
 
       try {
-        const response = await fetch(`/api/video/related?videoId=${audio.id}&contentType=${audio.contentType}&limit=6`);
-        if (response.ok) {
+        const creatorParam = audio.creator?.did ? `&creatorDid=${audio.creator.did}` : "";
+        const response = await fetch(`/api/video/related?videoId=${audio.id}&contentType=${audio.contentType}&limit=20${creatorParam}`);
+        if (response.ok && !cancelled) {
           const data = await response.json();
           setRelatedAudio(data.videos || []);
         }
@@ -147,7 +149,8 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
     }
 
     fetchRelatedAudio();
-  }, [audio?.id, audio?.contentType]);
+    return () => { cancelled = true; };
+  }, [audio?.id, audio?.contentType, audio?.creator?.did]);
 
   // Play audio when page loads
   useEffect(() => {
@@ -182,6 +185,35 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
       toast.error("This audio file is missing a playback URL");
     }
   }, [audio, playTrack]);
+
+  // Extend playlist when related audio loads (smart queue: same creator → others)
+  useEffect(() => {
+    if (!audio || !relatedAudio.length || currentTrack?.id !== audio.id) return;
+
+    const currentAudioTrack = {
+      id: audio.id,
+      title: audio.title,
+      artist: audio.creator?.displayName || "Unknown Artist",
+      thumbnail: audio.thumbnail || "/default-thumbnail.jpg",
+      audioUrl: audio.playbackUrl,
+      duration: audio.duration,
+      type: "uploaded" as const,
+    };
+
+    const queueTracks = relatedAudio
+      .filter(v => v.playbackUrl)
+      .map(v => ({
+        id: v.id,
+        title: v.title,
+        artist: (v as any).creator?.displayName || "Unknown Artist",
+        thumbnail: v.thumbnail || "/default-thumbnail.jpg",
+        audioUrl: v.playbackUrl,
+        duration: v.duration,
+        type: "uploaded" as const,
+      }));
+
+    updatePlaylist([currentAudioTrack, ...queueTracks]);
+  }, [relatedAudio, audio, currentTrack?.id, updatePlaylist]);
 
   // Sync with global player state
   useEffect(() => {

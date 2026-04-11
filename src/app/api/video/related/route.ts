@@ -1,15 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
 
+const VIDEO_SELECT = `
+  id,
+  title,
+  description,
+  thumbnail,
+  duration,
+  views,
+  likes,
+  created_at,
+  playback_url,
+  livepeer_asset_id,
+  content_type,
+  category,
+  tags,
+  visibility,
+  creator_did
+`;
+
 /**
  * Get related videos/audio based on content type and category
- * @route GET /api/video/related?videoId=X&contentType=Y&limit=Z
+ * When creatorDid is provided, prioritizes same-creator content first (for audio queue)
+ * @route GET /api/video/related?videoId=X&contentType=Y&limit=Z&creatorDid=W
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const videoId = searchParams.get("videoId");
     const contentType = searchParams.get("contentType");
+    const creatorDid = searchParams.get("creatorDid");
     const limit = parseInt(searchParams.get("limit") || "6");
 
     if (!videoId) {
@@ -21,7 +41,7 @@ export async function GET(request: NextRequest) {
     // Get the video's category first
     const { data: currentVideo, error: videoError } = await supabase
       .from("videos")
-      .select("category, content_type")
+      .select("category, content_type, creator_did")
       .eq("id", videoId)
       .single();
 
@@ -30,38 +50,73 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ videos: [] });
     }
 
-    // Build query to find similar videos
+    const filterContentType = contentType || currentVideo.content_type;
+    const effectiveCreatorDid = creatorDid || currentVideo.creator_did;
+
+    // When creatorDid is provided, use two-pass strategy:
+    // 1. Same creator's other content (highest priority for audio queue)
+    // 2. Other creators' content (fill remaining slots)
+    if (creatorDid) {
+      const allVideos: any[] = [];
+
+      // Pass 1: Same creator, different video, same content type
+      const { data: sameCreator } = await supabase
+        .from("videos")
+        .select(VIDEO_SELECT)
+        .eq("visibility", "public")
+        .neq("id", videoId)
+        .eq("creator_did", effectiveCreatorDid)
+        .eq("content_type", filterContentType)
+        .or(`published_at.is.null,published_at.lte.${new Date().toISOString()}`)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (sameCreator) {
+        allVideos.push(...sameCreator);
+      }
+
+      // Pass 2: Other creators, same content type (fill remaining)
+      if (allVideos.length < limit) {
+        const remaining = limit - allVideos.length;
+        const existingIds = [videoId, ...allVideos.map(v => v.id)];
+
+        const { data: otherCreators } = await supabase
+          .from("videos")
+          .select(VIDEO_SELECT)
+          .eq("visibility", "public")
+          .not("id", "in", `(${existingIds.join(",")})`)
+          .neq("creator_did", effectiveCreatorDid)
+          .eq("content_type", filterContentType)
+          .or(`published_at.is.null,published_at.lte.${new Date().toISOString()}`)
+          .order("created_at", { ascending: false })
+          .limit(remaining);
+
+        if (otherCreators) {
+          allVideos.push(...otherCreators);
+        }
+      }
+
+      return NextResponse.json({ videos: allVideos }, {
+        headers: {
+          'Cache-Control': 'public, max-age=120, stale-while-revalidate=300',
+          'CDN-Cache-Control': 's-maxage=240'
+        }
+      });
+    }
+
+    // Original behavior when no creatorDid: category-based matching
     let query = supabase
       .from("videos")
-      .select(`
-        id,
-        title,
-        description,
-        thumbnail,
-        duration,
-        views,
-        likes,
-        created_at,
-        playback_url,
-        livepeer_asset_id,
-        content_type,
-        category,
-        tags,
-        visibility,
-        creator_did
-      `)
-      .eq("visibility", "public") // Only show public videos
-      .neq("id", videoId) // Exclude current video
+      .select(VIDEO_SELECT)
+      .eq("visibility", "public")
+      .neq("id", videoId)
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    // Filter by content type if provided, otherwise use current video's type
-    const filterContentType = contentType || currentVideo.content_type;
     if (filterContentType) {
       query = query.eq("content_type", filterContentType);
     }
 
-    // Prefer same category
     if (currentVideo.category) {
       query = query.eq("category", currentVideo.category);
     }
@@ -79,27 +134,11 @@ export async function GET(request: NextRequest) {
 
       const { data: moreVideos } = await supabase
         .from("videos")
-        .select(`
-          id,
-          title,
-          description,
-          thumbnail,
-          duration,
-          views,
-          likes,
-          created_at,
-          playback_url,
-          livepeer_asset_id,
-          content_type,
-          category,
-          tags,
-          visibility,
-          creator_did
-        `)
+        .select(VIDEO_SELECT)
         .eq("visibility", "public")
         .neq("id", videoId)
         .eq("content_type", filterContentType)
-        .neq("category", currentVideo.category) // Different category this time
+        .neq("category", currentVideo.category)
         .order("created_at", { ascending: false })
         .limit(remainingLimit);
 

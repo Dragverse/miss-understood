@@ -1,12 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
+import Hls from "hls.js";
+import { FiVolume2, FiVolumeX, FiSkipForward } from "react-icons/fi";
 import { HeroSlider } from "./hero-slider";
+import type { Video } from "@/types";
+import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 
-export function HeroSection() {
+interface HeroSectionProps {
+  horizontalVideos?: Video[];
+}
+
+export function HeroSection({ horizontalVideos }: HeroSectionProps) {
   const [streamInfo, setStreamInfo] = useState<{
     isLive: boolean;
     playbackId?: string;
@@ -17,6 +26,16 @@ export function HeroSection() {
   const [checkingStream, setCheckingStream] = useState(true);
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+
+  // Broadcast state (when offline + 5+ videos)
+  const [broadcastIndex, setBroadcastIndex] = useState(0);
+  const [broadcastMuted, setBroadcastMuted] = useState(true);
+  const broadcastVideoRef = useRef<HTMLVideoElement>(null);
+  const broadcastHlsRef = useRef<Hls | null>(null);
+
+  const hasBroadcast = !streamInfo.isLive && horizontalVideos && horizontalVideos.length >= 5;
+  const broadcastVideo = hasBroadcast ? horizontalVideos![broadcastIndex] : null;
+  const broadcastNextVideo = hasBroadcast ? horizontalVideos![(broadcastIndex + 1) % horizontalVideos!.length] : null;
 
   useEffect(() => {
     // Check if stream is live using backend API
@@ -38,21 +57,10 @@ export function HeroSection() {
           playbackUrl: data.playbackUrl,
         });
 
-        // Clear error and loaded state when stream status changes
         if (wasLive !== nowLive) {
           setPlayerError(null);
           setHasLoaded(false);
-          console.log(`Stream status changed: ${wasLive ? 'LIVE' : 'OFFLINE'} → ${nowLive ? 'LIVE' : 'OFFLINE'}`);
         }
-
-        // Log debug info
-        console.log('Stream status:', {
-          isLive: nowLive,
-          playbackId: data.playbackId,
-          method: data.method,
-          reason: data.reason,
-          fallback: data.fallback
-        });
       } catch (error) {
         console.error("Failed to check stream status:", error);
         setStreamInfo({ isLive: false });
@@ -62,10 +70,91 @@ export function HeroSection() {
     };
 
     checkStream();
-    // Re-check every 10 seconds for more responsive status updates
     const interval = setInterval(checkStream, 10000);
     return () => clearInterval(interval);
-  }, [streamInfo.isLive]); // Include streamInfo.isLive in deps to track changes
+  }, [streamInfo.isLive]);
+
+  // ─── Broadcast HLS.js Setup ───
+  useEffect(() => {
+    if (!hasBroadcast || !broadcastVideo) return;
+    const videoEl = broadcastVideoRef.current;
+    if (!videoEl) return;
+
+    const url = broadcastVideo.playbackUrl;
+    if (!url || url.trim() === "") return;
+
+    if (broadcastHlsRef.current) {
+      broadcastHlsRef.current.destroy();
+      broadcastHlsRef.current = null;
+    }
+
+    const isHLS = url.includes(".m3u8");
+
+    if (isHLS && Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true, startLevel: -1 });
+      broadcastHlsRef.current = hls;
+      hls.loadSource(url);
+      hls.attachMedia(videoEl);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        videoEl.play().catch(() => {});
+      });
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          hls.destroy();
+          broadcastHlsRef.current = null;
+          // Skip to next on error
+          handleBroadcastError();
+        }
+      });
+    } else if (isHLS && videoEl.canPlayType("application/vnd.apple.mpegurl")) {
+      videoEl.src = url;
+      videoEl.play().catch(() => {});
+    } else {
+      videoEl.src = url;
+      videoEl.play().catch(() => {});
+    }
+
+    return () => {
+      if (broadcastHlsRef.current) {
+        broadcastHlsRef.current.destroy();
+        broadcastHlsRef.current = null;
+      }
+    };
+  }, [hasBroadcast, broadcastVideo?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleBroadcastEnded = useCallback(() => {
+    if (horizontalVideos) {
+      setBroadcastIndex(prev => (prev + 1) % horizontalVideos.length);
+    }
+  }, [horizontalVideos]);
+
+  const handleBroadcastError = useCallback(() => {
+    setTimeout(() => {
+      if (horizontalVideos) {
+        setBroadcastIndex(prev => (prev + 1) % horizontalVideos.length);
+      }
+    }, 2000);
+  }, [horizontalVideos]);
+
+  const handleBroadcastSkip = useCallback(() => {
+    if (horizontalVideos) {
+      setBroadcastIndex(prev => (prev + 1) % horizontalVideos.length);
+    }
+  }, [horizontalVideos]);
+
+  // Determine badge state
+  const getBadge = () => {
+    if (checkingStream) return null;
+    if (streamInfo.isLive) {
+      return { color: "bg-[#4CAF50]", label: "Live", pulse: true };
+    }
+    if (hasBroadcast) {
+      return { color: "bg-[#EB83EA]", label: "Dragverse TV", pulse: true };
+    }
+    return { color: "bg-[#C62828]", label: "Offline", pulse: false };
+  };
+
+  const badge = getBadge();
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -74,15 +163,13 @@ export function HeroSection() {
         <HeroSlider />
       </div>
 
-      {/* Right - Dragverse Stream */}
+      {/* Right - Dragverse Stream / Broadcast */}
       <div className="lg:col-span-2 relative rounded-[32px] overflow-hidden bg-[#1a0b2e] min-h-[400px] shadow-2xl">
         {/* Status Badge */}
-        {!checkingStream && (
-          <div className={`absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full ${
-            streamInfo.isLive ? 'bg-[#4CAF50]' : 'bg-[#C62828]'
-          }`}>
-            <span className={`w-2 h-2 bg-white rounded-full ${streamInfo.isLive ? 'animate-pulse' : ''}`} />
-            <span className="text-xs font-bold uppercase text-white">{streamInfo.isLive ? 'Live' : 'Offline'}</span>
+        {badge && (
+          <div className={`absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full ${badge.color}`}>
+            <span className={`w-2 h-2 bg-white rounded-full ${badge.pulse ? 'animate-pulse' : ''}`} />
+            <span className="text-xs font-bold uppercase text-white">{badge.label}</span>
           </div>
         )}
 
@@ -104,15 +191,11 @@ export function HeroSection() {
                   onLoadedData={() => {
                     setHasLoaded(true);
                     setPlayerError(null);
-                    console.log('✅ Stream loaded successfully');
                   }}
                   onError={(e) => {
-                    // Only show error if player hasn't loaded successfully
                     if (!hasLoaded) {
-                      console.error('❌ Video element error:', e);
+                      console.error('Video element error:', e);
                       setPlayerError('Unable to load stream. Please try again.');
-                    } else {
-                      console.warn('⚠️ Video error after successful load (ignoring):', e);
                     }
                   }}
                 />
@@ -161,6 +244,65 @@ export function HeroSection() {
               </div>
             )}
           </div>
+        ) : hasBroadcast && broadcastVideo ? (
+          // Video Broadcast — auto-playing Dragverse videos
+          <div className="absolute inset-0">
+            <video
+              ref={broadcastVideoRef}
+              muted={broadcastMuted}
+              autoPlay
+              playsInline
+              poster={getSafeThumbnail(broadcastVideo.thumbnail, "/currently-offline.jpg", broadcastVideo.livepeerAssetId)}
+              className="w-full h-full object-cover"
+              onEnded={handleBroadcastEnded}
+              onError={handleBroadcastError}
+            />
+            {/* Broadcast controls overlay */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+              <div className="flex items-end justify-between">
+                <div className="min-w-0">
+                  <Link
+                    href={`/watch/${broadcastVideo.id}`}
+                    className="text-white font-bold text-sm hover:text-[#EB83EA] transition line-clamp-1"
+                  >
+                    {broadcastVideo.title}
+                  </Link>
+                  <p className="text-gray-300 text-xs mt-0.5">
+                    @{broadcastVideo.creator?.handle}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                  <button
+                    onClick={() => setBroadcastMuted(!broadcastMuted)}
+                    className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition"
+                    aria-label={broadcastMuted ? "Unmute" : "Mute"}
+                  >
+                    {broadcastMuted ? (
+                      <FiVolumeX className="w-4 h-4 text-white" />
+                    ) : (
+                      <FiVolume2 className="w-4 h-4 text-white" />
+                    )}
+                  </button>
+                  <button
+                    onClick={handleBroadcastSkip}
+                    className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition"
+                    aria-label="Skip to next video"
+                  >
+                    <FiSkipForward className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            {/* Up Next indicator */}
+            {broadcastNextVideo && (
+              <div className="absolute top-4 right-4 z-10 max-w-[180px] px-3 py-2 bg-black/60 backdrop-blur-sm rounded-xl">
+                <p className="text-white/50 text-[10px] uppercase tracking-wider">Up Next</p>
+                <p className="text-white/80 text-xs font-medium line-clamp-1 mt-0.5">
+                  {broadcastNextVideo.title}
+                </p>
+              </div>
+            )}
+          </div>
         ) : (
           // Offline placeholder - clean image only
           <div className="absolute inset-0">
@@ -172,7 +314,7 @@ export function HeroSection() {
             />
           </div>
         )}
-        </div>
+      </div>
     </section>
   );
 }

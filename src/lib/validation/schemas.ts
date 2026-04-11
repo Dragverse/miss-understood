@@ -12,6 +12,7 @@ export const createStreamSchema = z.object({
       /^[a-zA-Z0-9\s\-_]+$/,
       "Stream name can only contain letters, numbers, spaces, hyphens, and underscores"
     ),
+  scheduledAt: z.string().datetime().optional(),
 });
 
 /**
