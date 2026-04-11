@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getIronSession } from "iron-session";
-import { sessionOptions, SessionData } from "@/lib/session/config";
-import { getAuthenticatedAgent } from "@/lib/session/bluesky";
+import { verifyAuth, verifyAuthFromCookies } from "@/lib/auth/verify";
+import { getBlueskyOAuthDID, getOAuthAgent } from "@/lib/bluesky/oauth-client";
 import { blueskyPostToContent } from "@/lib/bluesky/client";
 
 /**
@@ -10,14 +9,20 @@ import { blueskyPostToContent } from "@/lib/bluesky/client";
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const auth =
+      (await verifyAuthFromCookies(request).catch(() => null)) ||
+      (await verifyAuth(request).catch(() => null));
 
-    // Get session
-    const response = new NextResponse();
-    const session = await getIronSession<SessionData>(request, response, sessionOptions);
+    if (!auth?.authenticated || !auth.userId) {
+      return NextResponse.json({
+        success: false,
+        error: "Authentication required",
+        posts: [],
+      });
+    }
 
-    if (!session.bluesky) {
+    const blueskyDID = await getBlueskyOAuthDID(auth.userId);
+    if (!blueskyDID) {
       return NextResponse.json({
         success: false,
         error: "No Bluesky account connected",
@@ -25,28 +30,26 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get authenticated agent
-    const { agent, error } = await getAuthenticatedAgent(session.bluesky);
-
-    if (error || !agent) {
+    const agent = await getOAuthAgent(blueskyDID);
+    if (!agent) {
       return NextResponse.json({
         success: false,
-        error: error || "Failed to authenticate with Bluesky",
+        error: "Bluesky session expired. Reconnect in Settings.",
         posts: [],
       });
     }
 
-    // Resolve handle to DID
-    const profile = await agent.getProfile({ actor: session.bluesky.handle });
-    const userDID = profile.data.did;
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
 
-    // Fetch user's posts using getAuthorFeed
+    const profile = await agent.getProfile({ actor: blueskyDID });
+    const handle = profile.data.handle;
+
     const feed = await agent.getAuthorFeed({
-      actor: userDID,
+      actor: blueskyDID,
       limit: limit,
     });
 
-    // Transform PostView to BlueskyPost format
     const posts = feed.data.feed.map((item: any) => ({
       uri: item.post.uri,
       cid: item.post.cid,
@@ -71,18 +74,17 @@ export async function GET(request: NextRequest) {
       repostCount: item.post.repostCount || 0,
     }));
 
-    // Transform to content format
     const transformedPosts = posts
       .map(blueskyPostToContent)
       .filter((post) => post !== null);
 
-    console.log(`[UserFeed] Loaded ${transformedPosts.length} posts for ${session.bluesky.handle}`);
+    console.log(`[UserFeed] Loaded ${transformedPosts.length} posts for ${handle}`);
 
     return NextResponse.json({
       success: true,
       posts: transformedPosts,
       count: transformedPosts.length,
-      handle: session.bluesky.handle,
+      handle,
     });
   } catch (error) {
     console.error("[UserFeed] Error:", error);

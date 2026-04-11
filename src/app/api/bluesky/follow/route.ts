@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getIronSession } from "iron-session";
-import { sessionOptions, SessionData } from "@/lib/session/config";
-import { getAuthenticatedAgent } from "@/lib/session/bluesky";
+import { verifyAuth, verifyAuthFromCookies } from "@/lib/auth/verify";
+import { getBlueskyOAuthDID, getOAuthAgent } from "@/lib/bluesky/oauth-client";
 
 /**
  * POST /api/bluesky/follow
@@ -9,12 +8,9 @@ import { getAuthenticatedAgent } from "@/lib/session/bluesky";
  */
 export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json({ error: "Not connected" });
-    const session = await getIronSession<SessionData>(
-      request,
-      response,
-      sessionOptions
-    );
+    const auth =
+      (await verifyAuthFromCookies(request).catch(() => null)) ||
+      (await verifyAuth(request).catch(() => null));
 
     const body = await request.json();
     const { did, action } = body;
@@ -33,50 +29,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If user has Bluesky connected, sync to Bluesky
-    if (session.bluesky) {
-      try {
-        // Get authenticated Bluesky agent
-        const { agent, error: authError } = await getAuthenticatedAgent(session.bluesky);
+    // If user is authenticated and has Bluesky connected, sync to Bluesky
+    if (auth?.authenticated && auth.userId) {
+      const blueskyDID = await getBlueskyOAuthDID(auth.userId);
+      if (blueskyDID) {
+        const agent = await getOAuthAgent(blueskyDID);
+        if (agent) {
+          try {
+            if (action === "follow") {
+              await agent.follow(did);
+            } else {
+              const follows = await agent.app.bsky.graph.getFollows({
+                actor: blueskyDID,
+              });
 
-        if (!agent || authError) {
-          console.error("Authentication error:", authError);
-          // Fall through to local-only mode
-        } else {
-          if (action === "follow") {
-            // Follow the user
-            await agent.follow(did);
-          } else {
-            // Unfollow the user
-            // First, get the follow record URI
-            const follows = await agent.app.bsky.graph.getFollows({
-              actor: session.bluesky.did!,
-            });
+              const followRecord = follows.data.follows.find(
+                (f: any) => f.did === did
+              );
 
-            // Find the follow record for this user
-            const followRecord = follows.data.follows.find(
-              (f: any) => f.did === did
-            );
-
-            if (followRecord && followRecord.viewer?.following) {
-              // Delete the follow record
-              await agent.deleteFollow(followRecord.viewer.following);
+              if (followRecord && followRecord.viewer?.following) {
+                await agent.deleteFollow(followRecord.viewer.following);
+              }
             }
-          }
 
-          return NextResponse.json({
-            success: true,
-            action,
-            synced: true,
-          });
+            return NextResponse.json({
+              success: true,
+              action,
+              synced: true,
+            });
+          } catch (error) {
+            console.error("Bluesky follow sync error:", error);
+            // Fall through to local-only mode
+          }
         }
-      } catch (error) {
-        console.error("Bluesky follow sync error:", error);
-        // Fall through to local-only mode if Bluesky sync fails
       }
     }
 
-    // Local-only mode: Return success so client can store in localStorage
+    // Local-only mode
     return NextResponse.json({
       success: true,
       action,

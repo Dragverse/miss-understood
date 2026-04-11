@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getIronSession } from "iron-session";
-import { sessionOptions, SessionData } from "@/lib/session/config";
 import { getBlueskyAgent } from "@/lib/bluesky/client";
-import { getAuthenticatedAgent } from "@/lib/session/bluesky";
+import { verifyAuth, verifyAuthFromCookies } from "@/lib/auth/verify";
+import { getBlueskyOAuthDID, getOAuthAgent } from "@/lib/bluesky/oauth-client";
 import { RichText } from "@atproto/api";
 
 /**
@@ -11,12 +10,9 @@ import { RichText } from "@atproto/api";
  */
 export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json({ error: "Not connected" });
-    const session = await getIronSession<SessionData>(
-      request,
-      response,
-      sessionOptions
-    );
+    const auth =
+      (await verifyAuthFromCookies(request).catch(() => null)) ||
+      (await verifyAuth(request).catch(() => null));
 
     const body = await request.json();
     const { postUri, postCid, text } = body;
@@ -28,51 +24,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If user has Bluesky connected AND post has URI/CID, sync to Bluesky
-    if (session.bluesky && postUri && postCid) {
-      try {
-        // Get authenticated Bluesky agent
-        const { agent, error: authError } = await getAuthenticatedAgent(session.bluesky);
+    // If user is authenticated and has Bluesky connected AND post has URI/CID, sync to Bluesky
+    if (auth?.authenticated && auth.userId && postUri && postCid) {
+      const blueskyDID = await getBlueskyOAuthDID(auth.userId);
+      if (blueskyDID) {
+        const agent = await getOAuthAgent(blueskyDID);
+        if (agent) {
+          try {
+            const rt = new RichText({ text });
+            await rt.detectFacets(agent);
 
-        if (!agent || authError) {
-          console.error("Authentication error:", authError);
-          // Fall through to local-only mode
-        } else {
-          // Create rich text with facets (links, mentions, hashtags)
-          const rt = new RichText({ text });
-          await rt.detectFacets(agent);
-
-          // Post the reply
-          const reply = await agent.post({
-            text: rt.text,
-            facets: rt.facets,
-            reply: {
-              root: {
-                uri: postUri,
-                cid: postCid,
+            const reply = await agent.post({
+              text: rt.text,
+              facets: rt.facets,
+              reply: {
+                root: {
+                  uri: postUri,
+                  cid: postCid,
+                },
+                parent: {
+                  uri: postUri,
+                  cid: postCid,
+                },
               },
-              parent: {
-                uri: postUri,
-                cid: postCid,
-              },
-            },
-          });
+            });
 
-          return NextResponse.json({
-            success: true,
-            uri: reply.uri,
-            cid: reply.cid,
-            synced: true,
-          });
+            return NextResponse.json({
+              success: true,
+              uri: reply.uri,
+              cid: reply.cid,
+              synced: true,
+            });
+          } catch (error) {
+            console.error("Bluesky comment sync error:", error);
+            // Fall through to local-only mode if Bluesky sync fails
+          }
         }
-      } catch (error) {
-        console.error("Bluesky comment sync error:", error);
-        // Fall through to local-only mode if Bluesky sync fails
       }
     }
 
     // Local-only mode: Store comment locally (for Dragverse-only users)
-    // Return success so client can store in localStorage
     return NextResponse.json({
       success: true,
       localOnly: true,
@@ -109,10 +100,8 @@ export async function GET(request: NextRequest) {
     // Get Bluesky agent (public API, no auth required to read)
     const agent = await getBlueskyAgent();
 
-    // Get the thread (includes replies)
     const thread = await agent.getPostThread({ uri: postUri });
 
-    // Extract replies - check if thread is a ThreadViewPost (has replies property)
     let replies: any[] = [];
     if (thread.data.thread && 'replies' in thread.data.thread && thread.data.thread.replies) {
       replies = thread.data.thread.replies.map((reply: any) => ({

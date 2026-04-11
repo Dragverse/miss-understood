@@ -1,30 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getIronSession } from "iron-session";
-import { sessionOptions, SessionData } from "@/lib/session/config";
-import { getAuthenticatedAgent } from "@/lib/session/bluesky";
+import { verifyAuth, verifyAuthFromCookies } from "@/lib/auth/verify";
+import { getBlueskyOAuthDID, getOAuthAgent } from "@/lib/bluesky/oauth-client";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { text, images } = body;
+    const auth =
+      (await verifyAuthFromCookies(request).catch(() => null)) ||
+      (await verifyAuth(request).catch(() => null));
 
-    // Get session
-    const response = NextResponse.next();
-    const session = await getIronSession<SessionData>(
-      request,
-      response,
-      sessionOptions
-    );
-
-    if (!session.bluesky) {
+    if (!auth?.authenticated || !auth.userId) {
       return NextResponse.json(
-        {
-          error: "No active Bluesky connection. Please connect in Settings.",
-          requiresConnection: true,
-        },
+        { error: "Authentication required" },
         { status: 401 }
       );
     }
+
+    const blueskyDID = await getBlueskyOAuthDID(auth.userId);
+    if (!blueskyDID) {
+      return NextResponse.json(
+        { error: "No active Bluesky connection. Please connect in Settings.", requiresConnection: true },
+        { status: 401 }
+      );
+    }
+
+    const agent = await getOAuthAgent(blueskyDID);
+    if (!agent) {
+      return NextResponse.json(
+        { error: "Bluesky session expired. Please reconnect in Settings.", requiresConnection: true },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { text, images } = body;
 
     if (!text?.trim() && (!images || images.length === 0)) {
       return NextResponse.json(
@@ -33,34 +41,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get authenticated agent from session
-    const { agent, error: authError } = await getAuthenticatedAgent(
-      session.bluesky
-    );
-
-    if (authError || !agent) {
-      return NextResponse.json(
-        {
-          error: authError || "Your Bluesky session expired. Please reconnect in Settings.",
-          requiresConnection: true,
-        },
-        { status: 401 }
-      );
-    }
-
-    // Prepare post data
     const postData: any = {
       text: text?.trim() || "",
       createdAt: new Date().toISOString(),
     };
 
-    // Upload and attach images if any
     if (images && images.length > 0) {
       const imageBlobs = [];
 
       for (const imageUrl of images) {
         try {
-          // Fetch image from URL
           const imageResponse = await fetch(imageUrl);
           if (!imageResponse.ok) {
             console.error(`Failed to fetch image: ${imageUrl}`);
@@ -69,11 +59,8 @@ export async function POST(request: NextRequest) {
 
           const imageBuffer = await imageResponse.arrayBuffer();
           const imageData = new Uint8Array(imageBuffer);
-
-          // Determine content type
           const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
 
-          // Upload to Bluesky
           const upload = await agent.uploadBlob(imageData, {
             encoding: contentType,
           });
@@ -84,7 +71,6 @@ export async function POST(request: NextRequest) {
           });
         } catch (error) {
           console.error("Failed to upload image to Bluesky:", error);
-          // Continue with other images
         }
       }
 
@@ -96,7 +82,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create the post
     const post = await agent.post(postData);
 
     return NextResponse.json({

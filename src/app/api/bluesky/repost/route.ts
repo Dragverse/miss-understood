@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedAgent } from "@/lib/session/bluesky";
-import { getIronSession } from "iron-session";
-import { sessionOptions, SessionData } from "@/lib/session/config";
+import { verifyAuth, verifyAuthFromCookies } from "@/lib/auth/verify";
+import { getBlueskyOAuthDID, getOAuthAgent } from "@/lib/bluesky/oauth-client";
 
 /**
  * API route to repost/unrepost a post on Bluesky
@@ -10,12 +9,29 @@ import { sessionOptions, SessionData } from "@/lib/session/config";
  */
 export async function POST(request: NextRequest) {
   try {
-    const response = new Response();
-    const session = await getIronSession<SessionData>(request, response, sessionOptions);
+    const auth =
+      (await verifyAuthFromCookies(request).catch(() => null)) ||
+      (await verifyAuth(request).catch(() => null));
 
-    if (!session.bluesky) {
+    if (!auth?.authenticated || !auth.userId) {
       return NextResponse.json(
-        { error: "Not connected to Bluesky" },
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const blueskyDID = await getBlueskyOAuthDID(auth.userId);
+    if (!blueskyDID) {
+      return NextResponse.json(
+        { error: "Bluesky not connected" },
+        { status: 401 }
+      );
+    }
+
+    const agent = await getOAuthAgent(blueskyDID);
+    if (!agent) {
+      return NextResponse.json(
+        { error: "Bluesky session expired. Reconnect in Settings." },
         { status: 401 }
       );
     }
@@ -36,35 +52,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create authenticated agent with user's session
-    const { agent: blueskyAgent, error: authError } = await getAuthenticatedAgent(session.bluesky);
-
-    if (!blueskyAgent || authError) {
-      return NextResponse.json(
-        { error: authError || "Failed to authenticate with Bluesky" },
-        { status: 401 }
-      );
-    }
-
     if (action === "repost") {
-      // Repost the post
-      const response = await blueskyAgent.repost(postUri, postCid);
-
+      const response = await agent.repost(postUri, postCid);
       return NextResponse.json({
         success: true,
         action: "reposted",
         repostUri: response.uri,
       });
     } else {
-      // Unrepost - need to find the repost record first
-      // Get the user's reposts to find the repost URI
-      const feed = await blueskyAgent.getAuthorFeed({
-        actor: session.bluesky.did!,
+      const feed = await agent.getAuthorFeed({
+        actor: blueskyDID,
         filter: "posts_with_replies",
         limit: 100,
       });
 
-      // Find the repost record
       const repostRecord = feed.data.feed.find(
         (item: any) =>
           item.reason?.$type === "app.bsky.feed.defs#reasonRepost" &&
@@ -72,8 +73,7 @@ export async function POST(request: NextRequest) {
       );
 
       if (repostRecord && repostRecord.post.viewer?.repost) {
-        await blueskyAgent.deleteRepost(repostRecord.post.viewer.repost);
-
+        await agent.deleteRepost(repostRecord.post.viewer.repost);
         return NextResponse.json({
           success: true,
           action: "unreposted",

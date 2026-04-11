@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedAgent } from "@/lib/session/bluesky";
-import { getIronSession } from "iron-session";
-import { sessionOptions, SessionData } from "@/lib/session/config";
+import { verifyAuth, verifyAuthFromCookies } from "@/lib/auth/verify";
+import { getBlueskyOAuthDID, getOAuthAgent } from "@/lib/bluesky/oauth-client";
 
 /**
  * API route to like/unlike a post on Bluesky
@@ -10,12 +9,29 @@ import { sessionOptions, SessionData } from "@/lib/session/config";
  */
 export async function POST(request: NextRequest) {
   try {
-    const response = new Response();
-    const session = await getIronSession<SessionData>(request, response, sessionOptions);
+    const auth =
+      (await verifyAuthFromCookies(request).catch(() => null)) ||
+      (await verifyAuth(request).catch(() => null));
 
-    if (!session.bluesky) {
+    if (!auth?.authenticated || !auth.userId) {
       return NextResponse.json(
-        { error: "Not connected to Bluesky" },
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const blueskyDID = await getBlueskyOAuthDID(auth.userId);
+    if (!blueskyDID) {
+      return NextResponse.json(
+        { error: "Bluesky not connected" },
+        { status: 401 }
+      );
+    }
+
+    const agent = await getOAuthAgent(blueskyDID);
+    if (!agent) {
+      return NextResponse.json(
+        { error: "Bluesky session expired. Reconnect in Settings." },
         { status: 401 }
       );
     }
@@ -36,30 +52,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create authenticated agent with user's session
-    const { agent: blueskyAgent, error: authError } = await getAuthenticatedAgent(session.bluesky);
-
-    if (!blueskyAgent || authError) {
-      return NextResponse.json(
-        { error: authError || "Failed to authenticate with Bluesky" },
-        { status: 401 }
-      );
-    }
-
     if (action === "like") {
-      // Like the post
-      const response = await blueskyAgent.like(postUri, postCid);
-
+      const response = await agent.like(postUri, postCid);
       return NextResponse.json({
         success: true,
         action: "liked",
         likeUri: response.uri,
       });
     } else {
-      // Unlike the post - need to find the like record first
-      // Get the user's likes to find the like URI
-      const likes = await blueskyAgent.app.bsky.feed.getActorLikes({
-        actor: session.bluesky.did!,
+      const likes = await agent.app.bsky.feed.getActorLikes({
+        actor: blueskyDID,
         limit: 100,
       });
 
@@ -68,8 +70,7 @@ export async function POST(request: NextRequest) {
       );
 
       if (likeRecord && likeRecord.post.viewer?.like) {
-        await blueskyAgent.deleteLike(likeRecord.post.viewer.like);
-
+        await agent.deleteLike(likeRecord.post.viewer.like);
         return NextResponse.json({
           success: true,
           action: "unliked",

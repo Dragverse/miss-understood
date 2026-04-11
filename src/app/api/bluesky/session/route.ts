@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, SessionData } from "@/lib/session/config";
-import { verifyAuth } from "@/lib/auth/verify";
-import { verifyAuthFromCookies } from "@/lib/auth/verify";
+import { verifyAuth, verifyAuthFromCookies } from "@/lib/auth/verify";
 import {
   getBlueskyOAuthDID,
   getOAuthAgent,
   clearBlueskyOAuth,
 } from "@/lib/bluesky/oauth-client";
-import { createClient } from "@supabase/supabase-js";
 
 /**
  * GET /api/bluesky/session
- * Check if user has active Bluesky session (OAuth or legacy)
+ * Check if user has active Bluesky OAuth session
  */
 export async function GET(request: NextRequest) {
   try {
-    // 1. Try OAuth session first
     const auth =
       (await verifyAuthFromCookies(request).catch(() => null)) ||
       (await verifyAuth(request).catch(() => null));
@@ -25,7 +22,6 @@ export async function GET(request: NextRequest) {
       const blueskyDID = await getBlueskyOAuthDID(auth.userId);
 
       if (blueskyDID) {
-        // Try to get an active OAuth agent
         const agent = await getOAuthAgent(blueskyDID);
         if (agent) {
           try {
@@ -42,7 +38,6 @@ export async function GET(request: NextRequest) {
               "[Bluesky Session] OAuth profile fetch failed:",
               profileError
             );
-            // Session exists but profile failed - still connected
             return NextResponse.json({
               connected: true,
               method: "oauth",
@@ -51,25 +46,6 @@ export async function GET(request: NextRequest) {
           }
         }
       }
-    }
-
-    // 2. Fall back to legacy iron-session cookie
-    const response = NextResponse.json({ connected: false });
-    const session = await getIronSession<SessionData>(
-      request,
-      response,
-      sessionOptions
-    );
-
-    if (session.bluesky) {
-      return NextResponse.json({
-        connected: true,
-        method: "legacy",
-        handle: session.bluesky.handle,
-        displayName: session.bluesky.displayName,
-        avatar: session.bluesky.avatar,
-        connectedAt: session.bluesky.connectedAt,
-      });
     }
 
     return NextResponse.json({ connected: false });
@@ -81,7 +57,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * DELETE /api/bluesky/session
- * Disconnect Bluesky account (OAuth + legacy)
+ * Disconnect Bluesky account (OAuth + clear legacy cookies)
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -90,17 +66,23 @@ export async function DELETE(request: NextRequest) {
       message: "Bluesky account disconnected",
     });
 
-    // Clear legacy iron-session
-    const session = await getIronSession<SessionData>(
-      request,
-      response,
-      sessionOptions
-    );
-    delete session.bluesky;
-    await session.save();
+    // Clear legacy iron-session cookie if it exists (one-time cleanup)
+    try {
+      const session = await getIronSession<SessionData>(
+        request,
+        response,
+        sessionOptions
+      );
+      delete session.bluesky;
+      await session.save();
+    } catch {
+      // Ignore — legacy cookie may not exist
+    }
 
     // Clear OAuth + database
-    const auth = await verifyAuth(request).catch(() => null);
+    const auth =
+      (await verifyAuthFromCookies(request).catch(() => null)) ||
+      (await verifyAuth(request).catch(() => null));
     if (auth?.authenticated && auth.userId) {
       await clearBlueskyOAuth(auth.userId);
     }
