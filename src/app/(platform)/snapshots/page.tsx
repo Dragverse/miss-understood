@@ -1,14 +1,11 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
-import { useKeenSlider } from "keen-slider/react";
-import "keen-slider/keen-slider.min.css";
 import { useSearchParams } from "next/navigation";
-import { getLocalVideos } from "@/lib/utils/local-storage";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/snapshots/short-video";
-import { FiChevronUp, FiChevronDown, FiRefreshCw } from "react-icons/fi";
+import { FiRefreshCw } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
 
 function SnapshotsContent() {
@@ -16,8 +13,7 @@ function SnapshotsContent() {
   const videoId = searchParams.get("v");
   const [snapshots, setSnapshots] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [sliderReady, setSliderReady] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [socialStatus, setSocialStatus] = useState<{
     likes: Record<string, boolean>;
@@ -42,7 +38,6 @@ function SnapshotsContent() {
         return;
       }
 
-      // API now returns fixed URLs, so we just map the data directly
       const shorts: Video[] = data.videos.map((v: any) => ({
         id: v.id,
         title: v.title,
@@ -85,15 +80,18 @@ function SnapshotsContent() {
       shorts.sort((a: Video, b: Video) => b.createdAt.getTime() - a.createdAt.getTime());
 
       console.log(`[Snapshots] Loaded ${shorts.length} Dragverse shorts`);
-      if (shorts.length > 0) {
-        console.log('[Snapshots] First video URL:', shorts[0].playbackUrl);
-      }
       setSnapshots(shorts);
+
+      // If deep-linking to a specific video, set the index
+      if (videoId && !isRefresh) {
+        const idx = shorts.findIndex((s) => s.id === videoId);
+        if (idx >= 0) {
+          setCurrentIndex(idx);
+        }
+      }
     } catch (error) {
       console.error("[Snapshots] Failed to load:", error);
-      // Fallback to local videos
-      const localVideos = getLocalVideos();
-      setSnapshots(localVideos.filter((v) => v.contentType === "short"));
+      setSnapshots([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -109,7 +107,7 @@ function SnapshotsContent() {
   useEffect(() => {
     const interval = setInterval(() => {
       loadSnapshots(true);
-    }, 15 * 60 * 1000); // 15 minutes
+    }, 15 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, []);
@@ -145,47 +143,33 @@ function SnapshotsContent() {
     fetchSocialStatus();
   }, [snapshots]);
 
-  const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
-    initial: 0,
-    vertical: true,
-    mode: "free-snap",
-    slides: {
-      perView: 1,
-      spacing: 0,
-    },
-    slideChanged(slider) {
-      setCurrentSlide(slider.track.details.rel);
-    },
-    created() {
-      setSliderReady(true);
-    },
-  });
+  // Broadcast: auto-advance to next video
+  const handleVideoEnded = useCallback(() => {
+    setCurrentIndex(prev => (prev + 1) % snapshots.length);
+  }, [snapshots.length]);
 
-  // Jump to specific video if ?v=videoId query param is present
-  useEffect(() => {
-    if (videoId && snapshots.length > 0 && sliderReady) {
-      const index = snapshots.findIndex((s) => s.id === videoId);
-      if (index >= 0) {
-        instanceRef.current?.moveToIdx(index);
-      }
-    }
-  }, [videoId, snapshots, sliderReady, instanceRef]);
+  // Broadcast: auto-skip broken videos
+  const handleVideoError = useCallback(() => {
+    setTimeout(() => {
+      setCurrentIndex(prev => (prev + 1) % snapshots.length);
+    }, 2000);
+  }, [snapshots.length]);
 
-  // Keyboard navigation
+  // Keyboard: Space to pause is handled by ShortVideo, arrow keys to skip
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp") {
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
         e.preventDefault();
-        instanceRef.current?.prev();
-      } else if (e.key === "ArrowDown") {
+        setCurrentIndex(prev => (prev + 1) % snapshots.length);
+      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
         e.preventDefault();
-        instanceRef.current?.next();
+        setCurrentIndex(prev => (prev - 1 + snapshots.length) % snapshots.length);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [instanceRef]);
+  }, [snapshots.length]);
 
   if (loading) {
     return (
@@ -229,73 +213,52 @@ function SnapshotsContent() {
     );
   }
 
-  // Handle auto-rotation to next video
-  const handleVideoEnded = () => {
-    if (currentSlide < snapshots.length - 1) {
-      instanceRef.current?.next();
-    }
-  };
+  const currentVideo = snapshots[currentIndex];
+  const nextVideo = snapshots[(currentIndex + 1) % snapshots.length];
 
   return (
     <div className="relative h-[100dvh] md:h-[calc(100vh-4rem)] overflow-hidden bg-black w-full flex items-center justify-center">
-      {/* Vertical Slider */}
-      <div
-        ref={sliderRef}
-        className="keen-slider h-full w-full md:max-w-[420px]"
-        style={{ touchAction: 'pan-y' }}
-      >
-        {snapshots.map((video, idx) => (
-          <div key={video.id} className="keen-slider__slide relative">
-            <ShortVideo
-              video={video}
-              isActive={currentSlide === idx}
-              onNext={() => instanceRef.current?.next()}
-              onEnded={handleVideoEnded}
-              initialLiked={socialStatus.likes[video.id]}
-              initialFollowing={socialStatus.follows[video.creator.did]}
-            />
-          </div>
-        ))}
+      {/* Single video - broadcast style */}
+      <div className="h-full w-full md:max-w-[420px]">
+        <ShortVideo
+          key={currentVideo.id}
+          video={currentVideo}
+          isActive={true}
+          onNext={() => setCurrentIndex(prev => (prev + 1) % snapshots.length)}
+          onEnded={handleVideoEnded}
+          onError={handleVideoError}
+          initialLiked={socialStatus.likes[currentVideo.id]}
+          initialFollowing={socialStatus.follows[currentVideo.creator.did]}
+        />
       </div>
 
-      {/* Navigation Buttons - Desktop Only */}
-      {sliderReady && (
-        <div className="hidden md:flex flex-col gap-4 fixed right-8 top-1/2 -translate-y-1/2 z-20">
-          <button
-            onClick={() => instanceRef.current?.prev()}
-            disabled={currentSlide === 0}
-            className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label="Previous snapshot"
-          >
-            <FiChevronUp className="w-6 h-6 text-white" />
-          </button>
-          <button
-            onClick={() => instanceRef.current?.next()}
-            disabled={currentSlide === snapshots.length - 1}
-            className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label="Next snapshot"
-          >
-            <FiChevronDown className="w-6 h-6 text-white" />
-          </button>
+      {/* Broadcast badge - Top Left */}
+      <div className="absolute top-20 left-4 z-20">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full">
+          <div className="w-2 h-2 rounded-full bg-[#EB83EA] animate-pulse" />
+          <span className="text-white text-xs font-bold uppercase tracking-wider">Dragverse TV</span>
         </div>
-      )}
+      </div>
 
-      {/* Refresh Button - Top Right (below navbar) */}
+      {/* Refresh Button - Top Right */}
       <button
         onClick={() => loadSnapshots(true)}
         disabled={refreshing}
-        className="fixed top-20 right-4 z-20 w-10 h-10 md:w-12 md:h-12 bg-gray-800/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-50"
+        className="absolute top-20 right-4 z-20 w-10 h-10 md:w-12 md:h-12 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition disabled:opacity-50"
         aria-label="Refresh snapshots"
       >
         <FiRefreshCw className={`w-5 h-5 md:w-6 md:h-6 text-white ${refreshing ? 'animate-spin' : ''}`} />
       </button>
 
-      {/* Slide Counter */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full">
-        <span className="text-white text-sm font-medium tabular-nums">
-          {currentSlide + 1} / {snapshots.length}
-        </span>
-      </div>
+      {/* Up Next indicator - Bottom Left */}
+      {snapshots.length > 1 && (
+        <div className="absolute bottom-6 left-4 z-20 max-w-[200px]">
+          <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Up Next</p>
+          <p className="text-white/80 text-sm font-medium line-clamp-1">
+            {nextVideo?.title}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

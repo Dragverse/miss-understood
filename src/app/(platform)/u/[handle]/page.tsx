@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiFilm, FiHeadphones, FiMessageSquare, FiMusic, FiGrid, FiShare2, FiCheck, FiPlay, FiClock } from "react-icons/fi";
+import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiFilm, FiHeadphones, FiMessageSquare, FiMusic, FiGrid, FiShare2, FiPlay, FiClock } from "react-icons/fi";
 import { FaYoutube } from "react-icons/fa";
 import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
@@ -14,7 +14,7 @@ import { TikTokBadge } from "@/components/profile/tiktok-badge";
 import { WebsiteBadge } from "@/components/profile/website-badge";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
 import { VerificationBadge } from "@/components/profile/verification-badge";
-import { SnapshotsSlider } from "@/components/profile/snapshots-slider";
+import Link from "next/link";
 import { LivestreamEmbed } from "@/components/profile/livestream-embed";
 import { getCreatorByHandleOrDID } from "@/lib/supabase/creators";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
@@ -24,6 +24,7 @@ import { useBlueskyProfileByHandle } from "@/lib/bluesky/hooks";
 import { Creator, Video } from "@/types";
 import { getUserBadgeType } from "@/lib/verification";
 import { PostCard as FeedPostCard } from "@/components/feed/post-card";
+import { ProfileShareModal } from "@/components/profile/profile-share-modal";
 
 /**
  * Dynamic Profile Page - Instagram Style
@@ -45,10 +46,8 @@ export default function DynamicProfilePage() {
   const [userVideos, setUserVideos] = useState<Video[]>([]);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
-  const [profileLinkCopied, setProfileLinkCopied] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [bioExpanded, setBioExpanded] = useState(false);
-  const [showSnapshotPlayer, setShowSnapshotPlayer] = useState(false);
-  const [selectedSnapshotIndex, setSelectedSnapshotIndex] = useState(0);
   const [connectedBlueskyStats, setConnectedBlueskyStats] = useState<{ followersCount: number; followsCount: number } | null>(null);
   const profileLoadedRef = useRef<string | null>(null);
 
@@ -68,17 +67,8 @@ export default function DynamicProfilePage() {
     isBlueskyHandle ? handle : null
   );
 
-  // Copy profile link to clipboard
-  const handleShareProfile = async () => {
-    if (!creator) return;
-    const profileUrl = `${window.location.origin}/u/${creator.handle}`;
-    try {
-      await navigator.clipboard.writeText(profileUrl);
-      setProfileLinkCopied(true);
-      setTimeout(() => setProfileLinkCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy profile link:", error);
-    }
+  const handleShareProfile = () => {
+    setShowShareModal(true);
   };
 
   // Determine profile type and load data
@@ -411,6 +401,22 @@ export default function DynamicProfilePage() {
                       <span className="text-white/80 ml-2">following</span>
                     </div>
                   </div>
+                  {/* Bio - Instagram style, under stats */}
+                  {creator.description && (
+                    <div className="mt-2">
+                      <p className={`text-white/90 text-sm leading-relaxed drop-shadow-lg ${!bioExpanded ? "line-clamp-1" : ""}`}>
+                        {creator.description}
+                      </p>
+                      {!bioExpanded && (
+                        <button
+                          onClick={() => setBioExpanded(true)}
+                          className="text-white/60 text-sm font-medium"
+                        >
+                          ...more
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Action buttons */}
@@ -426,7 +432,7 @@ export default function DynamicProfilePage() {
                     className="px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all"
                     title="Copy profile link"
                   >
-                    {profileLinkCopied ? <FiCheck className="w-5 h-5" /> : <FiShare2 className="w-5 h-5" />}
+                    <FiShare2 className="w-5 h-5" />
                   </button>
                 </div>
               </div>
@@ -437,23 +443,6 @@ export default function DynamicProfilePage() {
 
       {/* Content area */}
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
-        {/* Bio */}
-        {creator.description && (
-          <div className="mb-8 max-w-3xl">
-            <p className={`text-gray-200 text-sm leading-relaxed ${!bioExpanded ? "line-clamp-2" : ""}`}>
-              {creator.description}
-            </p>
-            {creator.description.length > 120 && !bioExpanded && (
-              <button
-                onClick={() => setBioExpanded(true)}
-                className="text-gray-400 text-sm font-medium mt-0.5"
-              >
-                ...more
-              </button>
-            )}
-          </div>
-        )}
-
         {/* Content Section with Icon Tabs */}
         <div>
           {/* Icon-Based Tabs (Instagram Style) */}
@@ -609,14 +598,11 @@ export default function DynamicProfilePage() {
               {snapshotsList.length > 0 ? (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
-                    {snapshotsList.map((snapshot, index) => (
-                      <div
+                    {snapshotsList.map((snapshot) => (
+                      <Link
                         key={snapshot.id}
+                        href={`/snapshots?v=${snapshot.id}`}
                         className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
-                        onClick={() => {
-                          setSelectedSnapshotIndex(index);
-                          setShowSnapshotPlayer(true);
-                        }}
                       >
                         <Image
                           src={getSafeThumbnail(snapshot.thumbnail, '/default-thumbnail.jpg', (snapshot as any).playbackId)}
@@ -639,17 +625,9 @@ export default function DynamicProfilePage() {
                         <div className="absolute top-2 right-2 bg-[#EB83EA] p-2 rounded-full">
                           <FiFilm className="w-4 h-4 text-white" />
                         </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
-
-                  {showSnapshotPlayer && (
-                    <SnapshotsSlider
-                      snapshotsList={snapshotsList}
-                      initialIndex={selectedSnapshotIndex}
-                      onClose={() => setShowSnapshotPlayer(false)}
-                    />
-                  )}
                 </>
               ) : (
                 <div className="text-center py-16">
@@ -751,6 +729,15 @@ export default function DynamicProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Share Profile Modal */}
+      <ProfileShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        profileUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${creator.handle}`}
+        displayName={creator.displayName}
+        handle={creator.handle}
+      />
     </div>
   );
 }

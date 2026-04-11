@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     const rssOnly = searchParams.get("rssOnly") === "true";
     const includeDatabase = searchParams.get("includeDatabase") === "true";
     const includePlaylists = searchParams.get("includePlaylists") === "true";
+    const playlistOnly = searchParams.get("playlistOnly") === "true";
     const channelId = searchParams.get("channelId");
 
     // If channelId is provided, fetch that specific channel's videos directly
@@ -89,8 +90,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Fallback to RSS if API didn't work OR if rssOnly is true
-      if (videos.length === 0 || rssOnly) {
+      // Fallback to RSS if API didn't work OR if rssOnly is true (skip if playlistOnly)
+      if (!playlistOnly && (videos.length === 0 || rssOnly)) {
         console.log(`[YouTube Feed API] ${rssOnly ? 'RSS-only mode requested,' : ''} Trying RSS feeds${rssOnly ? '' : ' as fallback'}...`);
         videos = await fetchCuratedDragContent(limit);
         source = "youtube-rss";

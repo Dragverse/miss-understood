@@ -5,9 +5,10 @@
 ## ✨ Features
 
 ### 🎥 Video Streaming
-- **Short-form content (Bytes)**: Vertical videos up to 60 seconds
+- **Snapshots (Dragverse TV)**: Auto-playing broadcast of vertical (9:16) and 4:5 short-form content
 - **Long-form content**: Horizontal videos from 1 to 60 minutes
-- **Livepeer-powered**: High-quality video transcoding and streaming
+- **Livepeer-powered**: High-quality video transcoding and HLS streaming
+- **Audio uploads**: Podcasts and music via Supabase Storage
 - **Multi-bitrate support**: Adaptive streaming for all devices (720p, 480p, 360p)
 
 ### 📡 Livestreaming
@@ -38,6 +39,8 @@
 - **Notifications**: Real-time alerts for tips, likes, comments, follows
 - **Follow system**: Build your audience
 - **Comments & likes**: Engage with content
+- **Profile sharing**: Share profiles to Threads, Bluesky, Farcaster, Lens, Twitter/X, WhatsApp
+- **Feed**: Aggregated content from Dragverse creators, YouTube, and Bluesky
 
 ### 🎨 UI/UX
 - **Dark theme**: Purple gradient brand colors (#EB83EA, #7c3aed)
@@ -54,8 +57,9 @@
 - **Tailwind CSS**: Utility-first styling
 - **React Hot Toast**: Beautiful notifications
 
-### Video Infrastructure
+### Video & Media Infrastructure
 - **Livepeer Studio**: Video transcoding, streaming, and livestream management
+- **Supabase Storage**: Audio file hosting (podcasts, music)
 - **HLS streaming**: HTTP Live Streaming protocol
 - **TUS protocol**: Resumable video uploads
 
@@ -69,10 +73,14 @@
 - **Wagmi**: React hooks for Ethereum (integration ready)
 - **Viem**: TypeScript Ethereum library
 
+### Database & Backend
+- **Supabase**: PostgreSQL database with Row Level Security
+- **YouTube RSS**: Curated drag content aggregation (music playlists)
+
 ### Future Integrations
-- **Stripe**: Fiat payment processing (Phase 7B)
-- **Bluesky, Farcaster, Lens**: Social media cross-posting (Phase 6)
-- **Ghost/Substack**: Creator blogging (Phase 11)
+- **Stripe**: Fiat payment processing
+- **Lens Protocol**: Social media cross-posting
+- **Ghost/Substack**: Creator blogging
 
 ## 🚀 Getting Started
 

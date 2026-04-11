@@ -7,7 +7,6 @@ import { RightSidebar } from "@/components/home/right-sidebar";
 import { SnapshotsSection } from "@/components/home/snapshots-section";
 import { AudiosSection } from "@/components/home/audios-section";
 import { categories } from "@/lib/utils/mock-data";
-import { getLocalVideos } from "@/lib/utils/local-storage";
 import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { FiSearch, FiRefreshCw, FiVideo } from "react-icons/fi";
@@ -32,28 +31,6 @@ export default function VideosPage() {
     });
   };
 
-  // Sort videos - Dragverse priority with ALL content types
-  const sortVideos = (dragverseVideos: Video[], externalVideos: Video[]) => {
-    // Dragverse: Show BOTH vertical and horizontal (all content types)
-    const allDragverse = dragverseVideos;
-
-    // External: Only horizontal (supplement)
-    const externalHorizontal = externalVideos.filter(v => v.contentType !== "short");
-
-    // Sort by date (newest first)
-    allDragverse.sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    externalHorizontal.sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    console.log(`[Videos] Dragverse: ${allDragverse.length} (all types), External: ${externalHorizontal.length} (horizontal only)`);
-
-    // Return: ALL Dragverse first, then external supplements
-    return [...allDragverse, ...externalHorizontal];
-  };
-
   async function loadVideos(isRefresh = false) {
     if (isRefresh) {
       setRefreshing(true);
@@ -62,32 +39,13 @@ export default function VideosPage() {
     }
 
     try {
-      console.log("[Videos] Fetching from all sources in parallel...");
+      console.log("[Videos] Fetching Dragverse content...");
 
-      // Fetch from ALL sources in parallel
-      const [supabaseVideos, blueskyVideos, youtubeVideos] = await Promise.all([
-        // Supabase/Dragverse videos
-        getVideos(50).catch((err) => {
-          console.warn("[Videos] Supabase fetch failed:", err);
-          return [];
-        }),
-        // Bluesky videos (video content only for /videos page)
-        fetch("/api/bluesky/feed?limit=30&contentType=videos")
-          .then((res) => (res.ok ? res.json() : { posts: [] }))
-          .then((data) => data.posts || [])
-          .catch((err) => {
-            console.warn("[Videos] Bluesky fetch failed:", err);
-            return [];
-          }),
-        // YouTube videos (RSS-only, no API)
-        fetch("/api/youtube/feed?limit=30&rssOnly=true")
-          .then((res) => (res.ok ? res.json() : { videos: [] }))
-          .then((data) => data.videos || [])
-          .catch((err) => {
-            console.warn("[Videos] YouTube RSS fetch failed:", err);
-            return [];
-          }),
-      ]);
+      // Fetch Dragverse videos only
+      const supabaseVideos = await getVideos(50).catch((err) => {
+        console.warn("[Videos] Supabase fetch failed:", err);
+        return [];
+      });
 
       // Transform Supabase videos to Video type
       const transformedSupabase = (supabaseVideos || []).map((v: any) => ({
@@ -128,20 +86,11 @@ export default function VideosPage() {
         source: "ceramic" as const,
       })) as Video[];
 
-      // Separate Dragverse from external
-      const dragverseVideos = transformedSupabase;
-      const externalVideos = [
-        ...(blueskyVideos || []),
-        ...(youtubeVideos || []),
-        ...getLocalVideos(),
-      ];
+      console.log(`[Videos] Loaded ${transformedSupabase.length} Dragverse videos`);
 
-      console.log(`[Videos] Loaded ${dragverseVideos.length} Dragverse, ${blueskyVideos?.length || 0} Bluesky, ${youtubeVideos?.length || 0} YouTube videos`);
-
-      // Deduplicate and sort by date
-      const dedupedDragverse = deduplicateVideos(dragverseVideos);
-      const dedupedExternal = deduplicateVideos(externalVideos);
-      const sortedVideos = sortVideos(dedupedDragverse, dedupedExternal);
+      // Deduplicate and sort by date (newest first)
+      const sortedVideos = deduplicateVideos(transformedSupabase)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       setVideos(sortedVideos);
 
@@ -152,8 +101,7 @@ export default function VideosPage() {
       }
     } catch (error) {
       console.error("[Videos] Failed to load videos:", error);
-      // Fallback to local videos only
-      setVideos(getLocalVideos());
+      setVideos([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -238,7 +186,7 @@ export default function VideosPage() {
               </button>
             </div>
             <p className="text-gray-300 text-sm">
-              Videos from the Dragverse and around the Internet.
+              Discover content created on the Dragverse.
             </p>
           </div>
 

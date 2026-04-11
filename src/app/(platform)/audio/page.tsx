@@ -87,7 +87,7 @@ export default function AudioPage() {
       }
 
       // 2. Fetch YouTube videos from RSS feeds (no API quota!) + music playlists
-      const response = await fetch("/api/youtube/feed?limit=50&rssOnly=true&includePlaylists=true");
+      const response = await fetch("/api/youtube/feed?limit=50&rssOnly=true&includePlaylists=true&playlistOnly=true");
       const data = await response.json();
 
       if (data.success && data.videos) {
@@ -128,8 +128,12 @@ export default function AudioPage() {
         });
       }
 
-      // Sort by date (newest first)
-      allContent.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      // Sort: Dragverse first, then by date within each group
+      allContent.sort((a, b) => {
+        if (a.source === 'dragverse' && b.source !== 'dragverse') return -1;
+        if (a.source !== 'dragverse' && b.source === 'dragverse') return 1;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
 
       console.log(`[Audio] Loaded ${allContent.length} audio items from YouTube RSS (${allContent.filter(c => c.type === 'podcast').length} podcasts, ${allContent.filter(c => c.type === 'music').length} music)`);
 

@@ -2,11 +2,11 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import Image from "next/image";
-import { FiUser, FiLogIn, FiHeart, FiVideo, FiEye, FiStar, FiShare2, FiCheck, FiMusic, FiGrid, FiImage, FiMessageSquare, FiFilm, FiHeadphones, FiPlay } from "react-icons/fi";
+import { FiUser, FiLogIn, FiHeart, FiVideo, FiEye, FiStar, FiShare2, FiMusic, FiGrid, FiImage, FiMessageSquare, FiFilm, FiHeadphones, FiPlay } from "react-icons/fi";
 import { FaYoutube } from "react-icons/fa";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { SnapshotsSlider } from "@/components/profile/snapshots-slider";
+import Link from "next/link";
 import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
 import { LivestreamEmbed } from "@/components/profile/livestream-embed";
 import { getCreatorByDID } from "@/lib/supabase/creators";
@@ -25,6 +25,7 @@ import { YouTubeBadge } from "@/components/profile/youtube-badge";
 import { InstagramBadge } from "@/components/profile/instagram-badge";
 import { TikTokBadge } from "@/components/profile/tiktok-badge";
 import { WebsiteBadge } from "@/components/profile/website-badge";
+import { ProfileShareModal } from "@/components/profile/profile-share-modal";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -60,29 +61,11 @@ export default function ProfilePage() {
     };
   } | null>(null);
   const [dragverseFollowingCount, setDragverseFollowingCount] = useState<number>(0);
-  const [profileLinkCopied, setProfileLinkCopied] = useState(false);
-  const [showSnapshotPlayer, setShowSnapshotPlayer] = useState(false);
-  const [selectedSnapshotIndex, setSelectedSnapshotIndex] = useState(0);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
-  // Copy profile link to clipboard
-  const handleShareProfile = async () => {
-    if (!creator) return;
-
-    // Generate profile URL using handle (short URL format)
-    const profileUrl = `${window.location.origin}/u/${creator.handle}`;
-
-    try {
-      await navigator.clipboard.writeText(profileUrl);
-      setProfileLinkCopied(true);
-
-      // Reset after 2 seconds
-      setTimeout(() => {
-        setProfileLinkCopied(false);
-      }, 2000);
-    } catch (error) {
-      console.error("Failed to copy profile link:", error);
-    }
+  const handleShareProfile = () => {
+    setShowShareModal(true);
   };
 
   // Fetch creator profile
@@ -635,6 +618,22 @@ export default function ProfilePage() {
                       <span className="text-white/80 ml-2">following</span>
                     </button>
                   </div>
+                  {/* Bio - Instagram style, under stats */}
+                  {creator.description && (
+                    <div className="mt-2">
+                      <p className={`text-white/90 text-sm leading-relaxed drop-shadow-lg ${!bioExpanded ? "line-clamp-1" : ""}`}>
+                        {creator.description}
+                      </p>
+                      {!bioExpanded && (
+                        <button
+                          onClick={() => setBioExpanded(true)}
+                          className="text-white/60 text-sm font-medium"
+                        >
+                          ...more
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Action buttons */}
@@ -650,7 +649,7 @@ export default function ProfilePage() {
                     className="px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all"
                     title="Copy profile link"
                   >
-                    {profileLinkCopied ? <FiCheck className="w-5 h-5" /> : <FiShare2 className="w-5 h-5" />}
+                    <FiShare2 className="w-5 h-5" />
                   </button>
                 </div>
               </div>
@@ -661,23 +660,6 @@ export default function ProfilePage() {
 
       {/* Content area */}
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
-        {/* Bio */}
-        {creator.description && (
-          <div className="mb-8 max-w-3xl">
-            <p className={`text-gray-200 text-sm leading-relaxed ${!bioExpanded ? "line-clamp-2" : ""}`}>
-              {creator.description}
-            </p>
-            {creator.description.length > 120 && !bioExpanded && (
-              <button
-                onClick={() => setBioExpanded(true)}
-                className="text-gray-400 text-sm font-medium mt-0.5"
-              >
-                ...more
-              </button>
-            )}
-          </div>
-        )}
-
         {/* Content Section with Icon Tabs */}
         <div>
           {/* Icon-Based Tabs (Instagram Style) */}
@@ -854,14 +836,11 @@ export default function ProfilePage() {
                 <>
                   {/* Grid of Snapshots Thumbnails */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
-                    {snapshotsList.map((snapshot, index) => (
-                      <div
+                    {snapshotsList.map((snapshot) => (
+                      <Link
                         key={snapshot.id}
+                        href={`/snapshots?v=${snapshot.id}`}
                         className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
-                        onClick={() => {
-                          setSelectedSnapshotIndex(index);
-                          setShowSnapshotPlayer(true);
-                        }}
                       >
                         <Image
                           src={snapshot.thumbnail || "/default-thumbnail.jpg"}
@@ -890,18 +869,9 @@ export default function ProfilePage() {
                         <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-white text-xs font-semibold">
                           {Math.floor(snapshot.duration / 60)}:{(snapshot.duration % 60).toString().padStart(2, '0')}
                         </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
-
-                  {/* SnapshotsSlider Modal (opens when thumbnail clicked) */}
-                  {showSnapshotPlayer && (
-                    <SnapshotsSlider
-                      snapshotsList={snapshotsList}
-                      initialIndex={selectedSnapshotIndex}
-                      onClose={() => setShowSnapshotPlayer(false)}
-                    />
-                  )}
                 </>
               ) : (
                 <div className="text-center py-16">
@@ -1079,6 +1049,15 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Share Profile Modal */}
+      <ProfileShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        profileUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${creator.handle}`}
+        displayName={creator.displayName}
+        handle={creator.handle}
+      />
     </div>
   );
 }
