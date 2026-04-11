@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq("visibility", "public")
+      .or(`scheduled_at.is.null,scheduled_at.lte.${new Date().toISOString()}`)
       .order("created_at", { ascending: false })
       .limit(limit);
 

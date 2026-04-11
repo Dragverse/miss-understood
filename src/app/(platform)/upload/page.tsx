@@ -40,6 +40,9 @@ function UploadPageContent() {
     video: null as File | null,
     crossPostBluesky: false,
     // crossPostFarcaster removed - requires paid Neynar plan
+    scheduleForLater: false,
+    scheduledAt: "" as string,
+    premiereMode: "countdown" as "countdown" | "silent",
   });
 
   const [connectedPlatforms, setConnectedPlatforms] = useState({
@@ -111,6 +114,9 @@ function UploadPageContent() {
           thumbnailPreview: video.thumbnail || null,
           video: null, // Don't load the actual file
           crossPostBluesky: false, // Don't cross-post when editing
+          scheduleForLater: false,
+          scheduledAt: "",
+          premiereMode: "countdown",
         });
 
         toast.success("Loaded video data for editing");
@@ -750,7 +756,10 @@ function UploadPageContent() {
             category: formData.category,
             tags: formData.tags ? formData.tags.split(",").map((t: string) => t.trim()) : [],
             visibility: formData.visibility,
-            _testUserId: user?.id, // Temporary fallback if token auth fails
+            ...(formData.scheduleForLater && formData.scheduledAt ? {
+              publishedAt: new Date(formData.scheduledAt).toISOString(),
+              premiereMode: formData.premiereMode,
+            } : {}),
           }),
         });
 
@@ -775,6 +784,12 @@ function UploadPageContent() {
             { duration: 10000 }
           );
           // TODO: Implement sync retry mechanism
+        } else if (formData.scheduleForLater && formData.scheduledAt) {
+          // Scheduled content — skip feed post and crossposting
+          const scheduledDate = new Date(formData.scheduledAt);
+          const dateStr = scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+          toast.success(`Scheduled for ${dateStr}!`, { duration: 5000 });
+          console.log("[Upload] Content scheduled for:", formData.scheduledAt, "mode:", formData.premiereMode);
         } else {
           const mediaLabel = formData.mediaType === 'video' ? 'Video' : 'Audio';
           toast.success(`${mediaLabel} uploaded successfully!`);
@@ -885,6 +900,9 @@ function UploadPageContent() {
           thumbnailPreview: null,
           video: null,
           crossPostBluesky: false,
+          scheduleForLater: false,
+          scheduledAt: "",
+          premiereMode: "countdown",
         });
         setUploadStage("idle");
         setUploadProgress(0);
@@ -1375,6 +1393,92 @@ function UploadPageContent() {
             )}
           </div>
         </div>
+
+        {/* Schedule for Later - Only show for new uploads */}
+        {!editId && (
+          <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
+            <label className="block text-lg font-bold uppercase tracking-widest mb-4">
+              Schedule
+            </label>
+            <label className="flex items-center gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-[#EB83EA]/50 transition mb-4">
+              <input
+                type="checkbox"
+                checked={formData.scheduleForLater}
+                onChange={(e) => setFormData({ ...formData, scheduleForLater: e.target.checked, scheduledAt: "" })}
+                className="w-5 h-5 accent-[#EB83EA] rounded"
+              />
+              <div>
+                <div className="font-semibold text-white flex items-center gap-2">
+                  <FiClock className="text-[#EB83EA]" />
+                  Schedule for later
+                </div>
+                <p className="text-sm text-gray-400">Set a date and time for your content to go live</p>
+              </div>
+            </label>
+
+            {formData.scheduleForLater && (
+              <div className="space-y-4 pl-2">
+                {/* Date/Time Picker */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-gray-300">
+                    Publish Date & Time *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={formData.scheduledAt}
+                    onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                    min={new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)}
+                    max={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)}
+                    required={formData.scheduleForLater}
+                    className="w-full px-4 py-3 bg-[#0f071a] border border-[#2f2942] rounded-xl focus:outline-none focus:border-[#EB83EA] transition text-white"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Must be at least 5 minutes from now, up to 30 days</p>
+                </div>
+
+                {/* Premiere Mode */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-gray-300">
+                    Premiere Mode
+                  </label>
+                  <div className="space-y-3">
+                    <label className="flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-[#EB83EA]/50 transition">
+                      <input
+                        type="radio"
+                        name="premiereMode"
+                        value="countdown"
+                        checked={formData.premiereMode === "countdown"}
+                        onChange={() => setFormData({ ...formData, premiereMode: "countdown" })}
+                        className="mt-1 accent-[#EB83EA]"
+                      />
+                      <div>
+                        <div className="font-semibold text-white">Countdown Premiere</div>
+                        <div className="text-sm text-gray-400">
+                          Shows a public countdown page with your thumbnail. Builds hype before release!
+                        </div>
+                      </div>
+                    </label>
+                    <label className="flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-[#EB83EA]/50 transition">
+                      <input
+                        type="radio"
+                        name="premiereMode"
+                        value="silent"
+                        checked={formData.premiereMode === "silent"}
+                        onChange={() => setFormData({ ...formData, premiereMode: "silent" })}
+                        className="mt-1 accent-[#EB83EA]"
+                      />
+                      <div>
+                        <div className="font-semibold text-white">Silent Drop</div>
+                        <div className="text-sm text-gray-400">
+                          Content stays hidden until the scheduled time, then appears in your feed.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Cross-Post to Bluesky - Only show for new uploads (not edits) */}
         {!editId && formData.visibility === "public" && (

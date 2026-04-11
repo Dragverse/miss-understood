@@ -3,6 +3,7 @@ import { verifyAuth } from '@/lib/auth/verify';
 import { followUser, unfollowUser, isFollowing } from '@/lib/supabase/social';
 import { createNotification } from '@/lib/supabase/notifications';
 import { getCreatorByDID } from '@/lib/supabase/creators';
+import { checkRateLimit } from '@/lib/utils/rate-limiter';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +14,11 @@ export async function POST(request: NextRequest) {
         { error: 'Authentication required' },
         { status: 401 }
       );
+    }
+
+    const rateLimit = checkRateLimit(`follow:${auth.userId}`, 30, 60000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
     const { followingDID, action } = await request.json();

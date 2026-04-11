@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
-import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
+import { verifyAuth } from "@/lib/auth/verify";
 import { postToBluesky } from "@/lib/crosspost/bluesky";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
 
 /**
  * POST /api/posts/create
@@ -10,14 +11,15 @@ import { postToBluesky } from "@/lib/crosspost/bluesky";
 export async function POST(request: NextRequest) {
   try {
     // Verify authentication
-    let userDID = "anonymous";
+    const auth = await verifyAuth(request);
+    if (!auth.authenticated || !auth.userId) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    const userDID = auth.userId;
 
-    if (isPrivyConfigured()) {
-      const auth = await verifyAuth(request);
-      if (!auth.authenticated) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      userDID = auth.userId || "anonymous";
+    const rateLimit = checkRateLimit(`postcreate:${auth.userId}`, 10, 60000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
     const body = await request.json();
@@ -34,6 +36,7 @@ export async function POST(request: NextRequest) {
       location,
       visibility = "public",
       scheduledAt,
+      premiereMode,
       platforms = { dragverse: true, bluesky: false },
     } = body;
 
@@ -102,6 +105,7 @@ export async function POST(request: NextRequest) {
         location,
         visibility,
         scheduled_at: scheduledAt || null,
+        premiere_mode: premiereMode || null,
       })
       .select()
       .single();

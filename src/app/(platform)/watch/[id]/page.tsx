@@ -218,6 +218,24 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         const ceramicVideo = accessData.video as SupabaseVideo;
         const formattedVideo = await transformVideoWithCreator(ceramicVideo);
 
+        // Handle scheduled/premiere content
+        const isCreator = user?.id === formattedVideo.creator?.did;
+        if (formattedVideo.publishedAt && new Date(formattedVideo.publishedAt) > new Date()) {
+          if (!isCreator) {
+            if (formattedVideo.premiereMode === 'countdown') {
+              // Redirect to premiere countdown page
+              window.location.href = `/premiere/${resolvedParams.id}`;
+              return;
+            }
+            // Silent drop — hide from non-creators
+            setAccessDenied(true);
+            setAccessDeniedReason("This content is not yet available.");
+            setIsLoading(false);
+            return;
+          }
+          // Creator viewing their own scheduled content — show normally
+        }
+
         // Redirect to listen page if this is audio content
         if (formattedVideo.contentType === 'podcast' || formattedVideo.contentType === 'music') {
           console.log("[Watch] Redirecting audio content to /listen page");

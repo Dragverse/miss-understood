@@ -21,6 +21,7 @@ export interface SupabaseVideo {
   total_tips_usd: number;
   created_at: string;
   published_at?: string;
+  premiere_mode?: 'countdown' | 'silent' | null;
   updated_at: string;
 }
 
@@ -63,6 +64,7 @@ export async function createVideo(input: Partial<CreateVideoInput>) {
       tags: input.tags,
       visibility: input.visibility || 'public',
       published_at: input.published_at,
+      premiere_mode: input.premiere_mode || null,
     })
     .select()
     .single();
@@ -116,10 +118,12 @@ export async function getVideos(limit = 50): Promise<SupabaseVideoWithCreator[]>
   }
 
   // Try without JOIN first to see if there are any videos
+  // Hide scheduled/unpublished content from public listing
   const { data, error } = await supabase
     .from('videos')
     .select('*')
     .eq('visibility', 'public')
+    .or(`published_at.is.null,published_at.lte.${new Date().toISOString()}`)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -182,19 +186,26 @@ export interface SupabaseVideoWithCreator extends SupabaseVideo {
   };
 }
 
-export async function getVideosByCreator(creatorDID: string, limit = 50): Promise<SupabaseVideoWithCreator[]> {
+export async function getVideosByCreator(creatorDID: string, limit = 50, includeScheduled = false): Promise<SupabaseVideoWithCreator[]> {
   if (!supabase) {
     console.warn('Supabase not configured');
     return [];
   }
 
   // Query videos first
-  const { data: videos, error: videosError } = await supabase
+  let query = supabase
     .from('videos')
     .select('*')
     .eq('creator_did', creatorDID)
     .order('created_at', { ascending: false })
     .limit(limit);
+
+  // Hide scheduled content unless the owner is viewing their own profile
+  if (!includeScheduled) {
+    query = query.or(`published_at.is.null,published_at.lte.${new Date().toISOString()}`);
+  }
+
+  const { data: videos, error: videosError } = await query;
 
   if (videosError) {
     console.error('[getVideosByCreator] Error fetching videos:', videosError);

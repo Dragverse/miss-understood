@@ -4,6 +4,7 @@ import { likeVideo, unlikeVideo, hasLikedVideo } from '@/lib/supabase/social';
 import { createNotification } from '@/lib/supabase/notifications';
 import { getVideo } from '@/lib/supabase/videos';
 import { getCreatorByDID } from '@/lib/supabase/creators';
+import { checkRateLimit } from '@/lib/utils/rate-limiter';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +15,11 @@ export async function POST(request: NextRequest) {
         { error: 'Authentication required' },
         { status: 401 }
       );
+    }
+
+    const rateLimit = checkRateLimit(`like:${auth.userId}`, 60, 60000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
     const { videoId, action } = await request.json();

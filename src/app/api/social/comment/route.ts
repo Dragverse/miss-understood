@@ -3,12 +3,11 @@ import { createComment, getComments, getReplies } from '@/lib/supabase/social';
 import { createNotification } from '@/lib/supabase/notifications';
 import { getVideo } from '@/lib/supabase/videos';
 import { getCreatorByDID } from '@/lib/supabase/creators';
-import { verifyAuth, isPrivyConfigured } from '@/lib/auth/verify';
+import { verifyAuth } from '@/lib/auth/verify';
+import { checkRateLimit } from '@/lib/utils/rate-limiter';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("[Comment API] Creating comment...");
-
     // SECURITY: ALWAYS require authentication (fail-closed)
     const auth = await verifyAuth(request);
     if (!auth.authenticated || !auth.userId) {
@@ -16,6 +15,11 @@ export async function POST(request: NextRequest) {
         { error: 'Authentication required to comment' },
         { status: 401 }
       );
+    }
+
+    const rateLimit = checkRateLimit(`comment:${auth.userId}`, 20, 60000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
     const { videoId, content, parentCommentId } = await request.json();

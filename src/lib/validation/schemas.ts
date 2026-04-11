@@ -51,6 +51,8 @@ export const createVideoSchema = z.object({
       message: "Visibility must be one of: public, unlisted, private",
     })
     .default("public"),
+  publishedAt: z.string().datetime().optional(),
+  premiereMode: z.enum(["countdown", "silent"]).optional(),
 });
 
 /**

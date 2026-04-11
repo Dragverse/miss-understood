@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseServerClient } from "@/lib/supabase/client";
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -51,12 +51,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    if (!supabase) {
-      return NextResponse.json(
-        { error: "Database not configured" },
-        { status: 500 }
-      );
-    }
+    const supabase = getSupabaseServerClient();
 
     // Check if video exists and user owns it
     const { data: existingVideo, error: fetchError } = await supabase

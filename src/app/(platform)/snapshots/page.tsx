@@ -280,28 +280,21 @@ function SnapshotsContent() {
         </div>
       )}
 
-      {/* Refresh Button - Top Right */}
+      {/* Refresh Button - Top Right (below navbar) */}
       <button
         onClick={() => loadSnapshots(true)}
         disabled={refreshing}
-        className="fixed top-6 right-6 z-20 w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-50"
+        className="fixed top-20 right-4 z-20 w-10 h-10 md:w-12 md:h-12 bg-gray-800/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-50"
         aria-label="Refresh snapshots"
       >
-        <FiRefreshCw className={`w-6 h-6 text-white ${refreshing ? 'animate-spin' : ''}`} />
+        <FiRefreshCw className={`w-5 h-5 md:w-6 md:h-6 text-white ${refreshing ? 'animate-spin' : ''}`} />
       </button>
 
-      {/* Slide Indicator */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-20">
-        {snapshots.map((_, idx) => (
-          <div
-            key={idx}
-            className={`h-1 rounded-full transition-all ${
-              currentSlide === idx
-                ? "w-8 bg-[#EB83EA]"
-                : "w-1 bg-gray-600"
-            }`}
-          />
-        ))}
+      {/* Slide Counter */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full">
+        <span className="text-white text-sm font-medium tabular-nums">
+          {currentSlide + 1} / {snapshots.length}
+        </span>
       </div>
     </div>
   );

@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/verify';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { getSupabaseServerClient } from '@/lib/supabase/client';
+import { checkRateLimit } from '@/lib/utils/rate-limiter';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +13,13 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rateLimit = checkRateLimit(`postlike:${auth.userId}`, 60, 60000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
+    const supabase = getSupabaseServerClient();
 
     const { postId, action } = await request.json();
 
@@ -83,7 +86,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing postId' }, { status: 400 });
     }
 
-    const { data } = await supabase
+    const sb = getSupabaseServerClient();
+    const { data } = await sb
       .from('post_likes')
       .select('id')
       .match({ post_id: postId, creator_did: auth.userId })

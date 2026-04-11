@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { FiVolume2, FiVolumeX, FiHeart, FiMessageCircle, FiShare2, FiDollarSign, FiEdit2, FiTrash2, FiMoreVertical, FiAlertCircle, FiPlay } from "react-icons/fi";
 import type { Video } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
 import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
 import { TipModal } from "@/components/video/tip-modal";
@@ -36,6 +37,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, initialLiked, ini
   const [commentCount, setCommentCount] = useState(0);
   const playerRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Check if current user is the creator
   const isCreator = user?.id === video.creator?.did;
@@ -47,6 +49,18 @@ export function ShortVideo({ video, isActive, onNext, onEnded, initialLiked, ini
   useEffect(() => {
     setPlaybackError(false);
   }, [video.id]);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showMenu]);
 
   // Check initial like status on mount (or use batch-fetched value)
   useEffect(() => {
@@ -186,11 +200,12 @@ export function ShortVideo({ video, isActive, onNext, onEnded, initialLiked, ini
 
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
+    const url = `${window.location.origin}/snapshots?v=${video.id}`;
     if (navigator.share) {
-      navigator.share({
-        title: video.title,
-        text: video.description,
-        url: video.externalUrl || window.location.href,
+      navigator.share({ title: video.title, url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        toast.success("Link copied!");
       }).catch(() => {});
     }
   };
@@ -319,34 +334,6 @@ export function ShortVideo({ video, isActive, onNext, onEnded, initialLiked, ini
   // Only use Livepeer for confirmed HLS URLs, not YouTube, and not generic HTTP URLs
   const canPlayWithLivepeer = hasValidPlaybackUrl && isHLSUrl && !isYouTubeVideo;
 
-  // Enhanced logging for debugging playback issues
-  useEffect(() => {
-    if (!hasValidPlaybackUrl) {
-      console.error('[ShortVideo] ❌ No playback URL:', {
-        videoId: video.id,
-        title: video.title?.substring(0, 50),
-        livepeerAssetId: video.livepeerAssetId,
-        playbackUrl: video.playbackUrl,
-        source: video.source
-      });
-    } else if (!isHLSUrl && !isYouTubeVideo) {
-      console.warn('[ShortVideo] ⚠️ Unsupported video format:', {
-        videoId: video.id,
-        title: video.title?.substring(0, 50),
-        playbackUrl: video.playbackUrl?.substring(0, 100),
-        isHLSUrl,
-        isYouTubeVideo,
-        source: video.source
-      });
-    } else {
-      console.log('[ShortVideo] ✓ Video loaded:', {
-        videoId: video.id,
-        title: video.title?.substring(0, 50),
-        canPlayWithLivepeer,
-        isYouTubeVideo
-      });
-    }
-  }, [video.id, hasValidPlaybackUrl, isHLSUrl, isYouTubeVideo, canPlayWithLivepeer, video.title, video.playbackUrl, video.livepeerAssetId, video.source]);
 
   return (
     <div className="keen-slider__slide flex justify-center items-center focus-visible:outline-none">
@@ -450,10 +437,11 @@ export function ShortVideo({ video, isActive, onNext, onEnded, initialLiked, ini
             <div className="absolute top-2 md:top-4 right-2 md:right-4 flex flex-col gap-2 z-10" style={{ pointerEvents: 'auto' }}>
               {/* Creator Menu Button */}
               {isCreator && (
-                <div className="relative">
+                <div className="relative" ref={menuRef}>
                   <button
                     onClick={toggleMenu}
                     className="p-3 bg-black/50 rounded-full hover:bg-black/70 transition"
+                    aria-label="Video options"
                   >
                     <FiMoreVertical className="w-5 h-5 text-white" />
                   </button>
@@ -488,6 +476,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, initialLiked, ini
                     toggleMute();
                   }}
                   className="p-3 bg-black/50 rounded-full hover:bg-black/70 transition"
+                  aria-label={isMuted ? "Unmute" : "Mute"}
                 >
                   {isMuted ? (
                     <FiVolumeX className="w-5 h-5 text-white" />
@@ -591,6 +580,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, initialLiked, ini
                 <button
                   onClick={handleLike}
                   className="flex flex-col items-center gap-1"
+                  aria-label={isLiked ? "Unlike" : "Like"}
                 >
                   <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
                     <FiHeart
@@ -606,6 +596,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, initialLiked, ini
                 <button
                   onClick={handleComment}
                   className="flex flex-col items-center gap-1"
+                  aria-label="Comment"
                 >
                   <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
                     <FiMessageCircle className="w-6 h-6 text-white" />
@@ -628,6 +619,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, initialLiked, ini
               <button
                 onClick={handleShare}
                 className="flex flex-col items-center gap-1"
+                aria-label="Share"
               >
                 <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
                   <FiShare2 className="w-6 h-6 text-white" />
@@ -640,6 +632,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, initialLiked, ini
                 <button
                   onClick={handleTip}
                   className="flex flex-col items-center gap-1"
+                  aria-label="Send tip"
                 >
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-[#EB83EA]/50">
                     <FiDollarSign className="w-6 h-6 text-white" />

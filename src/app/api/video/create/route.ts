@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createVideo } from "@/lib/supabase/videos";
 import { getCreatorByDID, createOrUpdateCreator } from "@/lib/supabase/creators";
-import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
+import { verifyAuth } from "@/lib/auth/verify";
 import { validateBody, createVideoSchema } from "@/lib/validation/schemas";
 import {
   getPrivyUserProfile,
@@ -21,29 +21,15 @@ export const dynamic = 'force-dynamic'; // Disable static optimization
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify authentication and get user DID
-    let userDID = "anonymous";
-
-    console.log("[Video Create] Privy configured:", isPrivyConfigured());
-
-    if (isPrivyConfigured()) {
-      const auth = await verifyAuth(request);
-      console.log("[Video Create] Auth result:", { authenticated: auth.authenticated, userId: auth.userId, error: auth.error });
-
-      if (!auth.authenticated) {
-        console.error("[Video Create] ❌ Authentication failed:", auth.error);
-        // Authentication is required in all environments
-        return NextResponse.json(
-          { error: "Authentication required. Please log in to upload videos." },
-          { status: 401 }
-        );
-      } else {
-        userDID = auth.userId || "anonymous";
-        console.log("[Video Create] ✅ Authenticated as:", userDID);
-      }
-    } else {
-      console.log("[Video Create] ⚠️ Privy not configured, using anonymous mode");
+    // Verify authentication
+    const auth = await verifyAuth(request);
+    if (!auth.authenticated || !auth.userId) {
+      return NextResponse.json(
+        { error: "Authentication required. Please log in to upload videos." },
+        { status: 401 }
+      );
     }
+    const userDID = auth.userId;
 
     // Parse and validate request body
     const body = await request.json();
@@ -65,6 +51,8 @@ export async function POST(request: NextRequest) {
       category,
       tags,
       visibility,
+      publishedAt,
+      premiereMode,
     } = validation.data;
 
     // Tags in Supabase is an array, no conversion needed
@@ -145,6 +133,8 @@ export async function POST(request: NextRequest) {
       category,
       tags: tagsArray,
       visibility: visibility || "public",
+      published_at: publishedAt || undefined,
+      premiere_mode: premiereMode || undefined,
     };
 
     // Validate duration based on content type

@@ -1,11 +1,11 @@
-import { supabase, getSupabaseServerClient } from './client';
+import { getSupabaseServerClient } from './client';
 
 // ============================================
 // FOLLOW OPERATIONS
 // ============================================
 
 export async function followUser(followerDID: string, followingDID: string) {
-  if (!supabase) return null;
+  const supabase = getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from('follows')
@@ -22,7 +22,7 @@ export async function followUser(followerDID: string, followingDID: string) {
 }
 
 export async function unfollowUser(followerDID: string, followingDID: string) {
-  if (!supabase) return null;
+  const supabase = getSupabaseServerClient();
 
   const { error } = await supabase
     .from('follows')
@@ -35,7 +35,7 @@ export async function unfollowUser(followerDID: string, followingDID: string) {
 }
 
 export async function isFollowing(followerDID: string, followingDID: string): Promise<boolean> {
-  if (!supabase) return false;
+  const supabase = getSupabaseServerClient();
 
   const { data } = await supabase
     .from('follows')
@@ -48,7 +48,7 @@ export async function isFollowing(followerDID: string, followingDID: string): Pr
 }
 
 export async function getFollowers(userDID: string, limit = 50) {
-  if (!supabase) return null;
+  const supabase = getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from('follows')
@@ -62,7 +62,7 @@ export async function getFollowers(userDID: string, limit = 50) {
 }
 
 export async function getFollowing(userDID: string, limit = 50) {
-  if (!supabase) return null;
+  const supabase = getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from('follows')
@@ -80,7 +80,7 @@ export async function getFollowing(userDID: string, limit = 50) {
 // ============================================
 
 export async function likeVideo(userDID: string, videoId: string) {
-  if (!supabase) return null;
+  const supabase = getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from('likes')
@@ -97,7 +97,7 @@ export async function likeVideo(userDID: string, videoId: string) {
 }
 
 export async function unlikeVideo(userDID: string, videoId: string) {
-  if (!supabase) return null;
+  const supabase = getSupabaseServerClient();
 
   const { error } = await supabase
     .from('likes')
@@ -109,7 +109,7 @@ export async function unlikeVideo(userDID: string, videoId: string) {
 }
 
 export async function hasLikedVideo(userDID: string, videoId: string): Promise<boolean> {
-  if (!supabase) return false;
+  const supabase = getSupabaseServerClient();
 
   const { data } = await supabase
     .from('likes')
@@ -122,7 +122,7 @@ export async function hasLikedVideo(userDID: string, videoId: string): Promise<b
 }
 
 export async function getVideoLikes(videoId: string, limit = 50) {
-  if (!supabase) return null;
+  const supabase = getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from('likes')
@@ -157,7 +157,7 @@ export async function createComment(input: {
   content: string;
   parentCommentId?: string;
 }) {
-  if (!supabase) return null;
+  const supabase = getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from('comments')
@@ -176,10 +176,7 @@ export async function createComment(input: {
 }
 
 export async function getComments(videoId: string, limit = 50): Promise<Comment[]> {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return [];
-  }
+  const supabase = getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from('comments')
@@ -201,12 +198,9 @@ export async function getComments(videoId: string, limit = 50): Promise<Comment[
 }
 
 export async function getReplies(parentCommentId: string, limit = 50): Promise<Comment[]> {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return [];
-  }
+  const supabase = getSupabaseServerClient();
 
-  const { data, error} = await supabase
+  const { data, error } = await supabase
     .from('comments')
     .select(`
       *,
@@ -225,7 +219,7 @@ export async function getReplies(parentCommentId: string, limit = 50): Promise<C
 }
 
 export async function deleteComment(commentId: string, authorDID: string) {
-  if (!supabase) return null;
+  const supabase = getSupabaseServerClient();
 
   const { error } = await supabase
     .from('comments')

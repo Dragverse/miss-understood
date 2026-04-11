@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiZap, FiHeadphones, FiMessageSquare, FiInfo, FiMusic, FiGrid, FiCalendar, FiGlobe, FiShare2, FiCheck, FiPlay } from "react-icons/fi";
+import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiZap, FiHeadphones, FiMessageSquare, FiInfo, FiMusic, FiGrid, FiCalendar, FiGlobe, FiShare2, FiCheck, FiPlay, FiClock } from "react-icons/fi";
 import { FaYoutube } from "react-icons/fa";
 import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
@@ -79,7 +79,8 @@ export default function DynamicProfilePage() {
           setProfileType("dragverse");
 
           // Load content for Dragverse user (Dragverse + connected YouTube channel)
-          loadUserContent(ceramicProfile.did, ceramicProfile.youtube_channel_id || undefined);
+          const isOwner = currentUserDID === ceramicProfile.did;
+          loadUserContent(ceramicProfile.did, ceramicProfile.youtube_channel_id || undefined, isOwner);
 
           // Fetch Bluesky stats if user has connected Bluesky
           if (ceramicProfile.bluesky_handle) {
@@ -133,12 +134,13 @@ export default function DynamicProfilePage() {
   }, [handle, blueskyProfile, blueskyLoading, blueskyError, isBlueskyHandle]);
 
   // Load videos and other content from database
-  async function loadUserContent(creatorDID: string, youtubeChannelId?: string) {
+  async function loadUserContent(creatorDID: string, youtubeChannelId?: string, isOwner = false) {
     setIsLoadingContent(true);
     try {
       // Fetch Dragverse videos, posts, and YouTube videos in parallel
+      // Owner sees scheduled content too
       const [videos, postsResponse, youtubeVideos] = await Promise.all([
-        getVideosByCreator(creatorDID).catch(err => {
+        getVideosByCreator(creatorDID, 50, isOwner).catch(err => {
           console.error("Failed to fetch videos:", err);
           return [] as any[];
         }),
@@ -178,6 +180,8 @@ export default function DynamicProfilePage() {
         category: sv.category || "drag",
         tags: sv.tags || [],
         source: (sv as any).source,
+        publishedAt: sv.published_at ? new Date(sv.published_at) : null,
+        premiereMode: sv.premiere_mode || null,
       }));
 
       // Merge Dragverse videos with YouTube channel videos
@@ -640,6 +644,15 @@ export default function DynamicProfilePage() {
                       {video.source === "youtube" && (
                         <div className="absolute top-2 left-2 bg-red-600 p-1.5 rounded-md flex items-center gap-1">
                           <FaYoutube className="w-3.5 h-3.5 text-white" />
+                        </div>
+                      )}
+                      {/* Scheduled Badge - only visible to owner */}
+                      {video.publishedAt && new Date(video.publishedAt) > new Date() && (
+                        <div className="absolute top-2 left-2 bg-[#EB83EA] px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-lg">
+                          <FiClock className="w-3.5 h-3.5 text-white" />
+                          <span className="text-white text-xs font-bold">
+                            {video.premiereMode === "countdown" ? "Premiere" : "Scheduled"}
+                          </span>
                         </div>
                       )}
                       {/* Duration Badge */}

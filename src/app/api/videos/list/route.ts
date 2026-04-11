@@ -16,11 +16,12 @@ export async function GET(request: Request) {
 
     const supabase = getSupabaseServerClient();
 
-    // Build query
+    // Build query — hide scheduled/unpublished content from public feed
     let query = supabase
       .from('videos')
       .select('*')
       .eq('visibility', 'public')
+      .or(`published_at.is.null,published_at.lte.${new Date().toISOString()}`)
       .order('created_at', { ascending: false })
       .limit(limit);
 

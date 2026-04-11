@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
 import { ShortVideo } from "@/components/snapshots/short-video";
-import { ShortOverlayTop } from "@/components/snapshots/short-overlay-top";
-import { ShortOverlayBottom } from "@/components/snapshots/short-overlay-bottom";
 import { FiX, FiChevronUp, FiChevronDown } from "react-icons/fi";
 import type { Video } from "@/types";
 
@@ -92,8 +90,6 @@ export function BytesSlider({ bytesList, onClose, initialIndex = 0 }: BytesSlide
               isActive={currentSlide === idx}
               onNext={() => instanceRef.current?.next()}
             />
-            <ShortOverlayTop video={video} />
-            <ShortOverlayBottom video={video} />
           </div>
         ))}
       </div>
@@ -118,17 +114,12 @@ export function BytesSlider({ bytesList, onClose, initialIndex = 0 }: BytesSlide
         </div>
       )}
 
-      {/* Slide Indicator */}
+      {/* Slide Counter */}
       {bytesList.length > 1 && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-20">
-          {bytesList.map((_, idx) => (
-            <div
-              key={idx}
-              className={`h-1 rounded-full transition-all ${
-                currentSlide === idx ? "w-8 bg-[#EB83EA]" : "w-1 bg-gray-600"
-              }`}
-            />
-          ))}
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full">
+          <span className="text-white text-sm font-medium tabular-nums">
+            {currentSlide + 1} / {bytesList.length}
+          </span>
         </div>
       )}
     </div>

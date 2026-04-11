@@ -1,13 +1,14 @@
 /**
  * Bluesky cross-posting utilities
- * Posts content to Bluesky using user's authenticated session from Privy
- * Falls back to DB-stored credentials when session cookie is missing/expired
+ * Posts content to Bluesky using OAuth session (preferred) or legacy app password
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, SessionData } from "@/lib/session/config";
 import { createClient } from "@supabase/supabase-js";
+import { getBlueskyOAuthDID, getOAuthAgent } from "@/lib/bluesky/oauth-client";
+import { Agent, RichText } from "@atproto/api";
 
 const BLUESKY_MAX_BLOB_SIZE = 950_000; // ~950KB (Bluesky limit is 976.56KB, leave margin)
 
@@ -78,7 +79,98 @@ interface BlueskyDeleteResult {
 }
 
 /**
- * Post to Bluesky using user's session
+ * Post to Bluesky using OAuth agent
+ */
+async function postWithOAuthAgent(
+  agent: Agent,
+  params: BlueskyPostParams
+): Promise<BlueskyPostResult> {
+  // Build embed
+  let embed: any = undefined;
+
+  if (params.external) {
+    // External link embed (for video/audio link cards)
+    let thumbBlob = undefined;
+    if (params.external.thumb) {
+      try {
+        const thumbResponse = await fetch(params.external.thumb);
+        if (thumbResponse.ok) {
+          const thumbBuffer = await thumbResponse.arrayBuffer();
+          const contentType = thumbResponse.headers.get("content-type") || "image/jpeg";
+          const compressedBlob = await compressImageForBluesky(thumbBuffer, contentType);
+          const uint8 = new Uint8Array(await compressedBlob.arrayBuffer());
+          const uploadResult = await agent.uploadBlob(uint8, { encoding: compressedBlob.type });
+          thumbBlob = uploadResult.data.blob;
+        }
+      } catch (error) {
+        console.error("[Bluesky OAuth] Failed to upload thumbnail:", error);
+      }
+    }
+
+    embed = {
+      $type: "app.bsky.embed.external",
+      external: {
+        uri: params.external.uri,
+        title: params.external.title,
+        description: params.external.description,
+        ...(thumbBlob ? { thumb: thumbBlob } : {}),
+      },
+    };
+  } else if (params.media && params.media.length > 0) {
+    // Image embeds
+    const images = await Promise.all(
+      params.media.slice(0, 4).map(async (media) => {
+        try {
+          const imageResponse = await fetch(media.url);
+          if (!imageResponse.ok) return null;
+
+          const imageBuffer = await imageResponse.arrayBuffer();
+          const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+          const compressedBlob = await compressImageForBluesky(imageBuffer, contentType);
+          const uint8 = new Uint8Array(await compressedBlob.arrayBuffer());
+          const uploadResult = await agent.uploadBlob(uint8, { encoding: compressedBlob.type });
+
+          return {
+            alt: media.alt || "",
+            image: uploadResult.data.blob,
+          };
+        } catch (error) {
+          console.error("[Bluesky OAuth] Error uploading image:", error);
+          return null;
+        }
+      })
+    );
+
+    const validImages = images.filter(Boolean);
+    if (validImages.length > 0) {
+      embed = {
+        $type: "app.bsky.embed.images",
+        images: validImages,
+      };
+    }
+  }
+
+  // Create post
+  const rt = new RichText({ text: params.text });
+  await rt.detectFacets(agent);
+
+  const postResult = await agent.post({
+    text: rt.text,
+    facets: rt.facets,
+    embed,
+    createdAt: new Date().toISOString(),
+  });
+
+  console.log("[Bluesky OAuth] Post successful:", postResult.uri);
+  return {
+    success: true,
+    uri: postResult.uri,
+    cid: postResult.cid,
+  };
+}
+
+/**
+ * Post to Bluesky using user's session (OAuth preferred, legacy fallback)
  */
 export async function postToBluesky(
   request: NextRequest,
@@ -86,23 +178,33 @@ export async function postToBluesky(
   userDID?: string
 ): Promise<BlueskyPostResult> {
   try {
-    // Try iron-session first, then fall back to DB credentials
+    // 1. Try OAuth agent first
+    if (userDID) {
+      const blueskyOAuthDID = await getBlueskyOAuthDID(userDID);
+      if (blueskyOAuthDID) {
+        const agent = await getOAuthAgent(blueskyOAuthDID);
+        if (agent) {
+          console.log("[Bluesky Crosspost] Using OAuth agent for:", blueskyOAuthDID);
+          return await postWithOAuthAgent(agent, params);
+        }
+      }
+    }
+
+    // 2. Fall back to legacy app password flow
     let handle: string | undefined;
     let appPassword: string | undefined;
 
-    // 1. Try iron-session cookie
+    // Try iron-session cookie
     const response = NextResponse.json({ ok: true });
     const session = await getIronSession<SessionData>(request, response, sessionOptions);
 
     if (session.bluesky?.handle && session.bluesky?.appPassword) {
       handle = session.bluesky.handle;
       appPassword = session.bluesky.appPassword;
-      console.log("[Bluesky Crosspost] ✅ Using session cookie credentials for:", handle);
     }
 
-    // 2. Fall back to DB credentials if session is missing/expired
+    // Fall back to DB credentials
     if ((!handle || !appPassword) && userDID) {
-      console.log("[Bluesky Crosspost] Session cookie missing, trying DB fallback for DID:", userDID);
       try {
         const supabase = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -118,7 +220,6 @@ export async function postToBluesky(
         if (creator?.bluesky_handle && creator?.bluesky_app_password) {
           handle = creator.bluesky_handle;
           appPassword = creator.bluesky_app_password;
-          console.log("[Bluesky Crosspost] ✅ Using DB fallback credentials for:", handle);
         }
       } catch (dbError) {
         console.error("[Bluesky Crosspost] DB fallback failed:", dbError);
@@ -126,14 +227,13 @@ export async function postToBluesky(
     }
 
     if (!handle || !appPassword) {
-      console.error("[Bluesky Crosspost] ❌ No credentials found (session or DB).");
       return {
         success: false,
-        error: "Bluesky not connected. Please reconnect your Bluesky account in Settings."
+        error: "Bluesky not connected. Please connect your Bluesky account in Settings."
       };
     }
 
-    console.log("[Bluesky Crosspost] Authenticating as:", handle);
+    console.log("[Bluesky Crosspost] Using legacy auth for:", handle);
 
     // Authenticate with Bluesky to get access token
     const authResponse = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
@@ -160,15 +260,10 @@ export async function postToBluesky(
     // Handle embeds
     const embeds: any[] = [];
 
-    // External link embed (for video/audio posts with link cards)
     if (params.external) {
-      console.log("[Bluesky] Creating external link embed:", params.external.uri);
-
-      // Upload thumbnail for external embed if provided
       let thumbBlob = null;
       if (params.external.thumb) {
         try {
-          console.log("[Bluesky] Downloading thumbnail for external embed:", params.external.thumb);
           const thumbResponse = await fetch(params.external.thumb);
           if (thumbResponse.ok) {
             const thumbBuffer = await thumbResponse.arrayBuffer();
@@ -190,51 +285,35 @@ export async function postToBluesky(
             if (uploadResponse.ok) {
               const uploadData = await uploadResponse.json();
               thumbBlob = uploadData.blob;
-              console.log("[Bluesky] ✓ Thumbnail uploaded for external embed");
             }
           }
         } catch (error) {
-          console.error("[Bluesky] Failed to upload thumbnail for external:", error);
+          console.error("[Bluesky] Failed to upload thumbnail:", error);
         }
       }
 
-      // Build external embed object
       const externalEmbed: any = {
         uri: params.external.uri,
         title: params.external.title,
         description: params.external.description,
       };
-
-      // Only include thumb if upload succeeded
-      if (thumbBlob) {
-        externalEmbed.thumb = thumbBlob;
-      }
+      if (thumbBlob) externalEmbed.thumb = thumbBlob;
 
       embeds.push({
         $type: "app.bsky.embed.external",
         external: externalEmbed,
       });
-    }
-    // Image embeds (for regular photo posts)
-    else if (params.media && params.media.length > 0) {
+    } else if (params.media && params.media.length > 0) {
       const images = await Promise.all(
         params.media.slice(0, 4).map(async (media) => {
           try {
-            // Download image from URL
-            console.log("[Bluesky] Fetching image from:", media.url);
             const imageResponse = await fetch(media.url);
-
-            if (!imageResponse.ok) {
-              console.error(`[Bluesky] Image fetch failed: ${imageResponse.status} ${imageResponse.statusText}`);
-              return null;
-            }
+            if (!imageResponse.ok) return null;
 
             const imageBuffer = await imageResponse.arrayBuffer();
-            console.log("[Bluesky] Image downloaded, size:", imageBuffer.byteLength, "bytes");
             const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
             const imageBlob = await compressImageForBluesky(imageBuffer, contentType);
 
-            // Upload to Bluesky
             const uploadResponse = await fetch(
               "https://bsky.social/xrpc/com.atproto.repo.uploadBlob",
               {
@@ -247,16 +326,10 @@ export async function postToBluesky(
               }
             );
 
-            if (!uploadResponse.ok) {
-              console.error("[Bluesky] Image upload failed:", await uploadResponse.text());
-              return null;
-            }
+            if (!uploadResponse.ok) return null;
 
             const uploadData = await uploadResponse.json();
-            return {
-              alt: media.alt || "",
-              image: uploadData.blob,
-            };
+            return { alt: media.alt || "", image: uploadData.blob };
           } catch (error) {
             console.error("[Bluesky] Error uploading image:", error);
             return null;
@@ -273,18 +346,13 @@ export async function postToBluesky(
       }
     }
 
-    // Create post record
     const record: any = {
       $type: "app.bsky.feed.post",
       text: params.text,
       createdAt: new Date().toISOString(),
     };
+    if (embeds.length > 0) record.embed = embeds[0];
 
-    if (embeds.length > 0) {
-      record.embed = embeds[0];
-    }
-
-    // Post to Bluesky
     const postResponse = await fetch(
       "https://bsky.social/xrpc/com.atproto.repo.createRecord",
       {
@@ -304,20 +372,12 @@ export async function postToBluesky(
     if (!postResponse.ok) {
       const errorText = await postResponse.text();
       console.error("[Bluesky] Post failed:", errorText);
-      return {
-        success: false,
-        error: `Failed to post to Bluesky: ${errorText}`
-      };
+      return { success: false, error: `Failed to post to Bluesky: ${errorText}` };
     }
 
     const postData = await postResponse.json();
     console.log("[Bluesky] Post successful:", postData.uri);
-
-    return {
-      success: true,
-      uri: postData.uri,
-      cid: postData.cid
-    };
+    return { success: true, uri: postData.uri, cid: postData.cid };
   } catch (error) {
     console.error("[Bluesky] Error posting:", error);
     return {
@@ -328,53 +388,54 @@ export async function postToBluesky(
 }
 
 /**
- * Delete a post from Bluesky using user's session
+ * Delete a post from Bluesky using user's session (OAuth preferred, legacy fallback)
  */
 export async function deleteFromBluesky(
   request: NextRequest,
-  postUri: string
+  postUri: string,
+  userDID?: string
 ): Promise<BlueskyDeleteResult> {
   try {
-    console.log("[Bluesky] Deleting post:", postUri);
+    // Parse post URI to get rkey: at://did:plc:xxx/app.bsky.feed.post/RKEY
+    const uriParts = postUri.split('/');
+    const rkey = uriParts[uriParts.length - 1];
 
-    // Get Bluesky session from iron-session
+    // 1. Try OAuth agent first
+    if (userDID) {
+      const blueskyOAuthDID = await getBlueskyOAuthDID(userDID);
+      if (blueskyOAuthDID) {
+        const agent = await getOAuthAgent(blueskyOAuthDID);
+        if (agent) {
+          await agent.deletePost(postUri);
+          console.log("[Bluesky OAuth] Post deleted successfully");
+          return { success: true };
+        }
+      }
+    }
+
+    // 2. Fall back to legacy iron-session
     const response = NextResponse.json({ ok: true });
     const session = await getIronSession<SessionData>(request, response, sessionOptions);
 
     if (!session.bluesky?.handle || !session.bluesky?.appPassword) {
-      return {
-        success: false,
-        error: "Bluesky not connected"
-      };
+      return { success: false, error: "Bluesky not connected" };
     }
 
     const { handle, appPassword } = session.bluesky;
 
-    // Authenticate with Bluesky
     const authResponse = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        identifier: handle,
-        password: appPassword,
-      }),
+      body: JSON.stringify({ identifier: handle, password: appPassword }),
     });
 
     if (!authResponse.ok) {
-      return {
-        success: false,
-        error: "Failed to authenticate with Bluesky"
-      };
+      return { success: false, error: "Failed to authenticate with Bluesky" };
     }
 
     const authData = await authResponse.json();
     const { accessJwt, did } = authData;
 
-    // Parse post URI to get rkey: at://did:plc:xxx/app.bsky.feed.post/RKEY
-    const uriParts = postUri.split('/');
-    const rkey = uriParts[uriParts.length - 1];
-
-    // Delete the post
     const deleteResponse = await fetch(
       "https://bsky.social/xrpc/com.atproto.repo.deleteRecord",
       {
@@ -393,14 +454,10 @@ export async function deleteFromBluesky(
 
     if (!deleteResponse.ok) {
       const errorText = await deleteResponse.text();
-      console.error("[Bluesky] Delete failed:", errorText);
-      return {
-        success: false,
-        error: `Failed to delete from Bluesky: ${errorText}`
-      };
+      return { success: false, error: `Failed to delete from Bluesky: ${errorText}` };
     }
 
-    console.log("[Bluesky] ✅ Post deleted successfully");
+    console.log("[Bluesky] Post deleted successfully");
     return { success: true };
   } catch (error) {
     console.error("[Bluesky] Error deleting:", error);

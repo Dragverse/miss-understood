@@ -71,6 +71,9 @@ export interface Video {
   cid?: string; // Bluesky CID for actions
   youtubeId?: string; // YouTube video ID
   youtubeChannelId?: string; // YouTube channel ID
+  // Scheduling / Premiere
+  publishedAt?: Date | null;
+  premiereMode?: 'countdown' | 'silent' | null;
 }
 
 export interface ShareToken {

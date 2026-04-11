@@ -1,4 +1,4 @@
-import { supabase, getSupabaseServerClient } from './client';
+import { getSupabaseServerClient } from './client';
 
 export interface Notification {
   id: string;
@@ -22,7 +22,7 @@ export async function createNotification(input: {
   message: string;
   link?: string;
 }) {
-  if (!supabase) return null;
+  const supabase = getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from('notifications')
@@ -43,7 +43,7 @@ export async function createNotification(input: {
 }
 
 export async function getNotifications(userDID: string, limit = 50): Promise<Notification[]> {
-  if (!supabase) return [];
+  const supabase = getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from('notifications')
@@ -57,10 +57,7 @@ export async function getNotifications(userDID: string, limit = 50): Promise<Not
 }
 
 export async function getUnreadCount(userDID: string): Promise<number> {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return 0;
-  }
+  const supabase = getSupabaseServerClient();
 
   const { count, error } = await supabase
     .from('notifications')
@@ -73,10 +70,7 @@ export async function getUnreadCount(userDID: string): Promise<number> {
 }
 
 export async function markAsRead(notificationId: string) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return;
-  }
+  const supabase = getSupabaseServerClient();
 
   const { error } = await supabase
     .from('notifications')
@@ -87,10 +81,7 @@ export async function markAsRead(notificationId: string) {
 }
 
 export async function markAllAsRead(userDID: string) {
-  if (!supabase) {
-    console.warn('Supabase not configured');
-    return;
-  }
+  const supabase = getSupabaseServerClient();
 
   const { error } = await supabase
     .from('notifications')

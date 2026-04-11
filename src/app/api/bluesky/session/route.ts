@@ -2,14 +2,58 @@ import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, SessionData } from "@/lib/session/config";
 import { verifyAuth } from "@/lib/auth/verify";
+import { verifyAuthFromCookies } from "@/lib/auth/verify";
+import {
+  getBlueskyOAuthDID,
+  getOAuthAgent,
+  clearBlueskyOAuth,
+} from "@/lib/bluesky/oauth-client";
 import { createClient } from "@supabase/supabase-js";
 
 /**
  * GET /api/bluesky/session
- * Check if user has active Bluesky session
+ * Check if user has active Bluesky session (OAuth or legacy)
  */
 export async function GET(request: NextRequest) {
   try {
+    // 1. Try OAuth session first
+    const auth =
+      (await verifyAuthFromCookies(request).catch(() => null)) ||
+      (await verifyAuth(request).catch(() => null));
+
+    if (auth?.authenticated && auth.userId) {
+      const blueskyDID = await getBlueskyOAuthDID(auth.userId);
+
+      if (blueskyDID) {
+        // Try to get an active OAuth agent
+        const agent = await getOAuthAgent(blueskyDID);
+        if (agent) {
+          try {
+            const profile = await agent.getProfile({ actor: blueskyDID });
+            return NextResponse.json({
+              connected: true,
+              method: "oauth",
+              handle: profile.data.handle,
+              displayName: profile.data.displayName,
+              avatar: profile.data.avatar,
+            });
+          } catch (profileError) {
+            console.error(
+              "[Bluesky Session] OAuth profile fetch failed:",
+              profileError
+            );
+            // Session exists but profile failed - still connected
+            return NextResponse.json({
+              connected: true,
+              method: "oauth",
+              handle: blueskyDID,
+            });
+          }
+        }
+      }
+    }
+
+    // 2. Fall back to legacy iron-session cookie
     const response = NextResponse.json({ connected: false });
     const session = await getIronSession<SessionData>(
       request,
@@ -17,17 +61,18 @@ export async function GET(request: NextRequest) {
       sessionOptions
     );
 
-    if (!session.bluesky) {
-      return NextResponse.json({ connected: false });
+    if (session.bluesky) {
+      return NextResponse.json({
+        connected: true,
+        method: "legacy",
+        handle: session.bluesky.handle,
+        displayName: session.bluesky.displayName,
+        avatar: session.bluesky.avatar,
+        connectedAt: session.bluesky.connectedAt,
+      });
     }
 
-    return NextResponse.json({
-      connected: true,
-      handle: session.bluesky.handle,
-      displayName: session.bluesky.displayName,
-      avatar: session.bluesky.avatar,
-      connectedAt: session.bluesky.connectedAt,
-    });
+    return NextResponse.json({ connected: false });
   } catch (error) {
     console.error("Session check error:", error);
     return NextResponse.json({ connected: false });
@@ -36,7 +81,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * DELETE /api/bluesky/session
- * Disconnect Bluesky account (clear session)
+ * Disconnect Bluesky account (OAuth + legacy)
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -45,54 +90,26 @@ export async function DELETE(request: NextRequest) {
       message: "Bluesky account disconnected",
     });
 
+    // Clear legacy iron-session
     const session = await getIronSession<SessionData>(
       request,
       response,
       sessionOptions
     );
-
-    // Clear Bluesky session data
     delete session.bluesky;
     await session.save();
 
-    // Clear database connection status for consistency across all pages
-    try {
-      const auth = await verifyAuth(request);
-      if (auth.authenticated && auth.userId) {
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-        const { error: updateError } = await supabase
-          .from("creators")
-          .update({
-            bluesky_handle: null,
-            bluesky_did: null,
-            bluesky_app_password: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("did", auth.userId);
-
-        if (updateError) {
-          console.error("[Bluesky Disconnect] Database clear failed:", updateError);
-        } else {
-          console.log("[Bluesky Disconnect] ✅ Cleared connection from database");
-        }
-      }
-    } catch (syncError) {
-      // Non-fatal error - session is already cleared, database sync is supplementary
-      console.error("[Bluesky Disconnect] Database clear error:", syncError);
+    // Clear OAuth + database
+    const auth = await verifyAuth(request).catch(() => null);
+    if (auth?.authenticated && auth.userId) {
+      await clearBlueskyOAuth(auth.userId);
     }
 
     return response;
   } catch (error) {
     console.error("Session disconnect error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to disconnect account",
-      },
+      { success: false, error: "Failed to disconnect account" },
       { status: 500 }
     );
   }

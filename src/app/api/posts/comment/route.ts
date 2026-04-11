@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
 import { verifyAuth } from "@/lib/auth/verify";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
 
 /**
  * POST /api/posts/comment
@@ -14,6 +15,11 @@ export async function POST(request: NextRequest) {
         { error: "Authentication required to comment" },
         { status: 401 }
       );
+    }
+
+    const rateLimit = checkRateLimit(`postcomment:${auth.userId}`, 20, 60000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
     const { postId, content, parentCommentId } = await request.json();

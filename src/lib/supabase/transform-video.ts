@@ -87,6 +87,8 @@ export async function transformVideoWithCreator(supabaseVideo: SupabaseVideo): P
     category: supabaseVideo.category || 'Other',
     tags: supabaseVideo.tags || [],
     source: 'ceramic' as const,
+    publishedAt: supabaseVideo.published_at ? new Date(supabaseVideo.published_at) : null,
+    premiereMode: supabaseVideo.premiere_mode || null,
   };
 }
 
@@ -174,6 +176,8 @@ export async function transformVideosWithCreators(supabaseVideos: SupabaseVideo[
       category: v.category || 'Other',
       tags: v.tags || [],
       source: 'ceramic' as const,
+      publishedAt: v.published_at ? new Date(v.published_at) : null,
+      premiereMode: v.premiere_mode || null,
     };
   });
 }

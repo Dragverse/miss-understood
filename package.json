@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@atproto/api": "^0.18.15",
+    "@atproto/oauth-client-node": "^0.3.17",
     "@farcaster/core": "^0.18.10",
     "@farcaster/hub-nodejs": "^0.15.10",
     "@livepeer/react": "^4.3.6",

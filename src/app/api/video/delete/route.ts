@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
-import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
+import { verifyAuth } from "@/lib/auth/verify";
 
 /**
  * DELETE /api/video/delete
@@ -9,15 +9,11 @@ import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 export async function DELETE(request: NextRequest) {
   try {
     // Verify authentication
-    let userDID = "anonymous";
-
-    if (isPrivyConfigured()) {
-      const auth = await verifyAuth(request);
-      if (!auth.authenticated) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      userDID = auth.userId || "anonymous";
+    const auth = await verifyAuth(request);
+    if (!auth.authenticated || !auth.userId) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
+    const userDID = auth.userId;
 
     // Get video ID from request body
     const body = await request.json();
