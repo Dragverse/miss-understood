@@ -2,7 +2,8 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import Image from "next/image";
-import { FiUser, FiLogIn, FiHeart, FiVideo, FiEye, FiStar, FiCalendar, FiGlobe, FiShare2, FiCheck, FiMusic, FiGrid, FiImage, FiMessageSquare, FiInfo, FiFilm, FiHeadphones, FiPlay } from "react-icons/fi";
+import { FiUser, FiLogIn, FiHeart, FiVideo, FiEye, FiStar, FiShare2, FiCheck, FiMusic, FiGrid, FiImage, FiMessageSquare, FiFilm, FiHeadphones, FiPlay } from "react-icons/fi";
+import { FaYoutube } from "react-icons/fa";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SnapshotsSlider } from "@/components/profile/snapshots-slider";
@@ -17,15 +18,20 @@ import { LoadingShimmer } from "@/components/shared";
 import { usePrivy } from "@privy-io/react-auth";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
-import { FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
-import { SiBluesky } from "react-icons/si";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
+import { PostCard as FeedPostCard } from "@/components/feed/post-card";
+import { BlueskyBadge } from "@/components/profile/bluesky-badge";
+import { YouTubeBadge } from "@/components/profile/youtube-badge";
+import { InstagramBadge } from "@/components/profile/instagram-badge";
+import { TikTokBadge } from "@/components/profile/tiktok-badge";
+import { WebsiteBadge } from "@/components/profile/website-badge";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle, blueskyProfile: blueskyProfileFromHook } = useAuthUser();
   const { getAccessToken } = usePrivy();
-  const [activeTab, setActiveTab] = useState<"videos" | "snapshots" | "audio" | "photos" | "posts" | "about">("videos");
+  const [activeTab, setActiveTab] = useState<"videos" | "snapshots" | "audio" | "photos" | "posts">("videos");
+  const [bioExpanded, setBioExpanded] = useState(false);
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isLoadingContent, setIsLoadingContent] = useState(true);
@@ -566,6 +572,11 @@ export default function ProfilePage() {
                   </div>
                   <div className="flex items-center gap-2 mb-3">
                     <p className="text-white/90 text-lg md:text-xl drop-shadow-lg">@{creator.handle}</p>
+                    {creator.blueskyHandle && <BlueskyBadge handle={creator.blueskyHandle} />}
+                    {creator.youtubeChannelId && <YouTubeBadge channelId={creator.youtubeChannelId} channelName={creator.youtubeChannelName} />}
+                    {creator.instagramHandle && <InstagramBadge handle={creator.instagramHandle} />}
+                    {creator.tiktokHandle && <TikTokBadge handle={creator.tiktokHandle} />}
+                    {creator.website && <WebsiteBadge url={creator.website} />}
                   </div>
                   {/* Stats inline */}
                   <div className="flex gap-6 text-sm md:text-base">
@@ -650,72 +661,19 @@ export default function ProfilePage() {
 
       {/* Content area */}
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
-        {/* Bio and Social Links */}
-        {(creator.description || creator.instagramHandle || creator.tiktokHandle || creator.blueskyHandle || creator.farcasterHandle || creator.youtubeChannelId || creator.website) && (
-          <div className="mb-8">
-            {creator.description && (
-              <p className="text-gray-200 text-base leading-relaxed mb-4 max-w-3xl">
-                {creator.description}
-              </p>
-            )}
-            {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle || creator.farcasterHandle || creator.youtubeChannelId) && (
-              <div className="flex flex-wrap gap-2">
-                {creator.youtubeChannelId && (
-                  <a
-                    href={`https://www.youtube.com/channel/${creator.youtubeChannelId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#FF0000] to-[#CC0000] hover:from-[#EE0000] hover:to-[#BB0000] text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    <FaYoutube className="w-3.5 h-3.5" />
-                    <span>{creator.youtubeChannelName || "YouTube"}</span>
-                  </a>
-                )}
-                {creator.instagramHandle && (
-                  <a
-                    href={`https://instagram.com/${creator.instagramHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#E1306C] to-[#C13584] hover:from-[#D12963] hover:to-[#B02575] text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    <FaInstagram className="w-3.5 h-3.5" />
-                    <span>Instagram</span>
-                  </a>
-                )}
-                {creator.tiktokHandle && (
-                  <a
-                    href={`https://tiktok.com/@${creator.tiktokHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#000000] to-[#00f2ea] hover:from-[#111111] hover:to-[#00d9d1] text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    <FaTiktok className="w-3.5 h-3.5" />
-                    <span>TikTok</span>
-                  </a>
-                )}
-                {creator.blueskyHandle && (
-                  <a
-                    href={`https://bsky.app/profile/${creator.blueskyHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#0085ff] to-[#0066cc] hover:from-[#0077ee] hover:to-[#0055bb] text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    <SiBluesky className="w-3.5 h-3.5" />
-                    <span>Bluesky</span>
-                  </a>
-                )}
-                {creator.website && (
-                  <a
-                    href={creator.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2f2942] hover:bg-[#3f3952] text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    <FiGlobe className="w-3.5 h-3.5" />
-                    <span>Website</span>
-                  </a>
-                )}
-              </div>
+        {/* Bio */}
+        {creator.description && (
+          <div className="mb-8 max-w-3xl">
+            <p className={`text-gray-200 text-sm leading-relaxed ${!bioExpanded ? "line-clamp-2" : ""}`}>
+              {creator.description}
+            </p>
+            {creator.description.length > 120 && !bioExpanded && (
+              <button
+                onClick={() => setBioExpanded(true)}
+                className="text-gray-400 text-sm font-medium mt-0.5"
+              >
+                ...more
+              </button>
             )}
           </div>
         )}
@@ -823,24 +781,6 @@ export default function ProfilePage() {
               )}
             </button>
 
-            <button
-              role="tab"
-              aria-selected={activeTab === "about"}
-              aria-label="View about content"
-              aria-current={activeTab === "about" ? "page" : undefined}
-              onClick={() => setActiveTab("about")}
-              className={`flex items-center gap-2 py-4 px-2 transition relative ${
-                activeTab === "about"
-                  ? "text-[#EB83EA]"
-                  : "text-gray-500 hover:text-gray-300"
-              }`}
-            >
-              <FiInfo className="w-6 h-6" />
-              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">About</span>
-              {activeTab === "about" && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
-              )}
-            </button>
           </div>
 
           {/* Tab Content - 3 Column Grid */}
@@ -1096,241 +1036,45 @@ export default function ProfilePage() {
               {userPosts.length > 0 ? (
                 <div className="max-w-4xl mx-auto space-y-6">
                   {userPosts.filter(post => post && typeof post === 'object').map((post) => (
-                    <article
+                    <FeedPostCard
                       key={post.id}
-                      className="group relative bg-gradient-to-br from-[#1a0b2e] via-[#2f1942] to-[#1a0b2e] rounded-3xl p-8 border-2 border-transparent hover:border-[#EB83EA]/30 transition-all duration-300 overflow-hidden"
-                      style={{
-                        backgroundImage: 'linear-gradient(135deg, rgba(235, 131, 234, 0.03) 0%, rgba(124, 58, 237, 0.03) 100%)',
+                      post={{
+                        ...post,
+                        description: post.text_content || post.description || "",
+                        createdAt: post.created_at || post.createdAt,
+                        thumbnail: post.media_urls?.[0] || post.thumbnail,
+                        creator: post.creator ? {
+                          displayName: post.creator.display_name || post.creator.displayName,
+                          handle: post.creator.handle,
+                          avatar: post.creator.avatar,
+                          did: post.creator.did,
+                          blueskyHandle: post.creator.blueskyHandle,
+                        } : {
+                          displayName: creator.displayName,
+                          handle: creator.handle,
+                          avatar: creator.avatar,
+                          did: creator.did,
+                          blueskyHandle: creator.blueskyHandle,
+                        },
                       }}
-                    >
-                      {/* Holographic border effect */}
-                      <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                        style={{
-                          background: 'linear-gradient(90deg, rgba(235, 131, 234, 0.1), rgba(124, 58, 237, 0.1), rgba(235, 131, 234, 0.1))',
-                          backgroundSize: '200% 100%',
-                          animation: 'shimmer-bg 3s linear infinite',
-                        }}
-                      />
-
-                      {/* Source badge - Top right */}
-                      <div className="absolute top-6 right-6">
-                        {post.source === "dragverse" ? (
-                          <div className="px-4 py-1.5 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-full text-xs font-bold text-white shadow-lg shadow-[#EB83EA]/30 flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                            Dragverse
-                          </div>
-                        ) : (
-                          <div className="px-4 py-1.5 bg-gradient-to-r from-[#0085ff] to-[#0066cc] rounded-full text-xs font-bold text-white shadow-lg">
-                            Bluesky
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Media preview if available */}
-                      {post.thumbnail && (
-                        <div className="relative w-full h-64 mb-6 rounded-2xl overflow-hidden border-2 border-[#EB83EA]/20">
-                          <Image
-                            src={post.thumbnail}
-                            alt="Post media"
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      )}
-
-                      {/* Post content */}
-                      <div className="relative z-10">
-                        <p className="text-gray-100 text-lg mb-6 whitespace-pre-wrap leading-relaxed font-light">
-                          {post.text_content || post.description || ""}
-                        </p>
-
-                        {/* Footer with metadata */}
-                        <div className="flex items-center justify-between pt-4 border-t border-[#EB83EA]/10">
-                          <div className="flex items-center gap-4">
-                            {/* Date */}
-                            <span className="flex items-center gap-2 text-gray-400 text-sm">
-                              <FiCalendar className="w-4 h-4" />
-                              {(() => {
-                                const d = new Date(post.createdAt || post.created_at);
-                                return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                });
-                              })()}
-                            </span>
-
-                            {/* Engagement metrics if available */}
-                            {post.likes !== undefined && post.likes > 0 && (
-                              <span className="flex items-center gap-1.5 text-gray-400 text-sm">
-                                <FiHeart className="w-4 h-4 text-[#EB83EA]" />
-                                {post.likes.toLocaleString()}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* External link for Bluesky posts */}
-                          {post.externalUrl && (
-                            <a
-                              href={post.externalUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 px-4 py-2 bg-[#0085ff]/10 hover:bg-[#0085ff]/20 border border-[#0085ff]/30 rounded-full text-[#0085ff] text-sm font-semibold transition-all"
-                            >
-                              View on Bluesky
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                              </svg>
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </article>
+                    />
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-16">
                   <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
-                    <FiUser className="w-10 h-10 text-gray-500" />
+                    <FiMessageSquare className="w-10 h-10 text-gray-500" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2">
-                    {creator.blueskyHandle ? "No Posts Yet" : "Connect Bluesky"}
-                  </h3>
-                  <p className="text-gray-400 mb-6">
-                    {creator.blueskyHandle
-                      ? "Share your thoughts with the community"
-                      : "Connect your Bluesky account to share updates"}
-                  </p>
-                  {!creator.blueskyHandle && (
-                    <button
-                      onClick={() => router.push("/settings")}
-                      className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all"
-                    >
-                      Connect Bluesky
-                    </button>
-                  )}
+                  <h3 className="text-xl font-bold mb-2">No Posts Yet</h3>
+                  <p className="text-gray-400 mb-6">Share your thoughts with the community</p>
+                  <button
+                    onClick={() => router.push("/feed")}
+                    className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all"
+                  >
+                    Create Your First Post
+                  </button>
                 </div>
               )}
-            </div>
-          )}
-
-          {activeTab === "about" && (
-            <div className="max-w-3xl mx-auto">
-              <div className="space-y-6">
-                {/* Profile Link Section */}
-                <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
-                  <h3 className="text-lg font-bold text-[#EB83EA] mb-3 uppercase tracking-wide">Profile Link</h3>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 bg-[#0f071a] rounded-xl px-4 py-3 border border-[#EB83EA]/20">
-                      <p className="text-gray-300 font-mono text-sm break-all">
-                        {typeof window !== 'undefined' ? `${window.location.origin}/u/${creator.handle}` : `/u/${creator.handle}`}
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleShareProfile}
-                      className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap"
-                    >
-                      {profileLinkCopied ? (
-                        <>
-                          <FiCheck className="w-5 h-5" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <FiShare2 className="w-5 h-5" />
-                          Copy Link
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bio Section */}
-                <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
-                  <h3 className="text-lg font-bold text-[#EB83EA] mb-3 uppercase tracking-wide">About</h3>
-                  <p className="text-gray-200 leading-relaxed">
-                    {creator.description || "No bio added yet"}
-                  </p>
-                </div>
-
-                {/* Social Links */}
-                {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle || creator.youtubeChannelId) && (
-                  <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
-                    <h3 className="text-lg font-bold text-[#EB83EA] mb-4 uppercase tracking-wide">Social Links</h3>
-                    <div className="space-y-3">
-                      {creator.youtubeChannelId && (
-                        <a
-                          href={`https://www.youtube.com/channel/${creator.youtubeChannelId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-gray-300 hover:text-red-400 transition"
-                        >
-                          <FaYoutube className="w-5 h-5 text-red-500" />
-                          <span className="font-semibold">YouTube:</span>
-                          <span>{creator.youtubeChannelName || "Channel"}</span>
-                        </a>
-                      )}
-                      {creator.instagramHandle && (
-                        <a
-                          href={`https://instagram.com/${creator.instagramHandle}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
-                        >
-                          <span className="font-semibold">Instagram:</span>
-                          <span>@{creator.instagramHandle}</span>
-                        </a>
-                      )}
-                      {creator.tiktokHandle && (
-                        <a
-                          href={`https://tiktok.com/@${creator.tiktokHandle}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
-                        >
-                          <span className="font-semibold">TikTok:</span>
-                          <span>@{creator.tiktokHandle}</span>
-                        </a>
-                      )}
-                      {creator.blueskyHandle && (
-                        <a
-                          href={`https://bsky.app/profile/${creator.blueskyHandle}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
-                        >
-                          <span className="font-semibold">Bluesky:</span>
-                          <span>@{creator.blueskyHandle}</span>
-                        </a>
-                      )}
-                      {creator.website && (
-                        <a
-                          href={creator.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
-                        >
-                          <span className="font-semibold">Website:</span>
-                          <span>{creator.website}</span>
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Join Date */}
-                <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
-                  <h3 className="text-lg font-bold text-[#EB83EA] mb-3 uppercase tracking-wide">Member Since</h3>
-                  <p className="text-gray-200 flex items-center gap-2">
-                    <FiCalendar className="w-5 h-5" />
-                    {creator.createdAt.toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
             </div>
           )}
         </div>

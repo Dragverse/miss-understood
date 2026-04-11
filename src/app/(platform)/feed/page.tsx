@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { PostCard as BlueskyPostCard } from "@/components/feed/post-card";
-import { PostCard } from "@/components/posts/post-card";
 import { PostComposer } from "@/components/posts/post-composer";
 import { FeedRightSidebar } from "@/components/feed/feed-right-sidebar";
 import { CardSkeleton } from "@/components/shared";

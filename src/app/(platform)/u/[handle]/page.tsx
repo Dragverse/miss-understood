@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiFilm, FiHeadphones, FiMessageSquare, FiInfo, FiMusic, FiGrid, FiCalendar, FiGlobe, FiShare2, FiCheck, FiPlay, FiClock } from "react-icons/fi";
+import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiFilm, FiHeadphones, FiMessageSquare, FiMusic, FiGrid, FiShare2, FiCheck, FiPlay, FiClock } from "react-icons/fi";
 import { FaYoutube } from "react-icons/fa";
 import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
 import { FarcasterBadge } from "@/components/profile/farcaster-badge";
 import { YouTubeBadge } from "@/components/profile/youtube-badge";
+import { InstagramBadge } from "@/components/profile/instagram-badge";
+import { TikTokBadge } from "@/components/profile/tiktok-badge";
+import { WebsiteBadge } from "@/components/profile/website-badge";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { SnapshotsSlider } from "@/components/profile/snapshots-slider";
@@ -20,10 +23,7 @@ import { getVideosByCreator } from "@/lib/supabase/videos";
 import { useBlueskyProfileByHandle } from "@/lib/bluesky/hooks";
 import { Creator, Video } from "@/types";
 import { getUserBadgeType } from "@/lib/verification";
-import { FaInstagram, FaTiktok } from "react-icons/fa";
-import { SiBluesky } from "react-icons/si";
 import { PostCard as FeedPostCard } from "@/components/feed/post-card";
-import { PostCard as DragversePostCard } from "@/components/posts/post-card";
 
 /**
  * Dynamic Profile Page - Instagram Style
@@ -38,7 +38,7 @@ export default function DynamicProfilePage() {
 
   const [profileType, setProfileType] = useState<"loading" | "dragverse" | "bluesky" | "not-found">("loading");
   const [creator, setCreator] = useState<Creator | null>(null);
-  const [activeTab, setActiveTab] = useState<"videos" | "snapshots" | "audio" | "posts" | "about">("videos");
+  const [activeTab, setActiveTab] = useState<"videos" | "snapshots" | "audio" | "posts">("videos");
   const currentUserDID = user?.id;
 
   // Content states
@@ -46,6 +46,7 @@ export default function DynamicProfilePage() {
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [profileLinkCopied, setProfileLinkCopied] = useState(false);
+  const [bioExpanded, setBioExpanded] = useState(false);
   const [showSnapshotPlayer, setShowSnapshotPlayer] = useState(false);
   const [selectedSnapshotIndex, setSelectedSnapshotIndex] = useState(0);
   const [connectedBlueskyStats, setConnectedBlueskyStats] = useState<{ followersCount: number; followsCount: number } | null>(null);
@@ -94,9 +95,9 @@ export default function DynamicProfilePage() {
           setCreator(transformSupabaseCreator(ceramicProfile));
           setProfileType("dragverse");
 
-          // Load content for Dragverse user (Dragverse + connected YouTube channel)
+          // Load content for Dragverse user
           const isOwner = currentUserDID === ceramicProfile.did;
-          loadUserContent(ceramicProfile.did, ceramicProfile.youtube_channel_id || undefined, isOwner);
+          loadUserContent(ceramicProfile.did, isOwner);
 
           // Fetch Bluesky stats if user has connected Bluesky
           if (ceramicProfile.bluesky_handle) {
@@ -151,12 +152,12 @@ export default function DynamicProfilePage() {
   }, [handle, blueskyProfile, blueskyLoading, blueskyError, isBlueskyHandle]);
 
   // Load videos and other content from database
-  async function loadUserContent(creatorDID: string, youtubeChannelId?: string, isOwner = false) {
+  async function loadUserContent(creatorDID: string, isOwner = false) {
     setIsLoadingContent(true);
     try {
-      // Fetch Dragverse videos, posts, and YouTube videos in parallel
+      // Fetch Dragverse videos and posts in parallel
       // Owner sees scheduled content too
-      const [videos, postsResponse, youtubeVideos] = await Promise.all([
+      const [videos, postsResponse] = await Promise.all([
         getVideosByCreator(creatorDID, 50, isOwner).catch(err => {
           console.error("Failed to fetch videos:", err);
           return [] as any[];
@@ -166,19 +167,6 @@ export default function DynamicProfilePage() {
             console.error("Failed to fetch posts:", err);
             return new Response(JSON.stringify({ success: false, posts: [] }), { status: 500 });
           }),
-        youtubeChannelId
-          ? fetch(`/api/youtube/feed?channelId=${encodeURIComponent(youtubeChannelId)}&limit=15`)
-              .then(res => res.ok ? res.json() : { videos: [] })
-              .then(data => ((data.videos || []) as any[]).map((v: any) => ({
-                ...v,
-                createdAt: new Date(v.createdAt),
-                creator: {
-                  ...v.creator,
-                  createdAt: new Date(v.creator?.createdAt || Date.now()),
-                },
-              })) as Video[])
-              .catch(() => [] as Video[])
-          : Promise.resolve([] as Video[]),
       ]);
 
       const transformedVideos: Video[] = videos.map((sv) => ({
@@ -201,10 +189,7 @@ export default function DynamicProfilePage() {
         premiereMode: sv.premiere_mode || null,
       }));
 
-      // Merge Dragverse videos with YouTube channel videos
-      const allVideos = [...transformedVideos, ...youtubeVideos];
-      allVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setUserVideos(allVideos);
+      setUserVideos(transformedVideos);
 
       // Parse posts data
       if (postsResponse.ok) {
@@ -376,15 +361,12 @@ export default function DynamicProfilePage() {
                   </div>
                   <div className="flex items-center gap-2 mb-3">
                     <p className="text-white/90 text-lg md:text-xl drop-shadow-lg">@{creator.handle}</p>
-                    {creator.blueskyHandle && (
-                      <BlueskyBadge handle={creator.blueskyHandle} />
-                    )}
-                    {creator.farcasterHandle && (
-                      <FarcasterBadge username={creator.farcasterHandle} />
-                    )}
-                    {creator.youtubeChannelId && (
-                      <YouTubeBadge channelId={creator.youtubeChannelId} channelName={creator.youtubeChannelName} />
-                    )}
+                    {creator.blueskyHandle && <BlueskyBadge handle={creator.blueskyHandle} />}
+                    {creator.farcasterHandle && <FarcasterBadge username={creator.farcasterHandle} />}
+                    {creator.youtubeChannelId && <YouTubeBadge channelId={creator.youtubeChannelId} channelName={creator.youtubeChannelName} />}
+                    {creator.instagramHandle && <InstagramBadge handle={creator.instagramHandle} />}
+                    {creator.tiktokHandle && <TikTokBadge handle={creator.tiktokHandle} />}
+                    {creator.website && <WebsiteBadge url={creator.website} />}
                   </div>
                   {/* Stats inline */}
                   <div className="flex gap-6 text-sm md:text-base">
@@ -455,76 +437,19 @@ export default function DynamicProfilePage() {
 
       {/* Content area */}
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
-        {/* Bio and Social Links */}
-        {(creator.description || creator.instagramHandle || creator.tiktokHandle || creator.blueskyHandle || creator.farcasterHandle || creator.website) && (
-          <div className="mb-8">
-            {creator.description && (
-              <p className="text-gray-200 text-base leading-relaxed mb-4 max-w-3xl">
-                {creator.description}
-              </p>
-            )}
-            {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle || creator.farcasterHandle) && (
-              <div className="flex flex-wrap gap-2">
-                {creator.instagramHandle && (
-                  <a
-                    href={`https://instagram.com/${creator.instagramHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#E1306C] to-[#C13584] hover:from-[#D12963] hover:to-[#B02575] text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    <FaInstagram className="w-3.5 h-3.5" />
-                    <span>Instagram</span>
-                  </a>
-                )}
-                {creator.tiktokHandle && (
-                  <a
-                    href={`https://tiktok.com/@${creator.tiktokHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#000000] to-[#00f2ea] hover:from-[#111111] hover:to-[#00d9d1] text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    <FaTiktok className="w-3.5 h-3.5" />
-                    <span>TikTok</span>
-                  </a>
-                )}
-                {creator.blueskyHandle && (
-                  <a
-                    href={`https://bsky.app/profile/${creator.blueskyHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#0085ff] to-[#0066cc] hover:from-[#0077ee] hover:to-[#0055bb] text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    <SiBluesky className="w-3.5 h-3.5" />
-                    <span>Bluesky</span>
-                  </a>
-                )}
-                {creator.farcasterHandle && (
-                  <a
-                    href={`https://warpcast.com/${creator.farcasterHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#8a63d2] to-[#6633cc] hover:from-[#7b54c3] hover:to-[#5522bb] text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 1000 1000" fill="currentColor">
-                      <path d="M257.778 155.556H742.222V844.444H671.111V528.889H670.414C662.554 441.677 589.258 373.333 500 373.333C410.742 373.333 337.446 441.677 329.586 528.889H328.889V844.444H257.778V155.556Z" />
-                      <path d="M128.889 253.333L156.111 155.556H193.333V253.333H128.889Z" />
-                      <path d="M806.667 253.333L833.889 155.556H871.111V253.333H806.667Z" />
-                    </svg>
-                    <span>Farcaster</span>
-                  </a>
-                )}
-                {creator.website && (
-                  <a
-                    href={creator.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2f2942] hover:bg-[#3f3952] text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    <FiGlobe className="w-3.5 h-3.5" />
-                    <span>Website</span>
-                  </a>
-                )}
-              </div>
+        {/* Bio */}
+        {creator.description && (
+          <div className="mb-8 max-w-3xl">
+            <p className={`text-gray-200 text-sm leading-relaxed ${!bioExpanded ? "line-clamp-2" : ""}`}>
+              {creator.description}
+            </p>
+            {creator.description.length > 120 && !bioExpanded && (
+              <button
+                onClick={() => setBioExpanded(true)}
+                className="text-gray-400 text-sm font-medium mt-0.5"
+              >
+                ...more
+              </button>
             )}
           </div>
         )}
@@ -605,22 +530,6 @@ export default function DynamicProfilePage() {
               )}
             </button>
 
-            <button
-              onClick={() => setActiveTab("about")}
-              className={`flex items-center gap-2 py-4 px-2 transition relative ${
-                activeTab === "about"
-                  ? "text-[#EB83EA]"
-                  : "text-gray-500 hover:text-gray-300"
-              }`}
-              aria-label="View about content"
-              aria-current={activeTab === "about" ? "page" : undefined}
-            >
-              <FiInfo className="w-6 h-6" />
-              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">About</span>
-              {activeTab === "about" && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
-              )}
-            </button>
           </div>
 
           {/* Tab Content - 3 Column Grid */}
@@ -804,28 +713,30 @@ export default function DynamicProfilePage() {
             <div>
               {userPosts.length > 0 ? (
                 <div className="max-w-4xl mx-auto space-y-6">
-                  {userPosts.filter(post => post && typeof post === 'object').map((post) =>
-                    profileType === "dragverse" ? (
-                      <DragversePostCard
-                        key={post.id}
-                        post={{
-                          ...post,
-                          creator: post.creator || {
-                            did: creator!.did,
-                            handle: creator!.handle,
-                            display_name: creator!.displayName,
-                            avatar: creator!.avatar,
-                            verified: !!creator!.blueskyHandle,
-                          },
-                        }}
-                      />
-                    ) : (
-                      <FeedPostCard
-                        key={post.id}
-                        post={post}
-                      />
-                    )
-                  )}
+                  {userPosts.filter(post => post && typeof post === 'object').map((post) => (
+                    <FeedPostCard
+                      key={post.id}
+                      post={{
+                        ...post,
+                        description: post.text_content || post.description || "",
+                        createdAt: post.created_at || post.createdAt,
+                        thumbnail: post.media_urls?.[0] || post.thumbnail,
+                        creator: post.creator ? {
+                          displayName: post.creator.display_name || post.creator.displayName,
+                          handle: post.creator.handle,
+                          avatar: post.creator.avatar,
+                          did: post.creator.did,
+                          blueskyHandle: post.creator.blueskyHandle,
+                        } : {
+                          displayName: creator!.displayName,
+                          handle: creator!.handle,
+                          avatar: creator!.avatar,
+                          did: creator!.did,
+                          blueskyHandle: creator!.blueskyHandle,
+                        },
+                      }}
+                    />
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-16">
@@ -833,119 +744,9 @@ export default function DynamicProfilePage() {
                     <FiMessageSquare className="w-10 h-10 text-gray-500" />
                   </div>
                   <h3 className="text-xl font-bold mb-2">No Posts Yet</h3>
-                  <p className="text-gray-400">When {creator?.displayName} shares stories, they'll appear here</p>
+                  <p className="text-gray-400">When {creator?.displayName} shares stories, they&apos;ll appear here</p>
                 </div>
               )}
-            </div>
-          )}
-
-          {activeTab === "about" && (
-            <div className="max-w-3xl mx-auto">
-              <div className="space-y-6">
-                {/* Profile Link Section */}
-                <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
-                  <h3 className="text-lg font-bold text-[#EB83EA] mb-3 uppercase tracking-wide">Profile Link</h3>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 bg-[#0f071a] rounded-xl px-4 py-3 border border-[#EB83EA]/20">
-                      <p className="text-gray-300 font-mono text-sm break-all">
-                        {typeof window !== 'undefined' ? `${window.location.origin}/u/${creator.handle}` : `/u/${creator.handle}`}
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleShareProfile}
-                      className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap"
-                    >
-                      {profileLinkCopied ? (
-                        <>
-                          <FiCheck className="w-5 h-5" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <FiShare2 className="w-5 h-5" />
-                          Copy Link
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bio Section */}
-                <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
-                  <h3 className="text-lg font-bold text-[#EB83EA] mb-3 uppercase tracking-wide">About</h3>
-                  <p className="text-gray-200 leading-relaxed">
-                    {creator.description || "No bio added yet"}
-                  </p>
-                </div>
-
-                {/* Social Links */}
-                {(creator.instagramHandle || creator.tiktokHandle || creator.website || creator.blueskyHandle || creator.farcasterHandle) && (
-                  <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
-                    <h3 className="text-lg font-bold text-[#EB83EA] mb-4 uppercase tracking-wide">Social Links</h3>
-                    <div className="space-y-3">
-                      {creator.instagramHandle && (
-                        <a
-                          href={`https://instagram.com/${creator.instagramHandle}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
-                        >
-                          <span className="font-semibold">Instagram:</span>
-                          <span>@{creator.instagramHandle}</span>
-                        </a>
-                      )}
-                      {creator.tiktokHandle && (
-                        <a
-                          href={`https://tiktok.com/@${creator.tiktokHandle}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
-                        >
-                          <span className="font-semibold">TikTok:</span>
-                          <span>@{creator.tiktokHandle}</span>
-                        </a>
-                      )}
-                      {creator.blueskyHandle && (
-                        <a
-                          href={`https://bsky.app/profile/${creator.blueskyHandle}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
-                        >
-                          <span className="font-semibold">Bluesky:</span>
-                          <span>@{creator.blueskyHandle}</span>
-                        </a>
-                      )}
-                      {creator.website && (
-                        <a
-                          href={creator.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-gray-300 hover:text-[#EB83EA] transition"
-                        >
-                          <span className="font-semibold">Website:</span>
-                          <span>{creator.website}</span>
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Join Date */}
-                {creator.createdAt && (
-                  <div className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-6 border-2 border-[#EB83EA]/10">
-                    <h3 className="text-lg font-bold text-[#EB83EA] mb-3 uppercase tracking-wide">Member Since</h3>
-                    <p className="text-gray-200 flex items-center gap-2">
-                      <FiCalendar className="w-5 h-5" />
-                      {creator.createdAt.toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </p>
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
