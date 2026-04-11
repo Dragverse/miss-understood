@@ -3,15 +3,15 @@
 import { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { FiChevronLeft, FiChevronRight, FiZap, FiHeart } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiFilm, FiHeart } from "react-icons/fi";
 import type { Video } from "@/types";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 
-interface BytesSectionProps {
+interface SnapshotsSectionProps {
   shorts: Video[];
 }
 
-export function BytesSection({ shorts }: BytesSectionProps) {
+export function SnapshotsSection({ shorts }: SnapshotsSectionProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: "left" | "right") => {
@@ -38,7 +38,7 @@ export function BytesSection({ shorts }: BytesSectionProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <FiZap className="text-[#EB83EA] w-7 h-7" />
+          <FiFilm className="text-[#EB83EA] w-7 h-7" />
           <h2 className="font-heading text-2xl lg:text-3xl uppercase tracking-wide">
             <span className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] bg-clip-text text-transparent font-black">
               Snapshots

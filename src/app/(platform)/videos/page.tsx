@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
 import { RightSidebar } from "@/components/home/right-sidebar";
-import { BytesSection } from "@/components/home/bytes-section";
+import { SnapshotsSection } from "@/components/home/snapshots-section";
 import { AudiosSection } from "@/components/home/audios-section";
 import { categories } from "@/lib/utils/mock-data";
 import { getLocalVideos } from "@/lib/utils/local-storage";
@@ -294,9 +294,9 @@ export default function VideosPage() {
             </div>
           </div>
 
-          {/* Bytes Section (Shorts) - Always show unless empty */}
+          {/* Snapshots Section (Shorts) - Always show unless empty */}
           {shorts.length > 0 && !isFiltering && (
-            <BytesSection shorts={shorts} />
+            <SnapshotsSection shorts={shorts} />
           )}
 
           {/* Long-form Videos Section */}

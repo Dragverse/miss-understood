@@ -7,13 +7,13 @@ import { ShortVideo } from "@/components/snapshots/short-video";
 import { FiX, FiChevronUp, FiChevronDown } from "react-icons/fi";
 import type { Video } from "@/types";
 
-interface BytesSliderProps {
-  bytesList: Video[];
+interface SnapshotsSliderProps {
+  snapshotsList: Video[];
   onClose: () => void;
   initialIndex?: number;
 }
 
-export function BytesSlider({ bytesList, onClose, initialIndex = 0 }: BytesSliderProps) {
+export function SnapshotsSlider({ snapshotsList, onClose, initialIndex = 0 }: SnapshotsSliderProps) {
   const [currentSlide, setCurrentSlide] = useState(initialIndex);
   const [sliderReady, setSliderReady] = useState(false);
 
@@ -51,7 +51,7 @@ export function BytesSlider({ bytesList, onClose, initialIndex = 0 }: BytesSlide
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [instanceRef, onClose]);
 
-  if (bytesList.length === 0) {
+  if (snapshotsList.length === 0) {
     return (
       <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
         <button
@@ -61,7 +61,7 @@ export function BytesSlider({ bytesList, onClose, initialIndex = 0 }: BytesSlide
           <FiX className="w-6 h-6 text-white" />
         </button>
         <div className="text-center">
-          <h3 className="text-xl font-bold mb-2">No Bytes Yet</h3>
+          <h3 className="text-xl font-bold mb-2">No Snapshots Yet</h3>
           <p className="text-gray-400">Upload some short videos to see them here</p>
         </div>
       </div>
@@ -83,7 +83,7 @@ export function BytesSlider({ bytesList, onClose, initialIndex = 0 }: BytesSlide
         ref={sliderRef}
         className="keen-slider h-full snap-y snap-mandatory overflow-y-hidden"
       >
-        {bytesList.map((video, idx) => (
+        {snapshotsList.map((video, idx) => (
           <div key={video.id} className="keen-slider__slide relative">
             <ShortVideo
               video={video}
@@ -95,7 +95,7 @@ export function BytesSlider({ bytesList, onClose, initialIndex = 0 }: BytesSlide
       </div>
 
       {/* Navigation Buttons - Desktop */}
-      {sliderReady && bytesList.length > 1 && (
+      {sliderReady && snapshotsList.length > 1 && (
         <div className="hidden md:flex flex-col gap-4 fixed right-8 top-1/2 -translate-y-1/2 z-20">
           <button
             onClick={() => instanceRef.current?.prev()}
@@ -106,7 +106,7 @@ export function BytesSlider({ bytesList, onClose, initialIndex = 0 }: BytesSlide
           </button>
           <button
             onClick={() => instanceRef.current?.next()}
-            disabled={currentSlide === bytesList.length - 1}
+            disabled={currentSlide === snapshotsList.length - 1}
             className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <FiChevronDown className="w-6 h-6 text-white" />
@@ -115,10 +115,10 @@ export function BytesSlider({ bytesList, onClose, initialIndex = 0 }: BytesSlide
       )}
 
       {/* Slide Counter */}
-      {bytesList.length > 1 && (
+      {snapshotsList.length > 1 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full">
           <span className="text-white text-sm font-medium tabular-nums">
-            {currentSlide + 1} / {bytesList.length}
+            {currentSlide + 1} / {snapshotsList.length}
           </span>
         </div>
       )}

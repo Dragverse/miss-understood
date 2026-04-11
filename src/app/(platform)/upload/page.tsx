@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, Suspense } from "react";
-import { FiUploadCloud, FiCheck, FiFilm, FiZap, FiUpload, FiLoader, FiClock, FiMusic, FiMic } from "react-icons/fi";
+import { FiUploadCloud, FiCheck, FiFilm, FiUpload, FiLoader, FiClock, FiMusic, FiMic } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { uploadVideoToLivepeer, waitForAssetReady } from "@/lib/livepeer/client-upload";
 import { uploadAudioToSupabase } from "@/lib/supabase/client-audio-upload";
@@ -1009,9 +1009,9 @@ function UploadPageContent() {
                       : "border-[#2f2942] hover:border-[#EB83EA]/50"
                   }`}
                 >
-                  <FiZap className={`w-8 h-8 ${formData.contentType === "short" ? "text-[#EB83EA]" : "text-gray-400"}`} />
+                  <FiFilm className={`w-8 h-8 ${formData.contentType === "short" ? "text-[#EB83EA]" : "text-gray-400"}`} />
                   <div className="text-center">
-                    <div className="font-bold">Byte</div>
+                    <div className="font-bold">Snapshot</div>
                     <div className="text-xs text-gray-400">Vertical - Max 20 minutes</div>
                   </div>
                 </button>

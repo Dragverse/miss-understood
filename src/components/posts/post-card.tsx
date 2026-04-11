@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { FiMoreHorizontal, FiActivity, FiFilm, FiSmile, FiAward, FiStar, FiHeart, FiTrash2 } from "react-icons/fi";
+import { FiMoreHorizontal, FiTrash2 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import toast from "react-hot-toast";
 import { CreatorInfo } from "@/components/shared/creator-info";
 import { EngagementBar } from "@/components/shared/engagement-bar";
 import { useAuthUser } from "@/lib/privy/hooks";
+import { parseTextWithLinks } from "@/lib/text-parser";
 
 interface PostCardProps {
   post: {
@@ -32,26 +33,15 @@ interface PostCardProps {
   onDelete?: (postId: string) => void;
 }
 
-const MOOD_GRADIENTS: Record<string, string> = {
-  sparkling: "from-purple-500/10 via-pink-500/10 to-yellow-500/10",
-  soft: "from-pink-300/10 via-rose-300/10 to-purple-300/10",
-  fierce: "from-red-500/10 via-orange-500/10 to-yellow-500/10",
-  dramatic: "from-purple-900/10 via-black/10 to-purple-900/10",
-  playful: "from-blue-400/10 via-pink-400/10 to-yellow-400/10",
-  regal: "from-purple-700/10 via-gold/10 to-purple-700/10",
-  slay: "from-fuchsia-500/10 via-pink-500/10 to-rose-500/10",
-  magical: "from-indigo-500/10 via-purple-500/10 to-pink-500/10",
-};
-
-const MOOD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  sparkling: FiStar,
-  soft: FiHeart,
-  fierce: FiActivity,
-  dramatic: FiFilm,
-  playful: FiSmile,
-  regal: FiAward,
-  slay: FiStar,
-  magical: FiSmile,
+const MOOD_COLORS: Record<string, string> = {
+  sparkling: "text-yellow-400",
+  soft: "text-pink-300",
+  fierce: "text-orange-400",
+  dramatic: "text-purple-400",
+  playful: "text-blue-400",
+  regal: "text-amber-400",
+  slay: "text-fuchsia-400",
+  magical: "text-indigo-400",
 };
 
 export function PostCard({ post, onDelete }: PostCardProps) {
@@ -168,32 +158,35 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     }
   };
 
-  const moodGradient = post.mood ? MOOD_GRADIENTS[post.mood] : "";
-  const MoodIcon = post.mood ? MOOD_ICONS[post.mood] : null;
+  const moodColor = post.mood ? MOOD_COLORS[post.mood] : "";
 
   return (
-    <article
-      className={`bg-gradient-to-br ${
-        moodGradient || "from-[#18122D] to-[#1a0b2e]"
-      } rounded-3xl p-6 border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all shadow-lg hover:shadow-xl hover:shadow-[#EB83EA]/10`}
-    >
+    <article className="bg-[#1a0b2e] rounded-xl p-5 border border-[#2f2942] hover:border-[#EB83EA]/30 transition">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <CreatorInfo
-          avatar={post.creator?.avatar}
-          displayName={post.creator?.display_name || "Unknown"}
-          handle={post.creator?.handle || post.creator_did.slice(0, 8)}
-          did={post.creator?.did || post.creator_did}
-          verified={post.creator?.verified}
-          date={post.created_at}
-        />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <CreatorInfo
+            avatar={post.creator?.avatar}
+            displayName={post.creator?.display_name || "Unknown"}
+            handle={post.creator?.handle || post.creator_did.slice(0, 8)}
+            did={post.creator?.did || post.creator_did}
+            verified={post.creator?.verified}
+            date={post.created_at}
+          />
+          {post.mood && (
+            <span className={`text-xs font-medium capitalize ${moodColor}`}>
+              · {post.mood}
+            </span>
+          )}
+        </div>
 
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-2 hover:bg-[#2f2942] rounded-full transition-colors"
+            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            aria-label="Post options"
           >
-            <FiMoreHorizontal className="text-gray-400" />
+            <FiMoreHorizontal className="w-5 h-5 text-gray-400" />
           </button>
 
           {showMenu && (
@@ -216,40 +209,17 @@ export function PostCard({ post, onDelete }: PostCardProps) {
         </div>
       </div>
 
-      {/* Source badge and mood indicator */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
-          <Image src="/logo.svg" alt="" width={12} height={12} />
-          <span className="text-purple-300 text-[10px] font-semibold uppercase">Dragverse</span>
-        </div>
-
-        {MoodIcon && (
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#EB83EA]/10 rounded-full border border-[#EB83EA]/20">
-            <MoodIcon className="text-[#EB83EA] w-4 h-4" />
-            <span className="text-[#EB83EA] text-xs font-semibold capitalize">
-              {post.mood}
-            </span>
-          </div>
-        )}
-      </div>
-
       {/* Text content */}
       {post.text_content && (
-        <div className={`mb-4 ${!post.media_urls || post.media_urls.length === 0 ? 'text-center py-6' : ''}`}>
-          <p className={`text-white leading-relaxed whitespace-pre-wrap ${
-            !post.media_urls || post.media_urls.length === 0
-              ? 'text-2xl font-medium'
-              : 'text-lg'
-          }`}>
-            {post.text_content}
-          </p>
+        <div className="mb-4 text-[15px] text-gray-200 leading-relaxed whitespace-pre-wrap">
+          {parseTextWithLinks(post.text_content)}
         </div>
       )}
 
       {/* Media grid */}
       {post.media_urls && post.media_urls.length > 0 && (
         <div
-          className={`grid gap-2 mb-4 rounded-2xl overflow-hidden ${
+          className={`grid gap-1 mb-4 rounded-xl overflow-hidden ${
             post.media_urls.length === 1
               ? "grid-cols-1"
               : "grid-cols-2"
@@ -270,7 +240,6 @@ export function PostCard({ post, onDelete }: PostCardProps) {
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#EB83EA]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           ))}
         </div>

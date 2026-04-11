@@ -2,10 +2,10 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import Image from "next/image";
-import { FiUser, FiLogIn, FiHeart, FiVideo, FiEye, FiStar, FiCalendar, FiGlobe, FiShare2, FiCheck, FiMusic, FiGrid, FiImage, FiMessageSquare, FiInfo, FiZap, FiHeadphones, FiPlay } from "react-icons/fi";
+import { FiUser, FiLogIn, FiHeart, FiVideo, FiEye, FiStar, FiCalendar, FiGlobe, FiShare2, FiCheck, FiMusic, FiGrid, FiImage, FiMessageSquare, FiInfo, FiFilm, FiHeadphones, FiPlay } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { BytesSlider } from "@/components/profile/bytes-slider";
+import { SnapshotsSlider } from "@/components/profile/snapshots-slider";
 import { PhotoViewerModal } from "@/components/modals/photo-viewer-modal";
 import { LivestreamEmbed } from "@/components/profile/livestream-embed";
 import { getCreatorByDID } from "@/lib/supabase/creators";
@@ -25,7 +25,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { isAuthenticated, isReady, signIn, userHandle, userEmail, user, instagramHandle, tiktokHandle, blueskyProfile: blueskyProfileFromHook } = useAuthUser();
   const { getAccessToken } = usePrivy();
-  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "audio" | "photos" | "posts" | "about">("videos");
+  const [activeTab, setActiveTab] = useState<"videos" | "snapshots" | "audio" | "photos" | "posts" | "about">("videos");
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isLoadingContent, setIsLoadingContent] = useState(true);
@@ -55,8 +55,8 @@ export default function ProfilePage() {
   } | null>(null);
   const [dragverseFollowingCount, setDragverseFollowingCount] = useState<number>(0);
   const [profileLinkCopied, setProfileLinkCopied] = useState(false);
-  const [showBytePlayer, setShowBytePlayer] = useState(false);
-  const [selectedByteIndex, setSelectedByteIndex] = useState(0);
+  const [showSnapshotPlayer, setShowSnapshotPlayer] = useState(false);
+  const [selectedSnapshotIndex, setSelectedSnapshotIndex] = useState(0);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
   // Copy profile link to clipboard
@@ -489,7 +489,7 @@ export default function ProfilePage() {
 
   const videosList = userVideos.filter(v => v.contentType !== 'short' && v.contentType !== 'podcast' && v.contentType !== 'music');
   // Filter bytes to exclude external videos (YouTube/Bluesky) as they can't be played in vertical player
-  const bytesList = userVideos.filter(v =>
+  const snapshotsList = userVideos.filter(v =>
     v.contentType === 'short' &&
     v.source !== 'youtube' &&
     v.source !== 'bluesky'
@@ -743,22 +743,22 @@ export default function ProfilePage() {
               )}
             </button>
 
-            {bytesList.length > 0 && (
+            {snapshotsList.length > 0 && (
               <button
                 role="tab"
-                aria-selected={activeTab === "bytes"}
-                aria-label="View bytes content"
-                aria-current={activeTab === "bytes" ? "page" : undefined}
-                onClick={() => setActiveTab("bytes")}
+                aria-selected={activeTab === "snapshots"}
+                aria-label="View snapshots content"
+                aria-current={activeTab === "snapshots" ? "page" : undefined}
+                onClick={() => setActiveTab("snapshots")}
                 className={`flex items-center gap-2 py-4 px-2 transition relative ${
-                  activeTab === "bytes"
+                  activeTab === "snapshots"
                     ? "text-[#EB83EA]"
                     : "text-gray-500 hover:text-gray-300"
                 }`}
               >
-                <FiZap className="w-6 h-6" />
-                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Bytes</span>
-                {activeTab === "bytes" && (
+                <FiFilm className="w-6 h-6" />
+                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Snapshots</span>
+                {activeTab === "snapshots" && (
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
                 )}
               </button>
@@ -908,24 +908,24 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {activeTab === "bytes" && (
+          {activeTab === "snapshots" && (
             <div>
-              {bytesList.length > 0 ? (
+              {snapshotsList.length > 0 ? (
                 <>
-                  {/* Grid of Bytes Thumbnails */}
+                  {/* Grid of Snapshots Thumbnails */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
-                    {bytesList.map((byte, index) => (
+                    {snapshotsList.map((snapshot, index) => (
                       <div
-                        key={byte.id}
+                        key={snapshot.id}
                         className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
                         onClick={() => {
-                          setSelectedByteIndex(index);
-                          setShowBytePlayer(true);
+                          setSelectedSnapshotIndex(index);
+                          setShowSnapshotPlayer(true);
                         }}
                       >
                         <Image
-                          src={byte.thumbnail || "/default-thumbnail.jpg"}
-                          alt={byte.title}
+                          src={snapshot.thumbnail || "/default-thumbnail.jpg"}
+                          alt={snapshot.title}
                           fill
                           className="object-cover group-hover:opacity-80 transition-opacity"
                         />
@@ -934,47 +934,47 @@ export default function ProfilePage() {
                           <div className="flex items-center gap-4 text-white">
                             <div className="flex items-center gap-1">
                               <FiEye className="w-5 h-5" />
-                              <span className="font-semibold">{byte.views?.toLocaleString() || 0}</span>
+                              <span className="font-semibold">{snapshot.views?.toLocaleString() || 0}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <FiHeart className="w-5 h-5" />
-                              <span className="font-semibold">{byte.likes?.toLocaleString() || 0}</span>
+                              <span className="font-semibold">{snapshot.likes?.toLocaleString() || 0}</span>
                             </div>
                           </div>
                         </div>
-                        {/* Bytes Badge */}
+                        {/* Snapshots Badge */}
                         <div className="absolute top-2 right-2 bg-[#EB83EA] p-2 rounded-full">
-                          <FiZap className="w-4 h-4 text-white" />
+                          <FiFilm className="w-4 h-4 text-white" />
                         </div>
                         {/* Duration Badge */}
                         <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-white text-xs font-semibold">
-                          {Math.floor(byte.duration / 60)}:{(byte.duration % 60).toString().padStart(2, '0')}
+                          {Math.floor(snapshot.duration / 60)}:{(snapshot.duration % 60).toString().padStart(2, '0')}
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* BytesSlider Modal (opens when thumbnail clicked) */}
-                  {showBytePlayer && (
-                    <BytesSlider
-                      bytesList={bytesList}
-                      initialIndex={selectedByteIndex}
-                      onClose={() => setShowBytePlayer(false)}
+                  {/* SnapshotsSlider Modal (opens when thumbnail clicked) */}
+                  {showSnapshotPlayer && (
+                    <SnapshotsSlider
+                      snapshotsList={snapshotsList}
+                      initialIndex={selectedSnapshotIndex}
+                      onClose={() => setShowSnapshotPlayer(false)}
                     />
                   )}
                 </>
               ) : (
                 <div className="text-center py-16">
                   <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
-                    <FiZap className="w-10 h-10 text-gray-500" />
+                    <FiFilm className="w-10 h-10 text-gray-500" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2">No Bytes Yet</h3>
+                  <h3 className="text-xl font-bold mb-2">No Snapshots Yet</h3>
                   <p className="text-gray-400 mb-6">Start uploading your short-form content!</p>
                   <button
                     onClick={() => router.push("/upload")}
                     className="px-6 py-3 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6c2bd9] text-white font-bold rounded-xl transition-all"
                   >
-                    Upload Your First Byte
+                    Upload Your First Snapshot
                   </button>
                 </div>
               )}

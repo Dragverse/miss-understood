@@ -280,7 +280,7 @@
   body {
     @apply bg-background text-foreground;
   }
-  h1 { font-weight: 900; }
+  h1 { font-weight: 1000; }
   h2 { font-weight: 800; }
   h3 { font-weight: 700; }
   h4 { font-weight: 600; }
@@ -289,7 +289,7 @@
 
   /* Utility class for branded heavy weight (used on section headers) */
   .font-heading {
-    font-weight: 900;
+    font-weight: 1000;
   }
 
   /* Mobile menu slide animation */

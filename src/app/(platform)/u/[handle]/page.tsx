@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiZap, FiHeadphones, FiMessageSquare, FiInfo, FiMusic, FiGrid, FiCalendar, FiGlobe, FiShare2, FiCheck, FiPlay, FiClock } from "react-icons/fi";
+import { FiArrowLeft, FiHeart, FiEye, FiVideo, FiFilm, FiHeadphones, FiMessageSquare, FiInfo, FiMusic, FiGrid, FiCalendar, FiGlobe, FiShare2, FiCheck, FiPlay, FiClock } from "react-icons/fi";
 import { FaYoutube } from "react-icons/fa";
 import { usePrivy } from "@privy-io/react-auth";
 import { BlueskyBadge } from "@/components/profile/bluesky-badge";
@@ -11,7 +11,7 @@ import { FarcasterBadge } from "@/components/profile/farcaster-badge";
 import { YouTubeBadge } from "@/components/profile/youtube-badge";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
 import { VerificationBadge } from "@/components/profile/verification-badge";
-import { BytesSlider } from "@/components/profile/bytes-slider";
+import { SnapshotsSlider } from "@/components/profile/snapshots-slider";
 import { LivestreamEmbed } from "@/components/profile/livestream-embed";
 import { getCreatorByHandleOrDID } from "@/lib/supabase/creators";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
@@ -38,7 +38,7 @@ export default function DynamicProfilePage() {
 
   const [profileType, setProfileType] = useState<"loading" | "dragverse" | "bluesky" | "not-found">("loading");
   const [creator, setCreator] = useState<Creator | null>(null);
-  const [activeTab, setActiveTab] = useState<"videos" | "bytes" | "audio" | "posts" | "about">("videos");
+  const [activeTab, setActiveTab] = useState<"videos" | "snapshots" | "audio" | "posts" | "about">("videos");
   const currentUserDID = user?.id;
 
   // Content states
@@ -46,9 +46,20 @@ export default function DynamicProfilePage() {
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [profileLinkCopied, setProfileLinkCopied] = useState(false);
-  const [showBytePlayer, setShowBytePlayer] = useState(false);
-  const [selectedByteIndex, setSelectedByteIndex] = useState(0);
+  const [showSnapshotPlayer, setShowSnapshotPlayer] = useState(false);
+  const [selectedSnapshotIndex, setSelectedSnapshotIndex] = useState(0);
   const [connectedBlueskyStats, setConnectedBlueskyStats] = useState<{ followersCount: number; followsCount: number } | null>(null);
+  const profileLoadedRef = useRef<string | null>(null);
+
+  // Reset when handle changes
+  useEffect(() => {
+    profileLoadedRef.current = null;
+    setProfileType("loading");
+    setCreator(null);
+    setUserVideos([]);
+    setUserPosts([]);
+    setConnectedBlueskyStats(null);
+  }, [handle]);
 
   // Try to fetch Bluesky profile if it looks like a Bluesky handle
   const isBlueskyHandle = handle.includes(".bsky.social") || handle.includes(".");
@@ -72,10 +83,14 @@ export default function DynamicProfilePage() {
   // Determine profile type and load data
   useEffect(() => {
     async function loadProfile() {
+      // Skip if we already loaded this handle successfully
+      if (profileLoadedRef.current === handle) return;
+
       // First, try to find in Supabase (Dragverse user)
       try {
         const ceramicProfile = await getCreatorByHandleOrDID(handle);
         if (ceramicProfile) {
+          profileLoadedRef.current = handle;
           setCreator(transformSupabaseCreator(ceramicProfile));
           setProfileType("dragverse");
 
@@ -117,6 +132,7 @@ export default function DynamicProfilePage() {
               createdAt: new Date(),
               verified: false,
             });
+            profileLoadedRef.current = handle;
             setProfileType("bluesky");
 
             // Fetch Bluesky posts
@@ -276,7 +292,7 @@ export default function DynamicProfilePage() {
 
   // Filter content by type
   const videosList = userVideos.filter(v => v.contentType !== 'short' && v.contentType !== 'podcast' && v.contentType !== 'music');
-  const bytesList = userVideos.filter(v => v.contentType === 'short' && v.source !== 'youtube' && v.source !== 'bluesky');
+  const snapshotsList = userVideos.filter(v => v.contentType === 'short' && v.source !== 'youtube' && v.source !== 'bluesky');
   const audioList = userVideos.filter(v => v.contentType === 'podcast' || v.contentType === 'music');
 
   // Stats - total content count across all types
@@ -374,9 +390,9 @@ export default function DynamicProfilePage() {
                   <div className="flex gap-6 text-sm md:text-base">
                     <div>
                       <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {stats.contentCount}
+                        {isLoadingContent ? "—" : stats.contentCount}
                       </span>
-                      <span className="text-white/80 ml-2">posts</span>
+                      <span className="text-white/80 ml-2">content</span>
                     </div>
                     <div className="group relative">
                       <span className="font-bold text-xl text-white drop-shadow-lg">
@@ -534,20 +550,20 @@ export default function DynamicProfilePage() {
               )}
             </button>
 
-            {bytesList.length > 0 && (
+            {snapshotsList.length > 0 && (
               <button
-                onClick={() => setActiveTab("bytes")}
+                onClick={() => setActiveTab("snapshots")}
                 className={`flex items-center gap-2 py-4 px-2 transition relative ${
-                  activeTab === "bytes"
+                  activeTab === "snapshots"
                     ? "text-[#EB83EA]"
                     : "text-gray-500 hover:text-gray-300"
                 }`}
-                aria-label="View bytes (shorts) content"
-                aria-current={activeTab === "bytes" ? "page" : undefined}
+                aria-label="View snapshots content"
+                aria-current={activeTab === "snapshots" ? "page" : undefined}
               >
-                <FiZap className="w-6 h-6" />
-                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Bytes</span>
-                {activeTab === "bytes" && (
+                <FiFilm className="w-6 h-6" />
+                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Snapshots</span>
+                {activeTab === "snapshots" && (
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
                 )}
               </button>
@@ -679,23 +695,23 @@ export default function DynamicProfilePage() {
             </div>
           )}
 
-          {activeTab === "bytes" && (
+          {activeTab === "snapshots" && (
             <div>
-              {bytesList.length > 0 ? (
+              {snapshotsList.length > 0 ? (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
-                    {bytesList.map((byte, index) => (
+                    {snapshotsList.map((snapshot, index) => (
                       <div
-                        key={byte.id}
+                        key={snapshot.id}
                         className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
                         onClick={() => {
-                          setSelectedByteIndex(index);
-                          setShowBytePlayer(true);
+                          setSelectedSnapshotIndex(index);
+                          setShowSnapshotPlayer(true);
                         }}
                       >
                         <Image
-                          src={getSafeThumbnail(byte.thumbnail, '/default-thumbnail.jpg', (byte as any).playbackId)}
-                          alt={byte.title}
+                          src={getSafeThumbnail(snapshot.thumbnail, '/default-thumbnail.jpg', (snapshot as any).playbackId)}
+                          alt={snapshot.title}
                           fill
                           className="object-cover group-hover:opacity-80 transition-opacity"
                         />
@@ -703,35 +719,35 @@ export default function DynamicProfilePage() {
                           <div className="flex items-center gap-4 text-white">
                             <div className="flex items-center gap-1">
                               <FiEye className="w-5 h-5" />
-                              <span className="font-semibold">{byte.views?.toLocaleString() || 0}</span>
+                              <span className="font-semibold">{snapshot.views?.toLocaleString() || 0}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <FiHeart className="w-5 h-5" />
-                              <span className="font-semibold">{byte.likes?.toLocaleString() || 0}</span>
+                              <span className="font-semibold">{snapshot.likes?.toLocaleString() || 0}</span>
                             </div>
                           </div>
                         </div>
                         <div className="absolute top-2 right-2 bg-[#EB83EA] p-2 rounded-full">
-                          <FiZap className="w-4 h-4 text-white" />
+                          <FiFilm className="w-4 h-4 text-white" />
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {showBytePlayer && (
-                    <BytesSlider
-                      bytesList={bytesList}
-                      initialIndex={selectedByteIndex}
-                      onClose={() => setShowBytePlayer(false)}
+                  {showSnapshotPlayer && (
+                    <SnapshotsSlider
+                      snapshotsList={snapshotsList}
+                      initialIndex={selectedSnapshotIndex}
+                      onClose={() => setShowSnapshotPlayer(false)}
                     />
                   )}
                 </>
               ) : (
                 <div className="text-center py-16">
                   <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
-                    <FiZap className="w-10 h-10 text-gray-500" />
+                    <FiFilm className="w-10 h-10 text-gray-500" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2">No Bytes Yet</h3>
+                  <h3 className="text-xl font-bold mb-2">No Snapshots Yet</h3>
                   <p className="text-gray-400">Short-form content will appear here</p>
                 </div>
               )}

@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { FiHome, FiCompass, FiZap, FiUser, FiSettings, FiAward, FiBarChart2, FiMessageSquare, FiUsers, FiHeadphones, FiBell } from "react-icons/fi";
+import { FiHome, FiCompass, FiFilm, FiUser, FiSettings, FiAward, FiBarChart2, FiMessageSquare, FiUsers, FiHeadphones, FiBell } from "react-icons/fi";
 
 const navItems = [
   { href: "/", icon: FiHome, label: "Home" },
   { href: "/feed", icon: FiMessageSquare, label: "Feed" },
   { href: "/videos", icon: FiCompass, label: "Explore" },
-  { href: "/snapshots", icon: FiZap, label: "Snapshots" },
+  { href: "/snapshots", icon: FiFilm, label: "Snapshots" },
   { href: "/audio", icon: FiHeadphones, label: "Audio" },
   { href: "/creators", icon: FiUsers, label: "Creators" },
   { href: "/hall-of-fame", icon: FiAward, label: "Hall of Fame" },
@@ -26,7 +26,7 @@ const userNavItems = [
 const mobileNavItems = [
   { href: "/", icon: FiHome, label: "Home" },
   { href: "/feed", icon: FiMessageSquare, label: "Feed" },
-  { href: "/snapshots", icon: FiZap, label: "Snapshots" },
+  { href: "/snapshots", icon: FiFilm, label: "Snapshots" },
   { href: "/videos", icon: FiCompass, label: "Explore" },
   { href: "/notifications", icon: FiBell, label: "Notifications", hasNotification: true },
 ];

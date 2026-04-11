@@ -5,7 +5,7 @@ import { VideoCard } from "@/components/video/video-card";
 import { FiSearch } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { HeroSection } from "@/components/home/hero-section";
-import { BytesSection } from "@/components/home/bytes-section";
+import { SnapshotsSection } from "@/components/home/snapshots-section";
 import { HorizontalVideosSection } from "@/components/home/horizontal-videos-section";
 import { AudiosSection } from "@/components/home/audios-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
@@ -223,8 +223,8 @@ export default function HomePage() {
                 <LiveNowSection />
               </div>
 
-              {/* Dragverse Bytes (Shorts) - Native vertical videos */}
-              <BytesSection shorts={shorts} />
+              {/* Dragverse Snapshots (Shorts) - Native vertical videos */}
+              <SnapshotsSection shorts={shorts} />
 
               {/* Horizontal Videos Section - Native long-form videos */}
               <HorizontalVideosSection videos={horizontalVideos} />
