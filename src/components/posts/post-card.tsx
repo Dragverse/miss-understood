@@ -2,10 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { FiHeart, FiMessageCircle, FiShare2, FiMoreHorizontal, FiActivity, FiFilm, FiSmile, FiAward, FiStar, FiTrash2 } from "react-icons/fi";
+import { FiMoreHorizontal, FiActivity, FiFilm, FiSmile, FiAward, FiStar, FiHeart, FiTrash2 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import toast from "react-hot-toast";
+import { CreatorInfo } from "@/components/shared/creator-info";
+import { EngagementBar } from "@/components/shared/engagement-bar";
+import { useAuthUser } from "@/lib/privy/hooks";
 
 interface PostCardProps {
   post: {
@@ -53,15 +55,36 @@ const MOOD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
 };
 
 export function PostCard({ post, onDelete }: PostCardProps) {
-  const { user, getAccessToken } = usePrivy();
-  const [liked, setLiked] = useState(false);
-  const [localLikes, setLocalLikes] = useState(post.likes);
+  const { getAccessToken } = usePrivy();
+  const { userId } = useAuthUser();
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(post.likes);
+  const [isLiking, setIsLiking] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Check if current user owns this post
-  const isOwner = user?.id === post.creator_did;
+  const isOwner = userId === post.creator_did;
+
+  // Check like status on mount
+  useEffect(() => {
+    if (!userId) return;
+
+    const checkLikeStatus = async () => {
+      try {
+        const response = await fetch(
+          `/api/social/like?videoId=${post.id}`,
+          { credentials: "include" }
+        );
+        const data = await response.json();
+        setIsLiked(data.liked);
+      } catch (error) {
+        console.error("Error checking like status:", error);
+      }
+    };
+
+    checkLikeStatus();
+  }, [post.id, userId]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -75,9 +98,42 @@ export function PostCard({ post, onDelete }: PostCardProps) {
   }, []);
 
   const handleLike = async () => {
-    setLiked(!liked);
-    setLocalLikes(liked ? localLikes - 1 : localLikes + 1);
-    // TODO: Call API to toggle like
+    if (!userId) {
+      toast.error("Please sign in to like posts");
+      return;
+    }
+    if (isLiking) return;
+
+    // Optimistic update
+    const previousState = isLiked;
+    const previousCount = likeCount;
+    setIsLiked(!isLiked);
+    setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
+    setIsLiking(true);
+
+    try {
+      const response = await fetch("/api/social/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          videoId: post.id,
+          action: previousState ? "unlike" : "like",
+        }),
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error("Like failed");
+      }
+    } catch (error) {
+      console.error("Error liking post:", error);
+      setIsLiked(previousState);
+      setLikeCount(previousCount);
+      toast.error("Failed to like post");
+    } finally {
+      setIsLiking(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -100,9 +156,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
 
       if (response.ok) {
         toast.success("Post deleted");
-        if (onDelete) {
-          onDelete(post.id);
-        }
+        onDelete?.(post.id);
       } else {
         const data = await response.json();
         toast.error(data.error || "Failed to delete post");
@@ -112,18 +166,6 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     } finally {
       setIsDeleting(false);
     }
-  };
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (seconds < 60) return "just now";
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-    return date.toLocaleDateString();
   };
 
   const moodGradient = post.mood ? MOOD_GRADIENTS[post.mood] : "";
@@ -137,36 +179,14 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <Link
-          href={`/profile/${post.creator?.handle || post.creator_did}`}
-          className="flex items-center gap-3 group"
-        >
-          <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-[#EB83EA]/30 group-hover:border-[#EB83EA] transition-all">
-            {post.creator?.avatar ? (
-              <Image
-                src={post.creator.avatar}
-                alt={post.creator.display_name}
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center">
-                <span className="text-white text-xl">
-                  {post.creator?.display_name?.[0] || "?"}
-                </span>
-              </div>
-            )}
-          </div>
-          <div>
-            <p className="text-white font-bold group-hover:text-[#EB83EA] transition-colors">
-              {post.creator?.display_name || "Unknown"}
-            </p>
-            <p className="text-gray-400 text-sm">
-              @{post.creator?.handle || post.creator_did.slice(0, 8)} •{" "}
-              {formatTimeAgo(post.created_at)}
-            </p>
-          </div>
-        </Link>
+        <CreatorInfo
+          avatar={post.creator?.avatar}
+          displayName={post.creator?.display_name || "Unknown"}
+          handle={post.creator?.handle || post.creator_did.slice(0, 8)}
+          did={post.creator?.did || post.creator_did}
+          verified={post.creator?.verified}
+          date={post.created_at}
+        />
 
         <div className="relative" ref={menuRef}>
           <button
@@ -176,7 +196,6 @@ export function PostCard({ post, onDelete }: PostCardProps) {
             <FiMoreHorizontal className="text-gray-400" />
           </button>
 
-          {/* Dropdown menu */}
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 w-48 bg-[#1a0b2e] border border-[#2f2942] rounded-xl shadow-xl z-10 overflow-hidden">
               {isOwner && (
@@ -199,13 +218,11 @@ export function PostCard({ post, onDelete }: PostCardProps) {
 
       {/* Source badge and mood indicator */}
       <div className="flex items-center gap-2 mb-3">
-        {/* Dragverse source badge */}
         <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
           <Image src="/logo.svg" alt="" width={12} height={12} />
           <span className="text-purple-300 text-[10px] font-semibold uppercase">Dragverse</span>
         </div>
 
-        {/* Mood indicator */}
         {MoodIcon && (
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#EB83EA]/10 rounded-full border border-[#EB83EA]/20">
             <MoodIcon className="text-[#EB83EA] w-4 h-4" />
@@ -216,7 +233,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
         )}
       </div>
 
-      {/* Text content - enhanced for text-only posts */}
+      {/* Text content */}
       {post.text_content && (
         <div className={`mb-4 ${!post.media_urls || post.media_urls.length === 0 ? 'text-center py-6' : ''}`}>
           <p className={`text-white leading-relaxed whitespace-pre-wrap ${
@@ -235,8 +252,6 @@ export function PostCard({ post, onDelete }: PostCardProps) {
           className={`grid gap-2 mb-4 rounded-2xl overflow-hidden ${
             post.media_urls.length === 1
               ? "grid-cols-1"
-              : post.media_urls.length === 2
-              ? "grid-cols-2"
               : "grid-cols-2"
           }`}
         >
@@ -255,7 +270,6 @@ export function PostCard({ post, onDelete }: PostCardProps) {
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              {/* Sparkle overlay on hover */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#EB83EA]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           ))}
@@ -263,54 +277,15 @@ export function PostCard({ post, onDelete }: PostCardProps) {
       )}
 
       {/* Engagement bar */}
-      <div className="flex items-center justify-between pt-4 border-t border-[#EB83EA]/10">
-        <div className="flex items-center gap-6">
-          {/* Like button */}
-          <button
-            onClick={handleLike}
-            className="flex items-center gap-2 group"
-          >
-            <div
-              className={`p-2 rounded-full transition-all ${
-                liked
-                  ? "bg-[#EB83EA] text-white"
-                  : "hover:bg-[#EB83EA]/20 text-gray-400 group-hover:text-[#EB83EA]"
-              }`}
-            >
-              <FiHeart className={liked ? "fill-current" : ""} size={20} />
-            </div>
-            <span
-              className={`font-semibold ${
-                liked ? "text-[#EB83EA]" : "text-gray-400 group-hover:text-white"
-              }`}
-            >
-              {localLikes}
-            </span>
-          </button>
-
-          {/* Comment button - Coming soon */}
-          <button className="flex items-center gap-2 group opacity-40 cursor-not-allowed" title="Comments coming soon">
-            <div className="p-2 rounded-full text-gray-500 transition-all">
-              <FiMessageCircle size={20} />
-            </div>
-            <span className="text-gray-500 font-semibold text-sm">
-              Soon
-            </span>
-          </button>
-
-          {/* Share button - Coming soon */}
-          <button className="flex items-center gap-2 group opacity-40 cursor-not-allowed" title="Sharing coming soon">
-            <div className="p-2 rounded-full text-gray-500 transition-all">
-              <FiShare2 size={20} />
-            </div>
-            {false && post.repost_count > 0 && (
-              <span className="text-gray-500 font-semibold">
-                {post.repost_count}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+      <EngagementBar
+        contentId={post.id}
+        contentType="post"
+        likes={likeCount}
+        comments={post.comment_count}
+        isLiked={isLiked}
+        onLike={handleLike}
+        shareUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/posts/${post.id}`}
+      />
     </article>
   );
 }

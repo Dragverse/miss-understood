@@ -1,19 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Parkinsans, Rammetto_One } from "next/font/google";
+import { Roboto_Flex, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Layout } from "@/components/layout";
 
-const rammettoOne = Rammetto_One({
-  weight: "400",
+const robotoFlex = Roboto_Flex({
   subsets: ["latin"],
-  variable: "--font-rammetto",
+  variable: "--font-roboto-flex",
   display: "swap",
 });
 
-const parkinsans = Parkinsans({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-parkinsans",
+  variable: "--font-jetbrains-mono",
   display: "swap",
 });
 
@@ -49,7 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${rammettoOne.variable} ${parkinsans.variable} font-parkinsans antialiased`} suppressHydrationWarning>
+      <body className={`${robotoFlex.variable} ${jetbrainsMono.variable} font-sans antialiased`} suppressHydrationWarning>
         <Providers>
           <Layout>{children}</Layout>
         </Providers>

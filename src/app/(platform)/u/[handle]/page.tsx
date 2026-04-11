@@ -23,6 +23,7 @@ import { getUserBadgeType } from "@/lib/verification";
 import { FaInstagram, FaTiktok } from "react-icons/fa";
 import { SiBluesky } from "react-icons/si";
 import { PostCard as FeedPostCard } from "@/components/feed/post-card";
+import { PostCard as DragversePostCard } from "@/components/posts/post-card";
 
 /**
  * Dynamic Profile Page - Instagram Style
@@ -787,98 +788,28 @@ export default function DynamicProfilePage() {
             <div>
               {userPosts.length > 0 ? (
                 <div className="max-w-4xl mx-auto space-y-6">
-                  {userPosts.filter(post => post && typeof post === 'object').map((post) => (
-                    <article
-                      key={post.id}
-                      className="group relative bg-gradient-to-br from-[#1a0b2e] via-[#2f1942] to-[#1a0b2e] rounded-3xl p-8 border-2 border-transparent hover:border-[#EB83EA]/30 transition-all duration-300 overflow-hidden"
-                      style={{
-                        backgroundImage: 'linear-gradient(135deg, rgba(235, 131, 234, 0.03) 0%, rgba(124, 58, 237, 0.03) 100%)',
-                      }}
-                    >
-                      {/* Holographic border effect */}
-                      <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                        style={{
-                          background: 'linear-gradient(90deg, rgba(235, 131, 234, 0.1), rgba(124, 58, 237, 0.1), rgba(235, 131, 234, 0.1))',
-                          backgroundSize: '200% 100%',
-                          animation: 'shimmer-bg 3s linear infinite',
+                  {userPosts.filter(post => post && typeof post === 'object').map((post) =>
+                    profileType === "dragverse" ? (
+                      <DragversePostCard
+                        key={post.id}
+                        post={{
+                          ...post,
+                          creator: post.creator || {
+                            did: creator!.did,
+                            handle: creator!.handle,
+                            display_name: creator!.displayName,
+                            avatar: creator!.avatar,
+                            verified: !!creator!.blueskyHandle,
+                          },
                         }}
                       />
-
-                      {/* Source badge - Top right */}
-                      <div className="absolute top-6 right-6">
-                        {post.source === "dragverse" ? (
-                          <div className="px-4 py-1.5 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-full text-xs font-bold text-white shadow-lg shadow-[#EB83EA]/30 flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                            Dragverse
-                          </div>
-                        ) : (
-                          <div className="px-4 py-1.5 bg-gradient-to-r from-[#0085ff] to-[#0066cc] rounded-full text-xs font-bold text-white shadow-lg">
-                            Bluesky
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Media preview if available */}
-                      {(post.media_urls?.[0] || post.thumbnail) && (
-                        <div className="relative w-full h-64 mb-6 rounded-2xl overflow-hidden border-2 border-[#EB83EA]/20">
-                          <Image
-                            src={post.media_urls?.[0] || post.thumbnail}
-                            alt="Post media"
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      )}
-
-                      {/* Post content */}
-                      <div className="relative z-10">
-                        <p className="text-gray-100 text-lg mb-6 whitespace-pre-wrap leading-relaxed font-light">
-                          {post.text_content || post.description || ""}
-                        </p>
-
-                        {/* Footer with metadata */}
-                        <div className="flex items-center justify-between pt-4 border-t border-[#EB83EA]/10">
-                          <div className="flex items-center gap-4">
-                            {/* Date */}
-                            <span className="flex items-center gap-2 text-gray-400 text-sm">
-                              <FiCalendar className="w-4 h-4" />
-                              {(() => {
-                                const d = new Date(post.created_at || post.createdAt);
-                                return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                });
-                              })()}
-                            </span>
-
-                            {/* Engagement metrics if available */}
-                            {post.likes !== undefined && post.likes > 0 && (
-                              <span className="flex items-center gap-1.5 text-gray-400 text-sm">
-                                <FiHeart className="w-4 h-4 text-[#EB83EA]" />
-                                {post.likes.toLocaleString()}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* External link for Bluesky posts */}
-                          {post.externalUrl && (
-                            <a
-                              href={post.externalUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 px-4 py-2 bg-[#0085ff]/10 hover:bg-[#0085ff]/20 border border-[#0085ff]/30 rounded-full text-[#0085ff] text-sm font-semibold transition-all"
-                            >
-                              View on Bluesky
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                              </svg>
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+                    ) : (
+                      <FeedPostCard
+                        key={post.id}
+                        post={post}
+                      />
+                    )
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-16">

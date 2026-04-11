@@ -5,11 +5,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-parkinsans);
-  --font-mono: var(--font-geist-mono);
-  --font-parkinsans: var(--font-parkinsans);
-  --font-rammetto: var(--font-rammetto);
-  --font-heading: var(--font-rammetto), var(--font-parkinsans);
+  --font-sans: var(--font-roboto-flex);
+  --font-mono: var(--font-jetbrains-mono);
 
   /* Custom border radius for video containers */
   --radius-large: 1rem;
@@ -283,19 +280,16 @@
   body {
     @apply bg-background text-foreground;
   }
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-heading) !important;
-    text-transform: uppercase;
-  }
+  h1 { font-weight: 900; }
+  h2 { font-weight: 800; }
+  h3 { font-weight: 700; }
+  h4 { font-weight: 600; }
+  h5 { font-weight: 500; }
+  h6 { font-weight: 500; }
 
-  /* Utility classes for explicit font control */
+  /* Utility class for branded heavy weight (used on section headers) */
   .font-heading {
-    font-family: var(--font-heading) !important;
-    text-transform: uppercase;
-  }
-  .font-rammetto {
-    font-family: var(--font-rammetto) !important;
-    text-transform: uppercase;
+    font-weight: 900;
   }
 
   /* Mobile menu slide animation */

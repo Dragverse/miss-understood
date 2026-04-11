@@ -8,3 +8,5 @@ export { EmptyState } from "./empty-state";
 export { LoadingShimmer, CardSkeleton } from "./loading-shimmer";
 export { CreatorCard } from "./creator-card";
 export { TipButton } from "./tip-button";
+export { EngagementBar } from "./engagement-bar";
+export { CreatorInfo } from "./creator-info";

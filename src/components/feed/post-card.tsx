@@ -3,15 +3,15 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiHeart, FiMessageCircle, FiExternalLink, FiBookmark, FiUserPlus, FiUserCheck, FiMoreHorizontal, FiTrash2 } from "react-icons/fi";
+import { FiExternalLink, FiBookmark, FiUserPlus, FiUserCheck, FiMoreHorizontal, FiTrash2 } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import { parseTextWithLinks } from "@/lib/text-parser";
 import { CommentModal } from "./comment-modal";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { getSafeThumbnail, isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
-import { VerificationBadge } from "@/components/profile/verification-badge";
-import { getUserBadgeType } from "@/lib/verification";
+import { CreatorInfo } from "@/components/shared/creator-info";
+import { EngagementBar } from "@/components/shared/engagement-bar";
 import { TipButton } from "@/components/shared";
 import { usePrivy } from "@privy-io/react-auth";
 import { getVideo } from "@/lib/supabase/videos";
@@ -25,20 +25,20 @@ interface PostCardProps {
       displayName: string;
       handle: string;
       avatar: string;
-      did?: string; // Bluesky DID for following
-      blueskyHandle?: string; // For badge verification
-      walletAddress?: string; // For tipping
+      did?: string;
+      blueskyHandle?: string;
+      walletAddress?: string;
     };
     description: string;
     thumbnail?: string;
     createdAt: Date | string;
     likes: number;
     externalUrl?: string;
-    uri?: string; // Bluesky post URI
-    cid?: string; // Bluesky post CID
-    playbackUrl?: string; // Video playback URL
-    contentType?: string; // "short" or "long"
-    type?: string; // "youtube-video" for YouTube posts
+    uri?: string;
+    cid?: string;
+    playbackUrl?: string;
+    contentType?: string;
+    type?: string;
   };
 }
 
@@ -56,16 +56,9 @@ export function PostCard({ post }: PostCardProps) {
   const [audioError, setAudioError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [avatarError, setAvatarError] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isOwnPost = user?.id && post.creator.did && post.creator.did === user.id;
-
-  const formattedDate = new Date(post.createdAt).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -83,21 +76,18 @@ export function PostCard({ post }: PostCardProps) {
     const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
     setIsBookmarked(bookmarks.includes(post.id));
 
-    // Check if user has liked this post (stored locally)
     const likes = JSON.parse(localStorage.getItem("dragverse_likes") || "[]");
     setIsLiked(likes.includes(post.id));
 
-    // Check if user is following this creator (stored locally)
     if (post.creator.did) {
       const following = JSON.parse(localStorage.getItem("dragverse_following") || "[]");
       setIsFollowing(following.includes(post.creator.did));
     }
   }, [post.id, post.creator.did]);
 
-  // Detect and fetch audio from /listen/ links in description or text_content
+  // Detect and fetch audio from /listen/ links in description
   useEffect(() => {
     const detectAndFetchAudio = async () => {
-      // Check if description or text_content contains a /listen/ link
       const textToCheck = post.description || (post as any).text_content || "";
       const listenLinkMatch = textToCheck.match(/\/listen\/([a-zA-Z0-9-]+)/);
       if (!listenLinkMatch) return;
@@ -107,14 +97,12 @@ export function PostCard({ post }: PostCardProps) {
       setAudioError(false);
 
       try {
-        // Fetch audio data from Supabase
         const audioDoc = await getVideo(audioId);
         if (!audioDoc) {
           setAudioError(true);
           return;
         }
 
-        // Transform to include creator info
         const transformedAudio = await transformVideoWithCreator(audioDoc);
         if (transformedAudio && transformedAudio.playbackUrl) {
           setAudioData(transformedAudio);
@@ -132,10 +120,7 @@ export function PostCard({ post }: PostCardProps) {
     detectAndFetchAudio();
   }, [post.description, (post as any).text_content]);
 
-  const toggleLike = async (e: React.MouseEvent) => {
-    e.preventDefault();
-
-    // Optimistic UI update
+  const toggleLike = async () => {
     const previousLikeState = isLiked;
     const previousLikeCount = likeCount;
     setIsLiked(!isLiked);
@@ -162,7 +147,6 @@ export function PostCard({ post }: PostCardProps) {
       }
 
       // Always persist Dragverse posts to database
-      // (even if they also sync to Bluesky)
       if (post.id && !post.type?.includes('youtube')) {
         const response = await fetch("/api/posts/like", {
           method: "POST",
@@ -176,7 +160,6 @@ export function PostCard({ post }: PostCardProps) {
         const data = await response.json();
         if (!data.success) {
           console.error("Failed to persist like to database:", data.error);
-          // Don't throw - Bluesky sync already succeeded
         }
       }
 
@@ -193,7 +176,6 @@ export function PostCard({ post }: PostCardProps) {
       }
     } catch (error) {
       console.error("Error liking/unliking post:", error);
-      // Revert optimistic update
       setIsLiked(previousLikeState);
       setLikeCount(previousLikeCount);
       toast.error("Failed to update like. Please try again.");
@@ -216,7 +198,6 @@ export function PostCard({ post }: PostCardProps) {
       setIsBookmarked(true);
     }
 
-    // Dispatch custom event to notify sidebar
     window.dispatchEvent(new Event("storage"));
   };
 
@@ -240,7 +221,6 @@ export function PostCard({ post }: PostCardProps) {
 
       if (response.ok) {
         toast.success("Post deleted successfully");
-        // Reload page after short delay
         setTimeout(() => {
           window.location.reload();
         }, 1000);
@@ -275,7 +255,6 @@ export function PostCard({ post }: PostCardProps) {
       const data = await response.json();
 
       if (data.success) {
-        // Update local state
         const following = JSON.parse(localStorage.getItem("dragverse_following") || "[]");
         if (isFollowing) {
           const updated = following.filter((did: string) => did !== post.creator.did);
@@ -301,39 +280,17 @@ export function PostCard({ post }: PostCardProps) {
       <div className="bg-[#1a0b2e] border border-[#2f2942] rounded-xl p-6 hover:border-[#EB83EA]/30 transition">
       {/* Author */}
       <div className="flex items-start gap-3 mb-4">
-        <Link href={`/profile/${post.creator.handle}`}>
-          <Image
-            src={avatarError ? "/defaultpfp.png" : post.creator.avatar}
-            alt={post.creator.displayName}
-            width={56}
-            height={56}
-            className="rounded-full hover:ring-2 hover:ring-[#EB83EA] transition"
-            onError={() => setAvatarError(true)}
-            unoptimized={post.creator.avatar?.includes("googleusercontent.com") || post.creator.avatar?.includes("ggpht.com")}
-          />
-        </Link>
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/profile/${post.creator.handle}`}
-              className="font-semibold text-lg hover:text-[#EB83EA] transition"
-            >
-              {post.creator.displayName}
-            </Link>
-            <VerificationBadge
-              badgeType={getUserBadgeType(
-                post.creator.did,
-                undefined,
-                !!post.creator.blueskyHandle,
-                false
-              )}
-              size={18}
-            />
-          </div>
-          <p className="text-sm text-gray-400">@{post.creator.handle}</p>
+          <CreatorInfo
+            avatar={post.creator.avatar}
+            displayName={post.creator.displayName}
+            handle={post.creator.handle}
+            did={post.creator.did}
+            verified={!!post.creator.blueskyHandle}
+            date={post.createdAt}
+          />
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">{formattedDate}</span>
+        <div className="flex items-center gap-3 flex-shrink-0">
           {isOwnPost ? (
             <div className="relative" ref={menuRef}>
               <button
@@ -403,7 +360,6 @@ export function PostCard({ post }: PostCardProps) {
             <span className="text-blue-300 text-[10px] font-semibold uppercase">Bluesky</span>
           </div>
         )}
-        {/* Crosspost indicator - show Bluesky badge when a Dragverse post was crossposted */}
         {((post as any).source === "dragverse" || (post as any).source === "ceramic") && (post as any).crossposted_to?.includes("bluesky") && (
           <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-500/10 rounded-full border border-blue-500/20">
             <SiBluesky className="w-3 h-3 text-blue-400" />
@@ -421,7 +377,6 @@ export function PostCard({ post }: PostCardProps) {
       {post.playbackUrl && isValidPlaybackUrl(post.playbackUrl) ? (
         <div className="relative w-full rounded-xl overflow-hidden mb-4 bg-[#0f071a]">
           {post.type === "youtube-video" || post.playbackUrl.includes("youtube.com") || post.playbackUrl.includes("youtu.be") ? (
-            // YouTube video - use iframe embed
             <div className="relative w-full" style={{ aspectRatio: post.contentType === "short" ? "9/16" : "16/9" }}>
               <iframe
                 src={post.playbackUrl.replace("watch?v=", "embed/").replace("youtu.be/", "youtube.com/embed/")}
@@ -431,7 +386,6 @@ export function PostCard({ post }: PostCardProps) {
               />
             </div>
           ) : (
-            // Livepeer video (Dragverse/Bluesky)
             <div className="relative w-full" style={{ aspectRatio: post.contentType === "short" ? "9/16" : "16/9" }}>
               <Player.Root src={getSrc(post.playbackUrl)}>
                 <Player.Container>
@@ -459,7 +413,6 @@ export function PostCard({ post }: PostCardProps) {
           )}
         </div>
       ) : post.thumbnail ? (
-        // Fallback to thumbnail image if no valid playback URL
         <div className="relative w-full rounded-xl overflow-hidden mb-4 bg-[#0f071a] group cursor-pointer">
           <Image
             src={getSafeThumbnail(post.thumbnail, '/default-thumbnail.jpg', (post as any).playbackId)}
@@ -475,7 +428,6 @@ export function PostCard({ post }: PostCardProps) {
       {audioData && audioData.playbackUrl && (
         <div className="mb-4 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-xl p-4 border border-[#EB83EA]/20">
           <div className="flex gap-4">
-            {/* Album Art */}
             <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
               <Image
                 src={audioData.thumbnail || "/default-thumbnail.jpg"}
@@ -484,8 +436,6 @@ export function PostCard({ post }: PostCardProps) {
                 className="object-cover"
               />
             </div>
-
-            {/* Audio Info and Controls */}
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-white text-sm mb-1 line-clamp-1">
                 {audioData.title}
@@ -493,23 +443,16 @@ export function PostCard({ post }: PostCardProps) {
               <p className="text-xs text-gray-400 mb-3 line-clamp-1">
                 {audioData.creator?.displayName || "Unknown Artist"}
               </p>
-
-              {/* HTML5 Audio Player */}
               <audio
                 controls
                 className="w-full"
-                style={{
-                  height: "32px",
-                  accentColor: "#EB83EA"
-                }}
+                style={{ height: "32px", accentColor: "#EB83EA" }}
               >
                 <source src={audioData.playbackUrl} type="audio/mpeg" />
                 Your browser does not support the audio element.
               </audio>
             </div>
           </div>
-
-          {/* View Full Player Link */}
           <Link
             href={`/listen/${audioData.id}`}
             className="mt-3 flex items-center justify-center gap-2 text-sm text-[#EB83EA] hover:text-[#E748E6] transition-colors"
@@ -531,78 +474,72 @@ export function PostCard({ post }: PostCardProps) {
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-6 text-gray-400 text-sm pt-3 border-t border-[#2f2942]">
-        <button
-          onClick={toggleLike}
-          disabled={isLiking}
-          className={`flex items-center gap-2 transition-colors ${
-            isLiked ? "text-red-400" : "hover:text-red-400"
-          } ${isLiking ? "opacity-50 cursor-not-allowed" : ""}`}
-        >
-          <FiHeart className={`w-5 h-5 ${isLiked ? "fill-current" : ""}`} />
-          <span>{likeCount.toLocaleString()}</span>
-        </button>
-        <button
-          onClick={() => setIsCommentModalOpen(true)}
-          className="flex items-center gap-2 hover:text-blue-400 transition-colors"
-        >
-          <FiMessageCircle className="w-5 h-5" />
-          <span>Comment</span>
-        </button>
-        <button
-          onClick={toggleBookmark}
-          className={`flex items-center gap-2 transition-colors ${
-            isBookmarked ? "text-[#EB83EA]" : "hover:text-[#EB83EA]"
-          }`}
-        >
-          <FiBookmark className={`w-5 h-5 ${isBookmarked ? "fill-current" : ""}`} />
-          <span>Save</span>
-        </button>
-        {/* Tip Button - Only for Dragverse creators with wallets */}
-        {!isOwnPost && post.creator.walletAddress && post.creator.did && (
-          <TipButton
-            creator={{
-              displayName: post.creator.displayName,
-              handle: post.creator.handle,
-              avatar: post.creator.avatar,
-              did: post.creator.did,
-              walletAddress: post.creator.walletAddress,
-            } as any}
-            variant="secondary"
-            size="sm"
-          />
-        )}
-        {(post as any).source === "youtube" && post.externalUrl && (
-          <a
-            href={post.externalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 hover:text-[#EB83EA] transition-colors ml-auto"
+      <div className="flex items-center justify-between pt-3 border-t border-[#2f2942]">
+        <EngagementBar
+          compact
+          contentId={post.id}
+          contentType="post"
+          likes={likeCount}
+          isLiked={isLiked}
+          onLike={toggleLike}
+          onComment={() => setIsCommentModalOpen(true)}
+        />
+
+        <div className="flex items-center gap-4 text-gray-400 text-sm">
+          <button
+            onClick={toggleBookmark}
+            className={`flex items-center gap-1.5 transition-colors ${
+              isBookmarked ? "text-[#EB83EA]" : "hover:text-[#EB83EA]"
+            }`}
+            aria-label={isBookmarked ? "Remove bookmark" : "Bookmark"}
           >
-            <FiExternalLink className="w-5 h-5" />
-            <span>Watch on YouTube</span>
-          </a>
-        )}
-        {((post as any).source === "dragverse" || (post as any).source === "ceramic") && post.id && post.playbackUrl && (
-          <Link
-            href={`/watch/${post.id}`}
-            className="flex items-center gap-2 hover:text-[#EB83EA] transition-colors ml-auto"
-          >
-            <FiExternalLink className="w-5 h-5" />
-            <span>Watch on Dragverse</span>
-          </Link>
-        )}
-        {(post as any).source !== "youtube" && (post as any).source !== "dragverse" && (post as any).source !== "ceramic" && post.externalUrl && (
-          <a
-            href={post.externalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 hover:text-[#EB83EA] transition-colors ml-auto"
-          >
-            <FiExternalLink className="w-5 h-5" />
-            <span>View on Bluesky</span>
-          </a>
-        )}
+            <FiBookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
+          </button>
+          {!isOwnPost && post.creator.walletAddress && post.creator.did && (
+            <TipButton
+              creator={{
+                displayName: post.creator.displayName,
+                handle: post.creator.handle,
+                avatar: post.creator.avatar,
+                did: post.creator.did,
+                walletAddress: post.creator.walletAddress,
+              } as any}
+              variant="secondary"
+              size="sm"
+            />
+          )}
+          {(post as any).source === "youtube" && post.externalUrl && (
+            <a
+              href={post.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 hover:text-[#EB83EA] transition-colors"
+              aria-label="Watch on YouTube"
+            >
+              <FiExternalLink className="w-4 h-4" />
+            </a>
+          )}
+          {((post as any).source === "dragverse" || (post as any).source === "ceramic") && post.id && post.playbackUrl && (
+            <Link
+              href={`/watch/${post.id}`}
+              className="flex items-center gap-1.5 hover:text-[#EB83EA] transition-colors"
+              aria-label="Watch on Dragverse"
+            >
+              <FiExternalLink className="w-4 h-4" />
+            </Link>
+          )}
+          {(post as any).source !== "youtube" && (post as any).source !== "dragverse" && (post as any).source !== "ceramic" && post.externalUrl && (
+            <a
+              href={post.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 hover:text-[#EB83EA] transition-colors"
+              aria-label="View on Bluesky"
+            >
+              <FiExternalLink className="w-4 h-4" />
+            </a>
+          )}
+        </div>
       </div>
     </div>
 

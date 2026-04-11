@@ -5,13 +5,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { FiHeart, FiExternalLink } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import { VideoOptionsMenu } from "./video-options-menu";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { getSafeThumbnail, getSafeAvatar } from "@/lib/utils/thumbnail-helpers";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
+import { EngagementBar } from "@/components/shared/engagement-bar";
 import toast from "react-hot-toast";
 
 interface VideoCardProps {
@@ -52,12 +52,6 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
     checkLikeStatus();
   }, [video.id, userId, isExternal]);
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
-    if (num >= 1000) return (num / 1000).toFixed(1) + "K";
-    return num.toString();
-  };
-
   const formatDuration = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -74,10 +68,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
     router.push(`/${targetPage}/${video.id}`);
   };
 
-  const handleLike = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation(); // Prevent card click navigation
-
+  const handleLike = async () => {
     if (!userId) {
       toast.error("Please sign in to like videos");
       return;
@@ -335,25 +326,15 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
                 size={14}
               />
             </Link>
-            <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-              {!isExternal ? (
-                <button
-                  onClick={handleLike}
-                  disabled={isLiking}
-                  className="flex items-center gap-1 transition-colors hover:text-[#EB83EA] disabled:opacity-50"
-                  aria-label={isLiked ? "Unlike video" : "Like video"}
-                >
-                  <FiHeart
-                    className={`w-3 h-3 ${isLiked ? 'fill-[#EB83EA] text-[#EB83EA]' : ''}`}
-                  />
-                  <span>{formatNumber(likeCount)}</span>
-                </button>
-              ) : (
-                <>
-                  <FiHeart className="w-3 h-3" />
-                  <span>{formatNumber(video.likes)}</span>
-                </>
-              )}
+            <div className="mt-0.5">
+              <EngagementBar
+                compact
+                contentId={video.id}
+                contentType={video.contentType === 'podcast' || video.contentType === 'music' ? 'audio' : 'video'}
+                likes={likeCount}
+                isLiked={isLiked}
+                onLike={!isExternal ? handleLike : undefined}
+              />
             </div>
           </div>
         </div>
