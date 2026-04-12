@@ -12,6 +12,7 @@ import {
 } from "@huddle01/react/hooks";
 import type { TPermissions } from "@huddle01/web-core/types";
 import { useRoomStore } from "@/lib/store/room";
+import { useAudioPlayer, type AudioTrack } from "@/contexts/AudioPlayerContext";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { SpeakerCard, LocalSpeakerCard } from "./speaker-card";
@@ -67,6 +68,10 @@ export function VibeLounge() {
   const [chatInput, setChatInput] = useState("");
   const [speakerRequests, setSpeakerRequests] = useState<Record<string, string>>({});
   const [requestedToSpeak, setRequestedToSpeak] = useState(false);
+  const [nowPlaying, setNowPlaying] = useState<AudioTrack | null>(null);
+
+  // Audio player — host broadcasts current track to the room
+  const { currentTrack, playTrack } = useAudioPlayer();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const joinAttemptRef = useRef<string | null>(null);
   const tokenRef = useRef<string>("");
@@ -97,6 +102,7 @@ export function VibeLounge() {
       joinAttemptRef.current = null;
       setSpeakerRequests({});
       setRequestedToSpeak(false);
+      setNowPlaying(null);
     },
     onFailed: () => {
       toast.error("Failed to connect to room");
@@ -150,10 +156,37 @@ export function VibeLounge() {
             return next;
           });
         }
+        // Host is playing a track — show it to everyone
+        if (parsed.type === "now-playing") {
+          setNowPlaying(parsed.track ?? null);
+        }
+        if (parsed.type === "now-playing-stop") {
+          setNowPlaying(null);
+        }
       } catch {}
     },
   });
   const { sendData } = useDataMessage();
+
+  // Host: broadcast current track to the room whenever it changes
+  const prevTrackIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!joined || !isHost) return;
+    if (currentTrack?.id === prevTrackIdRef.current) return;
+    prevTrackIdRef.current = currentTrack?.id ?? null;
+    if (currentTrack) {
+      sendData({
+        to: "*",
+        payload: JSON.stringify({ type: "now-playing", track: currentTrack }),
+        label: "radio",
+      });
+      setNowPlaying(currentTrack);
+    } else {
+      sendData({ to: "*", payload: JSON.stringify({ type: "now-playing-stop" }), label: "radio" });
+      setNowPlaying(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrack?.id, joined, isHost]);
 
   // Fetch live rooms list
   useEffect(() => {
@@ -285,6 +318,7 @@ export function VibeLounge() {
     joinAttemptRef.current = null;
     setSpeakerRequests({});
     setRequestedToSpeak(false);
+    setNowPlaying(null);
     fetchRooms();
   };
 
@@ -459,6 +493,36 @@ export function VibeLounge() {
                   </div>
 
                   <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4 space-y-6">
+                    {/* Now Playing banner */}
+                    {nowPlaying && (
+                      <div className="flex items-center gap-3 px-3 py-2.5 bg-[#1a0b2e] border border-[#EB83EA]/30 rounded-xl">
+                        <div className="relative flex-shrink-0">
+                          <Image
+                            src={nowPlaying.thumbnail || "/logo.png"}
+                            alt={nowPlaying.title}
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded-lg object-cover"
+                          />
+                          {/* animated equaliser dot */}
+                          <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-[#EB83EA] rounded-full border-2 border-[#0f071a] animate-pulse" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[9px] text-[#EB83EA] font-black uppercase tracking-widest">Now Playing</p>
+                          <p className="text-white text-xs font-semibold truncate">{nowPlaying.title}</p>
+                          <p className="text-gray-500 text-[10px] truncate">{nowPlaying.artist}</p>
+                        </div>
+                        {!isHost && (
+                          <button
+                            onClick={() => playTrack(nowPlaying)}
+                            className="flex-shrink-0 px-2.5 py-1.5 rounded-full bg-[#EB83EA]/20 border border-[#EB83EA]/40 text-[#EB83EA] text-[10px] font-bold hover:bg-[#EB83EA]/30 transition-colors"
+                          >
+                            Play along
+                          </button>
+                        )}
+                      </div>
+                    )}
+
                     {/* Speakers */}
                     <div>
                       <div className="flex items-center justify-between mb-3">
