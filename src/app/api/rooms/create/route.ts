@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth/verify";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
+import { API } from "@huddle01/server-sdk/api";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,28 +21,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Huddle01 not configured" }, { status: 500 });
     }
 
-    // Create room via Huddle01 API
-    const huddleRes = await fetch("https://api.huddle01.com/api/v1/create-room", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-      },
-      body: JSON.stringify({ title: title.trim() }),
+    // Create room via Huddle01 SDK (v2)
+    const api = new API({ apiKey });
+    const { roomId: huddleRoomId } = await api.createRoom({
+      roomLocked: privacy === "private",
+      metadata: JSON.stringify({ title: title.trim() }),
     });
-
-    if (!huddleRes.ok) {
-      const err = await huddleRes.text();
-      console.error("[Rooms] Huddle01 create-room failed:", err);
-      return NextResponse.json({ error: "Failed to create room" }, { status: 502 });
-    }
-
-    const huddleData = await huddleRes.json();
-    const huddleRoomId: string = huddleData?.data?.roomId ?? huddleData?.roomId;
-
-    if (!huddleRoomId) {
-      return NextResponse.json({ error: "Invalid response from Huddle01" }, { status: 502 });
-    }
 
     // Persist to Supabase
     const supabase = getSupabaseServerClient();

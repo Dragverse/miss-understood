@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth/verify";
 import { AccessToken, Role } from "@huddle01/server-sdk/auth";
+import { API } from "@huddle01/server-sdk/api";
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,18 +27,9 @@ export async function GET(request: NextRequest) {
     // Check how many peers are in the room — first joiner becomes host
     let isHost = false;
     try {
-      const peersRes = await fetch(
-        `https://api.huddle01.com/api/v1/preview-peers?roomId=${roomId}`,
-        { headers: { "x-api-key": apiKey } }
-      );
-      if (peersRes.ok) {
-        const peersData = await peersRes.json();
-        const peerCount = peersData?.data?.length ?? peersData?.length ?? 0;
-        isHost = peerCount === 0;
-      } else {
-        // If preview-peers fails, default to listener
-        isHost = false;
-      }
+      const api = new API({ apiKey });
+      const livePeers = await api.getLivePartipantsDetails({ roomId });
+      isHost = livePeers.length === 0;
     } catch {
       isHost = false;
     }
@@ -50,7 +42,7 @@ export async function GET(request: NextRequest) {
         admin: isHost,
         canConsume: true,
         canProduce: isHost,
-        canProduceSources: { cam: false, mic: true, screen: false },
+        canProduceSources: { cam: isHost, mic: true, screen: false },
         canRecvData: true,
         canSendData: true,
         canUpdateMetadata: true,
