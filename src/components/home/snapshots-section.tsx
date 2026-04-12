@@ -160,6 +160,7 @@ export function SnapshotsSection({ shorts }: SnapshotsSectionProps) {
                 alt={video.title}
                 fill
                 className="object-contain group-hover:scale-105 transition-transform duration-500"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/default-thumbnail.jpg'; }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
 

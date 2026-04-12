@@ -280,16 +280,17 @@
   body {
     @apply bg-background text-foreground;
   }
-  h1 { font-weight: 1000; }
-  h2 { font-weight: 1000; }
-  h3 { font-weight: 900; }
-  h4 { font-weight: 900; }
-  h5 { font-weight: 800; }
-  h6 { font-weight: 700; }
+  h1 { font-weight: 1000; font-stretch: 133%; }
+  h2 { font-weight: 1000; font-stretch: 133%; }
+  h3 { font-weight: 900; font-stretch: 133%; }
+  h4 { font-weight: 900; font-stretch: 133%; }
+  h5 { font-weight: 800; font-stretch: 133%; }
+  h6 { font-weight: 700; font-stretch: 133%; }
 
   /* Utility class for branded heavy weight (used on section headers) */
   .font-heading {
     font-weight: 1000;
+    font-stretch: 133%;
   }
 
   /* Mobile menu slide animation */
@@ -408,9 +409,9 @@
    specificity, ensuring headings stay heavy even with font-bold etc.
    Roboto Flex variable font supports weights up to 1000.
    ================================================================ */
-h1, h2 { font-weight: 1000; }
-h3, h4 { font-weight: 900; }
-h5, h6 { font-weight: 800; }
+h1, h2 { font-weight: 1000; font-stretch: 133%; }
+h3, h4 { font-weight: 900; font-stretch: 133%; }
+h5, h6 { font-weight: 800; font-stretch: 133%; }
 
 /* ================================================================
    Audio Player Range Inputs - Mobile-Optimized

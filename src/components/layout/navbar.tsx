@@ -278,11 +278,8 @@ export function Navbar() {
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">👛</span>
                           <div className="text-lg font-bold text-white">
-                            ${parseFloat(formatUnits(usdcBalance as bigint, 6)).toFixed(2)} USDC
+                            ${parseFloat(formatUnits(usdcBalance as bigint, 6)).toFixed(2)}
                           </div>
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          USDC Balance
                         </div>
                       </div>
                       <div className="my-1 h-px bg-white/10" />

@@ -99,6 +99,8 @@ function runTusUpload(
 ): Promise<LivepeerAsset> {
   return new Promise((resolve, reject) => {
     const uploadTimeout = 30 * 60 * 1000; // 30 minutes max
+    let lastProgressBytes = 0;
+    let retryCount = 0;
 
     const timeoutId = setTimeout(() => {
       upload.abort(true);
@@ -112,24 +114,43 @@ function runTusUpload(
         filetype: file.type,
       },
       uploadSize: file.size,
-      chunkSize: 50 * 1024 * 1024, // 50MB chunks
-      retryDelays: [0, 2000, 5000, 10000, 30000],
+      chunkSize: 30 * 1024 * 1024, // 30MB chunks — smaller for better resilience
+      retryDelays: [0, 1000, 3000, 8000, 15000, 30000],
       parallelUploads: 1,
       // Disable fingerprint storage — each upload gets a fresh URL
       urlStorage: undefined,
       fingerprint: () => Promise.resolve(undefined as unknown as string),
       removeFingerprintOnSuccess: true,
-      onShouldRetry: (err) => {
+      onShouldRetry: (err, retryAttempt, _options) => {
+        retryCount++;
         const msg = err?.message || String(err);
+        const status = (err as any)?.originalResponse?.getStatus?.();
+        console.warn(`⚠️ TUS chunk retry #${retryCount} (attempt ${retryAttempt}):`, {
+          error: msg.substring(0, 200),
+          status,
+          uploadedSoFar: `${(lastProgressBytes / (1024 * 1024)).toFixed(1)}MB / ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+        });
         // Never retry 409 within TUS — we handle it at the outer level
-        if (msg.includes('409')) return false;
+        if (msg.includes('409') || status === 409) return false;
+        // Don't retry on auth errors
+        if (status === 401 || status === 403) return false;
         return true;
       },
       onError: (error) => {
         clearTimeout(timeoutId);
+        const status = (error as any)?.originalResponse?.getStatus?.();
+        console.error("❌ TUS upload error:", {
+          message: error.message?.substring(0, 300),
+          status,
+          bytesUploaded: lastProgressBytes,
+          fileSize: file.size,
+          percentComplete: Math.round((lastProgressBytes / file.size) * 100),
+          retries: retryCount,
+        });
         reject(error);
       },
       onProgress: (bytesUploaded, bytesTotal) => {
+        lastProgressBytes = bytesUploaded;
         if (onProgress) {
           onProgress({
             loaded: bytesUploaded,
@@ -140,7 +161,10 @@ function runTusUpload(
       },
       onSuccess: () => {
         clearTimeout(timeoutId);
-        console.log("✅ TUS upload completed successfully");
+        console.log("✅ TUS upload completed successfully", {
+          fileSize: `${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+          retries: retryCount,
+        });
         resolve(asset);
       },
     });

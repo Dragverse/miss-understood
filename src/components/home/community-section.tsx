@@ -49,6 +49,7 @@ export function CommunitySection({ videos }: CommunitySectionProps) {
                 alt={video.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/default-thumbnail.jpg'; }}
               />
               <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 text-white text-[10px] font-bold rounded-lg">
                 {formatDuration(video.duration)}

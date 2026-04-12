@@ -488,6 +488,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
                         width={40}
                         height={40}
                         className="object-cover w-full h-full"
+                        onError={(e) => { (e.target as HTMLImageElement).src = '/defaultpfp.png'; }}
                       />
                     </div>
                   </Link>

@@ -11,12 +11,14 @@ const VIDEO_SELECT = `
   likes,
   created_at,
   playback_url,
+  playback_id,
   livepeer_asset_id,
   content_type,
   category,
   tags,
   visibility,
-  creator_did
+  creator_did,
+  creator_id
 `;
 
 /**
@@ -52,6 +54,27 @@ export async function GET(request: NextRequest) {
 
     const filterContentType = contentType || currentVideo.content_type;
     const effectiveCreatorDid = creatorDid || currentVideo.creator_did;
+
+    // Helper: batch-fetch creators and attach to videos
+    async function attachCreators(videos: any[]) {
+      const uniqueCreatorIds = [...new Set(videos.map(v => v.creator_id).filter(Boolean))];
+      if (uniqueCreatorIds.length === 0) return videos;
+
+      const { data: creatorsData } = await supabase
+        .from("creators")
+        .select("id, did, handle, display_name, avatar, verified")
+        .in("id", uniqueCreatorIds);
+
+      const creatorsMap = new Map();
+      if (creatorsData) {
+        creatorsData.forEach(c => creatorsMap.set(c.id, c));
+      }
+
+      return videos.map(v => ({
+        ...v,
+        creator: v.creator_id ? creatorsMap.get(v.creator_id) || null : null,
+      }));
+    }
 
     // When creatorDid is provided, use two-pass strategy:
     // 1. Same creator's other content (highest priority for audio queue)
@@ -96,7 +119,9 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      return NextResponse.json({ videos: allVideos }, {
+      const videosWithCreators = await attachCreators(allVideos);
+
+      return NextResponse.json({ videos: videosWithCreators }, {
         headers: {
           'Cache-Control': 'public, max-age=120, stale-while-revalidate=300',
           'CDN-Cache-Control': 's-maxage=240'
@@ -147,7 +172,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ videos: videos || [] }, {
+    const videosWithCreators = await attachCreators(videos || []);
+
+    return NextResponse.json({ videos: videosWithCreators }, {
       headers: {
         'Cache-Control': 'public, max-age=120, stale-while-revalidate=300',
         'CDN-Cache-Control': 's-maxage=240'

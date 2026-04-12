@@ -57,6 +57,7 @@ export function AudiosSection({ audios }: AudiosSectionProps) {
                 alt={audio.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/default-thumbnail.jpg'; }}
               />
               {/* Gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
@@ -92,6 +93,7 @@ export function AudiosSection({ audios }: AudiosSectionProps) {
                     width={24}
                     height={24}
                     className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/defaultpfp.png'; }}
                   />
                 </div>
                 <div className="flex items-center gap-1 text-gray-400 text-xs min-w-0">

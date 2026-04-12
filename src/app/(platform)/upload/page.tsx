@@ -60,6 +60,7 @@ function UploadPageContent() {
   const [uploadedBytes, setUploadedBytes] = useState<number>(0);
   const [totalBytes, setTotalBytes] = useState<number>(0);
   const [timeRemaining, setTimeRemaining] = useState<string>("");
+  const [videoResolution, setVideoResolution] = useState<string>("");
 
   const categories = [
     "Entertainment",

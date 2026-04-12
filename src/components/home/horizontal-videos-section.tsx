@@ -57,6 +57,7 @@ export function HorizontalVideosSection({ videos }: HorizontalVideosSectionProps
                 alt={video.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/default-thumbnail.jpg'; }}
               />
               <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 text-white text-[10px] font-bold rounded-lg">
                 {formatDuration(video.duration)}
@@ -77,6 +78,7 @@ export function HorizontalVideosSection({ videos }: HorizontalVideosSectionProps
                   width={36}
                   height={36}
                   className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).src = '/defaultpfp.png'; }}
                 />
               </div>
               <div className="space-y-1 min-w-0">

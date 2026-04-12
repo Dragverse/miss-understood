@@ -24,6 +24,7 @@ export function ShortCard({ video }: ShortCardProps) {
             alt={video.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => { (e.target as HTMLImageElement).src = '/default-thumbnail.jpg'; }}
           />
           {/* Snapshot badge */}
           <div className="absolute top-2 left-2 bg-gradient-to-r from-[#EB83EA] to-[#E748E6] px-2.5 py-1 rounded-full text-xs font-bold uppercase shadow-lg">

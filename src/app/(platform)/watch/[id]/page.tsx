@@ -12,7 +12,7 @@ import { ShareModal } from "@/components/video/share-modal";
 import { VideoCommentModal } from "@/components/video/video-comment-modal";
 import { VideoOptionsMenu } from "@/components/video/video-options-menu";
 // import { ChocolateBar } from "@/components/ui/chocolate-bar"; // Hidden until monetization feature
-import { getVideo, getVideos, incrementVideoViews, type SupabaseVideo } from "@/lib/supabase/videos";
+import { getVideos, incrementVideoViews, type SupabaseVideo } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
 import { getLocalVideos } from "@/lib/utils/local-storage";
@@ -20,7 +20,7 @@ import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 import { usePrivy } from "@privy-io/react-auth";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
-import { HeartAnimation, ActionButton, EmptyState, LoadingShimmer, MoodBadge, TipButton } from "@/components/shared";
+import { HeartAnimation, ActionButton, LoadingShimmer, MoodBadge, TipButton } from "@/components/shared";
 import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
 import { createMinimalYouTubeVideoWithDetection } from "@/lib/youtube/video-helpers";
 import { getSafeThumbnail, isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
@@ -44,9 +44,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   // const [tipModalOpen, setTipModalOpen] = useState(false); // Hidden until monetization feature
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
   const [creatorVideos, setCreatorVideos] = useState<Video[]>([]);
-  const [loadingRelated, setLoadingRelated] = useState(true);
   const [theaterMode, setTheaterMode] = useState(false);
 
   const isOwner = !!(user?.id && video?.creator?.did && video.creator.did === user.id);
@@ -274,7 +272,6 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   // Load related videos and creator videos (Dragverse only — no slow YouTube/Bluesky fetches)
   useEffect(() => {
     async function loadRelatedAndCreatorVideos() {
-      setLoadingRelated(true);
       const allVideos: Video[] = [];
 
       // Fetch Dragverse videos only (single fast Supabase query)
@@ -316,35 +313,6 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         v.creator?.did === video?.creator?.did
       ).slice(0, 5);
       setCreatorVideos(fromCreator);
-
-      // Filter by matching content type for related videos
-      const matchingContentType = allVideos.filter(v =>
-        v.id !== resolvedParams.id &&
-        v.contentType === video?.contentType &&
-        v.creator?.did !== video?.creator?.did // Exclude creator's videos from related
-      );
-
-      // Prefer videos with same category/tags
-      const related = matchingContentType
-        .filter(v => {
-          if (video?.category && v.category === video.category) return true;
-          if (video?.tags && v.tags) {
-            return video.tags.some(tag => v.tags.includes(tag));
-          }
-          return true;
-        })
-        .slice(0, 10);
-
-      // Fill up to 10 if needed
-      if (related.length < 10) {
-        const additional = matchingContentType
-          .filter(v => !related.includes(v))
-          .slice(0, 10 - related.length);
-        related.push(...additional);
-      }
-
-      setRelatedVideos(related);
-      setLoadingRelated(false);
     }
 
     if (video) {
@@ -530,7 +498,6 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   aspectRatio={video.contentType === "short" ? 9 / 16 : 16 / 9}
                   autoPlay
                   volume={0.8}
-                  lowLatency
                 >
                   <Player.Container className="rounded-2xl overflow-hidden bg-black">
                     {/* Poster/Thumbnail while loading */}
@@ -550,17 +517,17 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                     <Player.Controls autoHide={3000} className="flex flex-col justify-end">
                       {/* Progress Bar - Full width at top of controls */}
                       <div className="px-4 pb-2">
-                        <Player.Seek className="w-full group">
-                          <Player.Track className="h-1 group-hover:h-2 bg-white/30 rounded-full transition-all cursor-pointer">
-                            <Player.SeekBuffer className="bg-white/40 rounded-full h-full" />
-                            <Player.Range className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-full h-full" />
+                        <Player.Seek className="w-full group/seek">
+                          <Player.Track className="h-1 group-hover/seek:h-1.5 bg-white/20 rounded-full transition-all duration-200 cursor-pointer">
+                            <Player.SeekBuffer className="bg-white/30 rounded-full h-full" />
+                            <Player.Range className="bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-full h-full shadow-[0_0_8px_rgba(235,131,234,0.4)]" />
                           </Player.Track>
-                          <Player.Thumb className="w-4 h-4 bg-[#EB83EA] rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <Player.Thumb className="w-4 h-4 bg-[#EB83EA] rounded-full shadow-lg shadow-[#EB83EA]/50 border-2 border-white transition-transform group-hover/seek:scale-110" />
                         </Player.Seek>
                       </div>
 
                       {/* Control Buttons Row */}
-                      <div className="flex items-center gap-2 px-4 pb-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-8">
+                      <div className="flex items-center gap-2 px-4 pb-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-6">
                         {/* Play/Pause */}
                         <Player.PlayPauseTrigger className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-[#EB83EA]/40 transition">
                           <Player.PlayingIndicator matcher={false}>
@@ -590,7 +557,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                         </div>
 
                         {/* Time Display */}
-                        <Player.Time className="text-sm font-medium text-white/90 ml-2" />
+                        <Player.Time className="text-sm font-medium text-white/90 ml-2 tabular-nums" />
 
                         {/* Spacer */}
                         <div className="flex-1" />
@@ -602,6 +569,35 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                             <rect x="12" y="9" width="8" height="6" rx="1" fill="currentColor" />
                           </svg>
                         </Player.PictureInPictureTrigger>
+
+                        {/* Playback Speed */}
+                        <Player.RateSelect>
+                          <Player.SelectTrigger
+                            className="inline-flex items-center justify-center h-10 px-2 rounded-full hover:bg-white/10 transition text-sm font-medium text-white/90 gap-1"
+                            aria-label="Playback speed"
+                          >
+                            <Player.SelectValue placeholder="1x" />
+                          </Player.SelectTrigger>
+                          <Player.SelectPortal>
+                            <Player.SelectContent
+                              className="bg-[#1a0b2e] border border-[#EB83EA]/30 rounded-xl shadow-2xl shadow-black/60 overflow-hidden z-50"
+                            >
+                              <Player.SelectViewport className="p-1">
+                                {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
+                                  <Player.RateSelectItem
+                                    key={rate}
+                                    value={rate}
+                                    className="flex items-center px-3 py-2 text-sm text-white/80 hover:bg-[#EB83EA]/20 hover:text-white rounded-lg cursor-pointer transition data-[state=checked]:text-[#EB83EA] data-[state=checked]:font-bold outline-none"
+                                  >
+                                    <Player.SelectItemText>
+                                      {rate === 1 ? "Normal" : `${rate}x`}
+                                    </Player.SelectItemText>
+                                  </Player.RateSelectItem>
+                                ))}
+                              </Player.SelectViewport>
+                            </Player.SelectContent>
+                          </Player.SelectPortal>
+                        </Player.RateSelect>
 
                         {/* Fullscreen */}
                         <Player.FullscreenTrigger className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition">
@@ -645,14 +641,24 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 <h1 className="text-xl lg:text-2xl font-bold mb-2 text-white">
                   {video.title}
                 </h1>
-                <div className="flex items-center gap-4 text-sm text-gray-400 mb-3">
-                  {/* Only show view count for Dragverse videos with tracked views */}
+                <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-gray-400 mb-3">
+                  {/* View and like counts for Dragverse videos */}
                   {video.source === "ceramic" && video.views > 0 && (
                     <>
                       <span className="flex items-center gap-1">
                         <span className="text-[#EB83EA] font-bold">
                           {video.views >= 1000 ? `${(video.views / 1000).toFixed(1)}K` : video.views}
                         </span> views
+                      </span>
+                      <span>•</span>
+                    </>
+                  )}
+                  {video.source === "ceramic" && (
+                    <>
+                      <span className="flex items-center gap-1">
+                        <span className="text-[#EB83EA] font-bold">
+                          {likes >= 1000 ? `${(likes / 1000).toFixed(1)}K` : likes}
+                        </span> likes
                       </span>
                       <span>•</span>
                     </>
@@ -716,61 +722,45 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
               )}
             </div>
 
-            {/* Stats Row */}
-            {video.source === "ceramic" && video.views > 0 && (
-              <div className="flex items-center gap-4 mb-4 pb-4 border-b border-[#EB83EA]/10">
-                <div className="flex items-center gap-2 text-gray-300">
-                  <FiPlay className="w-4 h-4 text-[#EB83EA]" />
-                  <span className="text-sm font-medium">
-                    {video.views >= 1000 ? `${(video.views / 1000).toFixed(1)}K` : video.views} views
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-300">
-                  <span className="text-sm font-medium">
-                    {likes >= 1000 ? `${(likes / 1000).toFixed(1)}K` : likes} likes
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Action Buttons - Improved Layout */}
-            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 mb-6">
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3 mb-6 pt-4 border-t border-[#EB83EA]/10">
               {/* Like Button - Only for Dragverse videos */}
               {video.source === "ceramic" && (
-                <div className="col-span-2 sm:col-span-1">
-                  <HeartAnimation
-                    initialLiked={isLiked}
-                    onToggle={handleLike}
-                    showCount={false}
-                    count={likes}
-                  />
-                </div>
+                <HeartAnimation
+                  initialLiked={isLiked}
+                  onToggle={handleLike}
+                  showCount={true}
+                  count={likes}
+                />
               )}
 
               {/* Comment Button - Only for Dragverse videos */}
               {video.source === "ceramic" && (
-                <button
+                <ActionButton
                   onClick={() => setCommentModalOpen(true)}
-                  className="flex items-center justify-center gap-2 px-5 py-3 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA] hover:scale-105 transform"
+                  variant="secondary"
+                  size="sm"
+                  icon={<FiMessageCircle className="w-5 h-5" />}
                 >
-                  <FiMessageCircle className="w-5 h-5" />
-                  <span>Comment</span>
-                </button>
+                  Comment
+                </ActionButton>
               )}
 
-              <button
+              <ActionButton
                 onClick={() => setShareModalOpen(true)}
-                className="flex items-center justify-center gap-2 px-5 py-3 bg-[#2f2942] hover:bg-[#3f3952] border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl font-semibold transition-all text-white hover:text-[#EB83EA] hover:scale-105 transform"
+                variant="secondary"
+                size="sm"
+                icon={<FiShare2 className="w-5 h-5" />}
               >
-                <FiShare2 className="w-5 h-5" />
-                <span>Share</span>
-              </button>
+                Share
+              </ActionButton>
 
-              {/* Tip Button - Prominent */}
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Tip Button - Prominent, right-aligned */}
               {video.source === "ceramic" && !isOwner && video.creator.walletAddress && (
-                <div className="col-span-2 sm:col-span-1 sm:ml-auto">
-                  <TipButton creator={video.creator} variant="primary" size="md" className="w-full sm:w-auto hover:scale-105 transform transition-transform" />
-                </div>
+                <TipButton creator={video.creator} variant="primary" size="md" className="hover:scale-105 transform transition-transform" />
               )}
             </div>
 
@@ -801,10 +791,11 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
               <Link href={`/u/${video.creator.handle}`} className="flex gap-3 flex-1 group">
                 <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-[#EB83EA]/30 group-hover:border-[#EB83EA] transition-all flex-shrink-0">
                   <Image
-                    src={video.creator.avatar}
+                    src={video.creator.avatar || '/defaultpfp.png'}
                     alt={video.creator.displayName}
                     fill
                     className="object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/defaultpfp.png'; }}
                   />
                 </div>
                 <div className="flex-1">
@@ -953,10 +944,11 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                         >
                           <div className="relative w-24 h-16 flex-shrink-0 rounded overflow-hidden">
                             <Image
-                              src={getSafeThumbnail(v.thumbnail, `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`)}
+                              src={getSafeThumbnail(v.thumbnail, '/default-thumbnail.jpg')}
                               alt={v.title}
                               fill
                               className="object-cover group-hover:scale-105 transition-transform duration-300"
+                              onError={(e) => { (e.target as HTMLImageElement).src = '/default-thumbnail.jpg'; }}
                             />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -975,70 +967,6 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   </div>
                 </div>
               )}
-
-              {/* Up Next - Related Videos */}
-              <div>
-                <h3 className="font-bold text-sm uppercase tracking-wide mb-3 text-[#EB83EA]">
-                  Up Next
-                </h3>
-                {loadingRelated ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="flex gap-3 p-3 bg-[#18122D] rounded-2xl border border-[#EB83EA]/10 animate-pulse">
-                        <div className="w-32 h-20 bg-[#2f2942] rounded-xl" />
-                        <div className="flex-1 space-y-2">
-                          <div className="h-4 bg-[#2f2942] rounded w-3/4" />
-                          <div className="h-3 bg-[#2f2942] rounded w-1/2" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : relatedVideos.length > 0 ? (
-                  <div className="space-y-2">
-                    {relatedVideos.map((v) => {
-                      // Determine correct route based on content type
-                      const route = (v.contentType === 'podcast' || v.contentType === 'music') ? `/listen/${v.id}` : `/watch/${v.id}`;
-                      return (
-                        <Link
-                          key={v.id}
-                          href={route}
-                          className="flex gap-2 p-2.5 bg-gradient-to-br from-[#18122D] to-[#1a0b2e] hover:from-[#2f2942] hover:to-[#18122D] rounded-lg border border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all group"
-                        >
-                          <div className="relative w-28 h-18 flex-shrink-0 rounded overflow-hidden">
-                            <Image
-                              src={getSafeThumbnail(v.thumbnail, `https://api.dicebear.com/9.x/shapes/svg?seed=${v.id}`)}
-                              alt={v.title}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-xs line-clamp-2 mb-1 group-hover:text-[#EB83EA] transition-colors">
-                              {v.title}
-                            </h4>
-                            <p className="text-xs text-gray-400 mb-0.5">
-                              {v.creator?.displayName || "Unknown"}
-                            </p>
-                            {v.source === "ceramic" && v.views > 0 && (
-                              <p className="text-xs text-gray-500">
-                                {v.views >= 1000 ? `${(v.views / 1000).toFixed(1)}K` : v.views} views
-                              </p>
-                            )}
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <EmptyState
-                    icon="🎬"
-                    title="No More Videos"
-                    description="Check out more amazing content"
-                    actionLabel="Browse All Videos"
-                    onAction={() => window.location.href = "/videos"}
-                  />
-                )}
-              </div>
 
               {/* Explore, Sponsored, Beta Warning */}
               <RightSidebar />
