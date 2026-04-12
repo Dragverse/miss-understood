@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBlueskyAgent, blueskyPostToVideo, sortPostsByEngagement } from "@/lib/bluesky/client";
+import { getBlueskyAgent, blueskyPostToVideo, blueskyPostToContent, sortPostsByEngagement } from "@/lib/bluesky/client";
 
 /**
  * API route to search Bluesky posts by hashtag
@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q") || "";
     const limit = parseInt(searchParams.get("limit") || "30", 10);
+    const contentType = searchParams.get("contentType") || "videos"; // "all" or "videos"
 
     console.log(`[Bluesky Search] Query: "${query}", Limit: ${limit}`);
 
@@ -55,32 +56,32 @@ export async function GET(request: NextRequest) {
     }
 
     // Convert Bluesky posts to our format
-    const posts = searchResults.data.posts
-      .map((item: any) => ({
-        uri: item.uri,
-        cid: item.cid,
-        author: {
-          did: item.author.did,
-          handle: item.author.handle,
-          displayName: item.author.displayName,
-          avatar: item.author.avatar,
-        },
-        text: item.record.text || "",
-        createdAt: item.record.createdAt || item.indexedAt,
-        embed: item.embed
-          ? {
-              type: item.embed.$type,
-              video: item.embed.video,
-              external: item.embed.external,
-              images: item.embed.images,
-            }
-          : undefined,
-        likeCount: item.likeCount || 0,
-        replyCount: item.replyCount || 0,
-        repostCount: item.repostCount || 0,
-      }))
-      .map(blueskyPostToVideo)
-      .filter((post) => post !== null);
+    const normalizedPosts = searchResults.data.posts.map((item: any) => ({
+      uri: item.uri,
+      cid: item.cid,
+      author: {
+        did: item.author.did,
+        handle: item.author.handle,
+        displayName: item.author.displayName,
+        avatar: item.author.avatar,
+      },
+      text: item.record.text || "",
+      createdAt: item.record.createdAt || item.indexedAt,
+      embed: item.embed
+        ? {
+            type: item.embed.$type,
+            video: item.embed.video,
+            external: item.embed.external,
+            images: item.embed.images,
+          }
+        : undefined,
+      likeCount: item.likeCount || 0,
+      replyCount: item.replyCount || 0,
+      repostCount: item.repostCount || 0,
+    }));
+
+    const converter = contentType === "all" ? blueskyPostToContent : blueskyPostToVideo;
+    const posts = normalizedPosts.map(converter).filter((post) => post !== null);
 
     // Sort by engagement
     const sortedPosts = sortPostsByEngagement(posts);

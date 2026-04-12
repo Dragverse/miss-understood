@@ -296,29 +296,39 @@ export async function searchDragContent(
     // Search for drag-related posts using diverse keywords
     // Includes queens, kings, monsters, gamers, streamers, and alternative drag
     const searchTerms = [
-      // Traditional drag
+      // Core drag terms
       "drag queen",
       "drag race",
       "drag performance",
       "drag show",
-      // Drag kings
+      "drag look",
+      // Drag kings & alternative
       "drag king",
       "#dragking",
-      // Alternative drag (Dragula style)
       "dragula",
       "drag monster",
-      "#dragmonster",
-      // Modern drag content creators
-      "drag streamer",
-      "drag gamer",
+      // Makeup & transformation
       "drag makeup",
       "drag transformation",
+      "full glam",
+      "drag lewk",
+      // Ballroom & vogue
+      "ballroom",
+      "voguing",
+      "lip sync",
+      // Community & events
+      "drag artist",
+      "drag community",
+      "drag con",
       // Hashtags
       "#drag",
       "#dragrace",
       "#dragqueen",
       "#dragartist",
-      "#lgbtq drag"
+      "#ballroom",
+      "#voguing",
+      "#queerart",
+      "#lgbtqdrag",
     ];
 
     console.log(`[Bluesky] Searching for drag content with ${searchTerms.length} search terms (limit: ${limit})...`);

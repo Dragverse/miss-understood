@@ -11,6 +11,27 @@ interface TrendingTopic {
   estimatedTotal: number;
 }
 
+const DRAG_FILTER_CHIPS = [
+  { label: "Queens", hashtag: "#DragQueen" },
+  { label: "Kings", hashtag: "#DragKing" },
+  { label: "Ballroom", hashtag: "#Ballroom" },
+  { label: "Vogue", hashtag: "#Voguing" },
+  { label: "Looks", hashtag: "#DragMakeup" },
+  { label: "Dragula", hashtag: "#Dragula" },
+  { label: "Queer Art", hashtag: "#QueerArt" },
+];
+
+const FALLBACK_TRENDING = [
+  { hashtag: "#DragRace", postCount: 820, estimatedTotal: 67240 },
+  { hashtag: "#DragQueen", postCount: 750, estimatedTotal: 61500 },
+  { hashtag: "#DragMakeup", postCount: 570, estimatedTotal: 46740 },
+  { hashtag: "#Ballroom", postCount: 490, estimatedTotal: 40180 },
+  { hashtag: "#LipSync", postCount: 410, estimatedTotal: 33620 },
+  { hashtag: "#QueerArt", postCount: 380, estimatedTotal: 31160 },
+  { hashtag: "#DragKing", postCount: 320, estimatedTotal: 26240 },
+  { hashtag: "#Voguing", postCount: 290, estimatedTotal: 23780 },
+];
+
 export function FeedRightSidebar() {
   const { creator } = useAuthUser();
   const [bookmarkCount, setBookmarkCount] = useState(0);
@@ -162,7 +183,7 @@ export function FeedRightSidebar() {
         )}
       </div>
 
-      {/* Trending Topics */}
+      {/* The Tea — Trending Topics */}
       <div className="p-6 rounded-[24px] bg-gradient-to-br from-[#1a0b2e] to-[#2a1545] border-2 border-[#2f2942] shadow-lg">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 rounded-full bg-[#E748E6]/20">
@@ -170,53 +191,38 @@ export function FeedRightSidebar() {
           </div>
           <h3 className="font-heading text-lg font-black uppercase tracking-wide">The Tea</h3>
         </div>
-        <div className="space-y-3">
-          {trendingTopics.length > 0 ? (
-            trendingTopics.map((topic) => (
-              <Link
-                key={topic.hashtag}
-                href={`/feed?hashtag=${encodeURIComponent(topic.hashtag)}`}
-                className="block p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition group"
-              >
-                <p className="font-semibold text-sm text-[#E748E6] group-hover:text-[#EB83EA] transition">
-                  {topic.hashtag}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {(topic.estimatedTotal / 1000).toFixed(1)}K posts
-                </p>
-              </Link>
-            ))
-          ) : (
-            <>
-              <Link
-                href="/feed?hashtag=%23DragCon2026"
-                className="block p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition group"
-              >
-                <p className="font-semibold text-sm text-[#E748E6] group-hover:text-[#EB83EA] transition">
-                  #DragCon2026
-                </p>
-                <p className="text-xs text-gray-400 mt-1">8.2K posts</p>
-              </Link>
-              <Link
-                href="/feed?hashtag=%23MakeupTutorial"
-                className="block p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition group"
-              >
-                <p className="font-semibold text-sm text-[#E748E6] group-hover:text-[#EB83EA] transition">
-                  #MakeupTutorial
-                </p>
-                <p className="text-xs text-gray-400 mt-1">5.7K posts</p>
-              </Link>
-              <Link
-                href="/feed?hashtag=%23LipSyncBattle"
-                className="block p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition group"
-              >
-                <p className="font-semibold text-sm text-[#E748E6] group-hover:text-[#EB83EA] transition">
-                  #LipSyncBattle
-                </p>
-                <p className="text-xs text-gray-400 mt-1">4.1K posts</p>
-              </Link>
-            </>
-          )}
+
+        {/* Quick filter chips */}
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {DRAG_FILTER_CHIPS.map((chip) => (
+            <Link
+              key={chip.label}
+              href={`/feed?hashtag=${encodeURIComponent(chip.hashtag)}`}
+              className="px-2.5 py-1 rounded-full bg-[#EB83EA]/10 hover:bg-[#EB83EA]/25 border border-[#EB83EA]/20 hover:border-[#EB83EA]/50 text-[#EB83EA] text-[10px] font-bold uppercase tracking-wide transition-all"
+            >
+              {chip.label}
+            </Link>
+          ))}
+        </div>
+
+        {/* Live trending from Bluesky */}
+        <div className="space-y-2">
+          {(trendingTopics.length > 0 ? trendingTopics : FALLBACK_TRENDING).map((topic) => (
+            <Link
+              key={topic.hashtag}
+              href={`/feed?hashtag=${encodeURIComponent(topic.hashtag)}`}
+              className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition group"
+            >
+              <p className="font-semibold text-sm text-[#E748E6] group-hover:text-[#EB83EA] transition truncate">
+                {topic.hashtag}
+              </p>
+              <p className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                {topic.estimatedTotal >= 1000
+                  ? `${(topic.estimatedTotal / 1000).toFixed(1)}K`
+                  : topic.estimatedTotal}
+              </p>
+            </Link>
+          ))}
         </div>
       </div>
     </aside>

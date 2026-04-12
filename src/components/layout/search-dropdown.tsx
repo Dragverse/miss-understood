@@ -110,45 +110,53 @@ export function SearchDropdown() {
                 <FiUser className="w-4 h-4" />
                 Users
               </div>
-              {results.users.slice(0, 5).map((user) => (
-                <Link
-                  key={user.did}
-                  href={`/profile/${user.handle}`}
-                  onClick={() => {
-                    setIsOpen(false);
-                    setQuery("");
-                  }}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition"
-                >
-                  <Image
-                    src={user.avatar}
-                    alt={user.displayName}
-                    width={40}
-                    height={40}
-                    className="rounded-full"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-white truncate">
-                      {user.displayName}
-                    </p>
-                    <p className="text-xs text-gray-400 truncate">
-                      @{user.handle} • {user.followerCount} followers
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    {(user.sources?.includes("dragverse") || user.source === "dragverse") && (
-                      <span className="text-xs text-purple-400 bg-purple-500/10 px-2 py-1 rounded-full">
-                        Dragverse
-                      </span>
-                    )}
-                    {(user.sources?.includes("bluesky") || user.source === "bluesky") && (
-                      <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-1 rounded-full">
-                        Bluesky
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              ))}
+              {results.users.slice(0, 5).map((user) => {
+                const isOnDragverse = user.sources?.includes("dragverse") || user.source === "dragverse";
+                const isOnBluesky = user.sources?.includes("bluesky") || user.source === "bluesky";
+                // Dragverse users go to internal profile; Bluesky-only opens bsky.app in new tab
+                const profileHref = isOnDragverse
+                  ? `/u/${user.handle.replace(".bsky.social", "")}`
+                  : `https://bsky.app/profile/${user.handle}`;
+                const isExternal = !isOnDragverse;
+                return (
+                  <Link
+                    key={user.did}
+                    href={profileHref}
+                    target={isExternal ? "_blank" : undefined}
+                    rel={isExternal ? "noopener noreferrer" : undefined}
+                    onClick={() => { setIsOpen(false); setQuery(""); }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition"
+                  >
+                    <Image
+                      src={user.avatar}
+                      alt={user.displayName}
+                      width={40}
+                      height={40}
+                      className="rounded-full"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-white truncate">
+                        {user.displayName}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        @{user.handle.replace(".bsky.social", "")} · {user.followerCount.toLocaleString()} followers
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5 flex-shrink-0">
+                      {isOnDragverse && (
+                        <span className="text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-full font-medium">
+                          DV
+                        </span>
+                      )}
+                      {isOnBluesky && (
+                        <span className="text-[10px] text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-full font-medium">
+                          BSky
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
 
@@ -162,7 +170,7 @@ export function SearchDropdown() {
               {results.hashtags.slice(0, 5).map((hashtag) => (
                 <Link
                   key={hashtag.tag}
-                  href={`/search?q=${encodeURIComponent(hashtag.tag)}`}
+                  href={`/feed?hashtag=${encodeURIComponent(hashtag.tag)}`}
                   onClick={() => {
                     setIsOpen(false);
                     setQuery("");

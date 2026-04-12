@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { FiHome, FiCompass, FiFilm, FiUser, FiSettings, FiAward, FiBarChart2, FiMessageSquare, FiUsers, FiHeadphones, FiBell } from "react-icons/fi";
+import { FiHome, FiCompass, FiFilm, FiUser, FiSettings, FiAward, FiBarChart2, FiMessageSquare, FiUsers, FiHeadphones } from "react-icons/fi";
 
 const navItems = [
   { href: "/", icon: FiHome, label: "Home" },
@@ -28,37 +27,12 @@ const mobileNavItems = [
   { href: "/feed", icon: FiMessageSquare, label: "Feed" },
   { href: "/snapshots", icon: FiFilm, label: "Snapshots" },
   { href: "/videos", icon: FiCompass, label: "Explore" },
-  { href: "/notifications", icon: FiBell, label: "Notifications", hasNotification: true },
+  { href: "/audio", icon: FiHeadphones, label: "Audio" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { authenticated, getAccessToken } = usePrivy();
-  const [notificationCount, setNotificationCount] = useState(0);
-
-  // Fetch notification count
-  useEffect(() => {
-    async function fetchNotifications() {
-      if (!authenticated) return;
-      try {
-        const token = await getAccessToken();
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-
-        const response = await fetch("/api/notifications", { headers });
-        if (!response.ok) return;
-        const data = await response.json();
-        if (data.success) {
-          setNotificationCount(data.unreadCount || 0);
-        }
-      } catch {
-        // Silently ignore — notifications are non-critical
-      }
-    }
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [authenticated, getAccessToken]);
+  const { authenticated } = usePrivy();
 
   return (
     <>
@@ -141,11 +115,6 @@ export function Sidebar() {
               >
                 <div className="relative">
                   <Icon className={`w-6 h-6 ${isActive ? "scale-110" : ""} transition-transform`} />
-                  {item.hasNotification && notificationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#EB83EA] rounded-full border-2 border-[#1a0b2e] flex items-center justify-center">
-                      <span className="text-[8px] font-bold text-white">{notificationCount > 9 ? '9+' : notificationCount}</span>
-                    </span>
-                  )}
                 </div>
                 <span className="text-[10px] font-medium leading-tight">{item.label}</span>
               </Link>

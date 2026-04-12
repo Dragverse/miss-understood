@@ -400,7 +400,14 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* Content */}
       <div className="text-gray-200 mb-4 whitespace-pre-wrap leading-relaxed">
-        {parseTextWithLinks(post.description || (post as any).text_content || "")}
+        {parseTextWithLinks(
+          dragverseCard
+            ? (post.description || (post as any).text_content || "").replace(
+                /https?:\/\/\S*(?:watch|snapshots)\S*/g,
+                "dragverse.app/…"
+              )
+            : (post.description || (post as any).text_content || "")
+        )}
       </div>
 
       {/* Video Player or Thumbnail */}
@@ -504,63 +511,112 @@ export function PostCard({ post }: PostCardProps) {
       )}
 
       {/* Dragverse Link Preview Card */}
-      {dragverseCard && (
-        <Link
-          href={dragverseCard.contentType === "short" ? `/snapshots?v=${dragverseCard.id}` : `/watch/${dragverseCard.id}`}
-          className="mb-4 block rounded-xl overflow-hidden border border-[#EB83EA]/20 hover:border-[#EB83EA]/50 transition-all bg-[#0f071a] group"
-        >
-          <div className="flex gap-3 p-3">
-            {/* Thumbnail */}
-            <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-black">
-              <Image
-                src={getSafeThumbnail(dragverseCard.thumbnail, "/default-thumbnail.jpg", dragverseCard.livepeerAssetId)}
-                alt={dragverseCard.title}
-                fill
-                className="object-cover"
-                onError={(e) => { (e.target as HTMLImageElement).src = "/default-thumbnail.jpg"; }}
-              />
-              {/* Content type overlay */}
+      {dragverseCard && (() => {
+        const cardThumbnail = getSafeThumbnail(dragverseCard.thumbnail, "/default-thumbnail.jpg", dragverseCard.livepeerAssetId);
+        const cardCreator = dragverseCard.creator?.displayName || dragverseCard.creator?.handle || "Unknown";
+        const contentLabel = dragverseCard.contentType === "short" ? "Snapshot"
+          : dragverseCard.contentType === "podcast" ? "Podcast"
+          : dragverseCard.contentType === "music" ? "Music" : "Video";
+        const PlayIcon = () => (
+          <svg className="w-6 h-6 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+        );
+        const PauseIcon = () => (
+          <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>
+        );
+
+        if (dragverseCard.contentType === "short") {
+          return (
+            <Link
+              href={`/snapshots?v=${dragverseCard.id}`}
+              className="mb-4 block rounded-xl overflow-hidden border border-[#EB83EA]/20 hover:border-[#EB83EA]/50 transition-all bg-[#0f071a] group"
+            >
+              <div className="relative w-full" style={{ aspectRatio: "2/3" }}>
+                <Image src={cardThumbnail} alt={dragverseCard.title} fill className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "/default-thumbnail.jpg"; }} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                {/* Play button */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center group-hover:bg-[#EB83EA]/80 transition-all">
+                    <PlayIcon />
+                  </div>
+                </div>
+                {/* Badge */}
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full">
+                  <Image src="/logo.svg" alt="" width={10} height={10} />
+                  <span className="text-white text-[9px] font-bold uppercase tracking-wide">Snapshot</span>
+                </div>
+                {/* Title overlay */}
+                <div className="absolute bottom-3 left-3 right-3">
+                  <p className="text-white font-semibold text-sm line-clamp-2 leading-tight">{dragverseCard.title}</p>
+                  <p className="text-gray-300 text-xs mt-0.5">{cardCreator}</p>
+                </div>
+              </div>
+            </Link>
+          );
+        }
+
+        if (dragverseCard.playbackUrl && isValidPlaybackUrl(dragverseCard.playbackUrl)) {
+          return (
+            <div className="mb-4 rounded-xl overflow-hidden border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 transition-all bg-[#0f071a]">
+              {/* Inline player */}
+              <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
+                <Player.Root src={getSrc(dragverseCard.playbackUrl)}>
+                  <Player.Container>
+                    <Player.Video title={dragverseCard.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    <Player.Controls className="flex items-center justify-center">
+                      <Player.PlayPauseTrigger className="w-14 h-14 flex items-center justify-center rounded-full bg-[#EB83EA]/90 hover:bg-[#E748E6] transition-all">
+                        <Player.PlayingIndicator asChild matcher={false}><span><PlayIcon /></span></Player.PlayingIndicator>
+                        <Player.PlayingIndicator asChild matcher={true}><span><PauseIcon /></span></Player.PlayingIndicator>
+                      </Player.PlayPauseTrigger>
+                    </Player.Controls>
+                  </Player.Container>
+                </Player.Root>
+              </div>
+              {/* Info row */}
+              <Link href={`/watch/${dragverseCard.id}`} className="flex items-center justify-between px-3 py-2.5 hover:bg-white/5 transition-colors group">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <Image src="/logo.svg" alt="" width={10} height={10} />
+                    <span className="text-purple-300 text-[10px] font-semibold uppercase">Dragverse</span>
+                    <span className="text-gray-600 text-[10px]">·</span>
+                    <span className="text-gray-400 text-[10px] uppercase">{contentLabel}</span>
+                  </div>
+                  <p className="text-white text-sm font-semibold line-clamp-1 group-hover:text-[#EB83EA] transition-colors">{dragverseCard.title}</p>
+                  <p className="text-gray-400 text-xs">{cardCreator}</p>
+                </div>
+                <FiExternalLink className="w-4 h-4 text-gray-500 group-hover:text-[#EB83EA] transition-colors flex-shrink-0 ml-2" />
+              </Link>
+            </div>
+          );
+        }
+
+        // Thumbnail-only fallback
+        return (
+          <Link
+            href={`/watch/${dragverseCard.id}`}
+            className="mb-4 block rounded-xl overflow-hidden border border-[#EB83EA]/20 hover:border-[#EB83EA]/50 transition-all bg-[#0f071a] group"
+          >
+            <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
+              <Image src={cardThumbnail} alt={dragverseCard.title} fill className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "/default-thumbnail.jpg"; }} />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-8 h-8 rounded-full bg-black/60 flex items-center justify-center">
-                  {dragverseCard.contentType === "short" ? (
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  ) : dragverseCard.contentType === "podcast" || dragverseCard.contentType === "music" ? (
-                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  )}
+                <div className="w-14 h-14 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center group-hover:bg-[#EB83EA]/80 transition-all">
+                  <PlayIcon />
                 </div>
               </div>
             </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0 py-0.5">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Image src="/logo.svg" alt="" width={12} height={12} />
-                <span className="text-purple-300 text-[10px] font-semibold uppercase tracking-wide">Dragverse</span>
+            <div className="px-3 py-2.5">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <Image src="/logo.svg" alt="" width={10} height={10} />
+                <span className="text-purple-300 text-[10px] font-semibold uppercase">Dragverse</span>
                 <span className="text-gray-600 text-[10px]">·</span>
-                <span className="text-gray-400 text-[10px] uppercase">
-                  {dragverseCard.contentType === "short" ? "Snapshot" :
-                   dragverseCard.contentType === "podcast" ? "Podcast" :
-                   dragverseCard.contentType === "music" ? "Music" : "Video"}
-                </span>
+                <span className="text-gray-400 text-[10px] uppercase">{contentLabel}</span>
               </div>
-              <h3 className="font-semibold text-white text-sm line-clamp-2 leading-tight group-hover:text-[#EB83EA] transition-colors mb-1">
-                {dragverseCard.title}
-              </h3>
-              <p className="text-xs text-gray-400 line-clamp-1">
-                {dragverseCard.creator?.displayName || dragverseCard.creator?.handle || "Unknown"}
-              </p>
+              <p className="text-white font-semibold text-sm line-clamp-1 group-hover:text-[#EB83EA] transition-colors">{dragverseCard.title}</p>
+              <p className="text-gray-400 text-xs mt-0.5">{cardCreator}</p>
             </div>
-          </div>
-        </Link>
-      )}
+          </Link>
+        );
+      })()}
 
       {/* Actions */}
       <div className="flex items-center justify-between pt-3 border-t border-[#2f2942]">

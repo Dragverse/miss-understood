@@ -11,7 +11,7 @@ import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { FiSearch, FiRefreshCw, FiVideo } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
-import { ExploreBroadcast } from "@/components/broadcast/explore-broadcast";
+import { ExploreTVSlider } from "@/components/broadcast/explore-tv-slider";
 
 export default function VideosPage() {
   const [activeCategory, setActiveCategory] = useState("All");
@@ -162,7 +162,14 @@ export default function VideosPage() {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
-      <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-8">
+      <div className="max-w-[1600px] mx-auto">
+
+        {/* TV Slider — full width, above everything */}
+        {!isFiltering && !loading && (
+          <ExploreTVSlider videos={longVideos} autoPlayInterval={7000} />
+        )}
+
+        <div className="grid grid-cols-12 gap-8">
         {/* Main Content */}
         <div className="col-span-12 lg:col-span-9 space-y-6">
           {/* Page Header */}
@@ -243,11 +250,6 @@ export default function VideosPage() {
             </div>
           </div>
 
-          {/* Live Stream or Video Broadcast */}
-          {!isFiltering && (
-            <ExploreBroadcast videos={longVideos} />
-          )}
-
           {/* Snapshots Section (Shorts) - Always show unless empty */}
           {shorts.length > 0 && !isFiltering && (
             <SnapshotsSection shorts={shorts} />
@@ -311,6 +313,7 @@ export default function VideosPage() {
         <div className="hidden lg:block col-span-3">
           <RightSidebar />
         </div>
+        </div>{/* end grid */}
       </div>
     </div>
   );

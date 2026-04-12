@@ -4,82 +4,82 @@ import { getBlueskyAgent } from "@/lib/bluesky/client";
 /**
  * API route to fetch trending drag-related hashtags from Bluesky
  * GET /api/bluesky/trending
+ *
+ * Uses parallel requests (Promise.allSettled) for speed.
  */
 export async function GET() {
   try {
     const agent = await getBlueskyAgent();
 
-    // Search for posts with popular drag hashtags to count occurrences
     const dragHashtags = [
+      // Core drag
       "#DragRace",
       "#DragQueen",
-      "#DragPerformance",
-      "#MakeupTutorial",
-      "#LipSync",
-      "#DragCon2026",
-      "#RuPaul",
       "#DragKing",
+      "#DragPerformance",
       "#DragArtist",
+      "#DragMakeup",
+      // Shows & events
+      "#RuPaul",
+      "#DragCon",
+      "#DragShow",
+      "#DragTour",
+      // Styles & aesthetics
+      "#Ballroom",
+      "#Voguing",
+      "#LipSync",
+      "#DragTransformation",
+      "#GlamDrag",
+      // Community
       "#QueerArt",
+      "#LGBTQ",
+      "#DragCommunity",
+      "#AlternativeDrag",
+      "#Dragula",
     ];
 
-    const trendingHashtags = [];
+    // Fetch all hashtag counts in parallel
+    const results = await Promise.allSettled(
+      dragHashtags.map((hashtag) =>
+        agent.app.bsky.feed.searchPosts({ q: hashtag, limit: 100 }).then((res) => ({
+          hashtag,
+          postCount: res.data.posts.length,
+          estimatedTotal: Math.round(res.data.posts.length * 82),
+        }))
+      )
+    );
 
-    for (const hashtag of dragHashtags) {
-      try {
-        // Search for posts with this hashtag
-        const searchResults = await agent.app.bsky.feed.searchPosts({
-          q: hashtag,
-          limit: 100,
-        });
+    const trendingHashtags = results
+      .filter((r): r is PromiseFulfilledResult<{ hashtag: string; postCount: number; estimatedTotal: number }> =>
+        r.status === "fulfilled" && r.value.postCount > 0
+      )
+      .map((r) => r.value)
+      .sort((a, b) => b.postCount - a.postCount)
+      .slice(0, 8);
 
-        if (searchResults.data.posts.length > 0) {
-          trendingHashtags.push({
-            hashtag,
-            postCount: searchResults.data.posts.length,
-            // Estimate total based on sample
-            estimatedTotal: Math.round(searchResults.data.posts.length * 82), // Average multiplier
-          });
-        }
-      } catch (error) {
-        console.warn(`Failed to search for ${hashtag}:`, error);
-        continue;
-      }
-    }
-
-    // Sort by post count
-    trendingHashtags.sort((a, b) => b.postCount - a.postCount);
-
-    // Return top 5
-    const topTrending = trendingHashtags.slice(0, 5);
-
-    // If no results, return fallback
-    if (topTrending.length === 0) {
+    if (trendingHashtags.length === 0) {
       return NextResponse.json({
         success: true,
-        trending: [
-          { hashtag: "#DragCon2026", postCount: 820, estimatedTotal: 8200 },
-          { hashtag: "#MakeupTutorial", postCount: 570, estimatedTotal: 5700 },
-          { hashtag: "#LipSyncBattle", postCount: 410, estimatedTotal: 4100 },
-        ],
+        trending: FALLBACK_TRENDING,
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      trending: topTrending,
+    return NextResponse.json({ success: true, trending: trendingHashtags }, {
+      headers: { "Cache-Control": "public, max-age=600, stale-while-revalidate=1200" },
     });
   } catch (error) {
     console.error("Failed to fetch trending hashtags:", error);
-
-    // Return fallback trending hashtags
-    return NextResponse.json({
-      success: true,
-      trending: [
-        { hashtag: "#DragCon2026", postCount: 820, estimatedTotal: 8200 },
-        { hashtag: "#MakeupTutorial", postCount: 570, estimatedTotal: 5700 },
-        { hashtag: "#LipSyncBattle", postCount: 410, estimatedTotal: 4100 },
-      ],
-    });
+    return NextResponse.json({ success: true, trending: FALLBACK_TRENDING });
   }
 }
+
+const FALLBACK_TRENDING = [
+  { hashtag: "#DragRace", postCount: 820, estimatedTotal: 67240 },
+  { hashtag: "#DragQueen", postCount: 750, estimatedTotal: 61500 },
+  { hashtag: "#DragMakeup", postCount: 570, estimatedTotal: 46740 },
+  { hashtag: "#Ballroom", postCount: 490, estimatedTotal: 40180 },
+  { hashtag: "#LipSync", postCount: 410, estimatedTotal: 33620 },
+  { hashtag: "#QueerArt", postCount: 380, estimatedTotal: 31160 },
+  { hashtag: "#DragKing", postCount: 320, estimatedTotal: 26240 },
+  { hashtag: "#Voguing", postCount: 290, estimatedTotal: 23780 },
+];
