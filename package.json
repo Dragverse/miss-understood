@@ -13,6 +13,8 @@
     "@atproto/oauth-client-node": "^0.3.17",
     "@farcaster/core": "^0.18.10",
     "@farcaster/hub-nodejs": "^0.15.10",
+    "@huddle01/react": "^2.6.4",
+    "@huddle01/server-sdk": "^2.6.2",
     "@livepeer/react": "^4.3.6",
     "@neynar/nodejs-sdk": "^3.125.0",
     "@noble/ed25519": "^3.0.0",

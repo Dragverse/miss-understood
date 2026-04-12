@@ -18,6 +18,7 @@ import {
   FiGlobe,
   FiHeart,
   FiSettings,
+  FiRadio,
 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
@@ -180,6 +181,17 @@ export function Navbar() {
         {/* Search Bar - Desktop */}
         <div className="hidden md:block flex-1 max-w-xl">
           <SearchDropdown />
+        </div>
+
+        {/* Nav links - Desktop */}
+        <div className="hidden lg:flex items-center gap-1">
+          <Link
+            href="/rooms"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-gray-300 hover:text-[#EB83EA] hover:bg-[#EB83EA]/10 transition-all"
+          >
+            <FiRadio className="w-4 h-4" />
+            Rooms
+          </Link>
         </div>
 
         {/* Right Actions */}
@@ -401,6 +413,13 @@ export function Navbar() {
                 />
               </div>
               My Profile
+            </Link>
+            <Link
+              href="/rooms"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
+            >
+              <FiRadio className="w-5 h-5" /> Vibe Lounge
             </Link>
             <Link
               href="/upload"

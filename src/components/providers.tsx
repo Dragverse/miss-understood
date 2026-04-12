@@ -9,6 +9,7 @@ import { WagmiProvider } from "@privy-io/wagmi";
 import { config } from "@/lib/privy/config";
 import { base, mainnet, optimism } from "wagmi/chains";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
+import { HuddleProvider } from "@/contexts/HuddleProvider";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={config}>
+          <HuddleProvider>
           <AudioPlayerProvider>
             <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
               {children}
@@ -87,6 +89,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             />
             </ThemeProvider>
           </AudioPlayerProvider>
+          </HuddleProvider>
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>
