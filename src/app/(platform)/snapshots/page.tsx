@@ -177,7 +177,6 @@ function SnapshotsContent() {
 
   // Shared video player + overlays
   const currentVideo = snapshots.length > 0 ? snapshots[currentIndex] : null;
-  const nextVideo = snapshots.length > 1 ? snapshots[(currentIndex + 1) % snapshots.length] : null;
 
   const videoPlayer = currentVideo ? (
     <div className="relative h-full w-full flex items-center justify-center">
@@ -212,15 +211,6 @@ function SnapshotsContent() {
         <FiRefreshCw className={`w-5 h-5 md:w-6 md:h-6 text-white ${refreshing ? 'animate-spin' : ''}`} />
       </button>
 
-      {/* Up Next indicator - Bottom Left */}
-      {nextVideo && (
-        <div className="absolute bottom-6 left-4 z-20 max-w-[200px]">
-          <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Up Next</p>
-          <p className="text-white/80 text-sm font-medium line-clamp-1">
-            {nextVideo.title}
-          </p>
-        </div>
-      )}
     </div>
   ) : null;
 
@@ -231,7 +221,7 @@ function SnapshotsContent() {
         {/* Desktop: 3-column */}
         <div className="hidden lg:grid grid-cols-12 gap-4 h-[calc(100vh-4rem)] px-4 py-4 max-w-[1600px] mx-auto">
           <div className="col-span-3 overflow-y-auto scrollbar-hide space-y-4 py-2">
-            <div className="rounded-[24px] overflow-hidden min-h-[400px]">
+            <div className="rounded-[24px] overflow-hidden h-[400px]">
               <HeroSlider />
             </div>
             <SponsoredImage
@@ -267,7 +257,7 @@ function SnapshotsContent() {
         {/* Desktop: 3-column */}
         <div className="hidden lg:grid grid-cols-12 gap-4 h-[calc(100vh-4rem)] px-4 py-4 max-w-[1600px] mx-auto">
           <div className="col-span-3 overflow-y-auto scrollbar-hide space-y-4 py-2">
-            <div className="rounded-[24px] overflow-hidden min-h-[400px]">
+            <div className="rounded-[24px] overflow-hidden h-[400px]">
               <HeroSlider />
             </div>
             <SponsoredImage
@@ -331,7 +321,7 @@ function SnapshotsContent() {
       <div className="hidden lg:grid grid-cols-12 gap-4 h-[calc(100vh-4rem)] px-4 py-4 max-w-[1600px] mx-auto">
         {/* Left Sidebar - HeroSlider + Sponsored + AdSense */}
         <div className="col-span-3 overflow-y-auto scrollbar-hide space-y-4 py-2">
-          <div className="rounded-[24px] overflow-hidden min-h-[400px]">
+          <div className="rounded-[24px] overflow-hidden h-[400px]">
             <HeroSlider />
           </div>
           <SponsoredImage
