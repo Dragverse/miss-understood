@@ -17,7 +17,7 @@ export async function GET() {
         is_live,
         listener_count,
         created_at,
-        profiles:creator_did (
+        profiles:creators!creator_did (
           handle,
           display_name,
           avatar
