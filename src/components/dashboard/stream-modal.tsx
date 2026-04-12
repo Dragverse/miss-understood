@@ -483,7 +483,22 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
       // Check for Livepeer's ICE candidates
       const serverCandidates = (answerSdp.match(/a=candidate/g) || []).length;
-      console.log(`📊 Server provided ${serverCandidates} ICE candidates (ice-lite: ${answerSdp.includes('ice-lite')})`);
+      const isIceLite = answerSdp.includes('ice-lite');
+      console.log(`📊 Server provided ${serverCandidates} ICE candidates (ice-lite: ${isIceLite})`);
+
+      // Detect private-only ICE candidates (unreachable from public internet)
+      // Pattern: 10.x.x.x, 192.168.x.x, 172.16-31.x.x, 100.64-127.x.x (CGNAT)
+      const isPrivateIpCandidate = (line: string) =>
+        /a=candidate:[^\r\n]+ (10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+) /.test(line);
+      const allCandidateLines = answerSdp.match(/a=candidate:[^\r\n]+/g) || [];
+      const privateCandidates = allCandidateLines.filter(isPrivateIpCandidate);
+      const hasOnlyPrivateCandidates = serverCandidates > 0 && privateCandidates.length === serverCandidates;
+
+      if (hasOnlyPrivateCandidates) {
+        console.error("❌ Server returned only private/internal IP candidates:", privateCandidates);
+        peerConnection.close();
+        throw new Error("Livepeer returned internal network IPs — WebRTC is unavailable from browser. Use OBS/Streamlabs with RTMP instead (see OBS Setup tab below).");
+      }
 
       await peerConnection.setRemoteDescription({
         type: "answer",
@@ -544,8 +559,12 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
       // Provide more specific error guidance
       let errorMessage = "Failed to start stream";
+      const isPrivateIPError = error instanceof Error && error.message.includes("internal network IPs");
+
       if (error instanceof Error) {
-        if (error.message.includes("WHIP negotiation failed")) {
+        if (isPrivateIPError) {
+          errorMessage = "Browser streaming unavailable — Livepeer returned internal IPs. Switching to OBS setup.";
+        } else if (error.message.includes("WHIP negotiation failed")) {
           errorMessage = "Failed to connect to Livepeer. Please check your internet connection.";
         } else if (error.message.includes("stream key")) {
           errorMessage = "Invalid stream configuration. Please try creating a new stream.";
@@ -554,8 +573,14 @@ export function StreamModal({ onClose }: StreamModalProps) {
         }
       }
 
-      toast.error(errorMessage);
+      toast.error(errorMessage, { duration: isPrivateIPError ? 5000 : 4000 });
       setIsStreaming(false);
+
+      // Auto-switch to OBS when WebRTC fails due to private IPs
+      if (isPrivateIPError) {
+        setStreamingMethod('obs');
+        setStep('setup');
+      }
     }
   };
 

@@ -9,6 +9,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ streamId: string }> }
@@ -24,8 +26,26 @@ export async function GET(
       );
     }
 
+    // If the ID is a Supabase UUID, look up the Livepeer stream ID first
+    let livepeerStreamId = streamId;
+    if (UUID_REGEX.test(streamId)) {
+      const { data: streamRecord } = await supabase
+        .from("streams")
+        .select("livepeer_stream_id")
+        .eq("id", streamId)
+        .single();
+
+      if (!streamRecord?.livepeer_stream_id) {
+        return NextResponse.json(
+          { error: "Stream not found" },
+          { status: 404 }
+        );
+      }
+      livepeerStreamId = streamRecord.livepeer_stream_id;
+    }
+
     // Query Livepeer API for stream status
-    const response = await fetch(`${LIVEPEER_API_URL}/stream/${streamId}`, {
+    const response = await fetch(`${LIVEPEER_API_URL}/stream/${livepeerStreamId}`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
       },

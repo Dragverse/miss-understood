@@ -84,7 +84,8 @@ export async function GET(request: NextRequest) {
       activeStreams = results
         .filter(Boolean)
         .map((stream) => ({
-          id: stream.livepeer_stream_id,
+          id: stream.id,                          // Supabase UUID (for status API)
+          livepeerStreamId: stream.livepeer_stream_id,
           name: stream.title,
           isActive: true,
           playbackUrl: stream.playback_url,
@@ -100,7 +101,8 @@ export async function GET(request: NextRequest) {
     const upcomingStreams = (streams || [])
       .filter(s => s.scheduled_at && s.scheduled_at > now && !s.is_active)
       .map(s => ({
-        id: s.livepeer_stream_id,
+        id: s.id,                        // Supabase UUID
+        livepeerStreamId: s.livepeer_stream_id,
         name: s.title,
         isActive: false,
         isScheduled: true,
