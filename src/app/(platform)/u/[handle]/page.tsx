@@ -25,6 +25,7 @@ import { Creator, Video } from "@/types";
 import { getUserBadgeType } from "@/lib/verification";
 import { PostCard as FeedPostCard } from "@/components/feed/post-card";
 import { ProfileShareModal } from "@/components/profile/profile-share-modal";
+import { useLiveCreatorsStore } from "@/lib/store/live-creators";
 
 /**
  * Dynamic Profile Page - Instagram Style
@@ -48,6 +49,7 @@ export default function DynamicProfilePage() {
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [bioExpanded, setBioExpanded] = useState(false);
+  const isCreatorLive = useLiveCreatorsStore((s) => s.isLive(creator?.did));
   const [connectedBlueskyStats, setConnectedBlueskyStats] = useState<{ followersCount: number; followsCount: number } | null>(null);
   const profileLoadedRef = useRef<string | null>(null);
 
@@ -282,7 +284,7 @@ export default function DynamicProfilePage() {
     <div className="min-h-screen pb-28 md:pb-6">
       {/* Livestream Embed - Full width below navbar */}
       {creator && (
-        <div className="pt-16">
+        <div className="pt-16" id="livestream">
           <LivestreamEmbed
             creatorDID={creator.did}
             creatorName={creator.displayName}
@@ -322,24 +324,47 @@ export default function DynamicProfilePage() {
         <div className="absolute bottom-0 left-0 right-0 px-4 md:px-8 pb-6">
           <div className="max-w-5xl mx-auto">
             <div className="flex flex-col md:flex-row items-start md:items-end gap-4 md:gap-6">
-              {/* Avatar - Rounded */}
-              <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#0f071a] overflow-hidden bg-[#2f2942] shadow-2xl flex-shrink-0">
-                <Image
-                  src={creator.avatar}
-                  alt={creator.displayName}
-                  fill
-                  className="object-cover"
-                  priority
-                />
+              {/* Avatar - Rounded with live ring */}
+              <div className="relative flex-shrink-0">
+                {isCreatorLive && (
+                  <>
+                    <span className="absolute -inset-2 rounded-full animate-ping bg-red-500/30" />
+                    <span className="absolute -inset-1 rounded-full border-4 border-red-500" />
+                  </>
+                )}
+                <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#0f071a] overflow-hidden bg-[#2f2942] shadow-2xl">
+                  <Image
+                    src={creator.avatar}
+                    alt={creator.displayName}
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                </div>
+                {isCreatorLive && (
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2.5 py-1 bg-red-500 rounded-full shadow-lg shadow-red-500/40 z-10">
+                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                    <span className="text-white text-xs font-bold uppercase tracking-wide">Live</span>
+                  </div>
+                )}
               </div>
 
               {/* Name, handle, and actions */}
               <div className="flex-1 flex flex-col md:flex-row md:items-end md:justify-between gap-4 pb-2">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-2xl">
                       {creator.displayName}
                     </h1>
+                    {isCreatorLive && (
+                      <a
+                        href="#livestream"
+                        className="flex items-center gap-1.5 px-3 py-1 bg-red-500 hover:bg-red-600 rounded-full transition shadow-lg shadow-red-500/30"
+                      >
+                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                        <span className="text-white text-sm font-bold uppercase tracking-wide">Live Now</span>
+                      </a>
+                    )}
                     <VerificationBadge
                       badgeType={getUserBadgeType(
                         creator.did,

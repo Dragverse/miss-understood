@@ -43,12 +43,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Only consider streams from the last 24 hours OR marked active.
+    // This avoids doing HLS manifest checks on months of old dead streams.
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: streams, error } = await supabase
       .from("streams")
       .select("*")
       .eq("creator_did", creatorDID)
+      .or(`is_active.eq.true,created_at.gte.${since}`)
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(5);
 
     if (error) {
       if (error.message?.includes("relation") && error.message?.includes("does not exist")) {

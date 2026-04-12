@@ -12,7 +12,7 @@ const supabase = createClient(
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ streamId: string }> }
 ) {
   try {
@@ -116,35 +116,54 @@ export async function PUT(
       );
     }
 
-    // Verify stream ownership before updating
-    const { data: stream, error: fetchError } = await supabase
-      .from("streams")
-      .select("creator_did")
-      .eq("id", streamId)
-      .single();
+    // Look up stream — try UUID first, then Livepeer stream ID as fallback.
+    // The modal may have received the Livepeer ID if the DB insert failed during creation.
+    let streamRow: { id: string; creator_did: string } | null = null;
 
-    if (fetchError || !stream) {
+    const { data: byUuid } = await supabase
+      .from("streams")
+      .select("id, creator_did")
+      .eq("id", streamId)
+      .maybeSingle();
+
+    if (byUuid) {
+      streamRow = byUuid;
+    } else {
+      // Fallback: try matching on the livepeer_stream_id column
+      const { data: byLivepeer } = await supabase
+        .from("streams")
+        .select("id, creator_did")
+        .eq("livepeer_stream_id", streamId)
+        .maybeSingle();
+      if (byLivepeer) streamRow = byLivepeer;
+    }
+
+    if (!streamRow) {
       return NextResponse.json(
         { error: "Stream not found" },
         { status: 404 }
       );
     }
 
-    if (stream.creator_did !== userId) {
+    if (streamRow.creator_did !== userId) {
       return NextResponse.json(
         { error: "Not authorized to update this stream" },
         { status: 403 }
       );
     }
 
-    // Update is_active status
+    // Update is_active status using the real Supabase UUID
+    const realId = streamRow.id;
+    const updatePayload: Record<string, unknown> = {
+      is_active,
+      updated_at: new Date().toISOString(),
+    };
+    if (is_active) updatePayload.started_at = new Date().toISOString();
+
     const { data, error } = await supabase
       .from("streams")
-      .update({
-        is_active,
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", streamId)
+      .update(updatePayload)
+      .eq("id", realId)
       .select()
       .single();
 
