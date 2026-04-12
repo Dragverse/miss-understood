@@ -60,12 +60,13 @@ export async function GET(request: NextRequest) {
     const accessToken = new AccessToken({
       apiKey,
       roomId,
-      role: isHost ? Role.HOST : Role.SPEAKER,
+      // Non-hosts start as LISTENER — host promotes them to SPEAKER via updateRole
+      role: isHost ? Role.HOST : Role.LISTENER,
       permissions: {
         admin: isHost,
         canConsume: true,
-        canProduce: true,
-        canProduceSources: { cam: isHost, mic: true, screen: false },
+        canProduce: isHost,
+        canProduceSources: { cam: isHost, mic: isHost, screen: false },
         canRecvData: true,
         canSendData: true,
         canUpdateMetadata: true,

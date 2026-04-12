@@ -497,9 +497,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   // ---- Public actions ----
 
   const playTrack = useCallback((track: AudioTrack, newPlaylist?: AudioTrack[]) => {
+    // If in a room, mute the mic instead of blocking playback
+    // vibe-lounge watches isMuted and calls disableAudio() reactively
     if (useRoomStore.getState().activeRoom) {
-      toast.error("Audio unavailable while in a room session", { id: "room-conflict" });
-      return;
+      useRoomStore.getState().setMuted(true);
     }
     if (newPlaylist) {
       setPlaylist(newPlaylist);

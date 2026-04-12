@@ -9,19 +9,19 @@ import {
   usePeerIds,
   useDataMessage,
   useRemotePeer,
-  useRemoteVideo,
 } from "@huddle01/react/hooks";
+import type { TPermissions } from "@huddle01/web-core/types";
 import { useRoomStore } from "@/lib/store/room";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { SpeakerCard, LocalSpeakerCard } from "./speaker-card";
 import { CreateRoomForm } from "./create-room-form";
 import Image from "next/image";
+import Link from "next/link";
 import toast from "react-hot-toast";
 import {
   FiX, FiArrowLeft, FiRadio, FiMic, FiMicOff, FiVideo, FiVideoOff,
-  FiArrowUp, FiMessageSquare, FiLogOut, FiSend, FiUsers,
-  FiChevronDown, FiChevronUp,
+  FiMessageSquare, FiLogOut, FiSend, FiUsers, FiArrowUp,
 } from "react-icons/fi";
 
 type PanelView = "list" | "create" | "room";
@@ -41,10 +41,21 @@ interface LiveRoom {
   profiles?: { handle: string; display_name: string; avatar: string } | null;
 }
 
+// Permissions granted when host promotes a listener to speaker
+const SPEAKER_PERMISSIONS: TPermissions = {
+  admin: false,
+  canConsume: true,
+  canProduce: true,
+  canProduceSources: { cam: false, mic: true, screen: false },
+  canRecvData: true,
+  canSendData: true,
+  canUpdateMetadata: true,
+};
+
 export function VibeLounge() {
-  const { getAccessToken } = usePrivy();
+  const { getAccessToken, authenticated } = usePrivy();
   const { creator } = useAuthUser();
-  const { activeRoom, isPanelOpen, openPanel, closePanel, setActiveRoom, clearActiveRoom, setMuted } = useRoomStore();
+  const { activeRoom, isPanelOpen, openPanel, closePanel, setActiveRoom, clearActiveRoom, setMuted, isMuted } = useRoomStore();
 
   const [view, setView] = useState<PanelView>("list");
   const [liveRooms, setLiveRooms] = useState<LiveRoom[]>([]);
@@ -54,7 +65,8 @@ export function VibeLounge() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState("");
-  const [handRaised, setHandRaised] = useState(false);
+  const [speakerRequests, setSpeakerRequests] = useState<Record<string, string>>({});
+  const [requestedToSpeak, setRequestedToSpeak] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const joinAttemptRef = useRef<string | null>(null);
   const tokenRef = useRef<string>("");
@@ -64,27 +76,52 @@ export function VibeLounge() {
   const displayName = creator?.displayName || "Drag Artist";
   const avatarUrl = creator?.avatar || "/defaultpfp.png";
 
-  // Store metadata so onJoin can apply it after the room is actually joined
+  // Store pending metadata so onJoin can apply it after join completes
   const pendingMetadataRef = useRef<{ displayName: string; avatarUrl: string } | null>(null);
 
-  // Huddle01 hooks — safe to call unconditionally
+  // Huddle01 hooks
   const { joinRoom, leaveRoom, closeRoom } = useRoom({
     onJoin: () => {
       setJoined(true);
       setJoining(false);
-      // updateMetadata must be called AFTER join completes — not before
+      // updateMetadata must only be called AFTER join resolves
       if (pendingMetadataRef.current) {
         updateMetadata(pendingMetadataRef.current);
         pendingMetadataRef.current = null;
       }
     },
-    onLeave: () => { setJoined(false); clearActiveRoom(); setView("list"); joinAttemptRef.current = null; },
-    onFailed: () => { toast.error("Failed to connect to room"); setJoining(false); clearActiveRoom(); setView("list"); joinAttemptRef.current = null; },
+    onLeave: () => {
+      setJoined(false);
+      clearActiveRoom();
+      setView("list");
+      joinAttemptRef.current = null;
+      setSpeakerRequests({});
+      setRequestedToSpeak(false);
+    },
+    onFailed: () => {
+      toast.error("Failed to connect to room");
+      setJoining(false);
+      clearActiveRoom();
+      setView("list");
+      joinAttemptRef.current = null;
+    },
   });
 
   const { enableAudio, disableAudio, isAudioOn } = useLocalAudio();
   const { enableVideo, disableVideo, isVideoOn, stream: localVideoStream } = useLocalVideo();
-  const { updateMetadata, role } = useLocalPeer<{ displayName: string; avatarUrl: string; handRaised?: boolean }>();
+  const { updateMetadata, permissions } = useLocalPeer<{ displayName: string; avatarUrl: string }>({
+    onPermissionsUpdated: (perms) => {
+      // Fired when host promotes this listener to speaker
+      if (perms.canProduce) {
+        toast.success("You've been invited to speak! Tap the mic to join.");
+        setRequestedToSpeak(false);
+      }
+    },
+  });
+
+  // Current user can speak if they're the host or have been promoted
+  const canSpeak = isHost || (permissions?.canProduce ?? false);
+
   const { peerIds: speakerPeerIds } = usePeerIds({ roles: ["host", "co-host", "speaker"] as any });
   const { peerIds: listenerPeerIds } = usePeerIds({ roles: ["listener"] as any });
 
@@ -99,6 +136,19 @@ export function VibeLounge() {
             text: parsed.text,
             fromPeerId: from,
           }]);
+        }
+        // Host receives a request to speak from a listener
+        if (parsed.type === "speaker-request" && isHostRef.current) {
+          setSpeakerRequests((prev) => ({ ...prev, [from]: parsed.displayName || "Artist" }));
+          toast(`${parsed.displayName || "Someone"} wants to speak`, { icon: "🙋" });
+        }
+        // Listener cancelled their request
+        if (parsed.type === "speaker-cancel" && isHostRef.current) {
+          setSpeakerRequests((prev) => {
+            const next = { ...prev };
+            delete next[from];
+            return next;
+          });
         }
       } catch {}
     },
@@ -123,7 +173,7 @@ export function VibeLounge() {
   // Auto-join when activeRoom changes
   useEffect(() => {
     if (!activeRoom) return;
-    if (joinAttemptRef.current === activeRoom.roomId) return; // already joining/joined
+    if (joinAttemptRef.current === activeRoom.roomId) return;
     joinAttemptRef.current = activeRoom.roomId;
     setView("room");
     doJoin(activeRoom.roomId);
@@ -144,6 +194,7 @@ export function VibeLounge() {
       setIsHost(data.isHost);
       isHostRef.current = data.isHost;
       pendingMetadataRef.current = { displayName, avatarUrl };
+      // Handle joinRoom failure explicitly — onFailed may not fire for all error types
       joinRoom({ roomId, token: data.token });
     } catch (err: any) {
       toast.error(err.message || "Could not join room");
@@ -154,7 +205,7 @@ export function VibeLounge() {
     }
   }
 
-  // Keep refs in sync for use in beforeunload (where state closures would be stale)
+  // Keep refs in sync for beforeunload (stale closure avoidance)
   useEffect(() => { isHostRef.current = isHost; }, [isHost]);
   useEffect(() => { activeRoomRef.current = activeRoom; }, [activeRoom]);
 
@@ -173,6 +224,14 @@ export function VibeLounge() {
     return () => window.removeEventListener("beforeunload", handleUnload);
   }, []);
 
+  // Auto-mute room mic when AudioPlayerContext requests it (e.g. user plays a song)
+  useEffect(() => {
+    if (isMuted && isAudioOn && joined) {
+      disableAudio().catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMuted]);
+
   // Scroll chat to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -181,6 +240,7 @@ export function VibeLounge() {
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleJoinRoom = (room: LiveRoom) => {
+    if (!authenticated) { toast.error("Sign in to join a room"); return; }
     const hostName = room.profiles?.display_name || room.profiles?.handle || "Host";
     const hostAvatar = room.profiles?.avatar || "/defaultpfp.png";
     setActiveRoom({ roomId: room.huddle_room_id, title: room.title, hostName, hostAvatar, isHost: false });
@@ -223,7 +283,20 @@ export function VibeLounge() {
     clearActiveRoom();
     setView("list");
     joinAttemptRef.current = null;
+    setSpeakerRequests({});
+    setRequestedToSpeak(false);
     fetchRooms();
+  };
+
+  const handleRequestToSpeak = () => {
+    if (requestedToSpeak) {
+      setRequestedToSpeak(false);
+      sendData({ to: "*", payload: JSON.stringify({ type: "speaker-cancel", displayName }), label: "hand" });
+    } else {
+      setRequestedToSpeak(true);
+      sendData({ to: "*", payload: JSON.stringify({ type: "speaker-request", displayName }), label: "hand" });
+      toast.success("Request sent to host!");
+    }
   };
 
   const handleSendChat = () => {
@@ -232,14 +305,6 @@ export function VibeLounge() {
     setChatInput("");
     setMessages((prev) => [...prev, { id: `local-${Date.now()}`, displayName, text, fromPeerId: "local", isLocal: true }]);
     sendData({ to: "*", payload: JSON.stringify({ type: "chat", displayName, text }), label: "chat" });
-  };
-
-  const handleRaiseHand = () => {
-    const next = !handRaised;
-    setHandRaised(next);
-    updateMetadata({ displayName, avatarUrl, handRaised: next });
-    sendData({ to: "*", payload: JSON.stringify({ type: "hand", displayName, raised: next }), label: "hand" });
-    if (next) toast.success("Hand raised!");
   };
 
   // ── Compact card (panel closed, but in room) ──────────────────────────────
@@ -257,13 +322,15 @@ export function VibeLounge() {
             <p className="text-[#EB83EA] text-[10px] truncate">{activeRoom.hostName}</p>
           </div>
           <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={handleMuteToggle}
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${isAudioOn ? "bg-[#EB83EA] text-white" : "bg-white/10 text-gray-400"}`}
-              aria-label="Toggle mic"
-            >
-              {isAudioOn ? <FiMic className="w-3.5 h-3.5" /> : <FiMicOff className="w-3.5 h-3.5" />}
-            </button>
+            {canSpeak && (
+              <button
+                onClick={handleMuteToggle}
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${isAudioOn ? "bg-[#EB83EA] text-white" : "bg-white/10 text-gray-400"}`}
+                aria-label="Toggle mic"
+              >
+                {isAudioOn ? <FiMic className="w-3.5 h-3.5" /> : <FiMicOff className="w-3.5 h-3.5" />}
+              </button>
+            )}
             <button onClick={handleLeave} className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center" aria-label="Leave room">
               <FiLogOut className="w-3.5 h-3.5 text-red-400" />
             </button>
@@ -302,8 +369,25 @@ export function VibeLounge() {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto scrollbar-hide">
+
+          {/* ── AUTH GATE ── */}
+          {!authenticated && view !== "room" && (
+            <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+              <FiRadio className="w-10 h-10 text-[#EB83EA]/40" />
+              <p className="text-white font-bold text-sm">Sign in to join the Vibe Lounge</p>
+              <p className="text-gray-500 text-xs">Listen to live audio rooms and connect with the community.</p>
+              <Link
+                href="/login"
+                className="px-5 py-2.5 rounded-full bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] text-white text-sm font-bold"
+                onClick={closePanel}
+              >
+                Sign in
+              </Link>
+            </div>
+          )}
+
           {/* LIST VIEW */}
-          {view === "list" && (
+          {authenticated && view === "list" && (
             <div className="p-4 flex flex-col gap-4">
               <button
                 onClick={() => setView("create")}
@@ -341,11 +425,10 @@ export function VibeLounge() {
           )}
 
           {/* CREATE VIEW */}
-          {view === "create" && (
+          {authenticated && view === "create" && (
             <div className="p-4">
               <CreateRoomForm
                 onCreated={() => {
-                  // activeRoom is set by CreateRoomForm; doJoin fires via useEffect
                   setView("room");
                 }}
               />
@@ -370,6 +453,9 @@ export function VibeLounge() {
                   {/* Room meta */}
                   <div className="px-4 py-3 border-b border-[#2f2942]">
                     <p className="text-gray-400 text-xs">Hosted by @{activeRoom.hostName}</p>
+                    {!canSpeak && (
+                      <p className="text-gray-600 text-[10px] mt-0.5">You're listening · request to speak below</p>
+                    )}
                   </div>
 
                   <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4 space-y-6">
@@ -377,12 +463,12 @@ export function VibeLounge() {
                     <div>
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider">
-                          Speakers ({speakerPeerIds.length + 1})
+                          Speakers ({speakerPeerIds.length + (canSpeak ? 1 : 0)})
                         </span>
                         <span className="w-1.5 h-1.5 bg-[#EB83EA] rounded-full" />
                       </div>
                       <div className="flex flex-wrap gap-3">
-                        {(isHost || role === "speaker" || role === "co-host") && (
+                        {canSpeak && (
                           <LocalSpeakerCard
                             displayName={displayName}
                             avatarUrl={avatarUrl}
@@ -399,10 +485,10 @@ export function VibeLounge() {
                     </div>
 
                     {/* Listeners */}
-                    {(listenerPeerIds.length > 0 || role === "listener") && (
+                    {(listenerPeerIds.length > 0 || (!canSpeak)) && (
                       <div>
                         <span className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider">
-                          Listeners ({listenerPeerIds.length + (role === "listener" ? 1 : 0)})
+                          Listeners ({listenerPeerIds.length + (!canSpeak ? 1 : 0)})
                         </span>
                         <div className="flex flex-wrap gap-2 mt-2">
                           {listenerPeerIds.slice(0, 9).map((peerId) => (
@@ -413,6 +499,30 @@ export function VibeLounge() {
                               +{listenerPeerIds.length - 9}
                             </div>
                           )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Host: pending speaker requests */}
+                    {isHost && Object.keys(speakerRequests).length > 0 && (
+                      <div>
+                        <span className="text-yellow-400 text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse" />
+                          Requesting to speak ({Object.keys(speakerRequests).length})
+                        </span>
+                        <div className="flex flex-col gap-1.5 mt-2">
+                          {Object.entries(speakerRequests).map(([peerId, name]) => (
+                            <SpeakerRequestRow
+                              key={peerId}
+                              peerId={peerId}
+                              displayName={name}
+                              onDismiss={(id) => setSpeakerRequests((prev) => {
+                                const next = { ...prev };
+                                delete next[id];
+                                return next;
+                              })}
+                            />
+                          ))}
                         </div>
                       </div>
                     )}
@@ -457,40 +567,48 @@ export function VibeLounge() {
 
                   {/* Controls */}
                   <div className="px-4 py-3 border-t border-[#2f2942] space-y-2 flex-shrink-0">
-                    <div className="flex items-center gap-2">
-                      {/* Mic */}
-                      <button
-                        onClick={handleMuteToggle}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-semibold transition-all ${
-                          isAudioOn ? "bg-[#EB83EA]/20 border-[#EB83EA] text-[#EB83EA]" : "bg-white/5 border-white/10 text-gray-300"
-                        }`}
-                      >
-                        {isAudioOn ? <FiMic className="w-3.5 h-3.5" /> : <FiMicOff className="w-3.5 h-3.5" />}
-                        {isAudioOn ? "Live" : "Muted"}
-                      </button>
+                    <div className="flex items-center gap-2 flex-wrap">
 
-                      {/* Video (host only — token grants cam:true only to host) */}
-                      {isHost && (
-                        <button
-                          onClick={handleVideoToggle}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-semibold transition-all ${
-                            isVideoOn ? "bg-[#EB83EA]/20 border-[#EB83EA] text-[#EB83EA]" : "bg-white/5 border-white/10 text-gray-300"
-                          }`}
-                          aria-label="Toggle camera"
-                        >
-                          {isVideoOn ? <FiVideo className="w-3.5 h-3.5" /> : <FiVideoOff className="w-3.5 h-3.5" />}
-                        </button>
+                      {/* Speaker controls */}
+                      {canSpeak && (
+                        <>
+                          <button
+                            onClick={handleMuteToggle}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-semibold transition-all ${
+                              isAudioOn ? "bg-[#EB83EA]/20 border-[#EB83EA] text-[#EB83EA]" : "bg-white/5 border-white/10 text-gray-300"
+                            }`}
+                          >
+                            {isAudioOn ? <FiMic className="w-3.5 h-3.5" /> : <FiMicOff className="w-3.5 h-3.5" />}
+                            {isAudioOn ? "Live" : "Muted"}
+                          </button>
+
+                          {/* Camera — host only */}
+                          {isHost && (
+                            <button
+                              onClick={handleVideoToggle}
+                              className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-semibold transition-all ${
+                                isVideoOn ? "bg-[#EB83EA]/20 border-[#EB83EA] text-[#EB83EA]" : "bg-white/5 border-white/10 text-gray-300"
+                              }`}
+                              aria-label="Toggle camera"
+                            >
+                              {isVideoOn ? <FiVideo className="w-3.5 h-3.5" /> : <FiVideoOff className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                        </>
                       )}
 
-                      {/* Raise hand (listeners) */}
-                      {!isHost && (
+                      {/* Listener: request to speak */}
+                      {!canSpeak && (
                         <button
-                          onClick={handleRaiseHand}
+                          onClick={handleRequestToSpeak}
                           className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-semibold transition-all ${
-                            handRaised ? "bg-yellow-500/20 border-yellow-500 text-yellow-400" : "bg-white/5 border-white/10 text-gray-300"
+                            requestedToSpeak
+                              ? "bg-yellow-500/20 border-yellow-500 text-yellow-400"
+                              : "bg-white/5 border-white/10 text-gray-300"
                           }`}
                         >
                           <FiArrowUp className="w-3.5 h-3.5" />
+                          {requestedToSpeak ? "Requested..." : "Request to speak"}
                         </button>
                       )}
 
@@ -508,7 +626,7 @@ export function VibeLounge() {
                         )}
                       </button>
 
-                      {/* Leave */}
+                      {/* Leave / End */}
                       <button
                         onClick={handleLeave}
                         className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 text-xs font-semibold"
@@ -518,7 +636,7 @@ export function VibeLounge() {
                       </button>
                     </div>
 
-                    {/* Host controls */}
+                    {/* Host admin controls */}
                     {isHost && (
                       <div className="flex gap-2">
                         <button
@@ -534,7 +652,7 @@ export function VibeLounge() {
                           onClick={() => setShowChat(!showChat)}
                           className="flex-1 py-2 rounded-full border border-[#EB83EA]/30 bg-[#EB83EA]/10 text-[#EB83EA] text-xs font-semibold"
                         >
-                          Raised Hands
+                          {Object.keys(speakerRequests).length > 0 ? `Requests (${Object.keys(speakerRequests).length})` : "Chat"}
                         </button>
                       </div>
                     )}
@@ -549,7 +667,8 @@ export function VibeLounge() {
   );
 }
 
-// Compact listener avatar using remote peer metadata
+// ── Sub-components ────────────────────────────────────────────────────────────
+
 function MiniListenerAvatar({ peerId }: { peerId: string }) {
   const { metadata } = useRemotePeer<{ displayName?: string; avatarUrl?: string }>({ peerId });
   return (
@@ -562,6 +681,52 @@ function MiniListenerAvatar({ peerId }: { peerId: string }) {
         className="w-full h-full object-cover"
         onError={(e) => { (e.target as HTMLImageElement).src = "/defaultpfp.png"; }}
       />
+    </div>
+  );
+}
+
+// Host uses this to promote a listener to speaker
+function SpeakerRequestRow({
+  peerId,
+  displayName,
+  onDismiss,
+}: {
+  peerId: string;
+  displayName: string;
+  onDismiss: (id: string) => void;
+}) {
+  const { updateRole, metadata } = useRemotePeer<{ displayName?: string; avatarUrl?: string }>({ peerId });
+
+  const handleApprove = () => {
+    updateRole("speaker", { custom: SPEAKER_PERMISSIONS });
+    onDismiss(peerId);
+    toast.success(`${displayName} can now speak`);
+  };
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+      <Image
+        src={metadata?.avatarUrl || "/defaultpfp.png"}
+        alt={displayName}
+        width={24}
+        height={24}
+        className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+        onError={(e) => { (e.target as HTMLImageElement).src = "/defaultpfp.png"; }}
+      />
+      <span className="flex-1 text-xs text-white truncate">{displayName}</span>
+      <button
+        onClick={() => onDismiss(peerId)}
+        className="text-gray-600 text-xs hover:text-gray-400 px-1"
+        aria-label="Dismiss"
+      >
+        ✕
+      </button>
+      <button
+        onClick={handleApprove}
+        className="text-xs px-2.5 py-1 rounded-full bg-[#EB83EA]/20 border border-[#EB83EA]/40 text-[#EB83EA] hover:bg-[#EB83EA]/30 font-semibold transition-colors"
+      >
+        Invite
+      </button>
     </div>
   );
 }
