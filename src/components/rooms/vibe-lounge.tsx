@@ -64,9 +64,20 @@ export function VibeLounge() {
   const displayName = creator?.displayName || "Drag Artist";
   const avatarUrl = creator?.avatar || "/defaultpfp.png";
 
+  // Store metadata so onJoin can apply it after the room is actually joined
+  const pendingMetadataRef = useRef<{ displayName: string; avatarUrl: string } | null>(null);
+
   // Huddle01 hooks — safe to call unconditionally
   const { joinRoom, leaveRoom, closeRoom } = useRoom({
-    onJoin: () => { setJoined(true); setJoining(false); },
+    onJoin: () => {
+      setJoined(true);
+      setJoining(false);
+      // updateMetadata must be called AFTER join completes — not before
+      if (pendingMetadataRef.current) {
+        updateMetadata(pendingMetadataRef.current);
+        pendingMetadataRef.current = null;
+      }
+    },
     onLeave: () => { setJoined(false); clearActiveRoom(); setView("list"); joinAttemptRef.current = null; },
     onFailed: () => { toast.error("Failed to connect to room"); setJoining(false); clearActiveRoom(); setView("list"); joinAttemptRef.current = null; },
   });
@@ -132,8 +143,8 @@ export function VibeLounge() {
       if (!data.success) throw new Error(data.error || "Token failed");
       setIsHost(data.isHost);
       isHostRef.current = data.isHost;
+      pendingMetadataRef.current = { displayName, avatarUrl };
       joinRoom({ roomId, token: data.token });
-      updateMetadata({ displayName, avatarUrl });
     } catch (err: any) {
       toast.error(err.message || "Could not join room");
       setJoining(false);
@@ -190,22 +201,28 @@ export function VibeLounge() {
   };
 
   const handleLeave = async () => {
-    try {
-      if (isHost) {
-        await fetch("/api/rooms/end", {
+    if (isHost) {
+      try {
+        const authToken = await getAccessToken();
+        const res = await fetch("/api/rooms/end", {
           method: "DELETE",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${await getAccessToken()}` },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({ roomId: activeRoom?.roomId }),
         });
-        closeRoom();
-      } else {
-        leaveRoom();
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          toast.error(body.error || "Failed to end room");
+        }
+      } catch {
+        toast.error("Could not reach server to end room");
       }
-    } catch {}
+      try { closeRoom(); } catch {}
+    } else {
+      try { leaveRoom(); } catch {}
+    }
     clearActiveRoom();
     setView("list");
     joinAttemptRef.current = null;
-    // Refresh room list immediately so the ended room disappears right away
     fetchRooms();
   };
 
@@ -452,8 +469,8 @@ export function VibeLounge() {
                         {isAudioOn ? "Live" : "Muted"}
                       </button>
 
-                      {/* Video (host/speakers only) */}
-                      {(isHost || role === "speaker" || role === "co-host") && (
+                      {/* Video (host only — token grants cam:true only to host) */}
+                      {isHost && (
                         <button
                           onClick={handleVideoToggle}
                           className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-semibold transition-all ${

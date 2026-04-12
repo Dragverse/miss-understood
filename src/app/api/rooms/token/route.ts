@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth/verify";
+import { getSupabaseServerClient } from "@/lib/supabase/client";
 import { AccessToken, Role } from "@huddle01/server-sdk/auth";
-import { API } from "@huddle01/server-sdk/api";
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,15 +48,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Huddle01 not configured" }, { status: 500 });
     }
 
-    // Check how many peers are in the room — first joiner becomes host
-    let isHost = false;
-    try {
-      const api = new API({ apiKey });
-      const livePeers = await api.getLivePartipantsDetails({ roomId });
-      isHost = livePeers.length === 0;
-    } catch {
-      isHost = false;
-    }
+    // Host = the user who created the room (DB source of truth, not participant count)
+    const supabase = getSupabaseServerClient();
+    const { data: room } = await supabase
+      .from("rooms")
+      .select("creator_did")
+      .eq("huddle_room_id", roomId)
+      .single();
+    const isHost = room?.creator_did === auth.userId;
 
     const accessToken = new AccessToken({
       apiKey,
