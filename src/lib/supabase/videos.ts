@@ -200,9 +200,11 @@ export async function getVideosByCreator(creatorDID: string, limit = 50, include
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  // Hide scheduled content unless the owner is viewing their own profile
+  // Countdown premieres are publicly visible (teaser page exists); silent drops stay hidden
   if (!includeScheduled) {
-    query = query.or(`published_at.is.null,published_at.lte.${new Date().toISOString()}`);
+    query = query.or(
+      `published_at.is.null,published_at.lte.${new Date().toISOString()},premiere_mode.eq.countdown`
+    );
   }
 
   const { data: videos, error: videosError } = await query;

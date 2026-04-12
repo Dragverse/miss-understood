@@ -345,7 +345,7 @@ export function VibeLounge() {
 
   if (!isPanelOpen && activeRoom) {
     return (
-      <div className="fixed bottom-20 right-4 z-[60] w-72 bg-[#1a0b2e] border border-[#EB83EA]/40 rounded-2xl shadow-2xl shadow-[#EB83EA]/10 overflow-hidden">
+      <div className="fixed bottom-24 right-4 z-[60] w-72 bg-[#1a0b2e] border border-[#EB83EA]/40 rounded-2xl shadow-2xl shadow-[#EB83EA]/10 overflow-hidden">
         <button onClick={openPanel} className="w-full px-4 py-3 flex items-center gap-3 text-left">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">
@@ -383,8 +383,8 @@ export function VibeLounge() {
       {/* Mobile backdrop */}
       <div className="fixed inset-0 z-[54] bg-black/40 lg:hidden" onClick={closePanel} />
 
-      {/* Panel */}
-      <div className="fixed top-16 right-0 bottom-0 z-[55] w-80 bg-[#0f071a] border-l border-[#2f2942] flex flex-col">
+      {/* Panel — full-width on mobile, sidebar on sm+ */}
+      <div className="fixed top-16 left-0 sm:left-auto right-0 bottom-0 z-[55] w-full sm:w-80 bg-[#0f071a] border-l border-[#2f2942] flex flex-col">
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[#2f2942] flex-shrink-0">
           {(view === "create" || (view === "room" && !joined && !joining)) && (
@@ -618,7 +618,9 @@ export function VibeLounge() {
                             onChange={(e) => setChatInput(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleSendChat()}
                             placeholder="Say something..."
-                            className="flex-1 bg-transparent text-white text-xs outline-none placeholder-gray-600"
+                            className="flex-1 bg-transparent text-white text-xs outline-none placeholder-gray-600 min-w-0"
+                            inputMode="text"
+                            enterKeyHint="send"
                             maxLength={200}
                           />
                           <button onClick={handleSendChat} disabled={!chatInput.trim()} className="text-[#EB83EA] disabled:opacity-40" aria-label="Send">

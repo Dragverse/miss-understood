@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Hls from "hls.js";
-import { FiVolume2, FiVolumeX, FiHeart, FiMessageCircle, FiShare2, FiDollarSign, FiEdit2, FiTrash2, FiMoreVertical, FiAlertCircle, FiPlay, FiMaximize2 } from "react-icons/fi";
+import { FiVolume2, FiVolumeX, FiHeart, FiMessageCircle, FiShare2, FiDollarSign, FiEdit2, FiTrash2, FiMoreVertical, FiAlertCircle, FiPlay, FiMaximize2, FiRotateCcw, FiSkipForward } from "react-icons/fi";
 import type { Video } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
@@ -35,6 +35,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, onDelete
   const [tipModalOpen, setTipModalOpen] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
+  const [showEndOverlay, setShowEndOverlay] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -115,7 +116,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, onDelete
     };
   }, [video.playbackUrl, video.id]);
 
-  // ─── Play/Pause based on isActive ───
+  // ─── Play/Pause based on isActive; reset overlay on swipe-away ───
   useEffect(() => {
     const videoEl = videoRef.current;
     if (!videoEl) return;
@@ -124,6 +125,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, onDelete
       videoEl.play().catch(() => {});
     } else {
       videoEl.pause();
+      setShowEndOverlay(false);
     }
   }, [isActive]);
 
@@ -377,7 +379,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, onDelete
                 playsInline
                 muted={isMuted}
                 poster={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.livepeerAssetId)}
-                onEnded={() => onEnded?.()}
+                onEnded={() => setShowEndOverlay(true)}
                 onPlay={() => { setIsPlaying(true); setPlaybackError(false); }}
                 onPause={() => setIsPlaying(false)}
                 onError={() => setPlaybackError(true)}
@@ -440,7 +442,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, onDelete
             </div>
 
             {/* Play/Pause Indicator */}
-            {!isPlaying && !playbackError && (
+            {!isPlaying && !playbackError && !showEndOverlay && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]">
                 <div className="w-20 h-20 bg-black/50 rounded-full flex items-center justify-center">
                   <div className="w-0 h-0 border-t-[15px] border-t-transparent border-l-[25px] border-l-white border-b-[15px] border-b-transparent ml-2" />
@@ -580,6 +582,41 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, onDelete
                   <FiAlertCircle className="w-12 h-12 mx-auto mb-4 text-red-400" />
                   <p className="text-lg font-semibold mb-2">Unable to play video</p>
                   <p className="text-sm text-white/70 mb-4">Skipping to next video...</p>
+                </div>
+              </div>
+            )}
+
+            {/* End-of-video overlay — Watch Again or Keep Watching */}
+            {showEndOverlay && !playbackError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 backdrop-blur-sm z-30" style={{ pointerEvents: 'auto' }}>
+                <p className="text-white text-sm font-semibold mb-6 px-6 text-center line-clamp-2 opacity-80">
+                  {video.title}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      const videoEl = videoRef.current;
+                      if (videoEl) {
+                        videoEl.currentTime = 0;
+                        videoEl.play().catch(() => {});
+                      }
+                      setShowEndOverlay(false);
+                    }}
+                    className="flex items-center gap-2 px-5 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-white text-sm font-bold transition-all"
+                  >
+                    <FiRotateCcw className="w-4 h-4" />
+                    Watch Again
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowEndOverlay(false);
+                      onEnded?.();
+                    }}
+                    className="flex items-center gap-2 px-5 py-3 bg-[#EB83EA] hover:bg-[#E748E6] rounded-full text-white text-sm font-bold transition-all shadow-lg shadow-[#EB83EA]/40"
+                  >
+                    <FiSkipForward className="w-4 h-4" />
+                    Keep Watching
+                  </button>
                 </div>
               </div>
             )}

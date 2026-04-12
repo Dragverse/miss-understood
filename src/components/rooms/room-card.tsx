@@ -65,7 +65,7 @@ export function RoomCard({ room, onJoin }: RoomCardProps) {
         </div>
         <button
           onClick={() => onJoin(room.huddle_room_id, room.title, hostName, hostAvatar)}
-          className="px-4 py-1.5 bg-white/10 hover:bg-[#EB83EA] border border-white/10 hover:border-[#EB83EA] rounded-full text-xs font-bold transition-all text-white"
+          className="px-4 py-2.5 md:py-1.5 min-h-[44px] md:min-h-0 bg-white/10 hover:bg-[#EB83EA] border border-white/10 hover:border-[#EB83EA] rounded-full text-xs font-bold transition-all text-white flex items-center"
         >
           JOIN
         </button>

@@ -28,9 +28,10 @@ interface AudioContent {
 
 export default function AudioPage() {
   const router = useRouter();
-  const { playTrack, pause: pauseAudio } = useAudioPlayer();
+  const { pause: pauseAudio } = useAudioPlayer();
   const [audioContent, setAudioContent] = useState<AudioContent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingYoutube, setLoadingYoutube] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "podcasts" | "music">("all");
   const [selectedVideo, setSelectedVideo] = useState<AudioContent | null>(null);
 
@@ -47,69 +48,52 @@ export default function AudioPage() {
 
   async function loadAudioContent() {
     setLoading(true);
+
+    // Phase 1: Dragverse DB — show immediately
+    let dragverseItems: AudioContent[] = [];
     try {
-      const allContent: AudioContent[] = [];
-
-      // 1. Fetch uploaded audio from Dragverse database (podcast & music content types)
-      try {
-        const dbResponse = await fetch("/api/youtube/feed?includeDatabase=true");
-        const dbData = await dbResponse.json();
-
-        if (dbData.success && dbData.videos) {
-          // Filter for audio content types (podcast, music)
-          const audioVideos = dbData.videos.filter((v: any) =>
-            v.contentType === 'podcast' || v.contentType === 'music'
-          );
-
-          audioVideos.forEach((v: any) => {
-            allContent.push({
-              id: v.id,
-              title: v.title,
-              description: v.description || "",
-              thumbnail: v.thumbnail || "/default-thumbnail.jpg",
-              duration: v.duration || 0,
-              views: v.views || 0,
-              createdAt: v.createdAt ? new Date(v.createdAt) : new Date(),
-              creator: v.creator || {
-                displayName: "Creator",
-                handle: "creator",
-                avatar: "/default-avatar.jpg",
-              },
-              youtubeUrl: v.playbackUrl || "", // Use playback URL for uploaded audio
-              type: v.contentType === 'podcast' ? 'podcast' : 'music',
-              source: 'dragverse', // Mark as uploaded content
-            });
-          });
-
-          console.log(`[Audio] Loaded ${audioVideos.length} uploaded audio items from database`);
-        }
-      } catch (dbError) {
-        console.error("[Audio] Failed to fetch database audio:", dbError);
+      const dbResponse = await fetch("/api/youtube/feed?includeDatabase=true");
+      const dbData = await dbResponse.json();
+      if (dbData.success && dbData.videos) {
+        const audioVideos = dbData.videos.filter((v: any) =>
+          v.contentType === 'podcast' || v.contentType === 'music'
+        );
+        dragverseItems = audioVideos.map((v: any) => ({
+          id: v.id,
+          title: v.title,
+          description: v.description || "",
+          thumbnail: v.thumbnail || "/default-thumbnail.jpg",
+          duration: v.duration || 0,
+          views: v.views || 0,
+          createdAt: v.createdAt ? new Date(v.createdAt) : new Date(),
+          creator: v.creator || { displayName: "Creator", handle: "creator", avatar: "/default-avatar.jpg" },
+          youtubeUrl: v.playbackUrl || "",
+          type: v.contentType === 'podcast' ? 'podcast' : 'music' as "podcast" | "music",
+          source: 'dragverse' as const,
+        }));
       }
+    } catch (dbError) {
+      console.error("[Audio] Failed to fetch database audio:", dbError);
+    }
 
-      // 2. Fetch YouTube videos from RSS feeds (no API quota!) + music playlists
+    // Show Dragverse content right away — clears the spinner
+    setAudioContent(dragverseItems);
+    setLoading(false);
+
+    // Phase 2: YouTube RSS — load in background and append
+    setLoadingYoutube(true);
+    try {
       const response = await fetch("/api/youtube/feed?limit=50&rssOnly=true&includePlaylists=true&playlistOnly=true");
       const data = await response.json();
-
       if (data.success && data.videos) {
-        // Since RSS doesn't provide duration, we'll categorize by keywords in titles
-        // and show all drag music/performance content
-
-        const musicKeywords = ['music', 'song', 'performance', 'singing', 'cover', 'acoustic', 'live'];
         const podcastKeywords = ['podcast', 'interview', 'talk', 'discussion', 'episode', 'chat'];
-
-        data.videos.forEach((v: any) => {
+        const youtubeItems: AudioContent[] = data.videos.map((v: any) => {
           const titleLower = v.title?.toLowerCase() || "";
           const descLower = v.description?.toLowerCase() || "";
-
-          // Determine type based on keywords
-          let type: "music" | "podcast" = "music"; // Default to music
-
-          if (podcastKeywords.some(keyword => titleLower.includes(keyword) || descLower.includes(keyword))) {
-            type = "podcast";
-          }
-
-          allContent.push({
+          const type: "music" | "podcast" = podcastKeywords.some(
+            k => titleLower.includes(k) || descLower.includes(k)
+          ) ? 'podcast' : 'music';
+          return {
             id: v.id,
             title: v.title,
             description: v.description || "",
@@ -117,32 +101,19 @@ export default function AudioPage() {
             duration: v.duration || 0,
             views: v.views || 0,
             createdAt: v.createdAt ? new Date(v.createdAt) : new Date(),
-            creator: v.creator || {
-              displayName: "YouTube Creator",
-              handle: "youtube",
-              avatar: "/default-thumbnail.jpg",
-            },
+            creator: v.creator || { displayName: "YouTube Creator", handle: "youtube", avatar: "/default-thumbnail.jpg" },
             youtubeUrl: v.externalUrl || v.playbackUrl || "",
             type,
-            source: 'youtube',
-          });
+            source: 'youtube' as const,
+          };
         });
+        // Append YouTube after Dragverse (already sorted by phase 1 first)
+        setAudioContent(prev => [...prev, ...youtubeItems]);
       }
-
-      // Sort: Dragverse first, then by date within each group
-      allContent.sort((a, b) => {
-        if (a.source === 'dragverse' && b.source !== 'dragverse') return -1;
-        if (a.source !== 'dragverse' && b.source === 'dragverse') return 1;
-        return b.createdAt.getTime() - a.createdAt.getTime();
-      });
-
-      console.log(`[Audio] Loaded ${allContent.length} audio items from YouTube RSS (${allContent.filter(c => c.type === 'podcast').length} podcasts, ${allContent.filter(c => c.type === 'music').length} music)`);
-
-      setAudioContent(allContent);
     } catch (error) {
-      console.error("Failed to load audio content:", error);
+      console.error("[Audio] Failed to load YouTube audio:", error);
     } finally {
-      setLoading(false);
+      setLoadingYoutube(false);
     }
   }
 
@@ -200,7 +171,7 @@ export default function AudioPage() {
                 height="100%"
                 src={`https://www.youtube.com/embed/${selectedVideo.youtubeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1]}?autoplay=1`}
                 title={selectedVideo.title}
-                frameBorder="0"
+                style={{ border: "none" }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
@@ -305,6 +276,7 @@ export default function AudioPage() {
             </p>
           </div>
         ) : (
+          <>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
             {filteredContent.map((content) => (
               <button
@@ -384,6 +356,13 @@ export default function AudioPage() {
               </button>
             ))}
           </div>
+          {loadingYoutube && (
+            <div className="mt-6 flex items-center gap-3 text-gray-500 text-sm">
+              <div className="w-4 h-4 rounded-full border-2 border-[#EB83EA]/40 border-t-[#EB83EA] animate-spin" />
+              Loading more from YouTube...
+            </div>
+          )}
+          </>
         )}
         </div>{/* flex-1 main content */}
         </div>{/* max-w flex container */}

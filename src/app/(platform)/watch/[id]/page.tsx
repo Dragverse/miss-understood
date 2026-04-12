@@ -457,7 +457,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   };
 
   return (
-    <div className={`${theaterMode ? "max-w-full bg-black" : "max-w-7xl"} mx-auto px-4 py-6 transition-all duration-300`}>
+    <div className={`${theaterMode ? "max-w-full bg-black" : "max-w-7xl"} mx-auto px-4 py-6 pb-28 md:pb-6 transition-all duration-300`}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Video */}
         <div className={`${theaterMode ? "lg:col-span-3" : "lg:col-span-2"} transition-all duration-300`}>

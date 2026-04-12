@@ -132,18 +132,19 @@ export function CreateRoomForm({ onCreated }: CreateRoomFormProps) {
               {t}
             </button>
           ))}
-          {tags.length < 5 && (
-            <button
-              onClick={() => {
-                const val = window.prompt("Add tag (without #):");
-                if (val?.trim()) addTag(val.trim());
-              }}
-              className="px-2.5 py-1 bg-white/5 border border-white/10 hover:border-[#EB83EA]/40 rounded-full text-gray-400 text-xs transition"
-            >
-              + Add
-            </button>
-          )}
         </div>
+        {tags.length < 5 && (
+          <input
+            type="text"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={handleTagKeyDown}
+            onBlur={() => { if (tagInput.trim()) addTag(tagInput.trim()); }}
+            placeholder="+ custom tag"
+            inputMode="text"
+            className="w-full bg-[#0f071a] border border-[#2f2942] focus:border-[#EB83EA]/50 rounded-xl px-3 py-2 text-white text-xs outline-none transition placeholder-gray-600"
+          />
+        )}
       </div>
 
       {/* Privacy */}

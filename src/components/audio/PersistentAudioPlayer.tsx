@@ -119,11 +119,11 @@ export function PersistentAudioPlayer() {
       </div>
 
       {/* Player Controls */}
-      <div className="px-4 py-3">
-        <div className="max-w-7xl mx-auto flex items-center gap-4">
+      <div className="px-3 sm:px-4 py-2 sm:py-3">
+        <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-4">
           {/* Track Info */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border-2 border-[#EB83EA]/20">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="relative w-10 h-10 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl overflow-hidden flex-shrink-0 border-2 border-[#EB83EA]/20">
               <Image
                 src={currentTrack.thumbnail || "/default-thumbnail.jpg"}
                 alt={currentTrack.title}
@@ -132,55 +132,58 @@ export function PersistentAudioPlayer() {
               />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-white font-semibold truncate text-sm">
+              <h4 className="text-white font-semibold truncate text-xs sm:text-sm">
                 {currentTrack.title}
               </h4>
-              <p className="text-gray-400 text-xs truncate">
+              <p className="text-gray-400 text-[10px] sm:text-xs truncate">
                 {currentTrack.artist}
               </p>
             </div>
           </div>
 
           {/* Playback Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={previous}
-              className="w-10 h-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center transition-colors"
+              className="w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center transition-colors"
               title="Previous"
+              aria-label="Previous track"
             >
-              <FiSkipBack className="w-5 h-5 text-white" />
+              <FiSkipBack className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </button>
 
             <button
               onClick={togglePlayPause}
               className="w-12 h-12 rounded-full bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:shadow-lg hover:shadow-[#EB83EA]/30 flex items-center justify-center transition-all"
               title={isPlaying ? "Pause" : "Play"}
+              aria-label={isPlaying ? "Pause" : "Play"}
             >
               {isPlaying ? (
-                <FiPause className="w-6 h-6 text-white" />
+                <FiPause className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               ) : (
-                <FiPlay className="w-6 h-6 text-white ml-0.5" />
+                <FiPlay className="w-5 h-5 sm:w-6 sm:h-6 text-white ml-0.5" />
               )}
             </button>
 
             <button
               onClick={next}
-              className="w-10 h-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center transition-colors"
+              className="w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center transition-colors"
               title="Next"
+              aria-label="Next track"
             >
-              <FiSkipForward className="w-5 h-5 text-white" />
+              <FiSkipForward className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </button>
           </div>
 
-          {/* Time Display */}
-          <div className="hidden sm:flex items-center gap-2 text-sm text-gray-400 font-mono">
+          {/* Time Display — visible on all sizes, compact on mobile */}
+          <div className="flex items-center gap-1 text-[10px] sm:text-sm text-gray-400 font-mono flex-shrink-0">
             <span>{formatTime(currentTime)}</span>
             <span>/</span>
             <span>{formatTime(duration)}</span>
           </div>
 
-          {/* Volume Control - Mobile Friendly */}
-          <div className="flex items-center gap-2 relative">
+          {/* Volume Control — hidden on mobile to save space */}
+          <div className="hidden sm:flex items-center gap-2 relative">
             <button
               onClick={() => setShowVolumeSlider(!showVolumeSlider)}
               className="w-10 h-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center transition-colors"
@@ -217,33 +220,36 @@ export function PersistentAudioPlayer() {
             )}
           </div>
 
-          {/* External Link (for YouTube tracks) */}
+          {/* External Link (for YouTube tracks) — desktop only */}
           {currentTrack.type === "youtube" && (
             <button
               onClick={openInYouTube}
-              className="w-10 h-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center transition-colors"
+              className="hidden sm:flex w-10 h-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50 items-center justify-center transition-colors"
               title="Open in YouTube"
+              aria-label="Open in YouTube"
             >
               <FiExternalLink className="w-5 h-5 text-white" />
             </button>
           )}
 
           {/* Minimize/Close */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <button
               onClick={() => setIsMinimized(true)}
-              className="w-10 h-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center transition-colors"
+              className="hidden sm:flex w-10 h-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50 items-center justify-center transition-colors"
               title="Minimize"
+              aria-label="Minimize player"
             >
-              <span className="text-white font-bold">_</span>
+              <span className="text-white font-bold text-lg leading-none">_</span>
             </button>
 
             <button
               onClick={stop}
-              className="w-10 h-10 rounded-full bg-gray-800/50 hover:bg-red-500/50 flex items-center justify-center transition-colors"
+              className="w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-gray-800/50 hover:bg-red-500/50 flex items-center justify-center transition-colors"
               title="Close"
+              aria-label="Close player"
             >
-              <FiX className="w-5 h-5 text-white" />
+              <FiX className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </button>
           </div>
         </div>

@@ -490,7 +490,7 @@ export default function ProfilePage() {
 
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-28 md:pb-6">
       {/* Livestream Embed - Full width at top (Twitch-style) */}
       <div className="px-4 md:px-8 pt-4">
         <div className="max-w-5xl mx-auto">

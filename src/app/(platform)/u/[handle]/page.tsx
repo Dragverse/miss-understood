@@ -279,7 +279,7 @@ export default function DynamicProfilePage() {
 
   // Render profile - Hybrid Style (Banner + Instagram tabs)
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-28 md:pb-6">
       {/* Livestream Embed - Full width at top (Twitch-style) */}
       {creator && (
         <LivestreamEmbed
@@ -542,7 +542,10 @@ export default function DynamicProfilePage() {
                     <div
                       key={video.id}
                       className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
-                      onClick={() => router.push(`/watch/${video.id}`)}
+                      onClick={() => {
+                        const upcoming = video.premiereMode === 'countdown' && video.publishedAt && new Date(video.publishedAt) > new Date();
+                        router.push(upcoming ? `/premiere/${video.id}` : `/watch/${video.id}`);
+                      }}
                     >
                       <Image
                         src={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', (video as any).playbackId)}
@@ -569,8 +572,10 @@ export default function DynamicProfilePage() {
                           <FaYoutube className="w-3.5 h-3.5 text-white" />
                         </div>
                       )}
-                      {/* Scheduled Badge - only visible to owner */}
+                      {/* Premiere / Scheduled badge — visible to all for countdown, owner-only for silent */}
                       {video.publishedAt && new Date(video.publishedAt) > new Date() && (
+                        video.premiereMode === "countdown" || user?.id === creator?.did
+                      ) && (
                         <div className="absolute top-2 left-2 bg-[#EB83EA] px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-lg">
                           <FiClock className="w-3.5 h-3.5 text-white" />
                           <span className="text-white text-xs font-bold">
@@ -609,7 +614,11 @@ export default function DynamicProfilePage() {
                     {snapshotsList.map((snapshot) => (
                       <Link
                         key={snapshot.id}
-                        href={`/snapshots?v=${snapshot.id}`}
+                        href={
+                          snapshot.premiereMode === 'countdown' && snapshot.publishedAt && new Date(snapshot.publishedAt) > new Date()
+                            ? `/premiere/${snapshot.id}`
+                            : `/snapshots?v=${snapshot.id}`
+                        }
                         className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
                       >
                         <Image
@@ -657,7 +666,10 @@ export default function DynamicProfilePage() {
                     <div
                       key={audio.id}
                       className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
-                      onClick={() => router.push(`/listen/${audio.id}`)}
+                      onClick={() => {
+                        const upcoming = audio.premiereMode === 'countdown' && audio.publishedAt && new Date(audio.publishedAt) > new Date();
+                        router.push(upcoming ? `/premiere/${audio.id}` : `/listen/${audio.id}`);
+                      }}
                     >
                       <Image
                         src={getSafeThumbnail(audio.thumbnail, '/default-thumbnail.jpg', (audio as any).playbackId)}

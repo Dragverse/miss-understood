@@ -221,11 +221,11 @@ function SnapshotsContent() {
               initialLiked={socialStatus.likes[currentVideo.id]}
               initialFollowing={socialStatus.follows[currentVideo.creator.did]}
             />
-            {/* Logo as refresh button — top left */}
+            {/* Logo refresh button — desktop only */}
             <button
               onClick={() => loadSnapshots(true)}
               disabled={refreshing}
-              className="absolute top-2 md:top-4 left-2 md:left-4 z-30 p-1.5 bg-black/50 backdrop-blur-sm rounded-full hover:bg-black/70 transition disabled:opacity-50"
+              className="hidden md:flex absolute top-4 left-4 z-30 p-1.5 bg-black/50 backdrop-blur-sm rounded-full hover:bg-black/70 transition disabled:opacity-50"
               aria-label="Refresh snapshots"
             >
               <Image

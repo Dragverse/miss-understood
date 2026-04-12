@@ -61,13 +61,13 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     activeSlot.current === "a" ? audioARef.current : audioBRef.current, []);
   const getInactive = useCallback((): HTMLAudioElement | null =>
     activeSlot.current === "a" ? audioBRef.current : audioARef.current, []);
-  const getActiveHls = () => activeSlot.current === "a" ? hlsARef.current : hlsBRef.current;
-  const setActiveHls = (hls: Hls | null) => { if (activeSlot.current === "a") hlsARef.current = hls; else hlsBRef.current = hls; };
-  const destroyInactiveHls = () => {
+  const getActiveHls = useCallback(() => activeSlot.current === "a" ? hlsARef.current : hlsBRef.current, []);
+  const setActiveHls = useCallback((hls: Hls | null) => { if (activeSlot.current === "a") hlsARef.current = hls; else hlsBRef.current = hls; }, []);
+  const destroyInactiveHls = useCallback(() => {
     const ref = activeSlot.current === "a" ? hlsBRef : hlsARef;
     if (ref.current) { ref.current.destroy(); ref.current = null; }
-  };
-  const setInactiveHls = (hls: Hls | null) => { if (activeSlot.current === "a") hlsBRef.current = hls; else hlsARef.current = hls; };
+  }, []);
+  const setInactiveHls = useCallback((hls: Hls | null) => { if (activeSlot.current === "a") hlsBRef.current = hls; else hlsARef.current = hls; }, []);
 
   // Public audioRef always points to the active slot (for compatibility)
   const audioRef = useRef<HTMLAudioElement | null>(null);

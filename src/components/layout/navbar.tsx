@@ -18,6 +18,7 @@ import {
   FiGlobe,
   FiHeart,
   FiSettings,
+  FiRadio,
 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
@@ -243,7 +244,7 @@ export function Navbar() {
               {/* Notifications — visible on all screen sizes, left of avatar */}
               <Link
                 href="/notifications"
-                className="relative w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-all"
+                className="relative w-11 h-11 rounded-full hover:bg-white/5 flex items-center justify-center transition-all"
                 title="Notifications"
                 aria-label="Notifications"
               >
@@ -357,17 +358,18 @@ export function Navbar() {
           {authenticated && (
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden flex items-center gap-2 p-1 text-white"
+              className="md:hidden flex items-center gap-2 p-2 text-white min-w-[44px] min-h-[44px]"
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             >
-              <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[#EB83EA] flex-shrink-0">
+              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-[#EB83EA] flex-shrink-0">
                 <Image
                   src={getSafeAvatar(
                     creator?.avatar || blueskyProfile?.avatar || user?.twitter?.profilePictureUrl,
                     "/defaultpfp.png"
                   )}
                   alt="Profile"
-                  width={32}
-                  height={32}
+                  width={36}
+                  height={36}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -407,17 +409,42 @@ export function Navbar() {
             <Link
               href="/upload"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition min-h-[44px]"
             >
               <FiUpload className="w-5 h-5" /> Upload Video
             </Link>
             <Link
-              href="/live"
+              href="/upload?type=audio"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition min-h-[44px]"
             >
-              <FiVideo className="w-5 h-5" /> Go Live
+              <FiHeadphones className="w-5 h-5" /> Upload Audio
             </Link>
+            {hasConnection && (
+              <Link
+                href="/feed/create"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition min-h-[44px]"
+              >
+                <FiMessageSquare className="w-5 h-5" /> Create Post
+              </Link>
+            )}
+            <Link
+              href="/rooms"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition min-h-[44px]"
+            >
+              <FiRadio className="w-5 h-5" /> Vibe Lounge
+            </Link>
+            {canStream && (
+              <Link
+                href="/live"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition min-h-[44px]"
+              >
+                <FiVideo className="w-5 h-5" /> Go Live
+              </Link>
+            )}
             <Link
               href="/settings"
               onClick={() => setMobileMenuOpen(false)}

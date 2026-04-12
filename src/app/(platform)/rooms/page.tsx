@@ -60,7 +60,7 @@ export default function RoomsPage() {
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-6 pb-24 max-w-[1400px] mx-auto">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 pb-32 md:pb-24 max-w-[1400px] mx-auto">
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -77,7 +77,7 @@ export default function RoomsPage() {
         <button
           onClick={fetchRooms}
           disabled={loading}
-          className="w-9 h-9 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-center transition"
+          className="w-11 h-11 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-center transition"
           aria-label="Refresh rooms"
         >
           <FiRefreshCw className={`w-4 h-4 text-gray-400 ${loading ? "animate-spin" : ""}`} />
@@ -112,7 +112,7 @@ export default function RoomsPage() {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="bg-[#1a0b2e] border border-[#2f2942] rounded-2xl p-4 animate-pulse">
                   <div className="flex gap-3 mb-3">
@@ -137,7 +137,7 @@ export default function RoomsPage() {
               <p className="text-gray-600 text-sm mt-1">Be the first to start one</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {rooms.map((room) => (
                 <RoomCard key={room.id} room={room} onJoin={handleJoin} />
               ))}
