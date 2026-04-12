@@ -4,7 +4,6 @@ import { useState } from "react";
 import { FiPlus, FiX, FiGlobe, FiLock } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useRoomStore } from "@/lib/store/room";
-import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 const SUGGESTED_TAGS = ["#lofi", "#drag", "#chill", "#ballroom", "#deep", "#talk", "#podcast", "#music"];
@@ -15,8 +14,7 @@ interface CreateRoomFormProps {
 
 export function CreateRoomForm({ onCreated }: CreateRoomFormProps) {
   const { getAccessToken, user } = usePrivy();
-  const { setActiveRoom } = useRoomStore();
-  const router = useRouter();
+  const { setActiveRoom, openPanel } = useRoomStore();
 
   const [title, setTitle] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -72,11 +70,8 @@ export function CreateRoomForm({ onCreated }: CreateRoomFormProps) {
         isHost: true,
       });
 
-      if (onCreated) {
-        onCreated(data.roomId);
-      } else {
-        router.push(`/rooms/${data.roomId}`);
-      }
+      openPanel();
+      if (onCreated) onCreated(data.roomId);
     } catch (err: any) {
       toast.error(err.message || "Could not create room");
     } finally {

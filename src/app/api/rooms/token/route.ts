@@ -37,11 +37,11 @@ export async function GET(request: NextRequest) {
     const accessToken = new AccessToken({
       apiKey,
       roomId,
-      role: isHost ? Role.HOST : Role.LISTENER,
+      role: isHost ? Role.HOST : Role.SPEAKER,
       permissions: {
         admin: isHost,
         canConsume: true,
-        canProduce: isHost,
+        canProduce: true,
         canProduceSources: { cam: isHost, mic: true, screen: false },
         canRecvData: true,
         canSendData: true,

@@ -26,7 +26,7 @@ interface Room {
 export default function RoomsPage() {
   const router = useRouter();
   const { authenticated } = usePrivy();
-  const { setActiveRoom } = useRoomStore();
+  const { setActiveRoom, openPanel } = useRoomStore();
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +56,7 @@ export default function RoomsPage() {
       return;
     }
     setActiveRoom({ roomId, title, hostName, hostAvatar, isHost: false });
-    router.push(`/rooms/${roomId}`);
+    openPanel();
   };
 
   return (

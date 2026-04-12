@@ -1,4 +1,4 @@
-import { RoomView } from "@/components/rooms/room-view";
+import { RoomRedirector } from "@/components/rooms/room-redirector";
 
 interface Props {
   params: Promise<{ roomId: string }>;
@@ -6,9 +6,5 @@ interface Props {
 
 export default async function RoomPage({ params }: Props) {
   const { roomId } = await params;
-  return (
-    <div className="min-h-screen bg-black pb-24">
-      <RoomView roomId={roomId} />
-    </div>
-  );
+  return <RoomRedirector roomId={roomId} />;
 }
