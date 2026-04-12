@@ -280,12 +280,14 @@ export default function DynamicProfilePage() {
   // Render profile - Hybrid Style (Banner + Instagram tabs)
   return (
     <div className="min-h-screen pb-28 md:pb-6">
-      {/* Livestream Embed - Full width at top (Twitch-style) */}
+      {/* Livestream Embed - Full width below navbar */}
       {creator && (
-        <LivestreamEmbed
-          creatorDID={creator.did}
-          creatorName={creator.displayName}
-        />
+        <div className="pt-16">
+          <LivestreamEmbed
+            creatorDID={creator.did}
+            creatorName={creator.displayName}
+          />
+        </div>
       )}
 
       {/* Back Button - Fixed top left */}

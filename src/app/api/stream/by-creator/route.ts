@@ -49,79 +49,50 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check Livepeer API for actual live status of each stream
+    // Check Livepeer API for actual live status — parallel fetches
     const LIVEPEER_API_KEY = process.env.LIVEPEER_API_KEY;
-    const activeStreams = [];
+    let activeStreams: any[] = [];
 
     if (streams && streams.length > 0 && LIVEPEER_API_KEY) {
-      for (const stream of streams) {
-        try {
-          // Query Livepeer API for stream status
-          const livepeerResponse = await fetch(
-            `https://livepeer.studio/api/stream/${stream.livepeer_stream_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${LIVEPEER_API_KEY}`,
-              },
+      const results = await Promise.all(
+        streams.map(async (stream) => {
+          try {
+            const livepeerResponse = await fetch(
+              `https://livepeer.studio/api/stream/${stream.livepeer_stream_id}`,
+              { headers: { Authorization: `Bearer ${LIVEPEER_API_KEY}` } }
+            );
+            if (!livepeerResponse.ok) {
+              // Livepeer unreachable — fall back to DB status
+              return stream.is_active ? stream : null;
             }
-          );
-
-          if (livepeerResponse.ok) {
             const livepeerData = await livepeerResponse.json();
 
-            // Stream is active if Livepeer reports it as active
-            if (livepeerData.isActive) {
-              activeStreams.push({
-                id: stream.livepeer_stream_id,
-                name: stream.title,
-                isActive: true, // Use Livepeer's status, not database
-                playbackUrl: stream.playback_url,
-                playbackId: stream.playback_id,
-                startedAt: stream.started_at,
-                peakViewers: stream.peak_viewers,
-                totalViews: stream.total_views,
-              });
-
-              // Update database if it's out of sync
-              if (!stream.is_active) {
-                console.log(`📡 Syncing stream ${stream.id} to active state`);
-                await supabase
-                  .from("streams")
-                  .update({
-                    is_active: true,
-                    started_at: new Date().toISOString()
-                  })
-                  .eq("id", stream.id);
-              }
-            } else if (stream.is_active) {
-              // Stream is no longer active, update database
-              console.log(`📡 Syncing stream ${stream.id} to inactive state`);
-              await supabase
-                .from("streams")
-                .update({
-                  is_active: false,
-                  ended_at: new Date().toISOString()
-                })
-                .eq("id", stream.id);
+            // Sync DB if out of sync (fire-and-forget)
+            if (livepeerData.isActive && !stream.is_active) {
+              supabase.from("streams").update({ is_active: true, started_at: new Date().toISOString() }).eq("id", stream.id);
+            } else if (!livepeerData.isActive && stream.is_active) {
+              supabase.from("streams").update({ is_active: false, ended_at: new Date().toISOString() }).eq("id", stream.id);
             }
+
+            return livepeerData.isActive ? stream : null;
+          } catch {
+            return stream.is_active ? stream : null;
           }
-        } catch (err) {
-          console.error(`Failed to check stream ${stream.livepeer_stream_id}:`, err);
-          // Fallback to database status if Livepeer check fails
-          if (stream.is_active) {
-            activeStreams.push({
-              id: stream.livepeer_stream_id,
-              name: stream.title,
-              isActive: stream.is_active,
-              playbackUrl: stream.playback_url,
-              playbackId: stream.playback_id,
-              startedAt: stream.started_at,
-              peakViewers: stream.peak_viewers,
-              totalViews: stream.total_views,
-            });
-          }
-        }
-      }
+        })
+      );
+
+      activeStreams = results
+        .filter(Boolean)
+        .map((stream) => ({
+          id: stream.livepeer_stream_id,
+          name: stream.title,
+          isActive: true,
+          playbackUrl: stream.playback_url,
+          playbackId: stream.playback_id,
+          startedAt: stream.started_at,
+          peakViewers: stream.peak_viewers,
+          totalViews: stream.total_views,
+        }));
     }
 
     // Also return upcoming scheduled streams

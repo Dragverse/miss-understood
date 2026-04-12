@@ -60,7 +60,16 @@ export default function RoomsPage() {
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-6 pb-32 md:pb-24 max-w-[1400px] mx-auto">
+    <>
+      {/* Mobile: desktop-only notice */}
+      <div className="md:hidden flex flex-col items-center justify-center min-h-[60vh] px-8 text-center">
+        <FiRadio className="w-12 h-12 text-[#EB83EA] mb-4" />
+        <h2 className="text-white text-xl font-black uppercase tracking-widest mb-2">Vibe Lounge</h2>
+        <p className="text-gray-400 text-sm leading-relaxed">Audio rooms are coming to mobile soon.<br />Visit on desktop to go live.</p>
+      </div>
+
+      {/* Desktop: full rooms UI */}
+    <div className="hidden md:block px-4 sm:px-6 lg:px-8 py-6 pb-32 md:pb-24 max-w-[1400px] mx-auto">
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -146,5 +155,6 @@ export default function RoomsPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -18,7 +18,7 @@ import {
   FiGlobe,
   FiHeart,
   FiSettings,
-  FiRadio,
+
 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
@@ -429,13 +429,7 @@ export function Navbar() {
                 <FiMessageSquare className="w-5 h-5" /> Create Post
               </Link>
             )}
-            <Link
-              href="/rooms"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition min-h-[44px]"
-            >
-              <FiRadio className="w-5 h-5" /> Vibe Lounge
-            </Link>
+
             {canStream && (
               <Link
                 href="/live"
