@@ -197,9 +197,9 @@ function SnapshotsContent() {
           </div>
         </div>
 
-        {/* TV Body */}
-        <div className="relative flex-1 w-full min-h-0 p-1.5 md:p-2 bg-gradient-to-b from-[#EB83EA] to-[#E748E6] md:rounded-[2rem] shadow-xl shadow-[#EB83EA]/20">
-          {/* Screen (inner area) */}
+        {/* TV Body — full pink frame on desktop, clean/frameless on mobile */}
+        <div className="relative flex-1 w-full min-h-0 md:p-2 md:bg-gradient-to-b md:from-[#EB83EA] md:to-[#E748E6] md:rounded-[2rem] md:shadow-xl md:shadow-[#EB83EA]/20">
+          {/* Screen */}
           <div className="relative h-full w-full md:rounded-[1.5rem] overflow-hidden bg-gray-950">
             <ShortVideo
               key={currentVideo.id}

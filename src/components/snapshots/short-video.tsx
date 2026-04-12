@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Hls from "hls.js";
-import { FiVolume2, FiVolumeX, FiHeart, FiMessageCircle, FiShare2, FiDollarSign, FiEdit2, FiTrash2, FiMoreVertical, FiAlertCircle, FiPlay } from "react-icons/fi";
+import { FiVolume2, FiVolumeX, FiHeart, FiMessageCircle, FiShare2, FiDollarSign, FiEdit2, FiTrash2, FiMoreVertical, FiAlertCircle, FiPlay, FiMaximize2 } from "react-icons/fi";
 import type { Video } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
@@ -35,6 +35,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
   const [isFollowing, setIsFollowing] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -326,10 +327,19 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
     }
   };
 
+  const handleFullscreen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
   const hasValidPlaybackUrl = video.playbackUrl && video.playbackUrl.trim() !== '';
 
   return (
-    <div className="flex justify-center items-center h-full w-full focus-visible:outline-none">
+    <div ref={containerRef} className="flex justify-center items-center h-full w-full focus-visible:outline-none">
       <div className="bg-gray-950 flex h-full w-full items-center overflow-hidden relative">
         {hasValidPlaybackUrl ? (
           <div className="w-full h-full relative" style={{ pointerEvents: 'none' }}>
@@ -414,6 +424,13 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
                 ) : (
                   <FiVolume2 className="w-5 h-5 text-white" />
                 )}
+              </button>
+              <button
+                onClick={handleFullscreen}
+                className="p-3 bg-black/50 rounded-full hover:bg-black/70 transition"
+                aria-label="Fullscreen"
+              >
+                <FiMaximize2 className="w-5 h-5 text-white" />
               </button>
             </div>
 

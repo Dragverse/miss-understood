@@ -13,7 +13,8 @@ import {
 import type { Video } from "@/types";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 
-const MAX_SLIDE_DURATION = 12_000;
+// Safety-only fallback — videos advance via onEnded; this just guards against stalled playback
+const MAX_SLIDE_DURATION = 5 * 60 * 1000;
 const MAX_VIDEOS = 6;
 
 interface ExploreTVSliderProps {
