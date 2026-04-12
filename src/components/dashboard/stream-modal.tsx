@@ -293,29 +293,23 @@ export function StreamModal({ onClose }: StreamModalProps) {
       setIsStreaming(true);
       toast.success("Connecting to Livepeer...");
 
-      // Step 1: Get WebRTC redirect URL (GeoDNS routing to closest server)
-      const redirectUrl = `https://livepeer.studio/webrtc/${streamInfo.streamKey}`;
-      console.log("📍 Getting WebRTC ingest URL from:", redirectUrl);
+      // Step 1: Resolve GeoDNS redirect to get the nearest regional ingest server.
+      // fetch() follows redirects automatically; response.url is the final destination.
+      // Using redirect:"manual" + Location header was broken — CORS prevents header access.
+      const baseUrl = `https://livepeer.studio/webrtc/${streamInfo.streamKey}`;
+      console.log("📍 Resolving WebRTC ingest URL from:", baseUrl);
 
-      const redirectResponse = await fetch(redirectUrl, {
-        method: "HEAD",
-        redirect: "manual"
-      });
-
-      // Status 0 is expected with redirect: "manual" (opaque response for CORS redirects)
-      // Status 307 is an explicit redirect
-      // Any 2xx status is success
-      const isValidResponse = redirectResponse.status === 0 ||
-                             redirectResponse.status === 307 ||
-                             redirectResponse.ok;
-
-      if (!isValidResponse && redirectResponse.status >= 400) {
-        console.error("❌ Failed to get WebRTC redirect:", redirectResponse.status);
-        throw new Error(`Failed to connect to Livepeer (${redirectResponse.status}). Please check your stream key.`);
+      let ingestUrl = baseUrl;
+      try {
+        const headResponse = await fetch(baseUrl, { method: "HEAD" });
+        // response.url is the final URL after redirect following
+        if (headResponse.url && headResponse.url !== baseUrl) {
+          ingestUrl = headResponse.url;
+        }
+        console.log("✅ Resolved WebRTC ingest URL:", ingestUrl);
+      } catch {
+        console.warn("⚠️ HEAD redirect failed, falling back to base URL");
       }
-
-      const ingestUrl = redirectResponse.headers.get("location") || redirectUrl;
-      console.log("✅ WebRTC ingest URL:", ingestUrl);
 
       // Step 2: Extract hostname from ingest URL for Livepeer's STUN/TURN servers
       const ingestHostname = new URL(ingestUrl).hostname;
@@ -486,8 +480,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
       const isIceLite = answerSdp.includes('ice-lite');
       console.log(`📊 Server provided ${serverCandidates} ICE candidates (ice-lite: ${isIceLite})`);
 
-      // Detect private-only ICE candidates (unreachable from public internet)
-      // Pattern: 10.x.x.x, 192.168.x.x, 172.16-31.x.x, 100.64-127.x.x (CGNAT)
+      // Detect private-only ICE candidates — log diagnostic info
       const isPrivateIpCandidate = (line: string) =>
         /a=candidate:[^\r\n]+ (10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+) /.test(line);
       const allCandidateLines = answerSdp.match(/a=candidate:[^\r\n]+/g) || [];
@@ -495,9 +488,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
       const hasOnlyPrivateCandidates = serverCandidates > 0 && privateCandidates.length === serverCandidates;
 
       if (hasOnlyPrivateCandidates) {
-        console.error("❌ Server returned only private/internal IP candidates:", privateCandidates);
-        peerConnection.close();
-        throw new Error("Livepeer returned internal network IPs — WebRTC is unavailable from browser. Use OBS/Streamlabs with RTMP instead (see OBS Setup tab below).");
+        console.warn("⚠️ Server returned only private IP candidates — connection may fail if server NAT is not configured:", privateCandidates);
       }
 
       await peerConnection.setRemoteDescription({
@@ -559,12 +550,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
       // Provide more specific error guidance
       let errorMessage = "Failed to start stream";
-      const isPrivateIPError = error instanceof Error && error.message.includes("internal network IPs");
-
       if (error instanceof Error) {
-        if (isPrivateIPError) {
-          errorMessage = "Browser streaming unavailable — Livepeer returned internal IPs. Switching to OBS setup.";
-        } else if (error.message.includes("WHIP negotiation failed")) {
+        if (error.message.includes("WHIP negotiation failed")) {
           errorMessage = "Failed to connect to Livepeer. Please check your internet connection.";
         } else if (error.message.includes("stream key")) {
           errorMessage = "Invalid stream configuration. Please try creating a new stream.";
@@ -573,14 +560,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
         }
       }
 
-      toast.error(errorMessage, { duration: isPrivateIPError ? 5000 : 4000 });
+      toast.error(errorMessage);
       setIsStreaming(false);
-
-      // Auto-switch to OBS when WebRTC fails due to private IPs
-      if (isPrivateIPError) {
-        setStreamingMethod('obs');
-        setStep('setup');
-      }
     }
   };
 
@@ -991,29 +972,31 @@ export function StreamModal({ onClose }: StreamModalProps) {
           {step === 'method' && streamInfo && (
             <div className="space-y-6">
               <p className="text-gray-300 text-center mb-6">
-                Stream live using OBS, Streamlabs, or any RTMP-compatible software.
+                Choose how you want to stream. Browser streaming is quick and easy, while OBS/Streamlabs offers professional features.
               </p>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* Browser Streaming Option — disabled until Livepeer WebRTC is fixed */}
-                <div
-                  className="p-8 bg-[#1a1030] border-2 border-white/5 rounded-2xl relative overflow-hidden opacity-50 cursor-not-allowed"
-                  title="Browser streaming is temporarily unavailable"
+                {/* Browser Streaming Option */}
+                <button
+                  onClick={() => {
+                    setStreamingMethod('browser');
+                    setStep('setup');
+                  }}
+                  className="p-8 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/60 rounded-2xl transition-all group relative overflow-hidden"
                 >
-                  <div className="absolute top-3 right-3 px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/40 rounded-full text-yellow-400 text-[10px] font-bold uppercase tracking-wider">
-                    Coming Soon
-                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <div className="relative">
-                    <FiVideo className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                    <h3 className="font-bold text-gray-400 text-lg mb-2">Browser Streaming</h3>
-                    <p className="text-sm text-gray-600 mb-3">Stream from your camera or screen</p>
-                    <ul className="text-xs text-gray-700 space-y-1 text-left">
+                    <FiVideo className="w-12 h-12 text-[#EB83EA] mx-auto mb-4 group-hover:scale-110 transition" />
+                    <h3 className="font-bold text-white text-lg mb-2">Browser Streaming</h3>
+                    <p className="text-sm text-gray-400 mb-3">Stream from your camera or screen</p>
+                    <ul className="text-xs text-gray-500 space-y-1 text-left">
                       <li>• Quick & easy setup</li>
                       <li>• No software needed</li>
                       <li>• Camera or screen share</li>
+                      <li>• Low latency</li>
                     </ul>
                   </div>
-                </div>
+                </button>
 
                 {/* OBS/Streamlabs Option */}
                 <button
@@ -1021,11 +1004,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
                     setStreamingMethod('obs');
                     setStep('setup');
                   }}
-                  className="p-8 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#7c3aed]/40 hover:border-[#7c3aed]/80 rounded-2xl transition-all group relative overflow-hidden"
+                  className="p-8 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/60 rounded-2xl transition-all group relative overflow-hidden"
                 >
-                  <div className="absolute top-3 right-3 px-2 py-0.5 bg-[#7c3aed]/30 border border-[#7c3aed]/50 rounded-full text-purple-300 text-[10px] font-bold uppercase tracking-wider">
-                    Recommended
-                  </div>
                   <div className="absolute inset-0 bg-gradient-to-br from-[#7c3aed]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <div className="relative">
                     <FiMonitor className="w-12 h-12 text-[#7c3aed] mx-auto mb-4 group-hover:scale-110 transition" />
