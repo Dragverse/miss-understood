@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { FiRadio, FiUsers, FiChevronDown, FiChevronUp } from "react-icons/fi";
-import { CreateRoomForm } from "./create-room-form";
+import { FiRadio, FiUsers } from "react-icons/fi";
 import { useRoomStore } from "@/lib/store/room";
 
 interface LiveRoom {
@@ -14,21 +12,14 @@ interface LiveRoom {
 }
 
 export function RoomsSidebar() {
-  const { activeRoom } = useRoomStore();
-  const router = useRouter();
+  const { activeRoom, openPanel, setActiveRoom } = useRoomStore();
   const [liveRooms, setLiveRooms] = useState<LiveRoom[]>([]);
-  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     fetchRooms();
     const interval = setInterval(fetchRooms, 30000);
     return () => clearInterval(interval);
   }, []);
-
-  // Auto-close form once in a room
-  useEffect(() => {
-    if (activeRoom) setShowForm(false);
-  }, [activeRoom]);
 
   async function fetchRooms() {
     try {
@@ -37,6 +28,13 @@ export function RoomsSidebar() {
       if (data.rooms) setLiveRooms(data.rooms);
     } catch {}
   }
+
+  const handleJoin = (room: LiveRoom) => {
+    const hostName = room.profiles?.display_name || room.profiles?.handle || "Host";
+    const hostAvatar = room.profiles?.avatar || "/defaultpfp.png";
+    setActiveRoom({ roomId: room.huddle_room_id, title: room.title, hostName, hostAvatar, isHost: false });
+    openPanel();
+  };
 
   return (
     <div className="bg-[#1a0b2e] border border-[#2f2942] rounded-2xl p-4 flex flex-col gap-4">
@@ -53,10 +51,10 @@ export function RoomsSidebar() {
         )}
       </div>
 
-      {/* Active room state */}
+      {/* Active room indicator */}
       {activeRoom ? (
         <button
-          onClick={() => router.push(`/rooms/${activeRoom.roomId}`)}
+          onClick={openPanel}
           className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#EB83EA]/20 border border-[#EB83EA]/40 hover:bg-[#EB83EA]/30 transition-all text-left"
         >
           <span className="w-2 h-2 bg-[#EB83EA] rounded-full animate-pulse flex-shrink-0" />
@@ -66,42 +64,31 @@ export function RoomsSidebar() {
           </div>
         </button>
       ) : (
-        <>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="w-full py-2.5 rounded-full bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] text-white text-sm font-black flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#EB83EA]/20"
-          >
-            <FiRadio className="w-4 h-4" />
-            Go Live
-            {showForm ? <FiChevronUp className="w-3.5 h-3.5" /> : <FiChevronDown className="w-3.5 h-3.5" />}
-          </button>
-
-          {showForm && (
-            <CreateRoomForm onCreated={() => setShowForm(false)} />
-          )}
-        </>
+        <button
+          onClick={openPanel}
+          className="w-full py-2.5 rounded-full bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] hover:from-[#E748E6] hover:to-[#6d28d9] text-white text-sm font-black flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#EB83EA]/20"
+        >
+          <FiRadio className="w-4 h-4" />
+          Open Vibe Lounge
+        </button>
       )}
 
-      {/* Live rooms list */}
+      {/* Live rooms quick list */}
       {liveRooms.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold px-1">
-            Live Now
-          </span>
+          <span className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold px-1">Live Now</span>
           {liveRooms.map((room) => {
             const hostName = room.profiles?.display_name || room.profiles?.handle || "Host";
             return (
               <button
                 key={room.huddle_room_id}
-                onClick={() => router.push(`/rooms/${room.huddle_room_id}`)}
+                onClick={() => handleJoin(room)}
                 className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-[#EB83EA]/30 transition-all text-left"
               >
                 <span className="w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-xs font-semibold line-clamp-1">{room.title}</p>
-                  <p className="text-gray-500 text-[10px]">
-                    {hostName} · {room.listener_count} listening
-                  </p>
+                  <p className="text-gray-500 text-[10px]">{hostName} · {room.listener_count} listening</p>
                 </div>
                 <FiUsers className="w-3 h-3 text-gray-600 flex-shrink-0" />
               </button>
@@ -110,7 +97,7 @@ export function RoomsSidebar() {
         </div>
       )}
 
-      {!activeRoom && liveRooms.length === 0 && !showForm && (
+      {!activeRoom && liveRooms.length === 0 && (
         <p className="text-gray-600 text-xs text-center py-1">No rooms live · be the first!</p>
       )}
     </div>

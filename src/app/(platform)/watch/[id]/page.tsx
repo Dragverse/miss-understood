@@ -481,7 +481,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 // YouTube iframe embed - using feed page styling pattern
                 <div
                   className="relative w-full rounded-xl overflow-hidden bg-[#0f071a]"
-                  style={{ aspectRatio: video.contentType === "short" ? "9/16" : "16/9" }}
+                  style={{ aspectRatio: "16/9" }}
                 >
                   <iframe
                     src={getYouTubeEmbedUrl(video.playbackUrl) || undefined}
@@ -495,7 +495,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 // Livepeer Player for uploaded videos - Enhanced quality
                 <Player.Root
                   src={getSrc(video.playbackUrl)}
-                  aspectRatio={video.contentType === "short" ? 9 / 16 : 16 / 9}
+                  aspectRatio={16 / 9}
                   autoPlay
                   volume={0.8}
                 >
@@ -510,7 +510,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                       <div className="w-16 h-16 border-4 border-[#EB83EA] border-t-transparent rounded-full animate-spin" />
                     </Player.LoadingIndicator>
                     <Player.Video
-                      className={video.contentType === "short" ? "max-h-[80vh] mx-auto" : ""}
+                      className=""
                       style={{ objectFit: "contain" }}
                     />
                     {/* Enhanced Controls */}

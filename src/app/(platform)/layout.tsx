@@ -2,7 +2,7 @@ import React from "react";
 import { OwnershipBanner } from "@/components/ui/ownership-banner";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
 import { PersistentAudioPlayer } from "@/components/audio/PersistentAudioPlayer";
-import { FloatingRoomBar } from "@/components/rooms/floating-room-bar";
+import { VibeLounge } from "@/components/rooms/vibe-lounge";
 
 export default function PlatformLayout({
   children,
@@ -12,7 +12,7 @@ export default function PlatformLayout({
   return (
     <AudioPlayerProvider>
       {children}
-      <FloatingRoomBar />
+      <VibeLounge />
       <PersistentAudioPlayer />
       <OwnershipBanner />
     </AudioPlayerProvider>
