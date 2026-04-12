@@ -102,6 +102,19 @@ export async function GET(request: NextRequest) {
           isLive = stream.is_active;
         }
 
+        // Self-heal the DB — fire-and-forget so every profile visit corrects stale is_active
+        if (isLive && !stream.is_active) {
+          void supabase
+            .from("streams")
+            .update({ is_active: true, started_at: stream.started_at ?? new Date().toISOString() })
+            .eq("id", stream.id);
+        } else if (!isLive && stream.is_active) {
+          void supabase
+            .from("streams")
+            .update({ is_active: false })
+            .eq("id", stream.id);
+        }
+
         if (!isLive) return null;
 
         return {

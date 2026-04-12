@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { FiVideo, FiMonitor, FiMic, FiMicOff, FiVideoOff, FiX, FiCopy, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
+import { useStreamStore } from "@/lib/store/stream";
 
 interface StreamModalProps {
   onClose: () => void;
@@ -23,6 +24,7 @@ interface StreamInfo {
 
 export function StreamModal({ onClose }: StreamModalProps) {
   const { getAccessToken, user } = usePrivy();
+  const { setActiveStream, clearActiveStream } = useStreamStore();
 
   // Step management
   const [step, setStep] = useState<StreamStep>('create');
@@ -527,6 +529,9 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
       setStep('streaming');
       toast.success("🎥 Live on Dragverse!");
+      if (streamInfo?.playbackId && user?.id) {
+        setActiveStream({ creatorDID: user.id, playbackId: streamInfo.playbackId });
+      }
 
       // Update database status to active
       await updateStreamStatus(true);
@@ -781,6 +786,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
     // Update database status to inactive
     await updateStreamStatus(false);
+    clearActiveStream();
     console.log('✅ Database updated: is_active = false');
 
     // Close WebRTC peer connection

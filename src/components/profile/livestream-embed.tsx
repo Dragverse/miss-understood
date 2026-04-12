@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
 import { FiVideo, FiClock } from "react-icons/fi";
+import { useStreamStore } from "@/lib/store/stream";
 
 interface LivestreamEmbedProps {
   creatorDID: string;
@@ -35,6 +36,8 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
   const [upcoming, setUpcoming] = useState<UpcomingStream | null>(null);
   const [checking, setChecking] = useState(true);
   const [playerError, setPlayerError] = useState(false);
+  const activeStream = useStreamStore((s) => s.activeStream);
+  const isOwnActiveStream = activeStream?.creatorDID === creatorDID;
 
   useEffect(() => {
     const check = async () => {
@@ -78,10 +81,29 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
     return () => clearInterval(interval);
   }, [creatorDID, creatorName]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // While initial check is running, show Connecting if this is the streamer's own session
+  if (checking && !isOwnActiveStream) return null;
+
+  // Streamer just went live in this session — show connecting while DB/API catches up (~30s)
+  if (isOwnActiveStream && !streamInfo.isLive) {
+    return (
+      <div className="w-full mb-8 bg-black/60 border border-red-500/30 rounded-[24px] overflow-hidden p-8 text-center">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+          <span className="text-red-400 font-bold uppercase tracking-widest text-sm">Connecting…</span>
+        </div>
+        <p className="text-gray-400 text-sm">Your stream is starting. It will appear here in a moment.</p>
+      </div>
+    );
+  }
+
   if (checking) return null;
 
+  // Playback ID — prefer API response, fall back to store (edge case: API confirmed live but omitted ID)
+  const effectivePlaybackId = streamInfo.playbackId ?? (isOwnActiveStream ? activeStream!.playbackId : undefined);
+
   // ── Active stream ────────────────────────────────────────────────────────
-  if (streamInfo.isLive && streamInfo.playbackId) {
+  if (streamInfo.isLive && effectivePlaybackId) {
     return (
       <div className="w-full mb-8 bg-[#1a0b2e] border border-[#2f2942] rounded-[24px] overflow-hidden">
         {/* Header */}
@@ -115,7 +137,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
             <Player.Root
               src={getSrc(
                 streamInfo.playbackUrl ||
-                `https://livepeercdn.studio/hls/${streamInfo.playbackId}/index.m3u8`
+                `https://livepeercdn.studio/hls/${effectivePlaybackId}/index.m3u8`
               )}
               autoPlay
             >
