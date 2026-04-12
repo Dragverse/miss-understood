@@ -32,10 +32,17 @@ export async function GET(request: NextRequest) {
     const videoId = searchParams.get("videoId");
     const contentType = searchParams.get("contentType");
     const creatorDid = searchParams.get("creatorDid");
-    const limit = parseInt(searchParams.get("limit") || "6");
+    const rawLimit = parseInt(searchParams.get("limit") || "6");
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 20) : 6;
 
     if (!videoId) {
       return NextResponse.json({ error: "videoId is required" }, { status: 400 });
+    }
+
+    // Validate videoId is a UUID to prevent injection in the NOT IN clause below
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(videoId)) {
+      return NextResponse.json({ error: "Invalid videoId" }, { status: 400 });
     }
 
     const supabase = getSupabaseServerClient();

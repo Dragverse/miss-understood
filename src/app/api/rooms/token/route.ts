@@ -12,11 +12,35 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const roomId = searchParams.get("roomId");
-    const displayName = searchParams.get("displayName") || "Drag Artist";
-    const avatarUrl = searchParams.get("avatarUrl") || "/defaultpfp.png";
 
     if (!roomId) {
       return NextResponse.json({ error: "roomId is required" }, { status: 400 });
+    }
+
+    // Validate roomId — Huddle01 room IDs are alphanumeric + dashes
+    if (!/^[a-zA-Z0-9_-]{1,100}$/.test(roomId)) {
+      return NextResponse.json({ error: "Invalid roomId" }, { status: 400 });
+    }
+
+    // Sanitize display name: strip HTML-like chars, limit length
+    const rawName = searchParams.get("displayName") || "Drag Artist";
+    const displayName = rawName.replace(/[<>"'&]/g, "").trim().slice(0, 50) || "Drag Artist";
+
+    // Validate avatarUrl: only allow http/https or root-relative paths
+    const rawAvatar = searchParams.get("avatarUrl") || "";
+    let avatarUrl = "/defaultpfp.png";
+    if (rawAvatar) {
+      try {
+        const parsed = new URL(rawAvatar);
+        if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+          avatarUrl = rawAvatar;
+        }
+      } catch {
+        // Root-relative paths (e.g. "/defaultpfp.png") are also fine
+        if (/^\/[a-zA-Z0-9/_.-]+$/.test(rawAvatar)) {
+          avatarUrl = rawAvatar;
+        }
+      }
     }
 
     const apiKey = process.env.HUDDLE01_API_KEY;

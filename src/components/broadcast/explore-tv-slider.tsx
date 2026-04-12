@@ -3,13 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  FiVolume2,
-  FiVolumeX,
-  FiMaximize2,
-  FiChevronLeft,
-  FiChevronRight,
-} from "react-icons/fi";
+import { FiVolume2, FiVolumeX, FiMaximize2 } from "react-icons/fi";
 import type { Video } from "@/types";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 
@@ -32,6 +26,7 @@ export function ExploreTVSlider({ videos }: ExploreTVSliderProps) {
   const hlsRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const mutedRef = useRef(true); // tracks current muted state for use inside async closures
 
   const [idx, setIdx] = useState(0);
   const [muted, setMuted] = useState(true);
@@ -72,7 +67,7 @@ export function ExploreTVSlider({ videos }: ExploreTVSliderProps) {
 
     if (!src) return;
 
-    video.muted = true; // always start muted (synced below)
+    video.muted = mutedRef.current; // preserve user's mute preference across videos
 
     const load = async () => {
       const isHLS = src.includes(".m3u8");
@@ -126,6 +121,7 @@ export function ExploreTVSlider({ videos }: ExploreTVSliderProps) {
 
   // Sync muted state without reloading the source
   useEffect(() => {
+    mutedRef.current = muted;
     if (videoRef.current) videoRef.current.muted = muted;
   }, [muted]);
 
@@ -219,40 +215,17 @@ export function ExploreTVSlider({ videos }: ExploreTVSliderProps) {
           </button>
         </div>
 
-        {/* Prev / Next arrows — hidden until hover on desktop, always on mobile */}
-        {total > 1 && (
-          <>
-            <button
-              onClick={() => goTo(idx - 1)}
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-[#EB83EA]/80 md:opacity-0 md:group-hover:opacity-100"
-              aria-label="Previous video"
-            >
-              <FiChevronLeft className="w-5 h-5 text-white" />
-            </button>
-            <button
-              onClick={() => goTo(idx + 1)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-[#EB83EA]/80 md:opacity-0 md:group-hover:opacity-100"
-              aria-label="Next video"
-            >
-              <FiChevronRight className="w-5 h-5 text-white" />
-            </button>
-          </>
-        )}
       </div>
 
       {/* Dot indicators */}
       {total > 1 && (
         <div className="flex gap-1.5 mt-2.5 justify-center">
           {filtered.map((_, i) => (
-            <button
+            <div
               key={i}
-              onClick={() => goTo(i)}
               className={`rounded-full transition-all duration-300 ${
-                idx === i
-                  ? "w-5 h-1.5 bg-[#EB83EA]"
-                  : "w-1.5 h-1.5 bg-white/30 hover:bg-white/60"
+                idx === i ? "w-5 h-1.5 bg-[#EB83EA]" : "w-1.5 h-1.5 bg-white/30"
               }`}
-              aria-label={`Video ${i + 1}`}
             />
           ))}
         </div>

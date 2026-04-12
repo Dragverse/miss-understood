@@ -9,6 +9,11 @@ export function RoomRedirector({ roomId }: { roomId: string }) {
   const { setActiveRoom, openPanel } = useRoomStore();
 
   useEffect(() => {
+    // Validate roomId format before trusting it
+    if (!/^[a-zA-Z0-9_-]{1,100}$/.test(roomId)) {
+      router.replace("/rooms");
+      return;
+    }
     setActiveRoom({
       roomId,
       title: "Audio Room",

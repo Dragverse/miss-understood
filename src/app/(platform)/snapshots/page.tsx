@@ -148,6 +148,15 @@ function SnapshotsContent() {
     fetchSocialStatus();
   }, [snapshots]);
 
+  // Remove deleted snapshot from feed without page reload
+  const handleVideoDeleted = useCallback((videoId: string) => {
+    setSnapshots(prev => {
+      const filtered = prev.filter(s => s.id !== videoId);
+      setCurrentIndex(i => Math.min(i, Math.max(filtered.length - 1, 0)));
+      return filtered;
+    });
+  }, []);
+
   // Broadcast: auto-advance to next video
   const handleVideoEnded = useCallback(() => {
     setCurrentIndex(prev => (prev + 1) % snapshots.length);
@@ -208,6 +217,7 @@ function SnapshotsContent() {
               onNext={() => setCurrentIndex(prev => (prev + 1) % snapshots.length)}
               onEnded={handleVideoEnded}
               onError={handleVideoError}
+              onDelete={handleVideoDeleted}
               initialLiked={socialStatus.likes[currentVideo.id]}
               initialFollowing={socialStatus.follows[currentVideo.creator.did]}
             />

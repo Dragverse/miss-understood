@@ -57,6 +57,9 @@ export function VibeLounge() {
   const [handRaised, setHandRaised] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const joinAttemptRef = useRef<string | null>(null);
+  const tokenRef = useRef<string>("");
+  const isHostRef = useRef(false);
+  const activeRoomRef = useRef<typeof activeRoom>(null);
 
   const displayName = creator?.displayName || "Drag Artist";
   const avatarUrl = creator?.avatar || "/defaultpfp.png";
@@ -120,6 +123,7 @@ export function VibeLounge() {
     setJoining(true);
     try {
       const authToken = await getAccessToken();
+      tokenRef.current = authToken ?? "";
       const params = new URLSearchParams({ roomId, displayName, avatarUrl });
       const res = await fetch(`/api/rooms/token?${params}`, {
         headers: { Authorization: `Bearer ${authToken}` },
@@ -127,6 +131,7 @@ export function VibeLounge() {
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Token failed");
       setIsHost(data.isHost);
+      isHostRef.current = data.isHost;
       joinRoom({ roomId, token: data.token });
       updateMetadata({ displayName, avatarUrl });
     } catch (err: any) {
@@ -137,6 +142,25 @@ export function VibeLounge() {
       setView("list");
     }
   }
+
+  // Keep refs in sync for use in beforeunload (where state closures would be stale)
+  useEffect(() => { isHostRef.current = isHost; }, [isHost]);
+  useEffect(() => { activeRoomRef.current = activeRoom; }, [activeRoom]);
+
+  // End room if host closes tab / browser
+  useEffect(() => {
+    const handleUnload = () => {
+      if (!isHostRef.current || !activeRoomRef.current?.roomId || !tokenRef.current) return;
+      fetch("/api/rooms/end", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenRef.current}` },
+        keepalive: true,
+        body: JSON.stringify({ roomId: activeRoomRef.current.roomId }),
+      });
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, []);
 
   // Scroll chat to bottom
   useEffect(() => {
@@ -181,6 +205,8 @@ export function VibeLounge() {
     clearActiveRoom();
     setView("list");
     joinAttemptRef.current = null;
+    // Refresh room list immediately so the ended room disappears right away
+    fetchRooms();
   };
 
   const handleSendChat = () => {

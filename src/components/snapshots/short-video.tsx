@@ -18,11 +18,12 @@ interface ShortVideoProps {
   onNext?: () => void;
   onEnded?: () => void;
   onError?: () => void;
+  onDelete?: (videoId: string) => void;
   initialLiked?: boolean;
   initialFollowing?: boolean;
 }
 
-export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialLiked, initialFollowing }: ShortVideoProps) {
+export function ShortVideo({ video, isActive, onNext, onEnded, onError, onDelete, initialLiked, initialFollowing }: ShortVideoProps) {
   const { user, getAccessToken } = usePrivy();
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -290,25 +291,29 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowMenu(false);
-    if (!confirm("Are you sure you want to delete this video? This action cannot be undone.")) return;
+    if (!confirm("Delete this snapshot? This cannot be undone.")) return;
 
     try {
       const authToken = await getAccessToken();
-      const response = await fetch(`/api/videos/${video.id}`, {
+      const response = await fetch("/api/video/delete", {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ videoId: video.id }),
       });
       if (response.ok) {
-        onNext?.();
-        alert("Video deleted successfully");
-        setTimeout(() => window.location.reload(), 1000);
+        toast.success("Snapshot deleted");
+        if (onDelete) {
+          onDelete(video.id);
+        } else {
+          onNext?.();
+        }
       } else {
         const data = await response.json();
-        alert(`Failed to delete video: ${data.error || "Unknown error"}`);
+        toast.error(data.error || "Failed to delete");
       }
     } catch (error) {
       console.error("[ShortVideo] Delete error:", error);
-      alert("Failed to delete video. Please try again.");
+      toast.error("Failed to delete. Please try again.");
     }
   };
 

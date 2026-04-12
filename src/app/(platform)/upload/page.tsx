@@ -14,6 +14,7 @@ import { saveLocalVideo } from "@/lib/utils/local-storage";
 import { getVideo } from "@/lib/supabase/videos";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 import imageCompression from "browser-image-compression";
+import { useUploadProgress } from "@/lib/store/upload";
 
 function UploadPageContent() {
   const { isAuthenticated, signIn, user } = useAuthUser();
@@ -371,6 +372,31 @@ function UploadPageContent() {
     });
   }, []);
 
+  // Detect portrait vs landscape from video metadata
+  const detectVideoOrientation = useCallback((videoFile: File): Promise<"portrait" | "landscape" | "unknown"> => {
+    return new Promise((resolve) => {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      const timeout = setTimeout(() => {
+        URL.revokeObjectURL(video.src);
+        resolve("unknown");
+      }, 5000);
+      video.onloadedmetadata = () => {
+        clearTimeout(timeout);
+        const { videoWidth: w, videoHeight: h } = video;
+        URL.revokeObjectURL(video.src);
+        if (!w || !h) return resolve("unknown");
+        resolve(h > w ? "portrait" : "landscape");
+      };
+      video.onerror = () => {
+        clearTimeout(timeout);
+        URL.revokeObjectURL(video.src);
+        resolve("unknown");
+      };
+      video.src = URL.createObjectURL(videoFile);
+    });
+  }, []);
+
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -380,7 +406,20 @@ function UploadPageContent() {
       const file = e.dataTransfer.files[0];
       const isValid = await validateMediaFile(file, formData.mediaType, formData.contentType);
       if (isValid) {
-        setFormData((prev) => ({ ...prev, video: file }));
+        if (formData.mediaType === "video") {
+          const orientation = await detectVideoOrientation(file);
+          const newContentType: "short" | "long" = orientation === "portrait" ? "short" : "long";
+          if (orientation !== "unknown" && newContentType !== formData.contentType) {
+            toast.success(orientation === "portrait" ? "Snapshot selected — vertical video detected" : "Video selected — horizontal video detected");
+          }
+          setFormData((prev) => ({
+            ...prev,
+            video: file,
+            contentType: orientation !== "unknown" ? newContentType : prev.contentType,
+          }));
+        } else {
+          setFormData((prev) => ({ ...prev, video: file }));
+        }
 
         // Auto-extract first frame as thumbnail for videos
         if (formData.mediaType === "video" && !formData.thumbnail) {
@@ -399,7 +438,7 @@ function UploadPageContent() {
         }
       }
     }
-  }, [formData.mediaType, formData.contentType, formData.thumbnail, validateMediaFile, extractFirstFrame]);
+  }, [formData.mediaType, formData.contentType, formData.thumbnail, validateMediaFile, extractFirstFrame, detectVideoOrientation]);
 
   const handleThumbnailChange = (file: File | null) => {
     if (file) {
@@ -610,6 +649,7 @@ function UploadPageContent() {
     try {
       setUploading(true);
       setUploadStage("uploading");
+      useUploadProgress.getState().startSession(formData.video.name);
 
       // Get Privy auth token for authenticated API calls
       const authToken = await getAccessToken();
@@ -630,6 +670,7 @@ function UploadPageContent() {
         setUploadProgress(progress.percentage);
         setUploadedBytes(progress.loaded);
         setTotalBytes(progress.total);
+        useUploadProgress.getState().setProgress(progress.percentage, progress.loaded, progress.total);
 
         // Calculate upload speed and time remaining
         const now = Date.now();
@@ -642,12 +683,15 @@ function UploadPageContent() {
 
           const bytesRemaining = progress.total - progress.loaded;
           const secondsRemaining = bytesRemaining / speedBps;
+          let remaining = "";
           if (secondsRemaining < 60) {
-            setTimeRemaining(`${Math.ceil(secondsRemaining)}s remaining`);
+            remaining = `${Math.ceil(secondsRemaining)}s remaining`;
           } else {
             const minutesRemaining = Math.ceil(secondsRemaining / 60);
-            setTimeRemaining(`${minutesRemaining} min remaining`);
+            remaining = `${minutesRemaining} min remaining`;
           }
+          setTimeRemaining(remaining);
+          useUploadProgress.getState().setSpeed(speedMBps.toFixed(2), remaining);
 
           lastUpdate = now;
           lastLoaded = progress.loaded;
@@ -670,8 +714,11 @@ function UploadPageContent() {
         const asset = await uploadVideoToLivepeer(formData.video, onProgress, authToken);
         toast.success("Upload complete! Processing video...");
         setUploadStage("processing");
+        useUploadProgress.getState().setStage("processing");
         readyAsset = await waitForAssetReady(asset.id, (progress) => {
-          setProcessingProgress(Math.round(progress * 100));
+          const pct = Math.round(progress * 100);
+          setProcessingProgress(pct);
+          useUploadProgress.getState().setProcessingProgress(pct);
         });
         toast.success("Video processing complete! 🎉");
       }
@@ -740,6 +787,7 @@ function UploadPageContent() {
         const finalPlaybackUrl = readyAsset.playbackUrl;
         console.log("[Upload] Using playback URL for", formData.mediaType, ":", finalPlaybackUrl);
 
+        useUploadProgress.getState().setStage("saving");
         const metadataResponse = await fetch("/api/video/create", {
           method: "POST",
           headers: {
@@ -777,6 +825,7 @@ function UploadPageContent() {
         }
 
         setUploadStage("complete");
+        useUploadProgress.getState().setStage("complete");
 
         // Show appropriate success message based on mode
         if (metadataResult.fallbackMode) {
@@ -913,11 +962,13 @@ function UploadPageContent() {
       }, 2000);
     } catch (error) {
       console.error("[Upload] Error:", error);
-      toast.error(error instanceof Error ? error.message : "Upload failed");
+      const errMsg = error instanceof Error ? error.message : "Upload failed";
+      toast.error(errMsg);
       setUploading(false);
       setUploadStage("idle");
       setUploadProgress(0);
       setProcessingProgress(0);
+      useUploadProgress.getState().setError(errMsg);
     }
   };
 
@@ -1133,10 +1184,20 @@ function UploadPageContent() {
                 if (file) {
                   const isValid = await validateMediaFile(file, formData.mediaType, formData.contentType);
                   if (isValid) {
-                    setFormData({
-                      ...formData,
-                      video: file,
-                    });
+                    if (formData.mediaType === "video") {
+                      const orientation = await detectVideoOrientation(file);
+                      const newContentType: "short" | "long" = orientation === "portrait" ? "short" : "long";
+                      if (orientation !== "unknown" && newContentType !== formData.contentType) {
+                        toast.success(orientation === "portrait" ? "Snapshot selected — vertical video detected" : "Video selected — horizontal video detected");
+                      }
+                      setFormData((prev) => ({
+                        ...prev,
+                        video: file,
+                        contentType: orientation !== "unknown" ? newContentType : prev.contentType,
+                      }));
+                    } else {
+                      setFormData({ ...formData, video: file });
+                    }
 
                     // Auto-extract first frame as thumbnail for videos
                     if (formData.mediaType === "video" && !formData.thumbnail) {
@@ -1612,8 +1673,9 @@ function UploadPageContent() {
         <button
           type="submit"
           disabled={uploading || (!editId && !formData.video) || !formData.title || !formData.category}
-          className="w-full px-6 py-4 bg-[#EB83EA] hover:bg-[#E748E6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-full transition-colors text-lg"
+          className="w-full px-6 py-4 bg-[#EB83EA] hover:bg-[#E748E6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-full transition-colors text-lg flex items-center justify-center gap-3"
         >
+          {uploading && <FiLoader className="w-5 h-5 animate-spin" />}
           {uploading ? (editId ? "Updating..." : "Uploading...") : (editId ? "Update Content" : "Upload Content")}
         </button>
 
@@ -1629,14 +1691,19 @@ function UploadPageContent() {
                     </div>
                     <div>
                       <h3 className="font-bold text-lg">
-                        {totalBytes > 500 * 1024 * 1024 ? "Hang tight! Large file uploading..." :
-                         totalBytes > 200 * 1024 * 1024 ? "Uploading Video..." :
+                        {totalBytes === 0 ? "Preparing upload..." :
+                         totalBytes > 500 * 1024 * 1024 ? "Hang tight! Large file uploading..." :
+                         totalBytes > 200 * 1024 * 1024 ? "Uploading..." :
                          "Almost there!"}
                       </h3>
                       <p className="text-xs text-gray-400">
-                        {uploadSpeed && `${uploadSpeed} MB/s • `}
-                        {(uploadedBytes / (1024 * 1024)).toFixed(0)} / {(totalBytes / (1024 * 1024)).toFixed(0)} MB
-                        {timeRemaining && ` • ${timeRemaining}`}
+                        {totalBytes > 0 ? (
+                          <>
+                            {uploadSpeed && `${uploadSpeed} MB/s • `}
+                            {(uploadedBytes / (1024 * 1024)).toFixed(0)} / {(totalBytes / (1024 * 1024)).toFixed(0)} MB
+                            {timeRemaining && ` • ${timeRemaining}`}
+                          </>
+                        ) : "Starting..."}
                       </p>
                     </div>
                   </div>
@@ -1645,12 +1712,16 @@ function UploadPageContent() {
                   </span>
                 </div>
                 <div className="w-full bg-[#0f071a] rounded-full h-3 overflow-hidden shadow-inner">
-                  <div
-                    className="bg-gradient-to-r from-[#EB83EA] via-[#B86DE5] to-[#7c3aed] h-3 rounded-full transition-all duration-300 relative overflow-hidden"
-                    style={{ width: `${uploadProgress}%` }}
-                  >
-                    <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
-                  </div>
+                  {totalBytes === 0 ? (
+                    <div className="bg-gradient-to-r from-[#EB83EA] via-[#B86DE5] to-[#7c3aed] h-3 rounded-full w-1/3 animate-pulse" />
+                  ) : (
+                    <div
+                      className="bg-gradient-to-r from-[#EB83EA] via-[#B86DE5] to-[#7c3aed] h-3 rounded-full transition-all duration-300 relative overflow-hidden"
+                      style={{ width: `${uploadProgress}%` }}
+                    >
+                      <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
