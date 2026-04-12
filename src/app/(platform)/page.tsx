@@ -211,23 +211,17 @@ export default function HomePage() {
             </>
           ) : (
             <>
-              {/* Mobile: LiveNow first if active, else hero first */}
-              <div className="lg:hidden">
-                <LiveNowSection />
-                <HeroSection horizontalVideos={horizontalVideos} />
-              </div>
-
-              {/* Desktop: Hero first, then LiveNow */}
-              <div className="hidden lg:block">
-                <HeroSection horizontalVideos={horizontalVideos} />
-                <LiveNowSection />
-              </div>
+              {/* Hero */}
+              <HeroSection horizontalVideos={horizontalVideos} />
 
               {/* Dragverse Snapshots (Shorts) - Native vertical videos */}
               <SnapshotsSection shorts={shorts} />
 
               {/* Horizontal Videos Section - Native long-form videos */}
               <HorizontalVideosSection videos={horizontalVideos} />
+
+              {/* Happening Now — active livestreams, hidden when no one is live */}
+              <LiveNowSection />
 
               {/* Audio Section - Podcasts and music with album-style covers */}
               <AudiosSection audios={audios} />

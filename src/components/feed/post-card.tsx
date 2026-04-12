@@ -307,9 +307,9 @@ export function PostCard({ post }: PostCardProps) {
 
   return (
     <>
-      <div className="bg-[#1a0b2e] border border-[#2f2942] rounded-xl p-6 hover:border-[#EB83EA]/30 transition">
+      <div className="bg-[#1a0b2e] border border-[#2f2942] rounded-xl p-4 hover:border-[#EB83EA]/30 transition">
       {/* Author */}
-      <div className="flex items-start gap-3 mb-3">
+      <div className="flex items-start gap-3 mb-2">
         <div className="flex-1">
           <CreatorInfo
             avatar={post.creator.avatar}
@@ -372,7 +372,7 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* Source badge — YouTube and native Bluesky only */}
       {((post as any).source === "youtube" || ((post as any).source !== "ceramic" && (post as any).source !== "dragverse")) && (
-        <div className="flex items-center gap-1.5 mb-3">
+        <div className="flex items-center gap-1.5 mb-2">
           {(post as any).source === "youtube" ? (
             <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-500/20 rounded-full border border-red-500/30">
               <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 24 24">
@@ -389,17 +389,19 @@ export function PostCard({ post }: PostCardProps) {
         </div>
       )}
 
-      {/* Content */}
-      <div className="text-gray-200 mb-4 whitespace-pre-wrap leading-relaxed">
-        {parseTextWithLinks(
-          dragverseCard
-            ? (post.description || (post as any).text_content || "").replace(
-                /https?:\/\/\S*(?:watch|snapshots)\S*/g,
-                "dragverse.app/…"
-              )
-            : (post.description || (post as any).text_content || "")
-        )}
-      </div>
+      {/* Content — strip dragverse/listen URLs; those are shown as cards below */}
+      {(() => {
+        const raw = (post.description || (post as any).text_content || "")
+          .replace(/https?:\/\/(?:www\.)?dragverse\.app\/\S*/g, "")
+          .replace(/https?:\/\/\S*\/(?:watch|snapshots|listen)\/?\S*/g, "")
+          .trim();
+        if (!raw) return null;
+        return (
+          <div className="text-gray-200 mb-3 whitespace-pre-wrap leading-relaxed text-[15px]">
+            {parseTextWithLinks(raw)}
+          </div>
+        );
+      })()}
 
       {/* Video Player or Thumbnail */}
       {post.playbackUrl && isValidPlaybackUrl(post.playbackUrl) ? (
@@ -610,7 +612,7 @@ export function PostCard({ post }: PostCardProps) {
       })()}
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-3 border-t border-[#2f2942]">
+      <div className="flex items-center justify-between pt-2.5 border-t border-[#2f2942]">
         <EngagementBar
           compact
           contentId={post.id}

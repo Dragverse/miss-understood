@@ -72,22 +72,11 @@ export async function GET(request: NextRequest) {
           try {
             const res = await fetch(
               `https://livepeer.studio/api/stream/${stream.livepeer_stream_id}`,
-              { headers: { Authorization: `Bearer ${LIVEPEER_API_KEY}` } }
+              { headers: { Authorization: `Bearer ${LIVEPEER_API_KEY}` }, cache: "no-store" }
             );
             if (res.ok) {
               const data = await res.json();
               isLive = data.isActive ?? false;
-
-              // Sync DB (fire-and-forget)
-              if (isLive && !stream.is_active) {
-                supabase.from("streams").update({ is_active: true, started_at: new Date().toISOString() }).eq("id", stream.id);
-              } else if (!isLive && stream.is_active) {
-                // Before marking inactive, verify with HLS manifest
-                isLive = await isHLSManifestLive(stream.playback_id);
-                if (!isLive) {
-                  supabase.from("streams").update({ is_active: false, ended_at: new Date().toISOString() }).eq("id", stream.id);
-                }
-              }
             } else {
               // Livepeer API unavailable — fall back to DB
               isLive = stream.is_active;
@@ -96,8 +85,17 @@ export async function GET(request: NextRequest) {
             isLive = stream.is_active;
           }
         } else {
-          // No API key — try HLS manifest directly
-          isLive = stream.is_active || await isHLSManifestLive(stream.playback_id);
+          isLive = stream.is_active;
+        }
+
+        // If Livepeer says inactive, verify with HLS manifest before giving up.
+        // WHIP streams can take a few seconds before isActive updates or HLS is ready,
+        // so trust the DB is_active flag as a final fallback.
+        if (!isLive) {
+          isLive = await isHLSManifestLive(stream.playback_id);
+        }
+        if (!isLive) {
+          isLive = stream.is_active;
         }
 
         if (!isLive) return null;
