@@ -56,6 +56,7 @@ export function PostCard({ post }: PostCardProps) {
   const [audioData, setAudioData] = useState<any>(null);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [audioError, setAudioError] = useState(false);
+  const [dragverseCard, setDragverseCard] = useState<any>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -121,6 +122,30 @@ export function PostCard({ post }: PostCardProps) {
 
     detectAndFetchAudio();
   }, [post.description, (post as any).text_content]);
+
+  // Detect and fetch Dragverse video/snapshot links in post text
+  useEffect(() => {
+    const textToCheck = post.description || (post as any).text_content || "";
+
+    // Skip if post already embeds a video itself
+    if (post.playbackUrl && isValidPlaybackUrl(post.playbackUrl)) return;
+
+    // Match /watch/[id] or /snapshots?v=[id] (relative or within a full URL)
+    const watchMatch = textToCheck.match(/\/watch\/([a-zA-Z0-9-]+)/);
+    const snapshotMatch = textToCheck.match(/\/snapshots[^"'\s]*[?&]v=([a-zA-Z0-9-]+)/);
+    const videoId = watchMatch?.[1] || snapshotMatch?.[1];
+
+    if (!videoId || videoId === post.id) return;
+
+    (async () => {
+      try {
+        const videoDoc = await getVideo(videoId);
+        if (!videoDoc) return;
+        const transformed = await transformVideoWithCreator(videoDoc);
+        if (transformed) setDragverseCard(transformed);
+      } catch {}
+    })();
+  }, [post.description, (post as any).text_content, post.id, post.playbackUrl]);
 
   const toggleLike = async () => {
     const previousLikeState = isLiked;
@@ -476,6 +501,65 @@ export function PostCard({ post }: PostCardProps) {
             <span>Loading audio...</span>
           </div>
         </div>
+      )}
+
+      {/* Dragverse Link Preview Card */}
+      {dragverseCard && (
+        <Link
+          href={dragverseCard.contentType === "short" ? `/snapshots?v=${dragverseCard.id}` : `/watch/${dragverseCard.id}`}
+          className="mb-4 block rounded-xl overflow-hidden border border-[#EB83EA]/20 hover:border-[#EB83EA]/50 transition-all bg-[#0f071a] group"
+        >
+          <div className="flex gap-3 p-3">
+            {/* Thumbnail */}
+            <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-black">
+              <Image
+                src={getSafeThumbnail(dragverseCard.thumbnail, "/default-thumbnail.jpg", dragverseCard.livepeerAssetId)}
+                alt={dragverseCard.title}
+                fill
+                className="object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).src = "/default-thumbnail.jpg"; }}
+              />
+              {/* Content type overlay */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-black/60 flex items-center justify-center">
+                  {dragverseCard.contentType === "short" ? (
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  ) : dragverseCard.contentType === "podcast" || dragverseCard.contentType === "music" ? (
+                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0 py-0.5">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Image src="/logo.svg" alt="" width={12} height={12} />
+                <span className="text-purple-300 text-[10px] font-semibold uppercase tracking-wide">Dragverse</span>
+                <span className="text-gray-600 text-[10px]">·</span>
+                <span className="text-gray-400 text-[10px] uppercase">
+                  {dragverseCard.contentType === "short" ? "Snapshot" :
+                   dragverseCard.contentType === "podcast" ? "Podcast" :
+                   dragverseCard.contentType === "music" ? "Music" : "Video"}
+                </span>
+              </div>
+              <h3 className="font-semibold text-white text-sm line-clamp-2 leading-tight group-hover:text-[#EB83EA] transition-colors mb-1">
+                {dragverseCard.title}
+              </h3>
+              <p className="text-xs text-gray-400 line-clamp-1">
+                {dragverseCard.creator?.displayName || dragverseCard.creator?.handle || "Unknown"}
+              </p>
+            </div>
+          </div>
+        </Link>
       )}
 
       {/* Actions */}

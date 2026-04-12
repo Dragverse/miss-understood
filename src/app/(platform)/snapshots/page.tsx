@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/snapshots/short-video";
 import { HeroSlider } from "@/components/home/hero-slider";
+import { SnapshotsSection } from "@/components/home/snapshots-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
 import { SponsoredImage } from "@/components/ads/sponsored-image";
 import { AdSenseUnit } from "@/components/ads/adsense-unit";
@@ -263,10 +264,8 @@ function SnapshotsContent() {
           </div>
         </div>
         {/* Mobile */}
-        <div className="lg:hidden h-[100dvh] p-4">
-          <div className="max-w-md mx-auto h-full">
-            <LoadingShimmer className="h-full" />
-          </div>
+        <div className="lg:hidden h-[100dvh]">
+          <LoadingShimmer className="h-full w-full" />
         </div>
       </div>
     );
@@ -354,9 +353,14 @@ function SnapshotsContent() {
           <AdSenseUnit />
         </div>
 
-        {/* Center - Video Player */}
-        <div className="col-span-6 relative overflow-hidden">
-          {videoPlayer}
+        {/* Center - Video Player + Snapshots Slider */}
+        <div className="col-span-6 overflow-y-auto scrollbar-hide">
+          <div className="relative h-[calc(100vh-6rem)]">
+            {videoPlayer}
+          </div>
+          <div className="px-2 pb-6 pt-2">
+            <SnapshotsSection shorts={snapshots} />
+          </div>
         </div>
 
         {/* Right Sidebar */}
@@ -365,13 +369,16 @@ function SnapshotsContent() {
         </div>
       </div>
 
-      {/* Mobile: full-screen video, then sidebars below */}
+      {/* Mobile: full-screen video, then content below */}
       <div className="lg:hidden">
         <div className="relative h-[100dvh] overflow-hidden">
           {videoPlayer}
         </div>
-        <div className="px-4 py-6 space-y-6">
-          <HeroSlider />
+        <div className="px-4 pt-6 pb-12 space-y-6">
+          <SnapshotsSection shorts={snapshots} />
+          <div className="rounded-[24px] overflow-hidden h-[300px]">
+            <HeroSlider />
+          </div>
           <RightSidebar />
         </div>
       </div>
@@ -383,10 +390,8 @@ export default function SnapshotsPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-[100dvh] md:h-[calc(100vh-4rem)] bg-black p-4">
-          <div className="max-w-md mx-auto h-full">
-            <LoadingShimmer className="h-full" />
-          </div>
+        <div className="h-[100dvh] bg-black">
+          <LoadingShimmer className="h-full w-full" />
         </div>
       }
     >
