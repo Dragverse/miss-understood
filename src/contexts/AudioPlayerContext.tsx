@@ -497,10 +497,12 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   // ---- Public actions ----
 
   const playTrack = useCallback((track: AudioTrack, newPlaylist?: AudioTrack[]) => {
-    // If in a room, mute the mic instead of blocking playback
-    // vibe-lounge watches isMuted and calls disableAudio() reactively
+    // If in a room, auto-mute mic so music doesn't echo; save pre-music state so stop() can restore it
     if (useRoomStore.getState().activeRoom) {
-      useRoomStore.getState().setMuted(true);
+      const { isMuted, prePlayMuted, setPrePlayMuted, setMuted } = useRoomStore.getState();
+      // Only save if not already saved (don't overwrite across track switches)
+      if (prePlayMuted === null) setPrePlayMuted(isMuted);
+      setMuted(true);
     }
     if (newPlaylist) {
       setPlaylist(newPlaylist);
@@ -566,6 +568,12 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     preloadedNextTrack.current = null;
 
     if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "none";
+    // Restore mic state to what it was before music auto-muted it
+    const { prePlayMuted, setMuted, setPrePlayMuted } = useRoomStore.getState();
+    if (prePlayMuted !== null) {
+      setMuted(prePlayMuted);
+      setPrePlayMuted(null);
+    }
   }, []);
 
   const next = useCallback(() => {

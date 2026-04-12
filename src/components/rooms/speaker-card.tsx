@@ -33,6 +33,7 @@ export function SpeakerCard({ peerId, isHost }: { peerId: string; isHost?: boole
   useEffect(() => {
     if (audioRef.current && audioStream) {
       audioRef.current.srcObject = audioStream;
+      audioRef.current.play().catch(() => {});
     }
   }, [audioStream]);
 

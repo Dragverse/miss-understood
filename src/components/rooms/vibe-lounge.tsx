@@ -257,13 +257,26 @@ export function VibeLounge() {
     return () => window.removeEventListener("beforeunload", handleUnload);
   }, []);
 
-  // Auto-mute room mic when AudioPlayerContext requests it (e.g. user plays a song)
+  // Sync mic hardware with isMuted in room store — handles both directions:
+  // isMuted=true  → music started playing, disable mic
+  // isMuted=false → music stopped (or host joined), enable mic if permitted
   useEffect(() => {
-    if (isMuted && isAudioOn && joined) {
+    if (!joined) return;
+    if (isMuted && isAudioOn) {
       disableAudio().catch(() => {});
+    } else if (!isMuted && !isAudioOn && canSpeak) {
+      enableAudio().catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMuted]);
+
+  // Auto-enable mic for host when they join — sets isMuted=false, which triggers the effect above
+  useEffect(() => {
+    if (joined && isHost) {
+      setMuted(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joined, isHost]);
 
   // Scroll chat to bottom
   useEffect(() => {

@@ -21,9 +21,10 @@ interface ShortVideoProps {
   onDelete?: (videoId: string) => void;
   initialLiked?: boolean;
   initialFollowing?: boolean;
+  pauseAtEnd?: boolean;
 }
 
-export function ShortVideo({ video, isActive, onNext, onEnded, onError, onDelete, initialLiked, initialFollowing }: ShortVideoProps) {
+export function ShortVideo({ video, isActive, onNext, onEnded, onError, onDelete, initialLiked, initialFollowing, pauseAtEnd = false }: ShortVideoProps) {
   const { user, getAccessToken } = usePrivy();
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -379,7 +380,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, onDelete
                 playsInline
                 muted={isMuted}
                 poster={getSafeThumbnail(video.thumbnail, '/default-thumbnail.jpg', video.livepeerAssetId)}
-                onEnded={() => setShowEndOverlay(true)}
+                onEnded={() => pauseAtEnd ? setShowEndOverlay(true) : onEnded?.()}
                 onPlay={() => { setIsPlaying(true); setPlaybackError(false); }}
                 onPause={() => setIsPlaying(false)}
                 onError={() => setPlaybackError(true)}

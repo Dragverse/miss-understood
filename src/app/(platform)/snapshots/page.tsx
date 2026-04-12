@@ -220,6 +220,7 @@ function SnapshotsContent() {
               onDelete={handleVideoDeleted}
               initialLiked={socialStatus.likes[currentVideo.id]}
               initialFollowing={socialStatus.follows[currentVideo.creator.did]}
+              pauseAtEnd={!!videoId && currentVideo.id === videoId}
             />
             {/* Logo refresh button — desktop only */}
             <button
