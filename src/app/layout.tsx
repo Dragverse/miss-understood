@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Roboto_Flex, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -49,6 +50,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${robotoFlex.variable} ${jetbrainsMono.variable} font-sans antialiased`} suppressHydrationWarning>
+        <Script
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4065288364118576"
+          strategy="afterInteractive"
+          crossOrigin="anonymous"
+        />
         <Providers>
           <Layout>{children}</Layout>
         </Providers>

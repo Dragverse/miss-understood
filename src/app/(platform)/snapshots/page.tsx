@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/snapshots/short-video";
 import { HeroSlider } from "@/components/home/hero-slider";
 import { RightSidebar } from "@/components/home/right-sidebar";
+import { SponsoredImage } from "@/components/ads/sponsored-image";
+import { AdSenseUnit } from "@/components/ads/adsense-unit";
 import { FiRefreshCw } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
 
@@ -233,16 +234,12 @@ function SnapshotsContent() {
             <div className="rounded-[24px] overflow-hidden min-h-[400px]">
               <HeroSlider />
             </div>
-            <div className="rounded-[24px] overflow-hidden border-2 border-[#2f2942]/60 group shadow-lg">
-              <a href="https://salti.printful.me/product/salti-25-premium-sherpa-blanket" target="_blank" rel="noopener noreferrer" className="block relative">
-                <div className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-black/70 backdrop-blur-sm rounded-full border border-white/10">
-                  <span className="text-[10px] text-gray-300 uppercase tracking-[0.15em] font-bold">Sponsored</span>
-                </div>
-                <div className="relative aspect-square overflow-hidden bg-[#0f071a]">
-                  <Image src="/salti-blanket.webp" alt="Salti Premium Sherpa Blanket" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                </div>
-              </a>
-            </div>
+            <SponsoredImage
+              href="https://salti.printful.me/product/salti-25-premium-sherpa-blanket"
+              imageSrc="/salti-blanket.webp"
+              imageAlt="Salti Premium Sherpa Blanket"
+            />
+            <AdSenseUnit />
           </div>
           <div className="col-span-6 flex items-center justify-center">
             <div className="max-w-[420px] w-full h-full p-4">
@@ -273,16 +270,12 @@ function SnapshotsContent() {
             <div className="rounded-[24px] overflow-hidden min-h-[400px]">
               <HeroSlider />
             </div>
-            <div className="rounded-[24px] overflow-hidden border-2 border-[#2f2942]/60 group shadow-lg">
-              <a href="https://salti.printful.me/product/salti-25-premium-sherpa-blanket" target="_blank" rel="noopener noreferrer" className="block relative">
-                <div className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-black/70 backdrop-blur-sm rounded-full border border-white/10">
-                  <span className="text-[10px] text-gray-300 uppercase tracking-[0.15em] font-bold">Sponsored</span>
-                </div>
-                <div className="relative aspect-square overflow-hidden bg-[#0f071a]">
-                  <Image src="/salti-blanket.webp" alt="Salti Premium Sherpa Blanket" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                </div>
-              </a>
-            </div>
+            <SponsoredImage
+              href="https://salti.printful.me/product/salti-25-premium-sherpa-blanket"
+              imageSrc="/salti-blanket.webp"
+              imageAlt="Salti Premium Sherpa Blanket"
+            />
+            <AdSenseUnit />
           </div>
           <div className="col-span-6 flex items-center justify-center">
             <div className="text-center px-6 max-w-md">
@@ -336,21 +329,17 @@ function SnapshotsContent() {
     <div className="bg-black min-h-[100dvh] md:min-h-[calc(100vh-4rem)]">
       {/* Desktop: 3-column TikTok layout */}
       <div className="hidden lg:grid grid-cols-12 gap-4 h-[calc(100vh-4rem)] px-4 py-4 max-w-[1600px] mx-auto">
-        {/* Left Sidebar - HeroSlider + Sponsored */}
+        {/* Left Sidebar - HeroSlider + Sponsored + AdSense */}
         <div className="col-span-3 overflow-y-auto scrollbar-hide space-y-4 py-2">
           <div className="rounded-[24px] overflow-hidden min-h-[400px]">
             <HeroSlider />
           </div>
-          <div className="rounded-[24px] overflow-hidden border-2 border-[#2f2942]/60 hover:border-[#2f2942] transition-all group shadow-lg">
-            <a href="https://salti.printful.me/product/salti-25-premium-sherpa-blanket" target="_blank" rel="noopener noreferrer" className="block relative">
-              <div className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-black/70 backdrop-blur-sm rounded-full border border-white/10">
-                <span className="text-[10px] text-gray-300 uppercase tracking-[0.15em] font-bold">Sponsored</span>
-              </div>
-              <div className="relative aspect-square overflow-hidden bg-[#0f071a]">
-                <Image src="/salti-blanket.webp" alt="Salti Premium Sherpa Blanket" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-              </div>
-            </a>
-          </div>
+          <SponsoredImage
+            href="https://salti.printful.me/product/salti-25-premium-sherpa-blanket"
+            imageSrc="/salti-blanket.webp"
+            imageAlt="Salti Premium Sherpa Blanket"
+          />
+          <AdSenseUnit />
         </div>
 
         {/* Center - Video Player */}

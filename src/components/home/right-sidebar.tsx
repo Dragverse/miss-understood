@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { FiAlertTriangle } from "react-icons/fi";
+import { SponsoredImage } from "@/components/ads/sponsored-image";
 
 export function RightSidebar() {
 
@@ -89,30 +90,11 @@ export function RightSidebar() {
       </div>
 
       {/* Sponsored Section */}
-      <div className="rounded-[24px] overflow-hidden border-2 border-[#2f2942]/60 hover:border-[#2f2942] transition-all group shadow-lg">
-        <a
-          href="https://salti.printful.me/product/salti-25-premium-sherpa-blanket"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block relative"
-        >
-          {/* Sponsored Label - Absolute positioned over image */}
-          <div className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-black/70 backdrop-blur-sm rounded-full border border-white/10">
-            <span className="text-[10px] text-gray-300 uppercase tracking-[0.15em] font-bold">
-              Sponsored
-            </span>
-          </div>
-
-          <div className="relative aspect-square overflow-hidden bg-[#0f071a]">
-            <Image
-              src="/salti-blanket.webp"
-              alt="Salti Premium Sherpa Blanket"
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          </div>
-        </a>
-      </div>
+      <SponsoredImage
+        href="https://salti.printful.me/product/salti-25-premium-sherpa-blanket"
+        imageSrc="/salti-blanket.webp"
+        imageAlt="Salti Premium Sherpa Blanket"
+      />
     </aside>
   );
 }
