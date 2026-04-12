@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
+import { useLiveCreatorsStore } from "@/lib/store/live-creators";
 
 interface CreatorInfoProps {
   avatar?: string | null;
@@ -42,6 +43,7 @@ export function CreatorInfo({
 }: CreatorInfoProps) {
   const badgeType = getUserBadgeType(did, undefined, verified);
   const safeSrc = avatar && avatar.trim() !== "" ? avatar : "/defaultpfp.png";
+  const isCreatorLive = useLiveCreatorsStore((s) => s.isLive(did));
 
   const avatarSize = compact ? "w-8 h-8" : "w-10 h-10";
   const nameSize = compact ? "text-sm" : "text-base";
@@ -49,15 +51,37 @@ export function CreatorInfo({
 
   const content = (
     <div className={`flex items-center gap-3 group ${className}`}>
-      <div
-        className={`relative ${avatarSize} rounded-full overflow-hidden border-2 border-[#EB83EA]/30 group-hover:border-[#EB83EA] transition-all flex-shrink-0`}
-      >
-        <Image
-          src={safeSrc}
-          alt={displayName}
-          fill
-          className="object-cover"
-        />
+      {/* Avatar — live aura when creator is streaming */}
+      <div className="relative flex-shrink-0">
+        {isCreatorLive && (
+          <>
+            {/* Pulsing glow ring */}
+            <span className={`absolute rounded-full animate-ping bg-red-500/40 ${compact ? "-inset-0.5" : "-inset-1"}`} />
+            {/* Static border */}
+            <span className={`absolute rounded-full border-2 border-red-500 ${compact ? "-inset-0.5" : "-inset-1"}`} />
+          </>
+        )}
+        <div
+          className={`relative ${avatarSize} rounded-full overflow-hidden ${
+            isCreatorLive
+              ? "border-2 border-red-500"
+              : "border-2 border-[#EB83EA]/30 group-hover:border-[#EB83EA]"
+          } transition-all`}
+        >
+          <Image
+            src={safeSrc}
+            alt={displayName}
+            fill
+            className="object-cover"
+          />
+        </div>
+        {/* LIVE badge */}
+        {isCreatorLive && (
+          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-1.5 py-0.5 bg-red-500 rounded-full shadow-lg">
+            <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
+            <span className="text-white text-[8px] font-bold leading-none uppercase tracking-wide">Live</span>
+          </div>
+        )}
       </div>
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">

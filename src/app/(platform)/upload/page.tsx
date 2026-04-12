@@ -242,14 +242,14 @@ function UploadPageContent() {
             return;
           }
         } else if (contentType === "long") {
-          // Horizontal/Long content: 1 to 60 minutes
-          if (duration < 60) {
-            toast.error("Long-form videos must be at least 1 minute.");
+          // Horizontal content: 15 seconds to 60 minutes
+          if (duration < 15) {
+            toast.error("Videos must be at least 15 seconds.");
             resolve(false);
             return;
           }
           if (duration > 3600) {
-            toast.error("Long-form videos must be 60 minutes or less.");
+            toast.error("Videos must be 60 minutes or less.");
             resolve(false);
             return;
           }
@@ -1079,7 +1079,7 @@ function UploadPageContent() {
                   <FiFilm className={`w-8 h-8 ${formData.contentType === "long" ? "text-[#EB83EA]" : "text-gray-400"}`} />
                   <div className="text-center">
                     <div className="font-bold">Video</div>
-                    <div className="text-xs text-gray-400">Horizontal - 1 to 60 minutes</div>
+                    <div className="text-xs text-gray-400">Horizontal - 15s to 60 minutes</div>
                   </div>
                 </button>
               </>
