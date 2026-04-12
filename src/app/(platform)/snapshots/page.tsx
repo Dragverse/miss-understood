@@ -180,7 +180,7 @@ function SnapshotsContent() {
 
   const videoPlayer = currentVideo ? (
     <div className="relative h-full w-full flex items-center justify-center">
-      <div className="h-full w-full lg:max-w-[420px]">
+      <div className="relative h-full w-full lg:max-w-[420px]">
         <ShortVideo
           key={currentVideo.id}
           video={currentVideo}
@@ -191,26 +191,23 @@ function SnapshotsContent() {
           initialLiked={socialStatus.likes[currentVideo.id]}
           initialFollowing={socialStatus.follows[currentVideo.creator.did]}
         />
-      </div>
-
-      {/* Broadcast badge - Top Left */}
-      <div className="absolute top-4 left-4 z-20">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full">
-          <div className="w-2 h-2 rounded-full bg-[#EB83EA] animate-pulse" />
-          <span className="text-white text-xs font-bold uppercase tracking-wider">Dragverse TV</span>
+        {/* Dragverse TV badge - Top Left, same row as mute button */}
+        <div className="absolute top-2 md:top-4 left-2 md:left-4 z-30">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full">
+            <div className="w-2 h-2 rounded-full bg-[#EB83EA] animate-pulse" />
+            <span className="text-white text-xs font-bold uppercase tracking-wider">Dragverse TV</span>
+          </div>
         </div>
+        {/* Refresh Button - below mute */}
+        <button
+          onClick={() => loadSnapshots(true)}
+          disabled={refreshing}
+          className="absolute top-16 md:top-20 right-2 md:right-4 z-30 p-3 bg-black/50 rounded-full hover:bg-black/70 transition disabled:opacity-50"
+          aria-label="Refresh snapshots"
+        >
+          <FiRefreshCw className={`w-5 h-5 text-white ${refreshing ? 'animate-spin' : ''}`} />
+        </button>
       </div>
-
-      {/* Refresh Button - Top Right */}
-      <button
-        onClick={() => loadSnapshots(true)}
-        disabled={refreshing}
-        className="absolute top-4 right-4 z-20 w-10 h-10 md:w-12 md:h-12 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition disabled:opacity-50"
-        aria-label="Refresh snapshots"
-      >
-        <FiRefreshCw className={`w-5 h-5 md:w-6 md:h-6 text-white ${refreshing ? 'animate-spin' : ''}`} />
-      </button>
-
     </div>
   ) : null;
 
