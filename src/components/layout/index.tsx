@@ -5,6 +5,17 @@ import { Navbar } from "./navbar";
 import { Sidebar } from "./sidebar";
 import { Footer } from "./footer";
 import { PersistentAudioPlayer } from "@/components/audio/PersistentAudioPlayer";
+import { StreamModal } from "@/components/dashboard/stream-modal";
+import { useStreamStore } from "@/lib/store/stream";
+import { useCanLivestream } from "@/lib/livestream";
+
+function GlobalStreamModal() {
+  const { showModal, closeStreamModal } = useStreamStore();
+  const { canStream } = useCanLivestream();
+
+  if (!showModal || !canStream) return null;
+  return <StreamModal onClose={closeStreamModal} />;
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,6 +27,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Footer />
       </div>
       <PersistentAudioPlayer />
+      <GlobalStreamModal />
     </div>
   );
 }
