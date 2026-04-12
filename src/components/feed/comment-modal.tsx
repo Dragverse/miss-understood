@@ -33,6 +33,7 @@ interface CommentModalProps {
     displayName: string;
     handle: string;
   };
+  onCommentPosted?: () => void;
 }
 
 export function CommentModal({
@@ -41,6 +42,7 @@ export function CommentModal({
   postUri,
   postCid,
   postAuthor,
+  onCommentPosted,
 }: CommentModalProps) {
   const { user, login, getAccessToken } = usePrivy();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -143,9 +145,10 @@ export function CommentModal({
         toast.success("Comment posted!");
       } else if (isBlueskyPost) {
         // Sync to Bluesky
+        const authToken = await getAccessToken();
         const response = await fetch("/api/bluesky/comment", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({
             postUri,
             postCid,
@@ -163,6 +166,7 @@ export function CommentModal({
       }
 
       setCommentText("");
+      onCommentPosted?.();
       await loadComments();
     } catch (error) {
       console.error("Error posting comment:", error);

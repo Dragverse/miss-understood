@@ -63,6 +63,7 @@ export async function createOrUpdateCreator(input: CreateCreatorInput) {
       bluesky_handle: input.bluesky_handle || '',
       bluesky_did: input.bluesky_did || '',
       farcaster_handle: input.farcaster_handle || '',
+      ...(input.wallet_address ? { wallet_address: input.wallet_address } : {}),
     }, {
       onConflict: 'did', // Use DID as the unique constraint for upsert
       ignoreDuplicates: false, // Update if exists
@@ -151,10 +152,14 @@ export async function searchCreators(searchTerm: string, limit = 20): Promise<Cr
     return [];
   }
 
+  // Sanitize to prevent PostgREST filter injection
+  const sanitized = searchTerm.replace(/[%,.()"'\\]/g, '');
+  if (!sanitized) return [];
+
   const { data, error } = await supabase
     .from('creators')
     .select('*')
-    .or(`handle.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%`)
+    .or(`handle.ilike.%${sanitized}%,display_name.ilike.%${sanitized}%`)
     .limit(limit);
 
   if (error) throw error;

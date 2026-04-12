@@ -330,7 +330,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
 
   return (
     <div className="flex justify-center items-center h-full w-full focus-visible:outline-none">
-      <div className="bg-gray-950 flex h-full w-full md:w-[420px] md:max-h-[90vh] md:rounded-3xl items-center overflow-hidden relative md:shadow-2xl md:shadow-black/50">
+      <div className="bg-gray-950 flex h-full w-full items-center overflow-hidden relative">
         {hasValidPlaybackUrl ? (
           <div className="w-full h-full relative" style={{ pointerEvents: 'none' }}>
             {/* Click overlay for play/pause */}
@@ -428,70 +428,6 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
 
             {/* Interaction Buttons - Right Side */}
             <div className="absolute bottom-20 right-2 md:right-4 flex flex-col gap-3 md:gap-4 z-20" style={{ pointerEvents: 'auto' }}>
-              {video.creator?.avatar && (
-                <div className="relative flex flex-col items-center gap-2">
-                  <Link
-                    href={`/u/${video.creator.handle || video.creator.did}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="relative"
-                  >
-                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-lg">
-                      <Image
-                        src={getSafeThumbnail(video.creator.avatar, "/defaultpfp.png")}
-                        alt={video.creator.displayName || "Creator"}
-                        width={48}
-                        height={48}
-                        className="object-cover"
-                      />
-                    </div>
-                  </Link>
-                  {!isCreator && user?.id && video.source === "ceramic" && (
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (!video.creator?.did) return;
-                        const newFollowing = !isFollowing;
-                        setIsFollowing(newFollowing);
-                        try {
-                          const authToken = await getAccessToken();
-                          const response = await fetch("/api/social/follow", {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                              Authorization: `Bearer ${authToken}`,
-                            },
-                            body: JSON.stringify({
-                              followingDID: video.creator.did,
-                              action: newFollowing ? "follow" : "unfollow",
-                            }),
-                          });
-                          if (!response.ok) {
-                            setIsFollowing(!newFollowing);
-                          } else {
-                            window.dispatchEvent(new CustomEvent('followStateChanged'));
-                          }
-                        } catch (error) {
-                          setIsFollowing(!newFollowing);
-                          console.error("[ShortVideo] Follow error:", error);
-                        }
-                      }}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                        isFollowing
-                          ? "bg-[#2f2942] text-white border border-[#EB83EA]/50"
-                          : "bg-[#EB83EA] text-white hover:bg-[#E748E6]"
-                      }`}
-                      aria-label={isFollowing ? "Unfollow" : "Follow"}
-                    >
-                      {isFollowing ? (
-                        <span className="text-xs font-bold">✓</span>
-                      ) : (
-                        <span className="text-lg font-bold leading-none">+</span>
-                      )}
-                    </button>
-                  )}
-                </div>
-              )}
-
               {video.source === "ceramic" && (
                 <button onClick={handleLike} className="flex flex-col items-center gap-1" aria-label={isLiked ? "Unlike" : "Like"}>
                   <div className="w-12 h-12 rounded-full bg-[#2f2942]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA] transition-colors">
@@ -536,19 +472,82 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, initialL
               )}
             </div>
 
-            {/* Video Info - Bottom Left */}
+            {/* Video Info - Bottom Left with Avatar */}
             <div className="absolute bottom-4 left-2 md:left-4 right-16 md:right-20 z-20 text-white" style={{ pointerEvents: 'auto' }}>
-              <Link
-                href={`/u/${video.creator?.handle || video.creator?.did}`}
-                onClick={(e) => e.stopPropagation()}
-                className="font-bold text-sm mb-2 hover:underline block"
-              >
-                @{video.creator?.handle || video.creator?.displayName || 'Unknown'}
-              </Link>
-              <p className="text-sm line-clamp-2 mb-2">{video.title}</p>
-              {video.description && (
-                <p className="text-xs text-gray-300 line-clamp-2">{video.description}</p>
-              )}
+              <div className="flex items-start gap-3">
+                {/* Avatar with follow badge */}
+                <div className="relative flex-shrink-0">
+                  <Link
+                    href={`/u/${video.creator?.handle || video.creator?.did}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-lg">
+                      <Image
+                        src={getSafeThumbnail(video.creator?.avatar || "", "/defaultpfp.png")}
+                        alt={video.creator?.displayName || "Creator"}
+                        width={40}
+                        height={40}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  </Link>
+                  {!isCreator && user?.id && video.source === "ceramic" && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!video.creator?.did) return;
+                        const newFollowing = !isFollowing;
+                        setIsFollowing(newFollowing);
+                        try {
+                          const authToken = await getAccessToken();
+                          const response = await fetch("/api/social/follow", {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${authToken}`,
+                            },
+                            body: JSON.stringify({
+                              followingDID: video.creator.did,
+                              action: newFollowing ? "follow" : "unfollow",
+                            }),
+                          });
+                          if (!response.ok) {
+                            setIsFollowing(!newFollowing);
+                          } else {
+                            window.dispatchEvent(new CustomEvent('followStateChanged'));
+                          }
+                        } catch (error) {
+                          setIsFollowing(!newFollowing);
+                          console.error("[ShortVideo] Follow error:", error);
+                        }
+                      }}
+                      className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                        isFollowing
+                          ? "bg-[#2f2942] text-white border border-[#EB83EA]/50"
+                          : "bg-[#EB83EA] text-white hover:bg-[#E748E6]"
+                      }`}
+                      aria-label={isFollowing ? "Unfollow" : "Follow"}
+                    >
+                      {isFollowing ? (
+                        <span className="text-[10px] font-bold">✓</span>
+                      ) : (
+                        <span className="text-sm font-bold leading-none">+</span>
+                      )}
+                    </button>
+                  )}
+                </div>
+                {/* Username + title */}
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/u/${video.creator?.handle || video.creator?.did}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-bold text-sm hover:underline block truncate"
+                  >
+                    @{video.creator?.handle || video.creator?.displayName || 'Unknown'}
+                  </Link>
+                  <p className="text-sm line-clamp-2 mt-0.5">{video.title}</p>
+                </div>
+              </div>
             </div>
 
             {/* Error Overlay */}

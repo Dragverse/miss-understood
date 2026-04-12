@@ -25,6 +25,7 @@ import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/utils/video-helpers";
 import { createMinimalYouTubeVideoWithDetection } from "@/lib/youtube/video-helpers";
 import { getSafeThumbnail, isValidPlaybackUrl } from "@/lib/utils/thumbnail-helpers";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import { RightSidebar } from "@/components/home/right-sidebar";
 
 export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
@@ -270,31 +271,15 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
     loadVideo();
   }, [resolvedParams.id, shareToken, getAccessToken]);
 
-  // Load related videos and creator videos in parallel
+  // Load related videos and creator videos (Dragverse only — no slow YouTube/Bluesky fetches)
   useEffect(() => {
     async function loadRelatedAndCreatorVideos() {
       setLoadingRelated(true);
       const allVideos: Video[] = [];
 
-      // Fetch all sources in parallel for speed
-      // If current video is YouTube, also fetch that channel's videos for "More from Creator"
-      const channelId = video?.youtubeChannelId || video?.creator?.youtubeChannelId;
-      const [ceramicResult, youtubeData, blueskyData, channelData] = await Promise.all([
-        getVideos(10).catch(() => []),
-        fetch("/api/youtube/feed?limit=10&rssOnly=true")
-          .then(res => res.ok ? res.json() : { videos: [] })
-          .catch(() => ({ videos: [] })),
-        fetch("/api/bluesky/feed?limit=5")
-          .then(res => res.ok ? res.json() : { posts: [] })
-          .catch(() => ({ posts: [] })),
-        channelId
-          ? fetch(`/api/youtube/feed?channelId=${encodeURIComponent(channelId)}&limit=10`)
-              .then(res => res.ok ? res.json() : { videos: [] })
-              .catch(() => ({ videos: [] }))
-          : Promise.resolve({ videos: [] }),
-      ]);
+      // Fetch Dragverse videos only (single fast Supabase query)
+      const ceramicResult = await getVideos(20).catch(() => []);
 
-      // Transform Supabase videos
       if (ceramicResult && ceramicResult.length > 0) {
         const transformed = ceramicResult.map(v => ({
           id: v.id,
@@ -323,15 +308,6 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         allVideos.push(...transformed as Video[]);
       }
 
-      // Add YouTube, Bluesky, and channel-specific videos
-      if (youtubeData.videos) allVideos.push(...youtubeData.videos);
-      if (blueskyData.posts) allVideos.push(...blueskyData.posts);
-      if (channelData.videos) {
-        // Add channel videos, deduplicating against already-loaded YouTube videos
-        const existingIds = new Set(allVideos.map(v => v.id));
-        const newChannelVideos = channelData.videos.filter((v: Video) => !existingIds.has(v.id));
-        allVideos.push(...newChannelVideos);
-      }
       allVideos.push(...getLocalVideos());
 
       // Filter videos from the same creator
@@ -1063,6 +1039,9 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   />
                 )}
               </div>
+
+              {/* Explore, Sponsored, Beta Warning */}
+              <RightSidebar />
             </div>
           </div>
         )}

@@ -33,6 +33,7 @@ interface PostCardProps {
     thumbnail?: string;
     createdAt: Date | string;
     likes: number;
+    comment_count?: number;
     externalUrl?: string;
     uri?: string;
     cid?: string;
@@ -47,6 +48,7 @@ export function PostCard({ post }: PostCardProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
+  const [commentCount, setCommentCount] = useState(post.comment_count || 0);
   const [isLiking, setIsLiking] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
@@ -128,11 +130,13 @@ export function PostCard({ post }: PostCardProps) {
     setIsLiking(true);
 
     try {
+      const authToken = await getAccessToken();
+
       // If has Bluesky URI/CID, sync to Bluesky
       if (post.uri && post.cid) {
         const response = await fetch("/api/bluesky/like", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({
             postUri: post.uri,
             postCid: post.cid,
@@ -150,7 +154,7 @@ export function PostCard({ post }: PostCardProps) {
       if (post.id && !post.type?.includes('youtube')) {
         const response = await fetch("/api/posts/like", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({
             postId: post.id,
             action: previousLikeState ? "unlike" : "like",
@@ -243,9 +247,10 @@ export function PostCard({ post }: PostCardProps) {
 
     setIsFollowLoading(true);
     try {
+      const authToken = await getAccessToken();
       const response = await fetch("/api/bluesky/follow", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({
           did: post.creator.did,
           action: isFollowing ? "unfollow" : "follow",
@@ -480,6 +485,7 @@ export function PostCard({ post }: PostCardProps) {
           contentId={post.id}
           contentType="post"
           likes={likeCount}
+          comments={commentCount}
           isLiked={isLiked}
           onLike={toggleLike}
           onComment={() => setIsCommentModalOpen(true)}
@@ -553,6 +559,7 @@ export function PostCard({ post }: PostCardProps) {
         displayName: post.creator.displayName,
         handle: post.creator.handle,
       }}
+      onCommentPosted={() => setCommentCount(prev => prev + 1)}
     />
     </>
   );

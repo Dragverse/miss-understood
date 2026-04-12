@@ -261,7 +261,7 @@ export function TipButton({ creator, variant = "primary", size = "md", className
             {/* Info Box */}
             <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 mb-6">
               <p className="text-xs text-purple-300">
-                Show some love by sending a tip! Your funds are secure with USDC on Base network. 💜
+                Show some love by sending a tip! Your funds are secure with USDC. 💜
               </p>
             </div>
 

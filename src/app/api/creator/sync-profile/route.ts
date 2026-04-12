@@ -60,6 +60,12 @@ export async function POST(request: NextRequest) {
     // Extract ONLY social handles - do NOT extract or use profile display data
     const socialHandles = extractSocialHandles(privyUser);
 
+    // Extract wallet address from Privy user (auto-created or linked)
+    const walletAccount = (privyUser as any).linked_accounts?.find(
+      (account: any) => account.type === "wallet"
+    );
+    const walletAddress = walletAccount?.address || (privyUser as any).wallet?.address || null;
+
     // CRITICAL: Only update social handles, NEVER overwrite Dragverse profile data
     const creatorData: any = {
       did: userDID,
@@ -68,6 +74,7 @@ export async function POST(request: NextRequest) {
         bluesky_handle: blueskyData.handle,
         bluesky_did: blueskyData.did || "",
       }),
+      ...(walletAddress && { wallet_address: walletAddress }),
     };
 
     // If this is a brand new user (no existing profile), set initial defaults

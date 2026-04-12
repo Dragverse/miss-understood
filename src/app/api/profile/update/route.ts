@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       website: body.website,
       instagram_handle: body.instagramHandle,
       tiktok_handle: body.tiktokHandle,
+      wallet_address: body.walletAddress,
     };
 
     console.log(`[ProfileUpdate] Updating profile for user ${auth.userId}`);

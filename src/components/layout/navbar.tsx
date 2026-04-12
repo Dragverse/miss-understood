@@ -282,7 +282,7 @@ export function Navbar() {
                           </div>
                         </div>
                         <div className="text-xs text-gray-400 mt-1">
-                          on Base network
+                          USDC Balance
                         </div>
                       </div>
                       <div className="my-1 h-px bg-white/10" />

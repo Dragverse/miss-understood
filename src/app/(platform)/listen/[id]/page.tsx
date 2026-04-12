@@ -172,6 +172,8 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
         audioUrl: audio.playbackUrl,
         duration: audio.duration,
         type: "uploaded" as const,
+        creatorDid: audio.creator?.did,
+        contentType: audio.contentType,
       };
 
       playTrack(track, [track]); // Play track with single-item playlist
@@ -198,6 +200,8 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
       audioUrl: audio.playbackUrl,
       duration: audio.duration,
       type: "uploaded" as const,
+      creatorDid: audio.creator?.did,
+      contentType: audio.contentType,
     };
 
     const queueTracks = relatedAudio
@@ -210,6 +214,8 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
         audioUrl: v.playbackUrl,
         duration: v.duration,
         type: "uploaded" as const,
+        creatorDid: (v as any).creator?.did || (v as any).creator_did,
+        contentType: v.contentType,
       }));
 
     updatePlaylist([currentAudioTrack, ...queueTracks]);
@@ -273,6 +279,8 @@ export default function ListenPage({ params, searchParams }: { params: Promise<{
         audioUrl: audio.playbackUrl,
         duration: audio.duration,
         type: "uploaded" as const,
+        creatorDid: audio.creator?.did,
+        contentType: audio.contentType,
       };
       playTrack(track, [track]);
     } else {

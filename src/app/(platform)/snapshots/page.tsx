@@ -9,8 +9,8 @@ import { HeroSlider } from "@/components/home/hero-slider";
 import { RightSidebar } from "@/components/home/right-sidebar";
 import { SponsoredImage } from "@/components/ads/sponsored-image";
 import { AdSenseUnit } from "@/components/ads/adsense-unit";
-import { FiRefreshCw } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
+import Image from "next/image";
 
 function SnapshotsContent() {
   const searchParams = useSearchParams();
@@ -180,33 +180,58 @@ function SnapshotsContent() {
 
   const videoPlayer = currentVideo ? (
     <div className="relative h-full w-full flex items-center justify-center">
-      <div className="relative h-full w-full lg:max-w-[420px]">
-        <ShortVideo
-          key={currentVideo.id}
-          video={currentVideo}
-          isActive={true}
-          onNext={() => setCurrentIndex(prev => (prev + 1) % snapshots.length)}
-          onEnded={handleVideoEnded}
-          onError={handleVideoError}
-          initialLiked={socialStatus.likes[currentVideo.id]}
-          initialFollowing={socialStatus.follows[currentVideo.creator.did]}
-        />
-        {/* Dragverse TV badge - Top Left, same row as mute button */}
-        <div className="absolute top-2 md:top-4 left-2 md:left-4 z-30">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full">
-            <div className="w-2 h-2 rounded-full bg-[#EB83EA] animate-pulse" />
-            <span className="text-white text-xs font-bold uppercase tracking-wider">Dragverse TV</span>
+      {/* Retro TV Frame */}
+      <div className="relative flex flex-col items-center h-full w-full lg:max-w-[460px]">
+        {/* Rabbit-ear Antenna */}
+        <div className="hidden md:flex items-end justify-center gap-0 mb-0 relative h-14 flex-shrink-0">
+          {/* Left antenna */}
+          <div className="relative" style={{ transform: 'rotate(-25deg)', transformOrigin: 'bottom center' }}>
+            <div className="w-[3px] h-12 bg-gradient-to-t from-[#EB83EA] to-[#F3A8F2] rounded-full" />
+            <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-[#F3A8F2] shadow-md shadow-[#EB83EA]/50" />
+          </div>
+          {/* Right antenna */}
+          <div className="relative" style={{ transform: 'rotate(25deg)', transformOrigin: 'bottom center' }}>
+            <div className="w-[3px] h-12 bg-gradient-to-t from-[#EB83EA] to-[#F3A8F2] rounded-full" />
+            <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-[#F3A8F2] shadow-md shadow-[#EB83EA]/50" />
           </div>
         </div>
-        {/* Refresh Button - below mute */}
-        <button
-          onClick={() => loadSnapshots(true)}
-          disabled={refreshing}
-          className="absolute top-16 md:top-20 right-2 md:right-4 z-30 p-3 bg-black/50 rounded-full hover:bg-black/70 transition disabled:opacity-50"
-          aria-label="Refresh snapshots"
-        >
-          <FiRefreshCw className={`w-5 h-5 text-white ${refreshing ? 'animate-spin' : ''}`} />
-        </button>
+
+        {/* TV Body */}
+        <div className="relative flex-1 w-full min-h-0 p-1.5 md:p-2 bg-gradient-to-b from-[#EB83EA] to-[#E748E6] md:rounded-[2rem] shadow-xl shadow-[#EB83EA]/20">
+          {/* Screen (inner area) */}
+          <div className="relative h-full w-full md:rounded-[1.5rem] overflow-hidden bg-gray-950">
+            <ShortVideo
+              key={currentVideo.id}
+              video={currentVideo}
+              isActive={true}
+              onNext={() => setCurrentIndex(prev => (prev + 1) % snapshots.length)}
+              onEnded={handleVideoEnded}
+              onError={handleVideoError}
+              initialLiked={socialStatus.likes[currentVideo.id]}
+              initialFollowing={socialStatus.follows[currentVideo.creator.did]}
+            />
+            {/* Logo as refresh button — top left */}
+            <button
+              onClick={() => loadSnapshots(true)}
+              disabled={refreshing}
+              className="absolute top-2 md:top-4 left-2 md:left-4 z-30 p-1.5 bg-black/50 backdrop-blur-sm rounded-full hover:bg-black/70 transition disabled:opacity-50"
+              aria-label="Refresh snapshots"
+            >
+              <Image
+                src="/logo.svg"
+                alt="Dragverse TV"
+                width={32}
+                height={32}
+                className={`w-8 h-8 ${refreshing ? 'animate-spin' : 'hover:scale-110 transition-transform'}`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* TV Stand */}
+        <div className="hidden md:flex items-center justify-center flex-shrink-0">
+          <div className="w-20 h-3 bg-gradient-to-b from-[#E748E6] to-[#EB83EA] rounded-b-lg" />
+        </div>
       </div>
     </div>
   ) : null;

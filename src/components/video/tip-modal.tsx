@@ -428,7 +428,7 @@ export function TipModal({
                 ) : (
                   <>
                     <p className="text-xs text-gray-500 text-center">
-                      Tips are sent directly to the creator's wallet on Base Network
+                      Tips are sent directly to the creator's wallet
                     </p>
                     {cryptoCurrency === "USDC" && usdcBalance !== undefined && (
                       <p className="text-xs text-gray-400 text-center">

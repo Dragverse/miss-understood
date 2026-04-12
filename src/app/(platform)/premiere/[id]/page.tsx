@@ -175,6 +175,8 @@ export default function PremierePage({ params }: { params: Promise<{ id: string 
       thumbnail: getSafeThumbnail(video.thumbnail, video.livepeerAssetId),
       audioUrl: video.playbackUrl,
       type: "uploaded",
+      creatorDid: video.creator?.did,
+      contentType: video.contentType,
     });
   }, [phase, video]); // eslint-disable-line react-hooks/exhaustive-deps
 

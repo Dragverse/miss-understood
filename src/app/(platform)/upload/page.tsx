@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, Suspense } from "react";
-import { FiUploadCloud, FiCheck, FiFilm, FiUpload, FiLoader, FiClock, FiMusic, FiMic } from "react-icons/fi";
+import { FiUploadCloud, FiCheck, FiFilm, FiUpload, FiLoader, FiClock, FiMusic, FiMic, FiEyeOff } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { uploadVideoToLivepeer, waitForAssetReady } from "@/lib/livepeer/client-upload";
 import { uploadAudioToSupabase } from "@/lib/supabase/client-audio-upload";
@@ -1394,12 +1394,21 @@ function UploadPageContent() {
           </div>
         </div>
 
-        {/* Schedule for Later - Only show for new uploads */}
+        {/* Premiere / Schedule - Only show for new uploads */}
         {!editId && (
           <div className="p-6 rounded-[24px] bg-[#1a0b2e] border border-[#2f2942]">
-            <label className="block text-lg font-bold uppercase tracking-widest mb-4">
-              Schedule
-            </label>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
+                <FiFilm className="w-5 h-5 text-[#EB83EA]" />
+              </div>
+              <div>
+                <label className="block text-lg font-bold uppercase tracking-widest">
+                  Premiere
+                </label>
+                <p className="text-xs text-gray-400">Build hype with a countdown and watch party</p>
+              </div>
+            </div>
+
             <label className="flex items-center gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-[#EB83EA]/50 transition mb-4">
               <input
                 type="checkbox"
@@ -1410,18 +1419,18 @@ function UploadPageContent() {
               <div>
                 <div className="font-semibold text-white flex items-center gap-2">
                   <FiClock className="text-[#EB83EA]" />
-                  Schedule for later
+                  Schedule a Premiere
                 </div>
-                <p className="text-sm text-gray-400">Set a date and time for your content to go live</p>
+                <p className="text-sm text-gray-400">Set a date and time for your content to drop</p>
               </div>
             </label>
 
             {formData.scheduleForLater && (
-              <div className="space-y-4 pl-2">
+              <div className="space-y-5 mt-4">
                 {/* Date/Time Picker */}
                 <div>
                   <label className="block text-sm font-semibold mb-2 text-gray-300">
-                    Publish Date & Time *
+                    Premiere Date & Time *
                   </label>
                   <input
                     type="datetime-local"
@@ -1435,43 +1444,110 @@ function UploadPageContent() {
                   <p className="text-xs text-gray-500 mt-1">Must be at least 5 minutes from now, up to 30 days</p>
                 </div>
 
-                {/* Premiere Mode */}
+                {/* Premiere Mode Selection Cards */}
                 <div>
-                  <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  <label className="block text-sm font-semibold mb-3 text-gray-300">
                     Premiere Mode
                   </label>
-                  <div className="space-y-3">
-                    <label className="flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-[#EB83EA]/50 transition">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Countdown Premiere Card */}
+                    <label
+                      className={`relative flex flex-col p-5 rounded-2xl cursor-pointer transition-all ${
+                        formData.premiereMode === "countdown"
+                          ? "bg-gradient-to-br from-[#EB83EA]/10 to-[#7c3aed]/10 border-2 border-[#EB83EA]/60 shadow-lg shadow-[#EB83EA]/10"
+                          : "bg-[#0f071a] border border-[#2f2942] hover:border-[#EB83EA]/30"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="premiereMode"
                         value="countdown"
                         checked={formData.premiereMode === "countdown"}
                         onChange={() => setFormData({ ...formData, premiereMode: "countdown" })}
-                        className="mt-1 accent-[#EB83EA]"
+                        className="sr-only"
                       />
-                      <div>
-                        <div className="font-semibold text-white">Countdown Premiere</div>
-                        <div className="text-sm text-gray-400">
-                          Shows a public countdown page with your thumbnail. Builds hype before release!
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#EB83EA]/30 to-[#7c3aed]/30 flex items-center justify-center">
+                          <FiClock className="w-5 h-5 text-[#EB83EA]" />
                         </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full bg-[#EB83EA]/20 text-[#EB83EA] border border-[#EB83EA]/30">
+                          Recommended
+                        </span>
                       </div>
+                      <h4 className="font-bold text-white mb-1">Countdown Premiere</h4>
+                      <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+                        Public countdown page with your thumbnail. Fans share the link and watch together!
+                      </p>
+
+                      {/* Mini countdown preview */}
+                      <div className="flex items-center justify-center gap-1.5 mb-4">
+                        {["00", "00", "00"].map((val, i) => (
+                          <span key={i} className="contents">
+                            {i > 0 && <span className="text-[#EB83EA]/60 text-xs font-bold">:</span>}
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#EB83EA]/15 to-[#7c3aed]/15 border border-[#EB83EA]/20 flex items-center justify-center">
+                              <span className="text-sm font-bold text-white/80">{val}</span>
+                            </div>
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Features */}
+                      <div className="space-y-1.5 text-[11px] text-gray-400">
+                        <div className="flex items-center gap-1.5"><span className="text-[#EB83EA]">&#10003;</span> Shareable premiere link</div>
+                        <div className="flex items-center gap-1.5"><span className="text-[#EB83EA]">&#10003;</span> Live chat watch party</div>
+                        <div className="flex items-center gap-1.5"><span className="text-[#EB83EA]">&#10003;</span> Builds hype before release</div>
+                      </div>
+
+                      {/* Selected indicator */}
+                      {formData.premiereMode === "countdown" && (
+                        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#EB83EA] flex items-center justify-center">
+                          <FiCheck className="w-3 h-3 text-white" />
+                        </div>
+                      )}
                     </label>
-                    <label className="flex items-start gap-3 p-4 bg-[#0f071a] border border-[#2f2942] rounded-xl cursor-pointer hover:border-[#EB83EA]/50 transition">
+
+                    {/* Silent Drop Card */}
+                    <label
+                      className={`relative flex flex-col p-5 rounded-2xl cursor-pointer transition-all ${
+                        formData.premiereMode === "silent"
+                          ? "bg-gradient-to-br from-[#EB83EA]/10 to-[#7c3aed]/10 border-2 border-[#EB83EA]/60 shadow-lg shadow-[#EB83EA]/10"
+                          : "bg-[#0f071a] border border-[#2f2942] hover:border-[#EB83EA]/30"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="premiereMode"
                         value="silent"
                         checked={formData.premiereMode === "silent"}
                         onChange={() => setFormData({ ...formData, premiereMode: "silent" })}
-                        className="mt-1 accent-[#EB83EA]"
+                        className="sr-only"
                       />
-                      <div>
-                        <div className="font-semibold text-white">Silent Drop</div>
-                        <div className="text-sm text-gray-400">
-                          Content stays hidden until the scheduled time, then appears in your feed.
+                      <div className="flex items-center mb-3">
+                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
+                          <FiEyeOff className="w-5 h-5 text-gray-400" />
                         </div>
                       </div>
+                      <h4 className="font-bold text-white mb-1">Silent Drop</h4>
+                      <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+                        Content stays hidden until the scheduled time, then quietly appears in your profile and feed.
+                      </p>
+
+                      {/* Spacer to align with countdown card height */}
+                      <div className="h-10 mb-4" />
+
+                      {/* Features */}
+                      <div className="space-y-1.5 text-[11px] text-gray-400">
+                        <div className="flex items-center gap-1.5"><span className="text-gray-500">&#10003;</span> No countdown page</div>
+                        <div className="flex items-center gap-1.5"><span className="text-gray-500">&#10003;</span> Surprise release</div>
+                        <div className="flex items-center gap-1.5"><span className="text-gray-500">&#10003;</span> Appears at scheduled time</div>
+                      </div>
+
+                      {/* Selected indicator */}
+                      {formData.premiereMode === "silent" && (
+                        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#EB83EA] flex items-center justify-center">
+                          <FiCheck className="w-3 h-3 text-white" />
+                        </div>
+                      )}
                     </label>
                   </div>
                 </div>

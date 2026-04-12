@@ -508,6 +508,7 @@ function SettingsContent() {
           website: formData.website || undefined,
           instagramHandle: formData.instagramHandle || undefined,
           tiktokHandle: formData.tiktokHandle || undefined,
+          walletAddress: wallets?.[0]?.address || undefined,
         }),
       });
 
@@ -1534,7 +1535,7 @@ function SettingsContent() {
                     {/* Info Box */}
                     <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
                       <p className="text-sm text-blue-400 mb-2">
-                        <strong>Tipping:</strong> Use your wallet to send tips to creators you support. Tips are sent via Base network.
+                        <strong>Tipping:</strong> Use your wallet to send tips to creators you support.
                       </p>
                       <p className="text-sm text-blue-400">
                         <strong>Security:</strong> Your wallet is managed by Privy. Never share your private keys or seed phrase.
