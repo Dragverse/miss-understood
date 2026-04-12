@@ -33,9 +33,11 @@ export function HeroSection({ horizontalVideos }: HeroSectionProps) {
   const broadcastVideoRef = useRef<HTMLVideoElement>(null);
   const broadcastHlsRef = useRef<Hls | null>(null);
 
-  const hasBroadcast = !streamInfo.isLive && horizontalVideos && horizontalVideos.length >= 5;
-  const broadcastVideo = hasBroadcast ? horizontalVideos![broadcastIndex] : null;
-  const broadcastNextVideo = hasBroadcast ? horizontalVideos![(broadcastIndex + 1) % horizontalVideos!.length] : null;
+  // Only broadcast videos from verified creators
+  const verifiedVideos = horizontalVideos?.filter(v => v.creator?.verified) || [];
+  const hasBroadcast = !streamInfo.isLive && verifiedVideos.length >= 5;
+  const broadcastVideo = hasBroadcast ? verifiedVideos[broadcastIndex % verifiedVideos.length] : null;
+  const broadcastNextVideo = hasBroadcast ? verifiedVideos[(broadcastIndex + 1) % verifiedVideos.length] : null;
 
   useEffect(() => {
     // Check if stream is live using backend API
@@ -123,24 +125,24 @@ export function HeroSection({ horizontalVideos }: HeroSectionProps) {
   }, [hasBroadcast, broadcastVideo?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBroadcastEnded = useCallback(() => {
-    if (horizontalVideos) {
-      setBroadcastIndex(prev => (prev + 1) % horizontalVideos.length);
+    if (verifiedVideos.length > 0) {
+      setBroadcastIndex(prev => (prev + 1) % verifiedVideos.length);
     }
-  }, [horizontalVideos]);
+  }, [verifiedVideos.length]);
 
   const handleBroadcastError = useCallback(() => {
     setTimeout(() => {
-      if (horizontalVideos) {
-        setBroadcastIndex(prev => (prev + 1) % horizontalVideos.length);
+      if (verifiedVideos.length > 0) {
+        setBroadcastIndex(prev => (prev + 1) % verifiedVideos.length);
       }
     }, 2000);
-  }, [horizontalVideos]);
+  }, [verifiedVideos.length]);
 
   const handleBroadcastSkip = useCallback(() => {
-    if (horizontalVideos) {
-      setBroadcastIndex(prev => (prev + 1) % horizontalVideos.length);
+    if (verifiedVideos.length > 0) {
+      setBroadcastIndex(prev => (prev + 1) % verifiedVideos.length);
     }
-  }, [horizontalVideos]);
+  }, [verifiedVideos.length]);
 
   // Determine badge state
   const getBadge = () => {

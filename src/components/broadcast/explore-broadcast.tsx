@@ -28,9 +28,11 @@ export function ExploreBroadcast({ videos }: ExploreBroadcastProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
-  const hasBroadcast = videos.length >= 5;
-  const currentVideo = hasBroadcast ? videos[currentIndex] : null;
-  const nextVideo = hasBroadcast ? videos[(currentIndex + 1) % videos.length] : null;
+  // Only broadcast videos from verified creators
+  const verifiedVideos = videos.filter(v => v.creator?.verified);
+  const hasBroadcast = verifiedVideos.length >= 5;
+  const currentVideo = hasBroadcast ? verifiedVideos[currentIndex % verifiedVideos.length] : null;
+  const nextVideo = hasBroadcast ? verifiedVideos[(currentIndex + 1) % verifiedVideos.length] : null;
 
   // Poll stream status (same pattern as HeroSection)
   useEffect(() => {
@@ -107,18 +109,18 @@ export function ExploreBroadcast({ videos }: ExploreBroadcastProps) {
   }, [streamInfo.isLive, currentVideo?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleEnded = useCallback(() => {
-    setCurrentIndex(prev => (prev + 1) % videos.length);
-  }, [videos.length]);
+    setCurrentIndex(prev => (prev + 1) % verifiedVideos.length);
+  }, [verifiedVideos.length]);
 
   const handleError = useCallback(() => {
     setTimeout(() => {
-      setCurrentIndex(prev => (prev + 1) % videos.length);
+      setCurrentIndex(prev => (prev + 1) % verifiedVideos.length);
     }, 2000);
-  }, [videos.length]);
+  }, [verifiedVideos.length]);
 
   const handleSkip = useCallback(() => {
-    setCurrentIndex(prev => (prev + 1) % videos.length);
-  }, [videos.length]);
+    setCurrentIndex(prev => (prev + 1) % verifiedVideos.length);
+  }, [verifiedVideos.length]);
 
   if (checkingStream) return null;
 
@@ -171,7 +173,7 @@ export function ExploreBroadcast({ videos }: ExploreBroadcastProps) {
             </h2>
           </div>
           <span className="text-gray-400 text-sm">
-            {currentIndex + 1} / {videos.length}
+            {(currentIndex % verifiedVideos.length) + 1} / {verifiedVideos.length}
           </span>
         </div>
         <div className="relative aspect-video rounded-[24px] overflow-hidden bg-black border border-[#EB83EA]/20 shadow-2xl">
