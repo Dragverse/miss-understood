@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from "react";
 import toast from "react-hot-toast";
 import Hls from "hls.js";
+import { useRoomStore } from "@/lib/store/room";
 
 export interface AudioTrack {
   id: string;
@@ -496,6 +497,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   // ---- Public actions ----
 
   const playTrack = useCallback((track: AudioTrack, newPlaylist?: AudioTrack[]) => {
+    if (useRoomStore.getState().activeRoom) {
+      toast.error("Audio unavailable while in a room session", { id: "room-conflict" });
+      return;
+    }
     if (newPlaylist) {
       setPlaylist(newPlaylist);
       playlistRef.current = newPlaylist;

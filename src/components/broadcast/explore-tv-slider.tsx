@@ -1,155 +1,236 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useKeenSlider } from "keen-slider/react";
-import "keen-slider/keen-slider.min.css";
-import { FiChevronLeft, FiChevronRight, FiPlay } from "react-icons/fi";
+import {
+  FiVolume2,
+  FiVolumeX,
+  FiMaximize2,
+  FiChevronLeft,
+  FiChevronRight,
+} from "react-icons/fi";
 import type { Video } from "@/types";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 
+const MAX_SLIDE_DURATION = 12_000;
+const MAX_VIDEOS = 6;
+
 interface ExploreTVSliderProps {
   videos: Video[];
-  /** Auto-advance interval in ms. Set to 0 to disable. Default: 6000 */
+  /** kept for API compatibility — now uses onended + fallback timer */
   autoPlayInterval?: number;
 }
 
-export function ExploreTVSlider({ videos, autoPlayInterval = 6000 }: ExploreTVSliderProps) {
-  const filteredVideos = videos.filter(
-    (v) => v.contentType !== "short" && v.contentType !== "live"
+export function ExploreTVSlider({ videos }: ExploreTVSliderProps) {
+  const filtered = videos
+    .filter((v) => v.contentType !== "short" && v.contentType !== "live")
+    .slice(0, MAX_VIDEOS);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const [idx, setIdx] = useState(0);
+  const [muted, setMuted] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const total = filtered.length;
+  const current = filtered[idx];
+
+  const goTo = useCallback(
+    (next: number) => {
+      setIdx(((next % total) + total) % total);
+      setIsLoading(true);
+    },
+    [total]
   );
 
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [sliderReady, setSliderReady] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-
-  const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
-    initial: 0,
-    loop: true,
-    slides: { perView: 1, spacing: 0 },
-    slideChanged(slider) {
-      setCurrentSlide(slider.track.details.rel);
-    },
-    created() {
-      setSliderReady(true);
-    },
-  });
-
-  // Auto-advance
+  // Load and play video whenever idx changes
   useEffect(() => {
-    if (!autoPlayInterval || isPaused || filteredVideos.length <= 1) return;
-    const id = setInterval(() => {
-      instanceRef.current?.next();
-    }, autoPlayInterval);
-    return () => clearInterval(id);
-  }, [autoPlayInterval, isPaused, filteredVideos.length, instanceRef]);
+    const video = videoRef.current;
+    if (!video || !current) return;
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") instanceRef.current?.prev();
-      else if (e.key === "ArrowRight") instanceRef.current?.next();
+    let cancelled = false;
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    // Clear previous content immediately
+    video.pause();
+    video.src = "";
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    const src =
+      current.playbackUrl ||
+      (current.livepeerAssetId
+        ? `https://vod-cdn.lp-playback.studio/raw/jxf4iblf6wlsyor6526t4tcmtmqa/catalyst-vod-com/hls/${current.livepeerAssetId}/index.m3u8`
+        : "");
+
+    if (!src) return;
+
+    video.muted = true; // always start muted (synced below)
+
+    const load = async () => {
+      const isHLS = src.includes(".m3u8");
+
+      if (isHLS && !video.canPlayType("application/vnd.apple.mpegurl")) {
+        // HLS.js path (Chrome, Firefox)
+        const Hls = (await import("hls.js")).default;
+        if (cancelled) return;
+        if (!Hls.isSupported()) {
+          video.src = src;
+          video.play().catch(() => {});
+          return;
+        }
+        const hls = new Hls({ startLevel: 1, maxBufferLength: 20 });
+        if (cancelled) {
+          hls.destroy();
+          return;
+        }
+        hlsRef.current = hls;
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (!cancelled) video.play().catch(() => {});
+        });
+        hls.on(Hls.Events.ERROR, (_: any, data: any) => {
+          if (data.fatal && !cancelled) goTo(idx + 1);
+        });
+      } else {
+        // Native HLS (Safari) or direct URL
+        video.src = src;
+        video.load();
+        video.play().catch(() => {});
+      }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [instanceRef]);
 
-  if (filteredVideos.length === 0) return null;
+    load();
 
-  const showDots = filteredVideos.length <= 12;
+    // Fallback: advance after MAX_SLIDE_DURATION even if video never ends
+    timerRef.current = setTimeout(() => goTo(idx + 1), MAX_SLIDE_DURATION);
+
+    return () => {
+      cancelled = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx]);
+
+  // Sync muted state without reloading the source
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = muted;
+  }, [muted]);
+
+  const handleEnded = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    goTo(idx + 1);
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  if (total === 0) return null;
+
+  const poster = current
+    ? getSafeThumbnail(current.thumbnail, "/default-thumbnail.jpg", current.livepeerAssetId)
+    : "/default-thumbnail.jpg";
 
   return (
-    <div
-      className="w-full flex flex-col items-center mb-8"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-    >
-      {/* Rabbit-ear Antennas — desktop only */}
-      <div className="hidden md:flex items-end justify-center gap-10 h-14 flex-shrink-0">
-        <div style={{ transform: "rotate(-25deg)", transformOrigin: "bottom center" }} className="relative">
-          <div className="w-[3px] h-12 bg-gradient-to-t from-[#EB83EA] to-[#F3A8F2] rounded-full" />
-          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-[#F3A8F2] shadow-md shadow-[#EB83EA]/50" />
-        </div>
-        <div style={{ transform: "rotate(25deg)", transformOrigin: "bottom center" }} className="relative">
-          <div className="w-[3px] h-12 bg-gradient-to-t from-[#EB83EA] to-[#F3A8F2] rounded-full" />
-          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-[#F3A8F2] shadow-md shadow-[#EB83EA]/50" />
-        </div>
-      </div>
+    <div className="w-full mb-8">
+      {/* Player container */}
+      <div
+        ref={containerRef}
+        className="relative w-full rounded-2xl overflow-hidden bg-black group"
+        style={{ aspectRatio: "16/9" }}
+      >
+        {/* Thumbnail — visible while video is buffering */}
+        <Image
+          src={poster}
+          alt={current?.title || ""}
+          fill
+          priority
+          className={`object-cover transition-opacity duration-500 pointer-events-none ${
+            isLoading ? "opacity-100" : "opacity-0"
+          }`}
+        />
 
-      {/* TV Body */}
-      <div className="relative w-full p-2 md:p-3 bg-gradient-to-b from-[#EB83EA] to-[#E748E6] rounded-none md:rounded-[2rem] shadow-2xl shadow-[#EB83EA]/30">
+        {/* Video */}
+        <video
+          ref={videoRef}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+            isLoading ? "opacity-0" : "opacity-100"
+          }`}
+          muted
+          playsInline
+          autoPlay
+          onCanPlay={() => setIsLoading(false)}
+          onEnded={handleEnded}
+        />
 
-        {/* Screen */}
-        <div
-          ref={sliderRef}
-          className="keen-slider w-full rounded-none md:rounded-[1.5rem] overflow-hidden bg-gray-950"
-          style={{ aspectRatio: "16/9" }}
+        {/* Bottom gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent pointer-events-none" />
+
+        {/* Video info — bottom left, links to watch page */}
+        <Link
+          href={`/watch/${current?.id}`}
+          className="absolute bottom-3 left-4"
+          style={{ right: "112px" }}
         >
-          {filteredVideos.map((video, idx) => (
-            <div key={video.id} className="keen-slider__slide relative h-full w-full">
-              <Link href={`/watch/${video.id}`} className="block absolute inset-0 group">
-                {/* Thumbnail */}
-                <Image
-                  src={getSafeThumbnail(video.thumbnail, "/default-thumbnail.jpg", video.livepeerAssetId)}
-                  alt={video.title}
-                  fill
-                  priority={idx === 0}
-                  className="object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = "/default-thumbnail.jpg"; }}
-                />
+          <p className="text-white font-semibold text-sm md:text-base line-clamp-1 drop-shadow-lg">
+            {current?.title}
+          </p>
+          <p className="text-gray-300 text-xs drop-shadow">
+            @{current?.creator?.handle || current?.creator?.displayName}
+          </p>
+        </Link>
 
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20" />
-
-                {/* Channel bug */}
-                <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-black/60 backdrop-blur-sm rounded-full">
-                  <span className="w-1.5 h-1.5 bg-[#EB83EA] rounded-full animate-pulse" />
-                  <Image src="/logo.svg" alt="" width={12} height={12} />
-                  <span className="text-white text-[10px] font-bold uppercase tracking-widest">DV TV</span>
-                </div>
-
-                {/* Slide counter */}
-                <div className="absolute top-3 right-3 px-2.5 py-1 bg-black/60 backdrop-blur-sm rounded-full">
-                  <span className="text-white text-[10px] font-mono font-medium">
-                    {String(idx + 1).padStart(2, "0")} / {String(filteredVideos.length).padStart(2, "0")}
-                  </span>
-                </div>
-
-                {/* Play button (hover) */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <div className="w-16 h-16 rounded-full bg-[#EB83EA]/90 backdrop-blur-sm flex items-center justify-center shadow-xl shadow-[#EB83EA]/40 group-hover:scale-110 transition-transform">
-                    <FiPlay className="w-7 h-7 text-white ml-1" />
-                  </div>
-                </div>
-
-                {/* Video info */}
-                <div className="absolute bottom-4 left-4 right-24">
-                  <p className="text-white font-bold text-sm md:text-base line-clamp-1 drop-shadow">
-                    {video.title}
-                  </p>
-                  <p className="text-gray-300 text-xs mt-0.5 drop-shadow">
-                    @{video.creator?.handle || video.creator?.displayName}
-                  </p>
-                </div>
-              </Link>
-            </div>
-          ))}
+        {/* Controls — bottom right */}
+        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+          <button
+            onClick={() => setMuted((m) => !m)}
+            className="w-9 h-9 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA]/80 transition-colors"
+            aria-label={muted ? "Unmute" : "Mute"}
+          >
+            {muted ? (
+              <FiVolumeX className="w-4 h-4 text-white" />
+            ) : (
+              <FiVolume2 className="w-4 h-4 text-white" />
+            )}
+          </button>
+          <button
+            onClick={toggleFullscreen}
+            className="w-9 h-9 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center hover:bg-[#EB83EA]/80 transition-colors"
+            aria-label="Fullscreen"
+          >
+            <FiMaximize2 className="w-4 h-4 text-white" />
+          </button>
         </div>
 
-        {/* Nav arrows — left */}
-        {sliderReady && filteredVideos.length > 1 && (
+        {/* Prev / Next arrows — hidden until hover on desktop, always on mobile */}
+        {total > 1 && (
           <>
             <button
-              onClick={() => instanceRef.current?.prev()}
-              className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-[#EB83EA] transition-all shadow-lg"
+              onClick={() => goTo(idx - 1)}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-[#EB83EA]/80 md:opacity-0 md:group-hover:opacity-100"
               aria-label="Previous video"
             >
               <FiChevronLeft className="w-5 h-5 text-white" />
             </button>
             <button
-              onClick={() => instanceRef.current?.next()}
-              className="absolute right-4 md:right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-[#EB83EA] transition-all shadow-lg"
+              onClick={() => goTo(idx + 1)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-[#EB83EA]/80 md:opacity-0 md:group-hover:opacity-100"
               aria-label="Next video"
             >
               <FiChevronRight className="w-5 h-5 text-white" />
@@ -158,33 +239,21 @@ export function ExploreTVSlider({ videos, autoPlayInterval = 6000 }: ExploreTVSl
         )}
       </div>
 
-      {/* TV Stand — desktop only */}
-      <div className="hidden md:flex flex-col items-center flex-shrink-0">
-        <div className="w-36 h-3 bg-gradient-to-b from-[#E748E6] to-[#EB83EA] rounded-b-xl" />
-        <div className="w-52 h-2 bg-[#EB83EA]/40 rounded-full mt-0.5" />
-      </div>
-
       {/* Dot indicators */}
-      {filteredVideos.length > 1 && (
-        <div className="flex gap-1.5 mt-3 flex-wrap justify-center">
-          {showDots ? (
-            filteredVideos.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => instanceRef.current?.moveToIdx(idx)}
-                className={`rounded-full transition-all duration-300 ${
-                  currentSlide === idx
-                    ? "w-5 h-2 bg-[#EB83EA]"
-                    : "w-2 h-2 bg-[#EB83EA]/30 hover:bg-[#EB83EA]/60"
-                }`}
-                aria-label={`Video ${idx + 1}`}
-              />
-            ))
-          ) : (
-            <span className="text-gray-500 text-xs font-mono">
-              {currentSlide + 1} / {filteredVideos.length}
-            </span>
-          )}
+      {total > 1 && (
+        <div className="flex gap-1.5 mt-2.5 justify-center">
+          {filtered.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              className={`rounded-full transition-all duration-300 ${
+                idx === i
+                  ? "w-5 h-1.5 bg-[#EB83EA]"
+                  : "w-1.5 h-1.5 bg-white/30 hover:bg-white/60"
+              }`}
+              aria-label={`Video ${i + 1}`}
+            />
+          ))}
         </div>
       )}
     </div>

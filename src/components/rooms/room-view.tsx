@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   useRoom,
   useLocalPeer,
@@ -41,6 +42,7 @@ interface RoomViewProps {
 }
 
 export function RoomView({ roomId }: RoomViewProps) {
+  const router = useRouter();
   const { getAccessToken } = usePrivy();
   const { creator } = useAuthUser();
   const { activeRoom, clearActiveRoom, setMuted } = useRoomStore();
@@ -54,8 +56,18 @@ export function RoomView({ roomId }: RoomViewProps) {
   const [handRaised, setHandRaised] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Refs for cleanup callbacks (state values aren't accessible in closures)
+  const isHostRef = useRef(false);
+  const joinedRef = useRef(false);
+  const tokenRef = useRef("");
+  const hasEndedRef = useRef(false);
+
   const displayName = creator?.displayName || "Drag Artist";
   const avatarUrl = creator?.avatar || "/defaultpfp.png";
+
+  // Keep refs in sync with state so closures always see current values
+  useEffect(() => { isHostRef.current = isHost; }, [isHost]);
+  useEffect(() => { joinedRef.current = joined; }, [joined]);
 
   // Huddle01 hooks
   const { joinRoom, leaveRoom, closeRoom, state: roomState } = useRoom({
@@ -101,6 +113,7 @@ export function RoomView({ roomId }: RoomViewProps) {
       setJoining(true);
       try {
         const authToken = await getAccessToken();
+        tokenRef.current = authToken ?? "";
         const params = new URLSearchParams({
           roomId,
           displayName,
@@ -158,13 +171,15 @@ export function RoomView({ roomId }: RoomViewProps) {
   };
 
   const handleLeave = async () => {
+    if (hasEndedRef.current) return;
+    hasEndedRef.current = true;
     try {
       if (isHost) {
         await fetch("/api/rooms/end", {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${await getAccessToken()}`,
+            Authorization: `Bearer ${tokenRef.current || await getAccessToken()}`,
           },
           body: JSON.stringify({ roomId }),
         });
@@ -172,11 +187,43 @@ export function RoomView({ roomId }: RoomViewProps) {
       } else {
         leaveRoom();
       }
-      clearActiveRoom();
     } catch {
-      clearActiveRoom();
+      // best effort
     }
+    clearActiveRoom();
+    router.push("/rooms");
   };
+
+  // Cleanup on unmount (in-app navigation) and tab close
+  useEffect(() => {
+    const cleanup = () => {
+      if (hasEndedRef.current || !joinedRef.current) return;
+      hasEndedRef.current = true;
+      if (isHostRef.current) {
+        // keepalive ensures the request survives page unload
+        fetch("/api/rooms/end", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${tokenRef.current}`,
+          },
+          body: JSON.stringify({ roomId }),
+          keepalive: true,
+        }).catch(() => {});
+        closeRoom();
+      } else {
+        leaveRoom();
+      }
+      clearActiveRoom();
+    };
+
+    window.addEventListener("beforeunload", cleanup);
+    return () => {
+      window.removeEventListener("beforeunload", cleanup);
+      cleanup(); // fires on in-app navigation (component unmount)
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSendChat = () => {
     if (!chatInput.trim()) return;
