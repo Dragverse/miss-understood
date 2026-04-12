@@ -55,57 +55,42 @@ export function FloatingRoomBar() {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[60] bg-gradient-to-r from-[#18122D] via-[#1a0b2e] to-[#18122D] border-t-2 border-[#EB83EA]/30 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center gap-3">
-        {/* Live indicator */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="w-2 h-2 bg-[#4CAF50] rounded-full animate-pulse" />
-          <span className="text-[10px] font-bold text-[#4CAF50] uppercase tracking-widest hidden sm:block">
-            Live
-          </span>
-        </div>
-
+    <div className="fixed bottom-20 right-4 z-[60] w-72 bg-[#1a0b2e] border border-[#EB83EA]/40 rounded-2xl shadow-2xl shadow-[#EB83EA]/10 overflow-hidden">
+      <div className="px-4 py-3 flex items-center gap-3">
         {/* Room info */}
         <div className="flex-1 min-w-0">
-          <p className="text-white font-bold text-sm truncate leading-tight">
-            {activeRoom.title}
-          </p>
-          <p className="text-[#EB83EA] text-[10px] truncate uppercase tracking-wider">
-            Live Listening · {activeRoom.hostName}
-          </p>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="w-1.5 h-1.5 bg-[#4CAF50] rounded-full animate-pulse" />
+            <span className="text-[#4CAF50] text-[9px] font-black uppercase tracking-widest">Live</span>
+          </div>
+          <p className="text-white font-bold text-xs truncate leading-tight">{activeRoom.title}</p>
+          <p className="text-[#EB83EA] text-[10px] truncate">{activeRoom.hostName}</p>
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Mute toggle */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={handleMuteToggle}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-              isAudioOn
-                ? "bg-[#EB83EA] hover:bg-[#E748E6] text-white"
-                : "bg-white/10 hover:bg-white/20 text-gray-400"
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+              isAudioOn ? "bg-[#EB83EA] text-white" : "bg-white/10 text-gray-400"
             }`}
             aria-label={isAudioOn ? "Mute mic" : "Unmute mic"}
           >
-            {isAudioOn ? <FiMic className="w-4 h-4" /> : <FiMicOff className="w-4 h-4" />}
+            {isAudioOn ? <FiMic className="w-3.5 h-3.5" /> : <FiMicOff className="w-3.5 h-3.5" />}
           </button>
-
-          {/* Expand to full room */}
           <Link
             href={`/rooms/${activeRoom.roomId}`}
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
             aria-label="Open room"
           >
-            <FiChevronUp className="w-4 h-4 text-white" />
+            <FiChevronUp className="w-3.5 h-3.5 text-white" />
           </Link>
-
-          {/* Leave */}
           <button
             onClick={handleLeave}
-            className="w-9 h-9 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-all"
+            className="w-8 h-8 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-all"
             aria-label="Leave room"
           >
-            <FiLogOut className="w-4 h-4 text-red-400" />
+            <FiLogOut className="w-3.5 h-3.5 text-red-400" />
           </button>
         </div>
       </div>

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { FiHeadphones, FiPlay, FiClock, FiTrendingUp, FiMusic, FiMic, FiUser } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
+import { RoomsSidebar } from "@/components/rooms/rooms-sidebar";
 
 interface AudioContent {
   id: string;
@@ -222,7 +223,17 @@ export default function AudioPage() {
       )}
 
       <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8 pb-24">
-        <div className="max-w-[1600px] mx-auto">
+        <div className="max-w-[1600px] mx-auto flex gap-6">
+
+        {/* Vibe Lounge Sidebar — desktop only */}
+        <div className="hidden lg:block w-72 flex-shrink-0">
+          <div className="sticky top-20">
+            <RoomsSidebar />
+          </div>
+        </div>
+
+        {/* Main content */}
+        <div className="flex-1 min-w-0">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-3">
@@ -374,7 +385,8 @@ export default function AudioPage() {
             ))}
           </div>
         )}
-        </div>
+        </div>{/* flex-1 main content */}
+        </div>{/* max-w flex container */}
       </div>
     </>
   );
