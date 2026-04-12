@@ -104,6 +104,13 @@ CREATE INDEX IF NOT EXISTS idx_recordings_created_at ON stream_recordings(create
 -- Enable RLS on streams table
 ALTER TABLE streams ENABLE ROW LEVEL SECURITY;
 
+-- Drop policies first so this script is safe to re-run
+DROP POLICY IF EXISTS "Anyone can view active streams" ON streams;
+DROP POLICY IF EXISTS "Creators can view their own streams" ON streams;
+DROP POLICY IF EXISTS "Creators can create streams" ON streams;
+DROP POLICY IF EXISTS "Creators can update their own streams" ON streams;
+DROP POLICY IF EXISTS "Creators can delete their own streams" ON streams;
+
 -- Policy: Anyone can view active streams
 CREATE POLICY "Anyone can view active streams" ON streams
   FOR SELECT
@@ -131,6 +138,13 @@ CREATE POLICY "Creators can delete their own streams" ON streams
 
 -- Enable RLS on stream_recordings table
 ALTER TABLE stream_recordings ENABLE ROW LEVEL SECURITY;
+
+-- Drop recording policies first
+DROP POLICY IF EXISTS "Anyone can view published recordings" ON stream_recordings;
+DROP POLICY IF EXISTS "Creators can view their own recordings" ON stream_recordings;
+DROP POLICY IF EXISTS "Creators can create recordings" ON stream_recordings;
+DROP POLICY IF EXISTS "Creators can update their own recordings" ON stream_recordings;
+DROP POLICY IF EXISTS "Creators can delete their own recordings" ON stream_recordings;
 
 -- Policy: Published recordings are viewable by anyone
 CREATE POLICY "Anyone can view published recordings" ON stream_recordings
