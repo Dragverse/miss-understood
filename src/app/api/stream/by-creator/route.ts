@@ -74,7 +74,9 @@ export async function GET(request: NextRequest) {
               supabase.from("streams").update({ is_active: false, ended_at: new Date().toISOString() }).eq("id", stream.id);
             }
 
-            return livepeerData.isActive ? stream : null;
+            // Trust Livepeer OR our DB (stream.is_active set when user clicks Go Live)
+            // DB sync above keeps them aligned; this prevents startup-lag gaps
+            return (livepeerData.isActive || stream.is_active) ? stream : null;
           } catch {
             return stream.is_active ? stream : null;
           }

@@ -11,7 +11,6 @@ interface LivestreamEmbedProps {
 }
 
 interface StreamData {
-  streamId: string;
   title: string;
   playbackUrl: string;
   playbackId: string;
@@ -19,7 +18,6 @@ interface StreamData {
 }
 
 interface UpcomingStreamData {
-  id: string;
   title: string;
   scheduledAt: string;
 }
@@ -39,51 +37,41 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
   const [streamData, setStreamData] = useState<StreamData | null>(null);
   const [upcomingStream, setUpcomingStream] = useState<UpcomingStreamData | null>(null);
   const [loading, setLoading] = useState(true);
-  // Full Livepeer playback info — enables WebRTC WHEP for low-latency
-  const [playbackSrc, setPlaybackSrc] = useState<ReturnType<typeof getSrc>>(null);
   const [playerError, setPlayerError] = useState(false);
 
   useEffect(() => {
-    const checkCreatorStream = async () => {
+    const check = async () => {
       try {
-        const response = await fetch(
+        const res = await fetch(
           `/api/stream/by-creator?creatorDID=${encodeURIComponent(creatorDID)}`
         );
-
-        if (!response.ok) {
+        if (!res.ok) {
           setStreamData(null);
           setUpcomingStream(null);
           return;
         }
-
-        const data = await response.json();
+        const data = await res.json();
 
         if (data.streams && data.streams.length > 0) {
-          const activeStream = data.streams[0];
+          const s = data.streams[0];
           setStreamData({
-            streamId: activeStream.id,
-            title: activeStream.name || `${creatorName} is live!`,
-            playbackUrl: activeStream.playbackUrl,
-            playbackId: activeStream.playbackId,
-            isActive: activeStream.isActive,
+            title: s.name || `${creatorName} is live!`,
+            playbackUrl: s.playbackUrl,
+            playbackId: s.playbackId,
+            isActive: s.isActive,
           });
+          setPlayerError(false);
         } else {
           setStreamData(null);
-          setPlaybackSrc(null);
         }
 
         if (data.upcoming && data.upcoming.length > 0) {
-          const next = data.upcoming[0];
-          setUpcomingStream({
-            id: next.id,
-            title: next.name || "Upcoming Stream",
-            scheduledAt: next.scheduledAt,
-          });
+          const n = data.upcoming[0];
+          setUpcomingStream({ title: n.name || "Upcoming Stream", scheduledAt: n.scheduledAt });
         } else {
           setUpcomingStream(null);
         }
-      } catch (error) {
-        console.error("Failed to check creator stream:", error);
+      } catch {
         setStreamData(null);
         setUpcomingStream(null);
       } finally {
@@ -91,52 +79,22 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
       }
     };
 
-    checkCreatorStream();
-    // Poll every 10s — fast enough to catch go-live events promptly
-    const interval = setInterval(checkCreatorStream, 10_000);
+    check();
+    const interval = setInterval(check, 10_000);
     return () => clearInterval(interval);
   }, [creatorDID, creatorName]);
 
-  // When a live stream is detected, fetch full Livepeer playback info for WebRTC WHEP
-  useEffect(() => {
-    if (!streamData?.isActive || !streamData.playbackId) return;
-
-    const fetchPlaybackInfo = async () => {
-      try {
-        const res = await fetch(
-          `/api/stream/playback-info?playbackId=${encodeURIComponent(streamData.playbackId)}`
-        );
-        if (res.ok) {
-          const info = await res.json();
-          const src = getSrc(info);
-          if (src && src.length > 0) {
-            setPlaybackSrc(src);
-            return;
-          }
-        }
-      } catch {
-        // fall through to HLS fallback
-      }
-      // Fallback: HLS URL directly
-      setPlaybackSrc(
-        getSrc(
-          streamData.playbackUrl ||
-            `https://livepeercdn.studio/hls/${streamData.playbackId}/index.m3u8`
-        )
-      );
-    };
-
-    fetchPlaybackInfo();
-    setPlayerError(false);
-  }, [streamData?.isActive, streamData?.playbackId, streamData?.playbackUrl]);
-
   if (loading) return null;
 
-  // Active stream — Livepeer Player SDK (same as hero section)
-  if (streamData?.isActive && playbackSrc) {
+  if (streamData?.isActive) {
+    // HLS URL — same approach as hero section, works reliably for live HLS
+    const hlsUrl =
+      streamData.playbackUrl ||
+      `https://livepeercdn.studio/hls/${streamData.playbackId}/index.m3u8`;
+    const src = getSrc(hlsUrl);
+
     return (
       <div className="w-full mb-8 bg-[#1a0b2e] border border-[#2f2942] rounded-[24px] overflow-hidden">
-        {/* Header */}
         <div className="px-6 py-4 border-b border-[#2f2942] flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500 rounded-full">
@@ -151,29 +109,20 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
           </div>
         </div>
 
-        {/* Player */}
         <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-black">
             {playerError ? (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-black gap-3">
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3">
                 <p className="text-gray-400 text-sm">Stream temporarily unavailable</p>
                 <button
-                  onClick={() => {
-                    setPlayerError(false);
-                    setPlaybackSrc(
-                      getSrc(
-                        streamData.playbackUrl ||
-                          `https://livepeercdn.studio/hls/${streamData.playbackId}/index.m3u8`
-                      )
-                    );
-                  }}
+                  onClick={() => setPlayerError(false)}
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm transition"
                 >
                   Retry
                 </button>
               </div>
             ) : (
-              <Player.Root src={playbackSrc} autoPlay lowLatency="force">
+              <Player.Root src={src} autoPlay>
                 <Player.Container className="w-full h-full">
                   <Player.Video
                     className="w-full h-full object-cover"
@@ -198,7 +147,6 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
     );
   }
 
-  // Upcoming stream
   if (upcomingStream) {
     return (
       <div className="w-full mb-8 bg-[#1a0b2e] border border-[#EB83EA]/20 rounded-[24px] overflow-hidden">
@@ -212,9 +160,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
           </div>
           <div className="flex items-center gap-2 text-gray-400">
             <FiVideo className="w-5 h-5" />
-            <span className="text-sm">
-              Going live {formatScheduledDate(upcomingStream.scheduledAt)}
-            </span>
+            <span className="text-sm">Going live {formatScheduledDate(upcomingStream.scheduledAt)}</span>
           </div>
         </div>
       </div>
