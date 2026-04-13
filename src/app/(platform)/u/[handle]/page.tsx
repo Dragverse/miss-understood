@@ -279,20 +279,10 @@ export default function DynamicProfilePage() {
     totalLikes: userVideos.reduce((sum, v) => sum + (v.likes || 0), 0),
   };
 
-  // Render profile - Hybrid Style (Banner + Instagram tabs)
+  // Render profile
   return (
     <div className="min-h-screen pb-28 md:pb-6">
-      {/* Livestream Embed - Full width below navbar */}
-      {creator && (
-        <div id="livestream" className="scroll-mt-16">
-          <LivestreamEmbed
-            creatorDID={creator.did}
-            creatorName={creator.displayName}
-          />
-        </div>
-      )}
-
-      {/* Back Button - Fixed top left */}
+      {/* Back Button */}
       <button
         onClick={() => router.back()}
         className="fixed top-20 left-4 z-50 flex items-center gap-2 px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full transition shadow-lg"
@@ -301,175 +291,116 @@ export default function DynamicProfilePage() {
         <span className="hidden sm:inline">Back</span>
       </button>
 
-      {/* Hero Banner - Full width */}
-      <div className="relative w-full h-[40vh] md:h-[50vh] bg-gradient-to-br from-[#EB83EA]/20 via-[#7c3aed]/20 to-[#1a0b2e]">
-        {creator.banner ? (
-          <Image
-            src={creator.banner}
-            alt="Profile banner"
-            fill
-            className="object-cover"
-            priority
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA] via-[#7c3aed] to-[#1a0b2e]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
-          </div>
-        )}
+      {/* Stream area — always full width (offline screen or live player) */}
+      <LivestreamEmbed
+        creatorDID={creator.did}
+        creatorName={creator.displayName}
+        creatorHandle={creator.handle}
+        bannerUrl={creator.banner ?? undefined}
+      />
 
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[#0f071a]" />
-
-        {/* Profile content overlaying banner */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 md:px-8 pb-6">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex flex-col md:flex-row items-start md:items-end gap-4 md:gap-6">
-              {/* Avatar - Rounded with live ring */}
-              <div className="relative flex-shrink-0">
-                {isCreatorLive && (
-                  <>
-                    <span className="absolute -inset-2 rounded-full animate-ping bg-red-500/30" />
-                    <span className="absolute -inset-1 rounded-full border-4 border-red-500" />
-                  </>
-                )}
-                <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#0f071a] overflow-hidden bg-[#2f2942] shadow-2xl">
-                  <Image
-                    src={creator.avatar}
-                    alt={creator.displayName}
-                    fill
-                    className="object-cover"
-                    priority
-                  />
+      {/* Profile info — below the stream area */}
+      <div className="bg-[#0f071a] border-b border-[#2f2942]">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-5 md:gap-8">
+            {/* Avatar */}
+            <div className="relative flex-shrink-0 -mt-16 md:-mt-20">
+              {isCreatorLive && (
+                <>
+                  <span className="absolute -inset-2 rounded-full animate-ping bg-red-500/30" />
+                  <span className="absolute -inset-1 rounded-full border-4 border-red-500" />
+                </>
+              )}
+              <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-full border-4 border-[#0f071a] overflow-hidden bg-[#2f2942] shadow-2xl">
+                <Image src={creator.avatar} alt={creator.displayName} fill className="object-cover" priority />
+              </div>
+              {isCreatorLive && (
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2.5 py-1 bg-red-500 rounded-full shadow-lg shadow-red-500/40 z-10">
+                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                  <span className="text-white text-xs font-bold uppercase tracking-wide">Live</span>
                 </div>
-                {isCreatorLive && (
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2.5 py-1 bg-red-500 rounded-full shadow-lg shadow-red-500/40 z-10">
-                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                    <span className="text-white text-xs font-bold uppercase tracking-wide">Live</span>
+              )}
+            </div>
+
+            {/* Name, handle, stats, actions */}
+            <div className="flex-1 flex flex-col md:flex-row md:items-start md:justify-between gap-4 min-w-0">
+              <div className="min-w-0">
+                <div className="flex items-center gap-3 mb-1 flex-wrap">
+                  <h1 className="text-2xl md:text-3xl font-bold text-white">{creator.displayName}</h1>
+                  {isCreatorLive && (
+                    <Link href={`/live/${handle}`} className="flex items-center gap-1.5 px-3 py-1 bg-red-500 hover:bg-red-600 rounded-full transition shadow-lg shadow-red-500/30">
+                      <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                      <span className="text-white text-sm font-bold uppercase tracking-wide">Live Now</span>
+                    </Link>
+                  )}
+                  <VerificationBadge badgeType={getUserBadgeType(creator.did, undefined, !!creator.blueskyHandle, !!creator.farcasterHandle)} size={24} className="flex-shrink-0" />
+                </div>
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <p className="text-gray-400">@{creator.handle}</p>
+                  {creator.blueskyHandle && <BlueskyBadge handle={creator.blueskyHandle} />}
+                  {creator.farcasterHandle && <FarcasterBadge username={creator.farcasterHandle} />}
+                  {creator.youtubeChannelId && <YouTubeBadge channelId={creator.youtubeChannelId} channelName={creator.youtubeChannelName} />}
+                  {creator.instagramHandle && <InstagramBadge handle={creator.instagramHandle} />}
+                  {creator.tiktokHandle && <TikTokBadge handle={creator.tiktokHandle} />}
+                  {creator.website && <WebsiteBadge url={creator.website} />}
+                </div>
+                <div className="flex gap-6 text-sm md:text-base mb-2">
+                  <div>
+                    <span className="font-bold text-white">{isLoadingContent ? "—" : stats.contentCount}</span>
+                    <span className="text-gray-400 ml-1.5">posts</span>
+                  </div>
+                  <div className="group relative">
+                    <span className="font-bold text-white">{(creator.followerCount || 0).toLocaleString()}</span>
+                    <span className="text-gray-400 ml-1.5">followers</span>
+                    {((connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 || (creator.youtubeSubscriberCount || 0) > 0) && (
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                        <div className="bg-[#1a0b2e]/95 border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[160px] backdrop-blur-sm">
+                          <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Also on</div>
+                          <div className="space-y-1.5 text-sm">
+                            {(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 && (
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-[#0085ff]">Bluesky</span>
+                                <span className="text-white font-medium">{(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {(creator.youtubeSubscriberCount || 0) > 0 && (
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-red-500">YouTube</span>
+                                <span className="text-white font-medium">{(creator.youtubeSubscriberCount || 0).toLocaleString()}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-bold text-white">{(creator.followingCount || 0).toLocaleString()}</span>
+                    <span className="text-gray-400 ml-1.5">following</span>
+                  </div>
+                  {(creator.tipCount || 0) > 0 && (
+                    <div>
+                      <span className="font-bold text-white">{(creator.tipCount || 0).toLocaleString()}</span>
+                      <span className="text-gray-400 ml-1.5">tips</span>
+                    </div>
+                  )}
+                </div>
+                {creator.description && (
+                  <div>
+                    <p className={`text-gray-300 text-sm leading-relaxed ${!bioExpanded ? "line-clamp-2" : ""}`}>{creator.description}</p>
+                    {!bioExpanded && creator.description.length > 100 && (
+                      <button onClick={() => setBioExpanded(true)} className="text-gray-500 text-sm font-medium">...more</button>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Name, handle, and actions */}
-              <div className="flex-1 flex flex-col md:flex-row md:items-end md:justify-between gap-4 pb-2">
-                <div>
-                  <div className="flex items-center gap-3 mb-2 flex-wrap">
-                    <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-2xl">
-                      {creator.displayName}
-                    </h1>
-                    {isCreatorLive && (
-                      <Link
-                        href={`/live/${handle}`}
-                        className="flex items-center gap-1.5 px-3 py-1 bg-red-500 hover:bg-red-600 rounded-full transition shadow-lg shadow-red-500/30"
-                      >
-                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                        <span className="text-white text-sm font-bold uppercase tracking-wide">Live Now</span>
-                      </Link>
-                    )}
-                    <VerificationBadge
-                      badgeType={getUserBadgeType(
-                        creator.did,
-                        undefined,
-                        !!creator.blueskyHandle,
-                        !!creator.farcasterHandle
-                      )}
-                      size={28}
-                      className="flex-shrink-0"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <p className="text-white/90 text-lg md:text-xl drop-shadow-lg">@{creator.handle}</p>
-                    {creator.blueskyHandle && <BlueskyBadge handle={creator.blueskyHandle} />}
-                    {creator.farcasterHandle && <FarcasterBadge username={creator.farcasterHandle} />}
-                    {creator.youtubeChannelId && <YouTubeBadge channelId={creator.youtubeChannelId} channelName={creator.youtubeChannelName} />}
-                    {creator.instagramHandle && <InstagramBadge handle={creator.instagramHandle} />}
-                    {creator.tiktokHandle && <TikTokBadge handle={creator.tiktokHandle} />}
-                    {creator.website && <WebsiteBadge url={creator.website} />}
-                  </div>
-                  {/* Stats inline */}
-                  <div className="flex gap-6 text-sm md:text-base">
-                    <div>
-                      <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {isLoadingContent ? "—" : stats.contentCount}
-                      </span>
-                      <span className="text-white/80 ml-2">content</span>
-                    </div>
-                    <div className="group relative">
-                      <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {(creator.followerCount || 0).toLocaleString()}
-                      </span>
-                      <span className="text-white/80 ml-2">followers</span>
-                      {/* Tooltip showing connected platform stats */}
-                      {((connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 || (creator.youtubeSubscriberCount || 0) > 0) && (
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                          <div className="bg-[#1a0b2e]/95 border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[160px] backdrop-blur-sm">
-                            <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Also on</div>
-                            <div className="space-y-1.5 text-sm">
-                              {(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 && (
-                                <div className="flex items-center justify-between gap-4">
-                                  <span className="text-[#0085ff]">Bluesky</span>
-                                  <span className="text-white font-medium">{(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0).toLocaleString()}</span>
-                                </div>
-                              )}
-                              {(creator.youtubeSubscriberCount || 0) > 0 && (
-                                <div className="flex items-center justify-between gap-4">
-                                  <span className="text-red-500">YouTube</span>
-                                  <span className="text-white font-medium">{(creator.youtubeSubscriberCount || 0).toLocaleString()}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <span className="font-bold text-xl text-white drop-shadow-lg">
-                        {(creator.followingCount || 0).toLocaleString()}
-                      </span>
-                      <span className="text-white/80 ml-2">following</span>
-                    </div>
-                    {(creator.tipCount || 0) > 0 && (
-                      <div>
-                        <span className="font-bold text-xl text-white drop-shadow-lg">
-                          {(creator.tipCount || 0).toLocaleString()}
-                        </span>
-                        <span className="text-white/80 ml-2">tips</span>
-                      </div>
-                    )}
-                  </div>
-                  {/* Bio - Instagram style, under stats */}
-                  {creator.description && (
-                    <div className="mt-2">
-                      <p className={`text-white/90 text-sm leading-relaxed drop-shadow-lg ${!bioExpanded ? "line-clamp-1" : ""}`}>
-                        {creator.description}
-                      </p>
-                      {!bioExpanded && (
-                        <button
-                          onClick={() => setBioExpanded(true)}
-                          className="text-white/60 text-sm font-medium"
-                        >
-                          ...more
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex-shrink-0 flex gap-2">
-                  <ProfileActionButtons
-                    creator={creator}
-                    isOwnProfile={currentUserDID === creator.did}
-                    isDragverseUser={profileType === "dragverse"}
-                    currentUserDID={currentUserDID}
-                  />
-                  <button
-                    onClick={handleShareProfile}
-                    className="px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all"
-                    title="Copy profile link"
-                  >
-                    <FiShare2 className="w-5 h-5" />
-                  </button>
-                </div>
+              {/* Action buttons */}
+              <div className="flex-shrink-0 flex gap-2">
+                <ProfileActionButtons creator={creator} isOwnProfile={currentUserDID === creator.did} isDragverseUser={profileType === "dragverse"} currentUserDID={currentUserDID} />
+                <button onClick={handleShareProfile} className="px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all" title="Copy profile link">
+                  <FiShare2 className="w-5 h-5" />
+                </button>
               </div>
             </div>
           </div>

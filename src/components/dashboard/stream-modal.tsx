@@ -1269,7 +1269,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 space-y-3">
                 <div>
                   <p className="text-sm font-semibold text-white mb-1">
-                    Direct stream link (always works)
+                    Direct stream link
                   </p>
                   <p className="text-xs text-gray-400 mb-2">
                     Share this — it plays your stream directly without needing a database lookup.

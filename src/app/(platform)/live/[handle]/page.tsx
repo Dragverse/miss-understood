@@ -220,8 +220,9 @@ function LivePageContent() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // How many consecutive API polls returned no stream while we were connecting
+  const noStreamPollsRef = useRef(0);
 
   const playbackUrl =
     stream?.playbackUrl ??
@@ -241,12 +242,21 @@ function LivePageContent() {
         const data = await res.json();
         if (data.creator) setCreator(data.creator);
         if (data.stream) {
+          noStreamPollsRef.current = 0;
           setStream(data.stream);
-          // API confirmed live — upgrade state if still in connecting/offline
-          setStreamState((prev) => (prev === "offline" || prev === "connecting") ? "connecting" : prev);
+          // Allow recovery: if we were offline or gave up, try again
+          setStreamState((prev) =>
+            prev === "offline" || prev === "ended" ? "connecting" : prev
+          );
         } else if (!directPlaybackId) {
-          // No stream in DB and no ?p= fallback — definitely offline
           setStreamState("offline");
+        } else {
+          // Has ?p= but DB has no record yet — after 3 consecutive empty polls (~45s)
+          // with no video playing, give up
+          noStreamPollsRef.current += 1;
+          if (noStreamPollsRef.current >= 3) {
+            setStreamState((prev) => (prev === "connecting" ? "ended" : prev));
+          }
         }
       } catch {
         // silent
@@ -256,17 +266,16 @@ function LivePageContent() {
     };
 
     fetchInfo();
-    // If we're showing a player, poll more frequently to detect stream end
     pollingRef.current = setInterval(fetchInfo, 15_000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
-  }, [handle, directPlaybackId]);
+  }, [handle, directPlaybackId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Unblock loading immediately when ?p= is present (API result enriches later)
   useEffect(() => {
     if (directPlaybackId) setLoading(false);
   }, [directPlaybackId]);
 
-  // HLS player
+  // HLS player — re-runs when playbackUrl changes or player transitions out of offline
   useEffect(() => {
     if (!playbackUrl || streamState === "offline") return;
     const videoEl = videoRef.current;
@@ -274,18 +283,7 @@ function LivePageContent() {
 
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
 
-    // Clear any previous timeout
-    if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
-
-    // If video doesn't start playing within 8s, mark as ended
-    connectTimeoutRef.current = setTimeout(() => {
-      setStreamState((s) => s === "connecting" ? "ended" : s);
-    }, 8000);
-
-    const onPlaying = () => {
-      if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
-      setStreamState("playing");
-    };
+    const onPlaying = () => setStreamState("playing");
     const onEnded = () => setStreamState("ended");
 
     videoEl.addEventListener("playing", onPlaying);
@@ -300,23 +298,18 @@ function LivePageContent() {
         videoEl.play().catch(() => {});
       });
       hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) {
-          if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
-          setStreamState("ended");
-        }
+        if (data.fatal) setStreamState("ended");
       });
     } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
       videoEl.src = playbackUrl;
       videoEl.play().catch(() => {});
     } else {
-      if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
       setStreamState("ended");
     }
 
     return () => {
       videoEl.removeEventListener("playing", onPlaying);
       videoEl.removeEventListener("ended", onEnded);
-      if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
   }, [playbackUrl, streamState === "offline"]); // eslint-disable-line react-hooks/exhaustive-deps
