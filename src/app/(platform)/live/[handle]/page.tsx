@@ -307,7 +307,7 @@ function LivePageContent() {
     if (directPlaybackId) setLoading(false);
   }, [directPlaybackId]);
 
-  // HLS player — re-runs when playbackUrl changes or player transitions out of offline
+  // HLS player — re-runs when playbackUrl changes or playerKey increments
   useEffect(() => {
     if (!playbackUrl || streamState === "offline") return;
     const videoEl = videoRef.current;
@@ -317,20 +317,13 @@ function LivePageContent() {
 
     const onPlaying = () => setStreamState("playing");
     const onEnded   = () => setStreamState("ended");
-    const onWaiting = () => setDiagLines(prev => [...prev.slice(-3), "Video: buffering…"]);
-    const onStalled = () => setDiagLines(prev => [...prev.slice(-3), "Video: stalled"]);
-    const onCanPlay = () => setDiagLines(prev => [...prev.slice(-3), "Video: canPlay fired"]);
     const onError   = () => {
       const code = videoEl.error?.code;
       const msg  = videoEl.error?.message ?? "unknown";
-      setDiagLines(prev => [...prev.slice(-3), `Video error code=${code}: ${msg}`]);
+      setDiagLines(prev => [...prev.slice(-2), `Video error ${code}: ${msg}`]);
     };
-
     videoEl.addEventListener("playing", onPlaying);
     videoEl.addEventListener("ended",   onEnded);
-    videoEl.addEventListener("waiting", onWaiting);
-    videoEl.addEventListener("stalled", onStalled);
-    videoEl.addEventListener("canplay", onCanPlay);
     videoEl.addEventListener("error",   onError);
 
     if (Hls.isSupported()) {
@@ -338,59 +331,35 @@ function LivePageContent() {
       hlsRef.current = hls;
       hls.loadSource(playbackUrl);
       hls.attachMedia(videoEl);
-      hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
-        setDiagLines(prev => [...prev.slice(-3), `HLS manifest parsed — ${data.levels?.length ?? 0} quality levels`]);
-        videoEl.play().catch((e) => {
-          setDiagLines(prev => [...prev.slice(-3), `play() blocked: ${e?.message ?? e}`]);
-        });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        videoEl.play().catch(() => {});
       });
-      hls.on(Hls.Events.LEVEL_LOADED, (_, data) => {
-        const segs = data.details?.fragments?.length ?? 0;
-        const live = data.details?.live;
-        setDiagLines(prev => [...prev.slice(-3), `Media playlist: ${segs} segments, live=${live}`]);
-      });
-      hls.on(Hls.Events.FRAG_LOADED, () => {
-        setDiagLines(prev => [...prev.slice(-3), `Segment data received — video should start`]);
-      });
-
-      // Retry fatal errors with backoff — don't immediately show "ended"
+      // Retry up to 3× at 3s each before giving up (~9s total grace window)
       let fatalRetries = 0;
-      const MAX_FATAL_RETRIES = 4;
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (!data.fatal) return;
-        if (fatalRetries < MAX_FATAL_RETRIES) {
+        if (fatalRetries < 3) {
           fatalRetries++;
           setHlsRetry(fatalRetries);
-          const delay = fatalRetries * 5_000;
-          setDiagLines(prev => [...prev.slice(-3), `HLS fatal (${data.details}): retry ${fatalRetries}/${MAX_FATAL_RETRIES} in ${delay/1000}s`]);
-          setTimeout(() => {
-            if (hlsRef.current === hls) hls.loadSource(playbackUrl);
-          }, delay);
+          setTimeout(() => { if (hlsRef.current === hls) hls.loadSource(playbackUrl); }, 3_000);
         } else {
-          setDiagLines(prev => [...prev.slice(-3), `HLS: all retries exhausted → ended`]);
           setStreamState("ended");
         }
       });
     } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
-      // iOS Safari — native HLS
-      setDiagLines(prev => [...prev.slice(-3), "iOS native HLS — setting src"]);
+      // iOS Safari native HLS — do NOT call load(), it causes AbortError on play()
       videoEl.src = playbackUrl;
-      videoEl.load();
       videoEl.play().catch((e) => {
-        setDiagLines(prev => [...prev.slice(-3), `iOS play() blocked: ${e?.message ?? e}`]);
+        setDiagLines(prev => [...prev.slice(-2), `play() blocked: ${e?.message ?? e}`]);
         setNeedsTap(true);
       });
     } else {
-      setDiagLines(prev => [...prev.slice(-3), "HLS not supported on this browser"]);
       setStreamState("ended");
     }
 
     return () => {
       videoEl.removeEventListener("playing", onPlaying);
       videoEl.removeEventListener("ended",   onEnded);
-      videoEl.removeEventListener("waiting", onWaiting);
-      videoEl.removeEventListener("stalled", onStalled);
-      videoEl.removeEventListener("canplay", onCanPlay);
       videoEl.removeEventListener("error",   onError);
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
