@@ -204,82 +204,90 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
 
   const chatChannelId = streamInfo.id ?? effectivePlaybackId ?? creatorDID;
 
-  // ── Connecting state (own stream, DB not synced yet) ──────────────────────
-  if (isOwnActiveStream && !streamInfo.isLive) {
-    return (
-      <div className="flex items-center justify-center gap-3 py-6 bg-black/60 border-b border-red-500/20">
-        <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-        <span className="text-red-400 font-bold uppercase tracking-widest text-sm">Connecting…</span>
-        <p className="text-gray-400 text-sm hidden sm:block">Your stream is starting — it will appear here in a moment.</p>
-      </div>
-    );
-  }
+  const isConnecting = isOwnActiveStream && !streamInfo.isLive;
 
-  // ── Offline ───────────────────────────────────────────────────────────────
-  if (!streamInfo.isLive) {
-    return (
-      <div className="relative w-full aspect-video lg:h-[220px] overflow-hidden">
-        <Image
-          src="/currently-offline.jpg"
-          alt="Stream Currently Offline"
-          fill
-          className="object-cover"
-        />
-        {upcoming && (
-          <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full border border-[#EB83EA]/30">
-            <FiClock className="w-3.5 h-3.5 text-[#EB83EA] flex-shrink-0" />
-            <span className="text-white text-xs font-medium truncate max-w-[200px]">{upcoming.title}</span>
-            <span className="text-gray-400 text-xs flex-shrink-0">· {formatDate(upcoming.scheduledAt)}</span>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ── Live ──────────────────────────────────────────────────────────────────
+  // ── Always render the same grid shell; content switches by state ──────────
   return (
     <div className="w-full">
-      {/* Player + Chat grid */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] lg:h-[400px]">
-        {/* Player — full aspect-video on mobile, fixed height on desktop */}
+
+        {/* ── Player column ── */}
         <div ref={containerRef} className="relative aspect-video lg:aspect-auto lg:h-full bg-black group overflow-hidden">
-          {/* LIVE badge */}
-          <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 bg-red-500 rounded-md text-xs font-bold text-white shadow-lg">
-            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-            LIVE
-          </div>
 
-          {/* Stream title */}
-          {streamInfo.title && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium max-w-[60%] truncate">
-              {streamInfo.title}
-            </div>
-          )}
+          {streamInfo.isLive ? (
+            <>
+              {/* LIVE badge */}
+              <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 bg-red-500 rounded-md text-xs font-bold text-white shadow-lg">
+                <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                LIVE
+              </div>
 
-          {playerError ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black gap-3">
-              <p className="text-gray-400 text-sm">Stream temporarily unavailable</p>
-              <button onClick={() => setPlayerError(false)} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm transition">
-                Retry
-              </button>
-            </div>
+              {/* Stream title */}
+              {streamInfo.title && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium max-w-[60%] truncate">
+                  {streamInfo.title}
+                </div>
+              )}
+
+              {playerError ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black gap-3">
+                  <p className="text-gray-400 text-sm">Stream temporarily unavailable</p>
+                  <button onClick={() => setPlayerError(false)} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm transition">
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay />
+                  <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
+                    <button onClick={() => setIsMuted(m => !m)} className="w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label={isMuted ? "Unmute" : "Mute"}>
+                      {isMuted ? <FiVolumeX className="w-4 h-4 text-white" /> : <FiVolume2 className="w-4 h-4 text-white" />}
+                    </button>
+                    <button onClick={handleFullscreen} className="ml-auto w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label="Fullscreen">
+                      <FiMaximize2 className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
           ) : (
             <>
-              <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay />
-              {/* Controls — appear on hover */}
-              <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
-                <button onClick={() => setIsMuted(m => !m)} className="w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label={isMuted ? "Unmute" : "Mute"}>
-                  {isMuted ? <FiVolumeX className="w-4 h-4 text-white" /> : <FiVolume2 className="w-4 h-4 text-white" />}
-                </button>
-                <button onClick={handleFullscreen} className="ml-auto w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label="Fullscreen">
-                  <FiMaximize2 className="w-4 h-4 text-white" />
-                </button>
+              {/* Offline / connecting background */}
+              <Image
+                src="/currently-offline.jpg"
+                alt="Stream currently offline"
+                fill
+                className="object-cover"
+              />
+
+              {/* Status badge — top-left, mirrors the LIVE badge position */}
+              <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 bg-black/70 backdrop-blur-sm rounded-md text-xs font-bold text-white/70 shadow-lg border border-white/10">
+                {isConnecting ? (
+                  <>
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                    CONNECTING
+                  </>
+                ) : (
+                  <>
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                    OFFLINE
+                  </>
+                )}
               </div>
+
+              {/* Upcoming stream pill — bottom-left */}
+              {upcoming && (
+                <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full border border-[#EB83EA]/30">
+                  <FiClock className="w-3.5 h-3.5 text-[#EB83EA] flex-shrink-0" />
+                  <span className="text-white text-xs font-medium truncate max-w-[200px]">{upcoming.title}</span>
+                  <span className="text-gray-400 text-xs flex-shrink-0">· {formatDate(upcoming.scheduledAt)}</span>
+                </div>
+              )}
             </>
           )}
         </div>
 
-        {/* Chat — desktop only */}
+        {/* ── Chat column — desktop only, always mounted so it reconnects instantly ── */}
         <div className="hidden lg:block h-full border-l border-white/10">
           <ChatPanel channelId={chatChannelId} />
         </div>
