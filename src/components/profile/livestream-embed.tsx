@@ -121,8 +121,8 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
           </div>
         </div>
 
-        {/* Player — identical structure to hero-section */}
-        <div className="relative h-full" style={{ minHeight: 320 }}>
+        {/* Player — aspect-video gives the container an explicit intrinsic height */}
+        <div className="relative w-full aspect-video bg-black">
           {playerError ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black gap-3">
               <p className="text-gray-400 text-sm">Stream temporarily unavailable</p>
@@ -134,6 +134,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
               </button>
             </div>
           ) : (
+            <div className="absolute inset-0 w-full h-full">
             <Player.Root
               src={getSrc(
                 streamInfo.playbackUrl ||
@@ -141,7 +142,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
               )}
               autoPlay
             >
-              <Player.Container className="h-full" style={{ minHeight: 320 }}>
+              <Player.Container className="w-full h-full">
                 <Player.Video
                   className="w-full h-full object-cover"
                   onLoadedData={() => setPlayerError(false)}
@@ -156,6 +157,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
                 </Player.Controls>
               </Player.Container>
             </Player.Root>
+            </div>
           )}
         </div>
       </div>

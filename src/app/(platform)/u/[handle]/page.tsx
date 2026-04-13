@@ -284,7 +284,7 @@ export default function DynamicProfilePage() {
     <div className="min-h-screen pb-28 md:pb-6">
       {/* Livestream Embed - Full width below navbar */}
       {creator && (
-        <div className="pt-16" id="livestream">
+        <div id="livestream" className="scroll-mt-16">
           <LivestreamEmbed
             creatorDID={creator.did}
             creatorName={creator.displayName}

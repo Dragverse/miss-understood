@@ -6,12 +6,116 @@ import { useSearchParams } from "next/navigation";
 import { Video } from "@/types";
 import { ShortVideo } from "@/components/snapshots/short-video";
 import { HeroSlider } from "@/components/home/hero-slider";
-import { SnapshotsSection } from "@/components/home/snapshots-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
 import { SponsoredImage } from "@/components/ads/sponsored-image";
 import { AdSenseUnit } from "@/components/ads/adsense-unit";
 import { LoadingShimmer } from "@/components/shared";
+import { SnapshotsSection } from "@/components/home/snapshots-section";
 import Image from "next/image";
+import { FiFilm, FiArrowRight } from "react-icons/fi";
+
+/** Full-screen premiere slot shown in the broadcast viewer for upcoming premiere snaps */
+function PremiereSlot({ video, onNext }: { video: Video; onNext: () => void }) {
+  const [t, setT] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+
+  useEffect(() => {
+    if (!video.publishedAt) return;
+    const target = new Date(video.publishedAt).getTime();
+    const tick = () => {
+      const diff = target - Date.now();
+      if (diff <= 0) { setT(null); return; }
+      setT({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        seconds: Math.floor((diff % 60000) / 1000),
+      });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [video.publishedAt]);
+
+  const thumb = video.thumbnail;
+
+  return (
+    <div className="relative w-full h-full flex flex-col items-center justify-center bg-[#0f071a] overflow-hidden">
+      {/* Blurred background thumbnail */}
+      {thumb && (
+        <Image
+          src={thumb}
+          alt=""
+          fill
+          className="object-cover opacity-20 blur-xl scale-110"
+          aria-hidden
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0f071a] via-[#0f071a]/60 to-transparent" />
+
+      <div className="relative z-10 flex flex-col items-center gap-5 px-6 text-center max-w-xs">
+        {/* Premiere badge */}
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-[#EB83EA] rounded-full shadow-lg shadow-[#EB83EA]/30">
+          <FiFilm className="w-3.5 h-3.5 text-white" />
+          <span className="text-white text-xs font-bold uppercase tracking-wider">Premiere</span>
+        </div>
+
+        {/* Thumbnail if available */}
+        {thumb && (
+          <div className="relative w-32 h-32 rounded-2xl overflow-hidden ring-2 ring-[#EB83EA]/40 shadow-xl">
+            <Image src={thumb} alt={video.title} fill className="object-cover" />
+          </div>
+        )}
+
+        <h3 className="text-white font-bold text-lg leading-snug">{video.title}</h3>
+        <p className="text-gray-400 text-sm">{video.creator?.displayName}</p>
+
+        {/* Countdown */}
+        {t ? (
+          <div className="flex items-center gap-3">
+            {t.days > 0 && (
+              <div className="flex flex-col items-center">
+                <span className="text-white font-black text-2xl tabular-nums">{t.days}</span>
+                <span className="text-gray-500 text-[10px] uppercase tracking-wider">days</span>
+              </div>
+            )}
+            <div className="flex flex-col items-center">
+              <span className="text-white font-black text-2xl tabular-nums">{String(t.hours).padStart(2, "0")}</span>
+              <span className="text-gray-500 text-[10px] uppercase tracking-wider">hrs</span>
+            </div>
+            <span className="text-[#EB83EA] font-black text-xl">:</span>
+            <div className="flex flex-col items-center">
+              <span className="text-white font-black text-2xl tabular-nums">{String(t.minutes).padStart(2, "0")}</span>
+              <span className="text-gray-500 text-[10px] uppercase tracking-wider">min</span>
+            </div>
+            <span className="text-[#EB83EA] font-black text-xl">:</span>
+            <div className="flex flex-col items-center">
+              <span className="text-[#EB83EA] font-black text-2xl tabular-nums animate-pulse">{String(t.seconds).padStart(2, "0")}</span>
+              <span className="text-gray-500 text-[10px] uppercase tracking-wider">sec</span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-[#EB83EA] font-bold text-sm animate-pulse">Starting soon…</p>
+        )}
+
+        {/* CTA */}
+        <Link
+          href={`/premiere/${video.id}`}
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#EB83EA] hover:bg-[#E748E6] text-white rounded-full font-bold text-sm transition shadow-lg shadow-[#EB83EA]/30"
+        >
+          Get notified <FiArrowRight className="w-4 h-4" />
+        </Link>
+
+        {/* Skip */}
+        <button
+          onClick={onNext}
+          className="text-gray-500 hover:text-gray-300 text-xs transition"
+        >
+          Skip →
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function SnapshotsContent() {
   const searchParams = useSearchParams();
@@ -43,7 +147,7 @@ function SnapshotsContent() {
         return;
       }
 
-      const shorts: Video[] = data.videos.map((v: any) => ({
+      const mapVideo = (v: any): Video => ({
         id: v.id,
         title: v.title,
         description: v.description || "",
@@ -51,25 +155,27 @@ function SnapshotsContent() {
         duration: v.duration || 0,
         views: v.views || 0,
         likes: v.likes || 0,
-        createdAt: new Date(v.created_at),
-        playbackUrl: v.playback_url || '',
+        createdAt: new Date(v.created_at || Date.now()),
+        playbackUrl: v.playback_url || v.playbackUrl || '',
         livepeerAssetId: v.playback_id || v.livepeer_asset_id || '',
-        contentType: v.content_type,
+        contentType: v.content_type || v.contentType || 'short',
+        premiereMode: v.premiere_mode || v.premiereMode || null,
+        publishedAt: (v.published_at || v.publishedAt) ? new Date(v.published_at || v.publishedAt) : null,
         creator: v.creator ? {
           did: v.creator.did,
-          handle: v.creator.handle,
-          displayName: v.creator.display_name,
-          avatar: v.creator.avatar || "/defaultpfp.png",
+          handle: v.creator.handle || v.creator.creatorHandle || "creator",
+          displayName: v.creator.display_name || v.creator.creatorName || "Creator",
+          avatar: v.creator.avatar || v.creator.creatorAvatar || "/defaultpfp.png",
           description: "",
           followerCount: 0,
           followingCount: 0,
           createdAt: new Date(),
           verified: v.creator.verified || false,
         } : {
-          did: v.creator_did,
-          handle: "creator",
-          displayName: "Creator",
-          avatar: "/defaultpfp.png",
+          did: v.creator_did || "",
+          handle: v.creatorHandle || "creator",
+          displayName: v.creatorName || "Creator",
+          avatar: v.creatorAvatar || "/defaultpfp.png",
           description: "",
           followerCount: 0,
           followingCount: 0,
@@ -79,17 +185,49 @@ function SnapshotsContent() {
         category: v.category || "Other",
         tags: Array.isArray(v.tags) ? v.tags : (v.tags ? v.tags.split(',') : []),
         source: "ceramic" as const,
-      })).filter((v: Video) => v.contentType === "short");
+      });
+
+      const shorts: Video[] = data.videos.map(mapVideo).filter((v: Video) => v.contentType === "short");
 
       // Sort by date (newest first)
       shorts.sort((a: Video, b: Video) => b.createdAt.getTime() - a.createdAt.getTime());
 
-      console.log(`[Snapshots] Loaded ${shorts.length} Dragverse shorts`);
-      setSnapshots(shorts);
+      // Fetch upcoming premiere shorts and append them (they're excluded from the main list)
+      let allSnapshots = shorts;
+      try {
+        const premiereRes = await fetch("/api/videos/upcoming-premieres?contentType=short");
+        if (premiereRes.ok) {
+          const premiereData = await premiereRes.json();
+          if (premiereData.success && premiereData.premieres?.length > 0) {
+            const premiereShorts: Video[] = premiereData.premieres.map((p: any) => mapVideo({
+              ...p,
+              content_type: "short",
+              premiere_mode: p.premiereMode,
+              published_at: p.publishedAt,
+              created_at: p.publishedAt,
+              creator: {
+                did: "",
+                handle: p.creatorHandle,
+                display_name: p.creatorName,
+                avatar: p.creatorAvatar,
+                verified: false,
+              },
+            }));
+            // Append premieres at the end — they're non-playable slots
+            allSnapshots = [...shorts, ...premiereShorts];
+            console.log(`[Snapshots] Added ${premiereShorts.length} upcoming premiere snapshots`);
+          }
+        }
+      } catch {
+        // Upcoming premieres are optional — don't break main feed
+      }
+
+      console.log(`[Snapshots] Loaded ${allSnapshots.length} total snapshots`);
+      setSnapshots(allSnapshots);
 
       // If deep-linking to a specific video, set the index
       if (videoId && !isRefresh) {
-        const idx = shorts.findIndex((s) => s.id === videoId);
+        const idx = allSnapshots.findIndex((s) => s.id === videoId);
         if (idx >= 0) {
           setCurrentIndex(idx);
         }
@@ -210,18 +348,26 @@ function SnapshotsContent() {
         <div className="relative flex-1 w-full min-h-0 md:p-2 md:bg-gradient-to-b md:from-[#EB83EA] md:to-[#E748E6] md:rounded-[2rem] md:shadow-xl md:shadow-[#EB83EA]/20">
           {/* Screen */}
           <div className="relative h-full w-full md:rounded-[1.5rem] overflow-hidden bg-gray-950">
-            <ShortVideo
-              key={currentVideo.id}
-              video={currentVideo}
-              isActive={true}
-              onNext={() => setCurrentIndex(prev => (prev + 1) % snapshots.length)}
-              onEnded={handleVideoEnded}
-              onError={handleVideoError}
-              onDelete={handleVideoDeleted}
-              initialLiked={socialStatus.likes[currentVideo.id]}
-              initialFollowing={socialStatus.follows[currentVideo.creator.did]}
-              pauseAtEnd={!!videoId && currentVideo.id === videoId}
-            />
+            {currentVideo.premiereMode === 'countdown' && currentVideo.publishedAt && currentVideo.publishedAt > new Date() ? (
+              <PremiereSlot
+                key={currentVideo.id}
+                video={currentVideo}
+                onNext={() => setCurrentIndex(prev => (prev + 1) % snapshots.length)}
+              />
+            ) : (
+              <ShortVideo
+                key={currentVideo.id}
+                video={currentVideo}
+                isActive={true}
+                onNext={() => setCurrentIndex(prev => (prev + 1) % snapshots.length)}
+                onEnded={handleVideoEnded}
+                onError={handleVideoError}
+                onDelete={handleVideoDeleted}
+                initialLiked={socialStatus.likes[currentVideo.id]}
+                initialFollowing={socialStatus.follows[currentVideo.creator.did]}
+                pauseAtEnd={!!videoId && currentVideo.id === videoId}
+              />
+            )}
             {/* Logo refresh button — desktop only */}
             <button
               onClick={() => loadSnapshots(true)}

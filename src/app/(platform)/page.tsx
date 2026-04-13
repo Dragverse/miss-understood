@@ -10,6 +10,7 @@ import { HorizontalVideosSection } from "@/components/home/horizontal-videos-sec
 import { AudiosSection } from "@/components/home/audios-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
 import { LiveNowSection } from "@/components/home/live-now-section";
+import { UpcomingPremieresSection } from "@/components/home/upcoming-premieres-section";
 import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
@@ -222,6 +223,9 @@ export default function HomePage() {
 
               {/* Happening Now — active livestreams, hidden when no one is live */}
               <LiveNowSection />
+
+              {/* Upcoming Premieres — hidden when none scheduled */}
+              <UpcomingPremieresSection />
 
               {/* Audio Section - Podcasts and music with album-style covers */}
               <AudiosSection audios={audios} />

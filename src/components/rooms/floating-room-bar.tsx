@@ -55,7 +55,7 @@ export function FloatingRoomBar() {
   };
 
   return (
-    <div className="fixed bottom-20 right-4 z-[60] w-72 bg-[#1a0b2e] border border-[#EB83EA]/40 rounded-2xl shadow-2xl shadow-[#EB83EA]/10 overflow-hidden">
+    <div className="hidden md:block fixed bottom-20 right-4 z-[60] w-72 bg-[#1a0b2e] border border-[#EB83EA]/40 rounded-2xl shadow-2xl shadow-[#EB83EA]/10 overflow-hidden">
       <div className="px-4 py-3 flex items-center gap-3">
         {/* Room info */}
         <div className="flex-1 min-w-0">
