@@ -209,7 +209,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
   // ── Always render the same grid shell; content switches by state ──────────
   return (
     <div className="w-full">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] lg:h-[400px]">
+      <div className={`grid grid-cols-1 lg:h-[400px] ${streamInfo.isLive ? "lg:grid-cols-[1fr_300px]" : ""}`}>
 
         {/* ── Player column ── */}
         <div ref={containerRef} className="relative aspect-video lg:aspect-auto lg:h-full bg-black group overflow-hidden">
@@ -287,10 +287,12 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
           )}
         </div>
 
-        {/* ── Chat column — desktop only, always mounted so it reconnects instantly ── */}
-        <div className="hidden lg:block h-full border-l border-white/10">
-          <ChatPanel channelId={chatChannelId} />
-        </div>
+        {/* ── Chat column — desktop only, only when live ── */}
+        {streamInfo.isLive && (
+          <div className="hidden lg:block h-full border-l border-white/10">
+            <ChatPanel channelId={chatChannelId} />
+          </div>
+        )}
       </div>
 
       {/* Divider between player and creator info */}

@@ -314,12 +314,14 @@ export default function DynamicProfilePage() {
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/90" />
           </div>
 
-          {/* Livestream player — renders above creator info when live, null when offline */}
-          <div className="relative z-10">
-            <LivestreamEmbed
-              creatorDID={creator.did}
-              creatorName={creator.displayName}
-            />
+          {/* Livestream player */}
+          <div className="relative z-10 p-3 sm:p-4 pb-0">
+            <div className="rounded-[20px] overflow-hidden shadow-xl">
+              <LivestreamEmbed
+                creatorDID={creator.did}
+                creatorName={creator.displayName}
+              />
+            </div>
           </div>
 
           {/* Creator info */}
