@@ -236,6 +236,7 @@ function LivePageContent() {
   const pollCountRef = useRef(0);
   const [diagLines, setDiagLines] = useState<string[]>([]);
   const [hlsRetry, setHlsRetry] = useState(0);
+  const [needsTap, setNeedsTap] = useState(false);
 
 
   const playbackUrl =
@@ -315,10 +316,22 @@ function LivePageContent() {
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
 
     const onPlaying = () => setStreamState("playing");
-    const onEnded = () => setStreamState("ended");
+    const onEnded   = () => setStreamState("ended");
+    const onWaiting = () => setDiagLines(prev => [...prev.slice(-3), "Video: buffering…"]);
+    const onStalled = () => setDiagLines(prev => [...prev.slice(-3), "Video: stalled"]);
+    const onCanPlay = () => setDiagLines(prev => [...prev.slice(-3), "Video: canPlay fired"]);
+    const onError   = () => {
+      const code = videoEl.error?.code;
+      const msg  = videoEl.error?.message ?? "unknown";
+      setDiagLines(prev => [...prev.slice(-3), `Video error code=${code}: ${msg}`]);
+    };
 
     videoEl.addEventListener("playing", onPlaying);
-    videoEl.addEventListener("ended", onEnded);
+    videoEl.addEventListener("ended",   onEnded);
+    videoEl.addEventListener("waiting", onWaiting);
+    videoEl.addEventListener("stalled", onStalled);
+    videoEl.addEventListener("canplay", onCanPlay);
+    videoEl.addEventListener("error",   onError);
 
     if (Hls.isSupported()) {
       const hls = new Hls({ enableWorker: true, lowLatencyMode: true, startLevel: -1 });
@@ -359,15 +372,26 @@ function LivePageContent() {
         }
       });
     } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
+      // iOS Safari — native HLS
+      setDiagLines(prev => [...prev.slice(-3), "iOS native HLS — setting src"]);
       videoEl.src = playbackUrl;
-      videoEl.play().catch(() => {});
+      videoEl.load();
+      videoEl.play().catch((e) => {
+        setDiagLines(prev => [...prev.slice(-3), `iOS play() blocked: ${e?.message ?? e}`]);
+        setNeedsTap(true);
+      });
     } else {
+      setDiagLines(prev => [...prev.slice(-3), "HLS not supported on this browser"]);
       setStreamState("ended");
     }
 
     return () => {
       videoEl.removeEventListener("playing", onPlaying);
-      videoEl.removeEventListener("ended", onEnded);
+      videoEl.removeEventListener("ended",   onEnded);
+      videoEl.removeEventListener("waiting", onWaiting);
+      videoEl.removeEventListener("stalled", onStalled);
+      videoEl.removeEventListener("canplay", onCanPlay);
+      videoEl.removeEventListener("error",   onError);
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
   }, [playbackUrl, playerKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -461,6 +485,14 @@ function LivePageContent() {
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 gap-3 px-4">
                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#EB83EA]" />
                     <p className="text-gray-300 text-sm font-medium">Connecting to stream…</p>
+                    {needsTap && (
+                      <button
+                        onClick={() => { videoRef.current?.play().catch(() => {}); setNeedsTap(false); }}
+                        className="mt-1 px-5 py-2.5 bg-[#EB83EA] hover:bg-[#E748E6] text-white rounded-full text-sm font-bold transition shadow-lg"
+                      >
+                        Tap to play
+                      </button>
+                    )}
                     {hlsRetry > 0 && (
                       <p className="text-yellow-400/80 text-xs">HLS retry {hlsRetry}/4 — stream starting up</p>
                     )}
