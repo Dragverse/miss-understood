@@ -279,19 +279,10 @@ export default function DynamicProfilePage() {
     totalLikes: userVideos.reduce((sum, v) => sum + (v.likes || 0), 0),
   };
 
-  // Render profile - Hybrid Style (Banner + Instagram tabs)
+  // Render profile
   return (
     <div className="min-h-screen pb-28 md:pb-6">
-      {/* Livestream embed — above the banner, always visible */}
-      <div id="livestream" className="scroll-mt-16">
-        <LivestreamEmbed
-          creatorDID={creator.did}
-          creatorName={creator.displayName}
-          creatorHandle={creator.handle}
-        />
-      </div>
-
-      {/* Back Button - Fixed top left */}
+      {/* Back Button */}
       <button
         onClick={() => router.back()}
         className="fixed top-20 left-4 z-50 flex items-center gap-2 px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full transition shadow-lg"
@@ -300,38 +291,50 @@ export default function DynamicProfilePage() {
         <span className="hidden sm:inline">Back</span>
       </button>
 
-      {/* Hero Banner - Full width */}
-      <div className="relative w-full h-[40vh] md:h-[50vh] bg-gradient-to-br from-[#EB83EA]/20 via-[#7c3aed]/20 to-[#1a0b2e]">
-        {creator.banner ? (
-          <Image
-            src={creator.banner}
-            alt="Profile banner"
-            fill
-            className="object-cover"
-            priority
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA] via-[#7c3aed] to-[#1a0b2e]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
+      {/* ── Unified profile card ────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-8 pt-4 md:pt-6" id="livestream">
+        <div className="relative rounded-[32px] overflow-hidden bg-[#1a0b2e] shadow-2xl">
+
+          {/* Card background: creator's banner */}
+          <div className="absolute inset-0">
+            {creator.banner ? (
+              <Image
+                src={creator.banner}
+                alt="Profile banner"
+                fill
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA] via-[#7c3aed] to-[#1a0b2e]">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
+              </div>
+            )}
+            {/* Gradient: strong at bottom for readability, light at top */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/90" />
           </div>
-        )}
 
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[#0f071a]" />
+          {/* Livestream player — renders above creator info when live, null when offline */}
+          <div className="relative z-10">
+            <LivestreamEmbed
+              creatorDID={creator.did}
+              creatorName={creator.displayName}
+            />
+          </div>
 
-        {/* Profile content overlaying banner */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 md:px-8 pb-6">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex flex-col md:flex-row items-start md:items-end gap-4 md:gap-6">
-              {/* Avatar - Rounded with live ring */}
+          {/* Creator info */}
+          <div className="relative z-10 px-4 sm:px-6 md:px-8 pt-5 pb-5 md:pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+
+              {/* Avatar */}
               <div className="relative flex-shrink-0">
                 {isCreatorLive && (
                   <>
                     <span className="absolute -inset-2 rounded-full animate-ping bg-red-500/30" />
-                    <span className="absolute -inset-1 rounded-full border-4 border-red-500" />
+                    <span className="absolute -inset-1 rounded-full border-[3px] border-red-500" />
                   </>
                 )}
-                <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#0f071a] overflow-hidden bg-[#2f2942] shadow-2xl">
+                <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full border-[3px] border-white/20 overflow-hidden bg-[#2f2942] shadow-2xl">
                   <Image
                     src={creator.avatar}
                     alt={creator.displayName}
@@ -341,27 +344,28 @@ export default function DynamicProfilePage() {
                   />
                 </div>
                 {isCreatorLive && (
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2.5 py-1 bg-red-500 rounded-full shadow-lg shadow-red-500/40 z-10">
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-0.5 bg-red-500 rounded-full shadow-lg shadow-red-500/40 z-10 whitespace-nowrap">
                     <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                    <span className="text-white text-xs font-bold uppercase tracking-wide">Live</span>
+                    <span className="text-white text-[10px] font-bold uppercase tracking-wide">Live</span>
                   </div>
                 )}
               </div>
 
-              {/* Name, handle, and actions */}
-              <div className="flex-1 flex flex-col md:flex-row md:items-end md:justify-between gap-4 pb-2">
-                <div>
-                  <div className="flex items-center gap-3 mb-2 flex-wrap">
-                    <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-2xl">
+              {/* Name, handle, stats, actions */}
+              <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="min-w-0">
+                  {/* Name + live link + badge */}
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <h1 className="text-2xl md:text-3xl font-bold text-white drop-shadow-2xl leading-tight">
                       {creator.displayName}
                     </h1>
                     {isCreatorLive && (
                       <Link
                         href={`/live/${handle}`}
-                        className="flex items-center gap-1.5 px-3 py-1 bg-red-500 hover:bg-red-600 rounded-full transition shadow-lg shadow-red-500/30"
+                        className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500 hover:bg-red-600 rounded-full transition shadow-lg shadow-red-500/30 flex-shrink-0"
                       >
                         <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                        <span className="text-white text-sm font-bold uppercase tracking-wide">Live Now</span>
+                        <span className="text-white text-xs font-bold uppercase tracking-wide">Live Now</span>
                       </Link>
                     )}
                     <VerificationBadge
@@ -371,12 +375,14 @@ export default function DynamicProfilePage() {
                         !!creator.blueskyHandle,
                         !!creator.farcasterHandle
                       )}
-                      size={28}
+                      size={24}
                       className="flex-shrink-0"
                     />
                   </div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <p className="text-white/90 text-lg md:text-xl drop-shadow-lg">@{creator.handle}</p>
+
+                  {/* Handle + social badges */}
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <p className="text-white/80 text-sm md:text-base">@{creator.handle}</p>
                     {creator.blueskyHandle && <BlueskyBadge handle={creator.blueskyHandle} />}
                     {creator.farcasterHandle && <FarcasterBadge username={creator.farcasterHandle} />}
                     {creator.youtubeChannelId && <YouTubeBadge channelId={creator.youtubeChannelId} channelName={creator.youtubeChannelName} />}
@@ -384,19 +390,20 @@ export default function DynamicProfilePage() {
                     {creator.tiktokHandle && <TikTokBadge handle={creator.tiktokHandle} />}
                     {creator.website && <WebsiteBadge url={creator.website} />}
                   </div>
-                  {/* Stats inline */}
-                  <div className="flex gap-6 text-sm md:text-base">
+
+                  {/* Stats */}
+                  <div className="flex gap-4 text-sm flex-wrap">
                     <div>
-                      <span className="font-bold text-xl text-white drop-shadow-lg">
+                      <span className="font-bold text-lg text-white drop-shadow-lg">
                         {isLoadingContent ? "—" : stats.contentCount}
                       </span>
-                      <span className="text-white/80 ml-2">content</span>
+                      <span className="text-white/70 ml-1.5">content</span>
                     </div>
                     <div className="group relative">
-                      <span className="font-bold text-xl text-white drop-shadow-lg">
+                      <span className="font-bold text-lg text-white drop-shadow-lg">
                         {(creator.followerCount || 0).toLocaleString()}
                       </span>
-                      <span className="text-white/80 ml-2">followers</span>
+                      <span className="text-white/70 ml-1.5">followers</span>
                       {((connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 || (creator.youtubeSubscriberCount || 0) > 0) && (
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                           <div className="bg-[#1a0b2e]/95 border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[160px] backdrop-blur-sm">
@@ -420,37 +427,24 @@ export default function DynamicProfilePage() {
                       )}
                     </div>
                     <div>
-                      <span className="font-bold text-xl text-white drop-shadow-lg">
+                      <span className="font-bold text-lg text-white drop-shadow-lg">
                         {(creator.followingCount || 0).toLocaleString()}
                       </span>
-                      <span className="text-white/80 ml-2">following</span>
+                      <span className="text-white/70 ml-1.5">following</span>
                     </div>
                     {(creator.tipCount || 0) > 0 && (
                       <div>
-                        <span className="font-bold text-xl text-white drop-shadow-lg">
+                        <span className="font-bold text-lg text-white drop-shadow-lg">
                           {(creator.tipCount || 0).toLocaleString()}
                         </span>
-                        <span className="text-white/80 ml-2">tips</span>
+                        <span className="text-white/70 ml-1.5">tips</span>
                       </div>
                     )}
                   </div>
-                  {/* Bio */}
-                  {creator.description && (
-                    <div className="mt-2">
-                      <p className={`text-white/90 text-sm leading-relaxed drop-shadow-lg ${!bioExpanded ? "line-clamp-1" : ""}`}>
-                        {creator.description}
-                      </p>
-                      {!bioExpanded && (
-                        <button onClick={() => setBioExpanded(true)} className="text-white/60 text-sm font-medium">
-                          ...more
-                        </button>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex-shrink-0 flex gap-2">
+                <div className="flex gap-2 flex-shrink-0">
                   <ProfileActionButtons
                     creator={creator}
                     isOwnProfile={currentUserDID === creator.did}
@@ -459,7 +453,7 @@ export default function DynamicProfilePage() {
                   />
                   <button
                     onClick={handleShareProfile}
-                    className="px-4 py-2 bg-[#2f2942] hover:bg-[#3f3952] text-white font-semibold rounded-lg transition-all"
+                    className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-all"
                     title="Copy profile link"
                   >
                     <FiShare2 className="w-5 h-5" />
@@ -467,6 +461,20 @@ export default function DynamicProfilePage() {
                 </div>
               </div>
             </div>
+
+            {/* Bio — full width below avatar+name row */}
+            {creator.description && (
+              <div className="mt-3 sm:pl-[calc(5rem+1rem)] md:pl-[calc(6rem+1rem)]">
+                <p className={`text-white/80 text-sm leading-relaxed drop-shadow-lg ${!bioExpanded ? "line-clamp-2" : ""}`}>
+                  {creator.description}
+                </p>
+                {!bioExpanded && creator.description.length > 120 && (
+                  <button onClick={() => setBioExpanded(true)} className="text-white/50 hover:text-white/80 text-xs font-medium mt-0.5 transition">
+                    more
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

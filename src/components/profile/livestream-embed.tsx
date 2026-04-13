@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import Hls from "hls.js";
 import { FiVolume2, FiVolumeX, FiMaximize2, FiMessageSquare, FiSend, FiClock } from "react-icons/fi";
 
@@ -84,7 +83,7 @@ function ChatPanel({ channelId }: { channelId: string }) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-black/60 backdrop-blur-sm border-l border-white/10 overflow-hidden">
+    <div className="flex flex-col h-full bg-black/70 backdrop-blur-sm overflow-hidden">
       <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2 flex-shrink-0">
         <FiMessageSquare className="w-4 h-4 text-[#EB83EA]" />
         <h3 className="text-sm font-bold text-white">Live Chat</h3>
@@ -130,11 +129,11 @@ function ChatPanel({ channelId }: { channelId: string }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export function LivestreamEmbed({ creatorDID, creatorName, creatorHandle }: LivestreamEmbedProps) {
+export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProps) {
   const [streamInfo, setStreamInfo] = useState<StreamInfo>({ isLive: false });
   const [upcoming, setUpcoming] = useState<UpcomingStream | null>(null);
-  const [checking, setChecking] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
+  const [playerError, setPlayerError] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -162,16 +161,12 @@ export function LivestreamEmbed({ creatorDID, creatorName, creatorHandle }: Live
         setUpcoming(data.upcoming?.length > 0 ? { title: data.upcoming[0].name || "Upcoming Stream", scheduledAt: data.upcoming[0].scheduledAt } : null);
       } catch {
         // silent
-      } finally {
-        setChecking(false);
       }
     };
     check();
     const interval = setInterval(check, 10_000);
     return () => clearInterval(interval);
   }, [creatorDID, creatorName]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const [playerError, setPlayerError] = useState(false);
 
   const effectivePlaybackId = streamInfo.playbackId ?? (isOwnActiveStream ? activeStream?.playbackId : undefined);
   const playbackUrl = streamInfo.playbackUrl || (effectivePlaybackId ? `https://livepeercdn.studio/hls/${effectivePlaybackId}/index.m3u8` : null);
@@ -212,39 +207,63 @@ export function LivestreamEmbed({ creatorDID, creatorName, creatorHandle }: Live
   // ── Connecting state (own stream, DB not synced yet) ──────────────────────
   if (isOwnActiveStream && !streamInfo.isLive) {
     return (
-      <div className="w-full h-[380px] md:h-[480px] bg-black/60 border-b border-red-500/30 flex flex-col items-center justify-center gap-3">
+      <div className="flex items-center justify-center gap-3 py-6 bg-black/60 border-b border-red-500/20">
         <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
         <span className="text-red-400 font-bold uppercase tracking-widest text-sm">Connecting…</span>
-        <p className="text-gray-400 text-sm">Your stream is starting. It will appear here in a moment.</p>
+        <p className="text-gray-400 text-sm hidden sm:block">Your stream is starting — it will appear here in a moment.</p>
       </div>
     );
   }
 
+  // ── Offline — return null; the card banner handles the visual ─────────────
+  if (!streamInfo.isLive) {
+    // Show upcoming stream pill anchored to bottom-left of the card (rendered by parent)
+    if (upcoming) {
+      return (
+        <div className="px-4 sm:px-6 pt-4 pb-0">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-black/50 backdrop-blur-sm rounded-full border border-[#EB83EA]/30">
+            <FiClock className="w-3.5 h-3.5 text-[#EB83EA] flex-shrink-0" />
+            <span className="text-white text-xs font-medium truncate max-w-[200px]">{upcoming.title}</span>
+            <span className="text-gray-400 text-xs flex-shrink-0">· {formatDate(upcoming.scheduledAt)}</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
+
   // ── Live ──────────────────────────────────────────────────────────────────
-  if (streamInfo.isLive && playbackUrl) {
-    return (
-      <div className="w-full grid grid-cols-1 lg:grid-cols-[1fr_320px]" style={{ height: "clamp(320px, 55vw, 520px)" }}>
-        {/* Player */}
-        <div ref={containerRef} className="relative bg-black group h-full overflow-hidden">
+  return (
+    <div className="w-full">
+      {/* Player + Chat grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] lg:h-[400px]">
+        {/* Player — full aspect-video on mobile, fixed height on desktop */}
+        <div ref={containerRef} className="relative aspect-video lg:aspect-auto lg:h-full bg-black group overflow-hidden">
           {/* LIVE badge */}
-          <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 px-2.5 py-1 bg-red-500 rounded-md text-xs font-bold text-white shadow-lg">
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 bg-red-500 rounded-md text-xs font-bold text-white shadow-lg">
             <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
             LIVE
           </div>
+
+          {/* Stream title */}
           {streamInfo.title && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-sm font-medium max-w-xs truncate">
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium max-w-[60%] truncate">
               {streamInfo.title}
             </div>
           )}
+
           {playerError ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black gap-3">
               <p className="text-gray-400 text-sm">Stream temporarily unavailable</p>
-              <button onClick={() => setPlayerError(false)} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm transition">Retry</button>
+              <button onClick={() => setPlayerError(false)} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm transition">
+                Retry
+              </button>
             </div>
           ) : (
             <>
               <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay />
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
+              {/* Controls — appear on hover */}
+              <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
                 <button onClick={() => setIsMuted(m => !m)} className="w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label={isMuted ? "Unmute" : "Mute"}>
                   {isMuted ? <FiVolumeX className="w-4 h-4 text-white" /> : <FiVolume2 className="w-4 h-4 text-white" />}
                 </button>
@@ -255,33 +274,15 @@ export function LivestreamEmbed({ creatorDID, creatorName, creatorHandle }: Live
             </>
           )}
         </div>
-        {/* Chat */}
-        <ChatPanel channelId={chatChannelId} />
+
+        {/* Chat — desktop only */}
+        <div className="hidden lg:block h-full border-l border-white/10">
+          <ChatPanel channelId={chatChannelId} />
+        </div>
       </div>
-    );
-  }
 
-  // ── Offline / loading ─────────────────────────────────────────────────────
-  return (
-    <div className="relative w-full h-[380px] md:h-[480px] overflow-hidden bg-[#1a0b2e]">
-      <Image src="/currently-offline.jpg" alt="Currently Offline" fill className="object-cover" priority />
-
-      {/* Offline badge — same style as hero section */}
-      {!checking && (
-        <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#C62828]">
-          <span className="w-2 h-2 bg-white rounded-full" />
-          <span className="text-xs font-bold uppercase text-white">Offline</span>
-        </div>
-      )}
-
-      {/* Upcoming stream pill */}
-      {upcoming && !checking && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-black/70 backdrop-blur-sm rounded-full border border-[#EB83EA]/30 whitespace-nowrap">
-          <FiClock className="w-3.5 h-3.5 text-[#EB83EA] flex-shrink-0" />
-          <span className="text-white text-sm font-medium">{upcoming.title}</span>
-          <span className="text-gray-400 text-xs">· {formatDate(upcoming.scheduledAt)}</span>
-        </div>
-      )}
+      {/* Divider between player and creator info */}
+      <div className="h-px bg-white/10" />
     </div>
   );
 }
