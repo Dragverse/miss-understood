@@ -325,7 +325,7 @@ export default function DynamicProfilePage() {
           </div>
 
           {/* Creator info */}
-          <div className="relative z-10 px-4 sm:px-6 md:px-8 pt-5 pb-5 md:pb-6">
+          <div className="relative z-10 px-4 sm:px-6 md:px-8 pt-4 pb-5 md:pb-6">
             <div className="flex flex-col sm:flex-row sm:items-start gap-4">
 
               {/* Avatar */}

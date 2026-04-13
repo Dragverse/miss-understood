@@ -233,6 +233,9 @@ function LivePageContent() {
   const hlsRef = useRef<Hls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollCountRef = useRef(0);
+  const [diagLines, setDiagLines] = useState<string[]>([]);
+  const [hlsRetry, setHlsRetry] = useState(0);
 
 
   const playbackUrl =
@@ -256,12 +259,18 @@ function LivePageContent() {
   // Fetch creator + stream from API
   useEffect(() => {
     const fetchInfo = async () => {
+      pollCountRef.current += 1;
+      const attempt = pollCountRef.current;
       try {
         const res = await fetch(`/api/stream/live?handle=${encodeURIComponent(handle)}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          setDiagLines([`Poll #${attempt}: API returned ${res.status}`]);
+          return;
+        }
         const data = await res.json();
         if (data.creator) setCreator(data.creator);
         if (data.stream) {
+          setDiagLines([`Poll #${attempt}: stream found ✓ (id: ${data.stream.id?.slice(0,8)}…)`]);
           setStream(data.stream);
           // Allow recovery: if we were offline or gave up, reinit the player
           setStreamState((prev) => {
@@ -273,12 +282,13 @@ function LivePageContent() {
           });
         } else if (!directPlaybackId && !storePlaybackId) {
           // No ?p= and no store fallback — creator genuinely offline
+          setDiagLines([`Poll #${attempt}: no active stream, no ?p= — offline`]);
           setStreamState("offline");
+        } else {
+          setDiagLines([`Poll #${attempt}: no stream in DB yet — waiting for Livepeer…`]);
         }
-        // If ?p= or storePlaybackId is present but API has no record yet,
-        // do nothing — let HLS retries determine liveness, don't timeout to "ended"
-      } catch {
-        // silent
+      } catch (e) {
+        setDiagLines([`Poll #${attempt}: fetch error — ${e instanceof Error ? e.message : "unknown"}`]);
       } finally {
         setLoading(false);
       }
@@ -326,11 +336,14 @@ function LivePageContent() {
         if (!data.fatal) return;
         if (fatalRetries < MAX_FATAL_RETRIES) {
           fatalRetries++;
+          setHlsRetry(fatalRetries);
           const delay = fatalRetries * 5_000; // 5s, 10s, 15s, 20s
+          setDiagLines(prev => [...prev.slice(-2), `HLS fatal (${data.type}): retry ${fatalRetries}/${MAX_FATAL_RETRIES} in ${delay/1000}s`]);
           setTimeout(() => {
             if (hlsRef.current === hls) hls.loadSource(playbackUrl);
           }, delay);
         } else {
+          setDiagLines(prev => [...prev.slice(-2), `HLS: ${MAX_FATAL_RETRIES} retries exhausted → ended`]);
           setStreamState("ended");
         }
       });
@@ -434,9 +447,20 @@ function LivePageContent() {
 
                 {/* Connecting overlay */}
                 {streamState === "connecting" && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3 px-4">
                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#EB83EA]" />
-                    <p className="text-gray-300 text-sm">Connecting to stream…</p>
+                    <p className="text-gray-300 text-sm font-medium">Connecting to stream…</p>
+                    {hlsRetry > 0 && (
+                      <p className="text-yellow-400/80 text-xs">HLS retry {hlsRetry}/4 — stream starting up</p>
+                    )}
+                    {/* Diagnostic panel — helps debug detection issues */}
+                    {diagLines.length > 0 && (
+                      <div className="mt-2 w-full max-w-xs bg-black/60 border border-white/10 rounded-lg p-3 space-y-1">
+                        {diagLines.map((l, i) => (
+                          <p key={i} className="text-white/50 text-[10px] font-mono leading-snug break-all">{l}</p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
