@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import * as Player from "@livepeer/react/player";
-import { getSrc } from "@livepeer/react/external";
-import { FiVideo, FiClock } from "react-icons/fi";
+import { useEffect, useRef, useState } from "react";
+import Hls from "hls.js";
+import { FiVideo, FiClock, FiVolume2, FiVolumeX, FiMaximize2 } from "react-icons/fi";
 import { useStreamStore } from "@/lib/store/stream";
 
 interface LivestreamEmbedProps {
@@ -11,7 +10,6 @@ interface LivestreamEmbedProps {
   creatorName: string;
 }
 
-// Mirrors the shape hero-section uses for its streamInfo
 interface StreamInfo {
   isLive: boolean;
   playbackId?: string;
@@ -36,9 +34,16 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
   const [upcoming, setUpcoming] = useState<UpcomingStream | null>(null);
   const [checking, setChecking] = useState(true);
   const [playerError, setPlayerError] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const activeStream = useStreamStore((s) => s.activeStream);
   const isOwnActiveStream = activeStream?.creatorDID === creatorDID;
 
+  // ── Poll stream status ───────────────────────────────────────────────────
   useEffect(() => {
     const check = async () => {
       try {
@@ -48,18 +53,18 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
         if (!res.ok) return;
         const data = await res.json();
 
-        const prevLive = streamInfo.isLive;
-
         if (data.streams?.length > 0) {
           const s = data.streams[0];
-          setStreamInfo({
-            isLive: true,
-            playbackId: s.playbackId,
-            playbackUrl: s.playbackUrl,
-            title: s.name || `${creatorName} is live!`,
+          setStreamInfo((prev) => {
+            // Reset error flag when a new stream starts
+            if (!prev.isLive) setPlayerError(false);
+            return {
+              isLive: true,
+              playbackId: s.playbackId,
+              playbackUrl: s.playbackUrl,
+              title: s.name || `${creatorName} is live!`,
+            };
           });
-          // Reset player error when stream changes
-          if (!prevLive) setPlayerError(false);
         } else {
           setStreamInfo({ isLive: false });
         }
@@ -81,10 +86,76 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
     return () => clearInterval(interval);
   }, [creatorDID, creatorName]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // While initial check is running, show Connecting if this is the streamer's own session
+  // ── HLS.js player setup ──────────────────────────────────────────────────
+  // Runs whenever the stream goes live or the playback URL changes.
+  // Same approach used by hero-section and ShortVideo throughout the codebase.
+  const effectivePlaybackId = streamInfo.playbackId ?? (isOwnActiveStream ? activeStream?.playbackId : undefined);
+  const playbackUrl = streamInfo.playbackUrl ||
+    (effectivePlaybackId ? `https://livepeercdn.studio/hls/${effectivePlaybackId}/index.m3u8` : null);
+
+  useEffect(() => {
+    if (!streamInfo.isLive || !playbackUrl) return;
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    // Tear down any previous instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    setPlayerError(false);
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        startLevel: -1,
+      });
+      hlsRef.current = hls;
+      hls.loadSource(playbackUrl);
+      hls.attachMedia(videoEl);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        videoEl.play().catch(() => {
+          // Autoplay blocked — video stays paused, user can tap play
+        });
+      });
+
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          setPlayerError(true);
+        }
+      });
+    } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
+      // Native HLS (Safari / iOS)
+      videoEl.src = playbackUrl;
+      videoEl.play().catch(() => {});
+    } else {
+      setPlayerError(true);
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [streamInfo.isLive, playbackUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep video muted state in sync
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  // ── Render guards ────────────────────────────────────────────────────────
+
+  // While initial check is running, show Connecting only to the streamer
   if (checking && !isOwnActiveStream) return null;
 
-  // Streamer just went live in this session — show connecting while DB/API catches up (~30s)
+  // Streamer just went live — "Connecting" while DB/API catches up
   if (isOwnActiveStream && !streamInfo.isLive) {
     return (
       <div className="w-full mb-8 bg-black/60 border border-red-500/30 rounded-[24px] overflow-hidden p-8 text-center">
@@ -99,11 +170,35 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
 
   if (checking) return null;
 
-  // Playback ID — prefer API response, fall back to store (edge case: API confirmed live but omitted ID)
-  const effectivePlaybackId = streamInfo.playbackId ?? (isOwnActiveStream ? activeStream!.playbackId : undefined);
-
   // ── Active stream ────────────────────────────────────────────────────────
-  if (streamInfo.isLive && effectivePlaybackId) {
+  if (streamInfo.isLive && playbackUrl) {
+    const handleRetry = () => {
+      setPlayerError(false);
+      // Re-trigger the HLS setup by toggling isLive won't work easily;
+      // instead, directly re-init if videoEl is available
+      const videoEl = videoRef.current;
+      if (!videoEl || !playbackUrl) return;
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+      if (Hls.isSupported()) {
+        const hls = new Hls({ enableWorker: true, lowLatencyMode: true, startLevel: -1 });
+        hlsRef.current = hls;
+        hls.loadSource(playbackUrl);
+        hls.attachMedia(videoEl);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => { videoEl.play().catch(() => {}); });
+        hls.on(Hls.Events.ERROR, (_, data) => { if (data.fatal) setPlayerError(true); });
+      }
+    };
+
+    const handleFullscreen = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        el.requestFullscreen?.();
+      }
+    };
+
     return (
       <div className="w-full mb-8 bg-[#1a0b2e] border border-[#2f2942] rounded-[24px] overflow-hidden">
         {/* Header */}
@@ -121,43 +216,48 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
           </div>
         </div>
 
-        {/* Player — aspect-video gives the container an explicit intrinsic height */}
-        <div className="relative w-full aspect-video bg-black">
+        {/* Player */}
+        <div ref={containerRef} className="relative w-full aspect-video bg-black group">
           {playerError ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black gap-3">
               <p className="text-gray-400 text-sm">Stream temporarily unavailable</p>
               <button
-                onClick={() => setPlayerError(false)}
+                onClick={handleRetry}
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm transition"
               >
                 Retry
               </button>
             </div>
           ) : (
-            <div className="absolute inset-0 w-full h-full">
-            <Player.Root
-              src={getSrc(
-                streamInfo.playbackUrl ||
-                `https://livepeercdn.studio/hls/${effectivePlaybackId}/index.m3u8`
-              )}
-              autoPlay
-            >
-              <Player.Container className="w-full h-full">
-                <Player.Video
-                  className="w-full h-full object-cover"
-                  onLoadedData={() => setPlayerError(false)}
-                  onError={() => setPlayerError(true)}
-                />
-                <Player.Controls autoHide={3000} className="p-4">
-                  <div className="flex items-center gap-2">
-                    <Player.PlayPauseTrigger className="w-10 h-10 flex items-center justify-center bg-white/20 rounded-full hover:bg-white/30 transition" />
-                    <Player.MuteTrigger className="w-10 h-10 flex items-center justify-center bg-white/20 rounded-full hover:bg-white/30 transition" />
-                    <Player.FullscreenTrigger className="ml-auto w-10 h-10 flex items-center justify-center bg-white/20 rounded-full hover:bg-white/30 transition" />
-                  </div>
-                </Player.Controls>
-              </Player.Container>
-            </Player.Root>
-            </div>
+            <>
+              <video
+                ref={videoRef}
+                className="absolute inset-0 w-full h-full object-cover"
+                muted
+                playsInline
+                autoPlay
+              />
+              {/* Controls overlay — visible on hover */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
+                <button
+                  onClick={() => setIsMuted((m) => !m)}
+                  className="w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition"
+                  aria-label={isMuted ? "Unmute" : "Mute"}
+                >
+                  {isMuted
+                    ? <FiVolumeX className="w-4 h-4 text-white" />
+                    : <FiVolume2 className="w-4 h-4 text-white" />
+                  }
+                </button>
+                <button
+                  onClick={handleFullscreen}
+                  className="ml-auto w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition"
+                  aria-label="Fullscreen"
+                >
+                  <FiMaximize2 className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>

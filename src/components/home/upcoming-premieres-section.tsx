@@ -95,12 +95,6 @@ export function UpcomingPremieresSection() {
           <h2 className="font-heading text-2xl lg:text-3xl uppercase tracking-wide whitespace-nowrap font-black">
             Upcoming Premieres
           </h2>
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#EB83EA]/20 border border-[#EB83EA]/30 rounded-full">
-            <FiFilm className="w-3 h-3 text-[#EB83EA]" />
-            <span className="text-[#EB83EA] text-xs font-bold uppercase tracking-wide">
-              {premieres.length} {premieres.length === 1 ? "premiere" : "premieres"}
-            </span>
-          </div>
         </div>
         <div className="h-px bg-gradient-to-r from-[#2f2942] to-transparent w-full" />
       </div>

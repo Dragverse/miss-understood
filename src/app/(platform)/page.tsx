@@ -215,17 +215,17 @@ export default function HomePage() {
               {/* Hero */}
               <HeroSection horizontalVideos={horizontalVideos} />
 
+              {/* Happening Now — active livestreams, first after hero when live */}
+              <LiveNowSection />
+
+              {/* Upcoming Premieres — hidden when none scheduled */}
+              <UpcomingPremieresSection />
+
               {/* Dragverse Snapshots (Shorts) - Native vertical videos */}
               <SnapshotsSection shorts={shorts} />
 
               {/* Horizontal Videos Section - Native long-form videos */}
               <HorizontalVideosSection videos={horizontalVideos} />
-
-              {/* Happening Now — active livestreams, hidden when no one is live */}
-              <LiveNowSection />
-
-              {/* Upcoming Premieres — hidden when none scheduled */}
-              <UpcomingPremieresSection />
 
               {/* Audio Section - Podcasts and music with album-style covers */}
               <AudiosSection audios={audios} />
