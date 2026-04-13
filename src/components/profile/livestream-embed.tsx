@@ -152,8 +152,13 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
 
   // ── Render guards ────────────────────────────────────────────────────────
 
-  // While initial check is running, show Connecting only to the streamer
-  if (checking && !isOwnActiveStream) return null;
+  // While initial check is running, show a subtle skeleton for viewers so the page
+  // doesn't look broken. The streamer sees the "Connecting…" state below.
+  if (checking && !isOwnActiveStream) {
+    return (
+      <div className="w-full mb-8 h-16 bg-white/5 rounded-[24px] animate-pulse" />
+    );
+  }
 
   // Streamer just went live — "Connecting" while DB/API catches up
   if (isOwnActiveStream && !streamInfo.isLive) {

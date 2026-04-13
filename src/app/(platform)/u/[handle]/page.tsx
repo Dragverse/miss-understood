@@ -357,13 +357,13 @@ export default function DynamicProfilePage() {
                       {creator.displayName}
                     </h1>
                     {isCreatorLive && (
-                      <a
-                        href="#livestream"
+                      <Link
+                        href={`/live/${handle}`}
                         className="flex items-center gap-1.5 px-3 py-1 bg-red-500 hover:bg-red-600 rounded-full transition shadow-lg shadow-red-500/30"
                       >
                         <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                         <span className="text-white text-sm font-bold uppercase tracking-wide">Live Now</span>
-                      </a>
+                      </Link>
                     )}
                     <VerificationBadge
                       badgeType={getUserBadgeType(
