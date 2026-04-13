@@ -233,7 +233,7 @@ function LivePageContent() {
   const hlsRef = useRef<Hls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const noStreamPollsRef = useRef(0);
+
 
   const playbackUrl =
     stream?.playbackUrl ??
@@ -262,7 +262,6 @@ function LivePageContent() {
         const data = await res.json();
         if (data.creator) setCreator(data.creator);
         if (data.stream) {
-          noStreamPollsRef.current = 0;
           setStream(data.stream);
           // Allow recovery: if we were offline or gave up, reinit the player
           setStreamState((prev) => {
@@ -272,16 +271,12 @@ function LivePageContent() {
             }
             return prev;
           });
-        } else if (!directPlaybackId) {
+        } else if (!directPlaybackId && !storePlaybackId) {
+          // No ?p= and no store fallback — creator genuinely offline
           setStreamState("offline");
-        } else {
-          // Has ?p= but DB has no record yet — after 3 consecutive empty polls (~45s)
-          // with no video playing, give up
-          noStreamPollsRef.current += 1;
-          if (noStreamPollsRef.current >= 3) {
-            setStreamState((prev) => (prev === "connecting" ? "ended" : prev));
-          }
         }
+        // If ?p= or storePlaybackId is present but API has no record yet,
+        // do nothing — let HLS retries determine liveness, don't timeout to "ended"
       } catch {
         // silent
       } finally {
@@ -321,8 +316,23 @@ function LivePageContent() {
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         videoEl.play().catch(() => {});
       });
+
+      // Retry fatal errors (e.g. manifest 404 during stream startup) with backoff.
+      // Only give up after MAX_FATAL_RETRIES — this prevents "Stream has ended"
+      // from firing when the stream is starting but CDN isn't ready yet.
+      let fatalRetries = 0;
+      const MAX_FATAL_RETRIES = 4;
       hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) setStreamState("ended");
+        if (!data.fatal) return;
+        if (fatalRetries < MAX_FATAL_RETRIES) {
+          fatalRetries++;
+          const delay = fatalRetries * 5_000; // 5s, 10s, 15s, 20s
+          setTimeout(() => {
+            if (hlsRef.current === hls) hls.loadSource(playbackUrl);
+          }, delay);
+        } else {
+          setStreamState("ended");
+        }
       });
     } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
       videoEl.src = playbackUrl;
