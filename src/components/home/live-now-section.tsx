@@ -40,7 +40,8 @@ export function LiveNowSection() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading || liveStreams.length === 0) return null;
+  const displayStreams = liveStreams.filter((s) => s.creatorHandle);
+  if (loading || displayStreams.length === 0) return null;
 
   return (
     <section className="space-y-6">
@@ -65,7 +66,7 @@ export function LiveNowSection() {
 
       {/* Stream cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {liveStreams.filter((s) => s.creatorHandle).map((stream) => {
+        {displayStreams.map((stream) => {
           const href = `/live/${stream.creatorHandle}`;
 
           return (

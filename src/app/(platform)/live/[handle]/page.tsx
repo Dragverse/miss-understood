@@ -235,7 +235,6 @@ function LivePageContent() {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollCountRef = useRef(0);
   const [diagLines, setDiagLines] = useState<string[]>([]);
-  const [hlsRetry, setHlsRetry] = useState(0);
   const [needsTap, setNeedsTap] = useState(false);
 
 
@@ -313,54 +312,53 @@ function LivePageContent() {
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
+    let effectActive = true;
+    let iosErrorListener: (() => void) | null = null;
+
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
 
     const onPlaying = () => setStreamState("playing");
     const onEnded   = () => setStreamState("ended");
-    const onError   = () => {
-      const code = videoEl.error?.code;
-      const msg  = videoEl.error?.message ?? "unknown";
-      setDiagLines(prev => [...prev.slice(-2), `Video error ${code}: ${msg}`]);
-    };
     videoEl.addEventListener("playing", onPlaying);
     videoEl.addEventListener("ended",   onEnded);
-    videoEl.addEventListener("error",   onError);
 
     if (Hls.isSupported()) {
       const hls = new Hls({ enableWorker: true, lowLatencyMode: true, startLevel: -1 });
       hlsRef.current = hls;
       hls.loadSource(playbackUrl);
       hls.attachMedia(videoEl);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        videoEl.play().catch(() => {});
-      });
-      // Retry up to 3× at 3s each before giving up (~9s total grace window)
-      let fatalRetries = 0;
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { videoEl.play().catch(() => {}); });
+      // Never give up — CDN needs time to start HLS delivery after WHIP connects.
+      // API polling decides when the stream is truly over (sets state to offline/ended).
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (!data.fatal) return;
-        if (fatalRetries < 3) {
-          fatalRetries++;
-          setHlsRetry(fatalRetries);
-          setTimeout(() => { if (hlsRef.current === hls) hls.loadSource(playbackUrl); }, 3_000);
-        } else {
-          setStreamState("ended");
-        }
+        setDiagLines(prev => [...prev.slice(-2), `HLS error — retrying in 5s (${data.type})`]);
+        setTimeout(() => {
+          if (effectActive && hlsRef.current === hls) hls.loadSource(playbackUrl);
+        }, 5_000);
       });
     } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
-      // iOS Safari native HLS — do NOT call load(), it causes AbortError on play()
-      videoEl.src = playbackUrl;
-      videoEl.play().catch((e) => {
-        setDiagLines(prev => [...prev.slice(-2), `play() blocked: ${e?.message ?? e}`]);
-        setNeedsTap(true);
-      });
+      // iOS Safari native HLS — do NOT call load() before play() (causes AbortError)
+      const tryPlay = () => {
+        videoEl.src = playbackUrl;
+        videoEl.play().catch(() => { setNeedsTap(true); });
+      };
+      iosErrorListener = () => {
+        if (!effectActive) return;
+        setDiagLines(prev => [...prev.slice(-2), `iOS HLS error — retrying in 5s`]);
+        setTimeout(() => { if (effectActive) tryPlay(); }, 5_000);
+      };
+      videoEl.addEventListener("error", iosErrorListener);
+      tryPlay();
     } else {
       setStreamState("ended");
     }
 
     return () => {
+      effectActive = false;
       videoEl.removeEventListener("playing", onPlaying);
       videoEl.removeEventListener("ended",   onEnded);
-      videoEl.removeEventListener("error",   onError);
+      if (iosErrorListener) videoEl.removeEventListener("error", iosErrorListener);
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
   }, [playbackUrl, playerKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -461,9 +459,6 @@ function LivePageContent() {
                       >
                         Tap to play
                       </button>
-                    )}
-                    {hlsRetry > 0 && (
-                      <p className="text-yellow-400/80 text-xs">HLS retry {hlsRetry}/4 — stream starting up</p>
                     )}
                     {/* Diagnostic panel — helps debug detection issues */}
                     {diagLines.length > 0 && (

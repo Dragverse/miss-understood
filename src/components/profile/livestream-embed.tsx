@@ -178,20 +178,45 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
     if (!videoEl) return;
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     setPlayerError(false);
+
+    let effectActive = true;
+
     if (Hls.isSupported()) {
       const hls = new Hls({ enableWorker: true, lowLatencyMode: true, startLevel: -1 });
       hlsRef.current = hls;
       hls.loadSource(playbackUrl);
       hls.attachMedia(videoEl);
       hls.on(Hls.Events.MANIFEST_PARSED, () => { videoEl.play().catch(() => {}); });
-      hls.on(Hls.Events.ERROR, (_, data) => { if (data.fatal) setPlayerError(true); });
+      // Retry indefinitely — polling will set isLive=false when stream truly ends
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (!data.fatal) return;
+        setTimeout(() => {
+          if (effectActive && hlsRef.current === hls) hls.loadSource(playbackUrl);
+        }, 5_000);
+      });
     } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
-      videoEl.src = playbackUrl;
-      videoEl.play().catch(() => {});
+      const tryPlay = () => {
+        videoEl.src = playbackUrl;
+        videoEl.play().catch(() => {});
+      };
+      const onIosError = () => {
+        if (!effectActive) return;
+        setTimeout(() => { if (effectActive) tryPlay(); }, 5_000);
+      };
+      videoEl.addEventListener("error", onIosError);
+      tryPlay();
+      return () => {
+        effectActive = false;
+        videoEl.removeEventListener("error", onIosError);
+        if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+      };
     } else {
       setPlayerError(true);
     }
-    return () => { if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; } };
+    return () => {
+      effectActive = false;
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    };
   }, [streamInfo.isLive, playbackUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (videoRef.current) videoRef.current.muted = isMuted; }, [isMuted]);
