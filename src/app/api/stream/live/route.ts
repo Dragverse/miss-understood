@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
     if (!handle) {
       return NextResponse.json({ error: "handle parameter is required" }, { status: 400 });
     }
+    // ?p= direct playback ID — used as a last-resort HLS check when no DB row exists
+    const directPlaybackId = request.nextUrl.searchParams.get("p");
 
     // Resolve handle → creator row
     const { data: creator, error: creatorError } = await supabase
@@ -62,6 +64,34 @@ export async function GET(request: NextRequest) {
     }
 
     if (!streams || streams.length === 0) {
+      // No DB rows found — last resort: check the ?p= playback ID directly against
+      // Livepeer CDN. This covers the case where the DB insert failed during stream
+      // creation so the stream exists on Livepeer but has no Supabase record.
+      if (directPlaybackId) {
+        const isLive = await isHLSManifestLive(directPlaybackId);
+        if (isLive) {
+          // Self-heal: insert a minimal stream record so future polls (profile embed,
+          // homepage) can find this stream without needing the ?p= bypass.
+          void supabase.from("streams").insert({
+            creator_did: creator.did,
+            playback_id: directPlaybackId,
+            playback_url: `https://livepeercdn.studio/hls/${directPlaybackId}/index.m3u8`,
+            title: "Live Stream",
+            is_active: true,
+            started_at: new Date().toISOString(),
+          });
+          return NextResponse.json({
+            stream: {
+              id: directPlaybackId,
+              playbackId: directPlaybackId,
+              playbackUrl: `https://livepeercdn.studio/hls/${directPlaybackId}/index.m3u8`,
+              title: "Live Stream",
+              startedAt: new Date().toISOString(),
+            },
+            creator: normalizeCreator(creator),
+          });
+        }
+      }
       return NextResponse.json({ stream: null, creator: normalizeCreator(creator) });
     }
 

@@ -262,7 +262,9 @@ function LivePageContent() {
       pollCountRef.current += 1;
       const attempt = pollCountRef.current;
       try {
-        const res = await fetch(`/api/stream/live?handle=${encodeURIComponent(handle)}`);
+        const params = new URLSearchParams({ handle });
+        if (directPlaybackId) params.set("p", directPlaybackId);
+        const res = await fetch(`/api/stream/live?${params}`);
         if (!res.ok) {
           setDiagLines([`Poll #${attempt}: API returned ${res.status}`]);
           return;
@@ -285,7 +287,7 @@ function LivePageContent() {
           setDiagLines([`Poll #${attempt}: no active stream, no ?p= — offline`]);
           setStreamState("offline");
         } else {
-          setDiagLines([`Poll #${attempt}: no stream in DB yet — waiting for Livepeer…`]);
+          setDiagLines([`Poll #${attempt}: no active stream found — checking HLS…`]);
         }
       } catch (e) {
         setDiagLines([`Poll #${attempt}: fetch error — ${e instanceof Error ? e.message : "unknown"}`]);
