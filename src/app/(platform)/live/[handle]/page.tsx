@@ -348,13 +348,13 @@ function LivePageContent() {
       hls.loadSource(playbackUrl);
       hls.attachMedia(videoEl);
       hls.on(Hls.Events.MANIFEST_PARSED, () => { videoEl.play().catch(() => {}); });
-      // Never give up — CDN needs time to start HLS delivery after WHIP connects.
-      // API polling decides when the stream is truly over (sets state to offline/ended).
+      // On fatal error, destroy + rebuild the whole HLS instance via playerKey.
+      // loadSource() on a broken instance doesn't reset hls.js internal state.
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (!data.fatal) return;
-        setDiagLines(prev => [...prev.slice(-2), `HLS error — retrying in 5s (${data.type})`]);
+        setDiagLines(prev => [...prev.slice(-2), `HLS fatal (${data.type}) — rebuilding in 5s`]);
         setTimeout(() => {
-          if (effectActive && hlsRef.current === hls) hls.loadSource(playbackUrl);
+          if (effectActive) setPlayerKey(k => k + 1);
         }, 5_000);
       });
     } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
