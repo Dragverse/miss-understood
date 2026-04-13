@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { FiAlertTriangle } from "react-icons/fi";
 import { SponsoredImage } from "@/components/ads/sponsored-image";
+import { AdSenseUnit } from "@/components/ads/adsense-unit";
 
 export function RightSidebar() {
 
@@ -88,6 +89,9 @@ export function RightSidebar() {
           </p>
         </div>
       </div>
+
+      {/* AdSense — sidebar unit */}
+      <AdSenseUnit slot="3049874782" format="auto" />
 
       {/* Sponsored Section */}
       <SponsoredImage
