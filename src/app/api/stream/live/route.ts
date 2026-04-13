@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     // Resolve handle → creator row
     const { data: creator, error: creatorError } = await supabase
       .from("creators")
-      .select("did, handle, display_name, avatar, verified, bio, follower_count, following_count")
+      .select("did, handle, display_name, avatar, verified, description, follower_count, following_count")
       .eq("handle", handle)
       .maybeSingle();
 
@@ -167,7 +167,7 @@ function normalizeCreator(c: {
   display_name: string | null;
   avatar: string | null;
   verified: boolean | null;
-  bio: string | null;
+  description: string | null;
   follower_count: number | null;
   following_count: number | null;
 }) {
@@ -177,7 +177,7 @@ function normalizeCreator(c: {
     displayName: c.display_name ?? c.handle,
     avatar: c.avatar ?? "/defaultpfp.png",
     verified: c.verified ?? false,
-    bio: c.bio ?? "",
+    bio: c.description ?? "",
     followerCount: c.follower_count ?? 0,
     followingCount: c.following_count ?? 0,
   };
