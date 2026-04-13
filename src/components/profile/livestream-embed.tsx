@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Hls from "hls.js";
-import { FiVolume2, FiVolumeX, FiMaximize2, FiMessageSquare, FiSend, FiClock, FiPlay } from "react-icons/fi";
+import { FiVolume2, FiVolumeX, FiMaximize2, FiMessageSquare, FiSend, FiClock } from "react-icons/fi";
 
 import { usePrivy } from "@privy-io/react-auth";
 import { useStreamStore } from "@/lib/store/stream";
@@ -218,30 +218,20 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
   // ── Offline ───────────────────────────────────────────────────────────────
   if (!streamInfo.isLive) {
     return (
-      <div className="relative w-full aspect-video lg:h-[220px] flex items-center justify-center overflow-hidden">
-        {/* subtle dark overlay so text is readable over banner */}
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
-        <div className="relative z-10 flex flex-col items-center gap-3 text-center px-4">
-          {upcoming ? (
-            <>
-              <div className="flex items-center gap-2 px-4 py-2 bg-black/60 backdrop-blur-sm rounded-full border border-[#EB83EA]/40">
-                <FiClock className="w-4 h-4 text-[#EB83EA] flex-shrink-0" />
-                <span className="text-white text-sm font-semibold truncate max-w-[240px]">{upcoming.title}</span>
-                <span className="text-gray-300 text-xs flex-shrink-0">· {formatDate(upcoming.scheduledAt)}</span>
-              </div>
-              <p className="text-gray-400 text-xs">Stream scheduled</p>
-            </>
-          ) : (
-            <>
-              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                <FiPlay className="w-5 h-5 text-white/60" />
-              </div>
-              <p className="text-white/60 text-sm font-medium">Not live right now</p>
-            </>
-          )}
-        </div>
-        {/* bottom divider */}
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-white/10" />
+      <div className="relative w-full aspect-video lg:h-[220px] overflow-hidden">
+        <Image
+          src="/currently-offline.jpg"
+          alt="Stream Currently Offline"
+          fill
+          className="object-cover"
+        />
+        {upcoming && (
+          <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full border border-[#EB83EA]/30">
+            <FiClock className="w-3.5 h-3.5 text-[#EB83EA] flex-shrink-0" />
+            <span className="text-white text-xs font-medium truncate max-w-[200px]">{upcoming.title}</span>
+            <span className="text-gray-400 text-xs flex-shrink-0">· {formatDate(upcoming.scheduledAt)}</span>
+          </div>
+        )}
       </div>
     );
   }
