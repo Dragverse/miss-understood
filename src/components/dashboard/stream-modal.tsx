@@ -5,6 +5,7 @@ import { FiVideo, FiMonitor, FiMic, FiMicOff, FiVideoOff, FiX, FiCopy, FiChevron
 import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
 import { useStreamStore } from "@/lib/store/stream";
+import { useLiveCreatorsStore } from "@/lib/store/live-creators";
 
 interface StreamModalProps {
   onClose: () => void;
@@ -25,6 +26,7 @@ interface StreamInfo {
 export function StreamModal({ onClose }: StreamModalProps) {
   const { getAccessToken, user } = usePrivy();
   const { setActiveStream, clearActiveStream } = useStreamStore();
+  const { markLive, markOffline } = useLiveCreatorsStore();
 
   // Step management
   const [step, setStep] = useState<StreamStep>('create');
@@ -531,6 +533,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
       toast.success("🎥 Live on Dragverse!");
       if (streamInfo?.playbackId && user?.id) {
         setActiveStream({ creatorDID: user.id, playbackId: streamInfo.playbackId });
+        markLive(user.id);
       }
 
       // Update database status to active
@@ -787,6 +790,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
     // Update database status to inactive
     await updateStreamStatus(false);
     clearActiveStream();
+    if (user?.id) markOffline(user.id);
     console.log('✅ Database updated: is_active = false');
 
     // Close WebRTC peer connection
@@ -1265,55 +1269,55 @@ export function StreamModal({ onClose }: StreamModalProps) {
                 </button>
               </div>
 
-              {/* Viewer URL — direct link bypasses DB, works even if stream creation had a DB hiccup */}
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-white mb-1">
-                    Direct stream link
-                  </p>
-                  <p className="text-xs text-gray-400 mb-2">
-                    Share this — it plays your stream directly without needing a database lookup.
-                  </p>
-                  <div className="flex gap-2">
-                    <a
-                      href={`${typeof window !== "undefined" ? window.location.origin : ""}/live/${userHandle}${streamInfo?.playbackId ? `?p=${streamInfo.playbackId}` : ""}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 px-4 py-2 bg-[#2f2942] border border-blue-500/30 rounded-lg text-blue-400 text-sm hover:bg-[#3f3952] transition truncate"
-                    >
-                      {`${typeof window !== "undefined" ? window.location.origin : ""}/live/${userHandle}${streamInfo?.playbackId ? `?p=${streamInfo.playbackId}` : ""}`}
-                    </a>
-                    <button
-                      onClick={() => copyToClipboard(
-                        `${typeof window !== "undefined" ? window.location.origin : ""}/live/${userHandle}${streamInfo?.playbackId ? `?p=${streamInfo.playbackId}` : ""}`,
-                        "Stream link"
-                      )}
-                      className="p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition shrink-0"
-                    >
-                      <FiCopy className="w-5 h-5 text-blue-400" />
-                    </button>
+              {/* Share links — only render once we have a handle and playbackId */}
+              {userHandle && streamInfo?.playbackId && (() => {
+                const origin = typeof window !== "undefined" ? window.location.origin : "";
+                const streamUrl = `${origin}/live/${userHandle}?p=${streamInfo.playbackId}`;
+                const profileUrl = `${origin}/u/${userHandle}`;
+                return (
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white mb-1">Direct stream link</p>
+                      <p className="text-xs text-gray-400 mb-2">Share this with your audience.</p>
+                      <div className="flex gap-2">
+                        <a
+                          href={streamUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 px-4 py-2 bg-[#2f2942] border border-blue-500/30 rounded-lg text-blue-400 text-sm hover:bg-[#3f3952] transition truncate"
+                        >
+                          {streamUrl}
+                        </a>
+                        <button
+                          onClick={() => copyToClipboard(streamUrl, "Stream link")}
+                          className="p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition shrink-0"
+                        >
+                          <FiCopy className="w-5 h-5 text-blue-400" />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Also visible on your profile:</p>
+                      <div className="flex gap-2">
+                        <a
+                          href={profileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 px-4 py-2 bg-[#2f2942] border border-white/10 rounded-lg text-gray-400 text-sm hover:bg-[#3f3952] transition truncate"
+                        >
+                          {profileUrl}
+                        </a>
+                        <button
+                          onClick={() => copyToClipboard(profileUrl, "Profile URL")}
+                          className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition shrink-0"
+                        >
+                          <FiCopy className="w-5 h-5 text-gray-400" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Also visible on your profile:</p>
-                  <div className="flex gap-2">
-                    <a
-                      href={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${userHandle}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 px-4 py-2 bg-[#2f2942] border border-white/10 rounded-lg text-gray-400 text-sm hover:bg-[#3f3952] transition truncate"
-                    >
-                      {`${typeof window !== "undefined" ? window.location.origin : ""}/u/${userHandle}`}
-                    </a>
-                    <button
-                      onClick={() => copyToClipboard(`${typeof window !== "undefined" ? window.location.origin : ""}/u/${userHandle}`, "Profile URL")}
-                      className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition shrink-0"
-                    >
-                      <FiCopy className="w-5 h-5 text-gray-400" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           )}
         </div>

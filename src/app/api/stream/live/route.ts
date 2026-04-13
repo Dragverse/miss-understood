@@ -1,31 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isHLSManifestLive } from "@/lib/stream/hls";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-async function isHLSManifestLive(playbackId: string): Promise<boolean> {
-  try {
-    const url = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
-    const res = await fetch(url, {
-      cache: "no-store",
-      headers: { "Cache-Control": "no-cache" },
-    });
-    if (!res.ok) return false;
-    const text = await res.text();
-    return (
-      text.length > 50 &&
-      (text.includes(".ts") ||
-        text.includes(".m4s") ||
-        text.includes("#EXTINF") ||
-        text.includes("#EXT-X-MEDIA-SEQUENCE"))
-    );
-  } catch {
-    return false;
-  }
-}
 
 /**
  * GET /api/stream/live?handle={handle}

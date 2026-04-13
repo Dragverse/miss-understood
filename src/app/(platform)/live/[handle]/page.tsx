@@ -16,6 +16,7 @@ import {
   FiMessageSquare,
 } from "react-icons/fi";
 import { supabase } from "@/lib/supabase/client";
+import { useStreamStore } from "@/lib/store/stream";
 
 interface Creator {
   did: string;
@@ -43,7 +44,7 @@ interface ChatMessage {
 
 // ── Chat panel ────────────────────────────────────────────────────────────────
 function ChatPanel({ channelId }: { channelId: string }) {
-  const { user, authenticated, login, getAccessToken } = usePrivy();
+  const { user, authenticated, login } = usePrivy();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [userInfo, setUserInfo] = useState<{ name: string; avatar: string } | null>(null);
@@ -198,40 +199,59 @@ function LivePageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const handle = params.handle as string;
+  const { user } = usePrivy();
 
-  // ?p= bypasses DB lookup — guaranteed to work even if DB insert failed
+  // ?p= bypasses DB lookup — works even if DB insert failed
   const directPlaybackId = searchParams.get("p");
+
+  // If the viewer is the creator who just went live, use the store playbackId
+  // as an immediate fallback before the DB syncs (same pattern as profile embed)
+  const activeStream = useStreamStore((s) => s.activeStream);
+  const isOwnStream = activeStream?.creatorDID === user?.id;
+  const storePlaybackId = isOwnStream ? activeStream?.playbackId ?? null : null;
 
   const [creator, setCreator] = useState<Creator | null>(null);
   const [stream, setStream] = useState<StreamInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
 
+  // playerKey increments whenever we need to (re)initialise the HLS player.
+  // Using a key avoids the fragile boolean-expression dependency array trick.
+  const [playerKey, setPlayerKey] = useState(0);
+
   // Stream playback state machine
   // 'connecting'  — player set up, waiting for first frame
   // 'playing'     — video is rendering live content
   // 'ended'       — stream stopped or never started
-  // 'offline'     — no ?p= and API found no active stream
+  // 'offline'     — no playback source and API found no active stream
   type StreamState = "connecting" | "playing" | "ended" | "offline";
-  const [streamState, setStreamState] = useState<StreamState>(
-    directPlaybackId ? "connecting" : "offline"
-  );
+  const initialState: StreamState =
+    directPlaybackId || storePlaybackId ? "connecting" : "offline";
+  const [streamState, setStreamState] = useState<StreamState>(initialState);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // How many consecutive API polls returned no stream while we were connecting
   const noStreamPollsRef = useRef(0);
 
   const playbackUrl =
     stream?.playbackUrl ??
     (directPlaybackId
       ? `https://livepeercdn.studio/hls/${directPlaybackId}/index.m3u8`
+      : null) ??
+    (storePlaybackId
+      ? `https://livepeercdn.studio/hls/${storePlaybackId}/index.m3u8`
       : null);
 
-  // Chat channel id: prefer stream DB id (stable UUID); fall back to playbackId
-  const chatChannelId = stream?.id ?? directPlaybackId ?? handle;
+  // Chat channel — lock to the first stable ID we get (playbackId is always
+  // available when live; stream.id arrives after DB sync). Locking prevents
+  // the chat room from changing mid-session when the DB record syncs in.
+  const chatChannelIdRef = useRef<string | null>(null);
+  if (!chatChannelIdRef.current && (stream?.id || directPlaybackId || storePlaybackId)) {
+    chatChannelIdRef.current = stream?.id ?? directPlaybackId ?? storePlaybackId ?? handle;
+  }
+  const chatChannelId = chatChannelIdRef.current ?? handle;
 
   // Fetch creator + stream from API
   useEffect(() => {
@@ -244,10 +264,14 @@ function LivePageContent() {
         if (data.stream) {
           noStreamPollsRef.current = 0;
           setStream(data.stream);
-          // Allow recovery: if we were offline or gave up, try again
-          setStreamState((prev) =>
-            prev === "offline" || prev === "ended" ? "connecting" : prev
-          );
+          // Allow recovery: if we were offline or gave up, reinit the player
+          setStreamState((prev) => {
+            if (prev === "offline" || prev === "ended") {
+              setPlayerKey((k) => k + 1);
+              return "connecting";
+            }
+            return prev;
+          });
         } else if (!directPlaybackId) {
           setStreamState("offline");
         } else {
@@ -312,7 +336,7 @@ function LivePageContent() {
       videoEl.removeEventListener("ended", onEnded);
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
-  }, [playbackUrl, streamState === "offline"]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [playbackUrl, playerKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync mute
   useEffect(() => {

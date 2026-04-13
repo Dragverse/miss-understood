@@ -82,7 +82,6 @@ export async function POST(request: NextRequest) {
 
       if (newCreator) {
         creatorId = newCreator.id;
-        console.log(`[Posts] Created new creator for DID ${userDID}: ${creatorId}`);
       } else {
         console.warn(`[Posts] Failed to create creator: ${creatorError?.message}`);
       }
@@ -117,8 +116,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    console.log("[Posts] ✅ Dragverse post created:", post.id);
 
     // Cross-post to other platforms if requested
     const crosspostResults: Record<string, { success: boolean; error?: string; url?: string; uri?: string; cid?: string; hash?: string; openWarpcast?: boolean }> = {
@@ -156,14 +153,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Cross-post to Bluesky
-    console.log("[Posts] ========== CROSSPOSTING DEBUG ==========");
-    console.log("[Posts] Platforms received:", platforms);
-    console.log("[Posts] Bluesky enabled:", platforms.bluesky);
-    console.log("[Posts] User DID:", userDID);
-    console.log("[Posts] Crosspost text:", crosspostText);
-
     if (platforms.bluesky) {
-      console.log("[Posts] Cross-posting to Bluesky...");
       try {
         // Check if this is a video/audio post by looking for watch/listen URLs in text
         const isVideoPost = textContent && (textContent.includes('/watch/') || textContent.includes('/listen/'));
@@ -199,10 +189,8 @@ export async function POST(request: NextRequest) {
         const blueskyResult = await postToBluesky(request, blueskyParams, userDID);
 
         crosspostResults.bluesky = blueskyResult;
-        if (blueskyResult.success) {
-          console.log("[Posts] ✅ Bluesky post created:", blueskyResult.uri);
-        } else {
-          console.error("[Posts] ❌ Bluesky post failed:", blueskyResult.error);
+        if (!blueskyResult.success) {
+          console.error("[Posts] Bluesky post failed:", blueskyResult.error);
         }
       } catch (error) {
         console.error("[Posts] ❌ Bluesky error:", error);
@@ -227,7 +215,6 @@ export async function POST(request: NextRequest) {
         .from("posts")
         .update(updateData)
         .eq("id", post.id);
-      console.log("[Posts] ✅ Updated crosspost tracking:", crosspostedTo);
     }
 
     // Return success even if cross-posting partially fails

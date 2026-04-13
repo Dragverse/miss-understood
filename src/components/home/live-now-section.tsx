@@ -65,8 +65,8 @@ export function LiveNowSection() {
 
       {/* Stream cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {liveStreams.map((stream) => {
-          const href = stream.creatorHandle ? `/live/${stream.creatorHandle}` : "#";
+        {liveStreams.filter((s) => s.creatorHandle).map((stream) => {
+          const href = `/live/${stream.creatorHandle}`;
 
           return (
             <Link

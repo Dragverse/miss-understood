@@ -54,7 +54,7 @@ export async function GET(
       viewer_ip: clientIP,
       viewer_did: userId,
       access_method: shareToken ? "share_token" : "direct",
-      share_token_id: shareToken ? undefined : undefined, // Would need to be extracted from token validation
+      share_token_id: undefined,
       user_agent: userAgent,
       referer: referer,
     });
