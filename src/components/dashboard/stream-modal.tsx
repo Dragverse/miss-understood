@@ -1174,18 +1174,35 @@ export function StreamModal({ onClose }: StreamModalProps) {
                 </ol>
               </div>
 
-              {/* Viewer URL */}
-              {userHandle && (
-                <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
-                  <h4 className="text-green-400 font-semibold mb-2">Your stream will appear at:</h4>
-                  <a
-                    href={`/u/${userHandle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#EB83EA] hover:underline break-all"
-                  >
-                    {`${typeof window !== "undefined" ? window.location.origin : ""}/u/${userHandle}`}
-                  </a>
+              {/* Viewer URLs */}
+              {userHandle && streamInfo?.playbackId && (
+                <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl space-y-3">
+                  <div>
+                    <h4 className="text-green-400 font-semibold mb-1">Direct stream link (share this)</h4>
+                    <p className="text-xs text-gray-400 mb-2">Works even before the stream appears on your profile.</p>
+                    <div className="flex gap-2">
+                      <span className="flex-1 px-3 py-2 bg-[#2f2942] border border-green-500/30 rounded-lg text-green-400 text-sm truncate">
+                        {`${typeof window !== "undefined" ? window.location.origin : ""}/live/${userHandle}?p=${streamInfo.playbackId}`}
+                      </span>
+                      <button
+                        onClick={() => copyToClipboard(`${typeof window !== "undefined" ? window.location.origin : ""}/live/${userHandle}?p=${streamInfo.playbackId}`, "Stream link")}
+                        className="p-2 bg-green-500/20 hover:bg-green-500/30 rounded-lg transition shrink-0"
+                      >
+                        <FiCopy className="w-5 h-5 text-green-400" />
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-green-400 font-semibold mb-1">Profile page</h4>
+                    <a
+                      href={`/u/${userHandle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#EB83EA] hover:underline break-all text-sm"
+                    >
+                      {`${typeof window !== "undefined" ? window.location.origin : ""}/u/${userHandle}`}
+                    </a>
+                  </div>
                 </div>
               )}
 

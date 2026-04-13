@@ -232,8 +232,9 @@ function LivePageContent() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollCountRef = useRef(0);
+  const streamStateRef = useRef(streamState);
   const [diagLines, setDiagLines] = useState<string[]>([]);
   const [needsTap, setNeedsTap] = useState(false);
 
@@ -256,8 +257,13 @@ function LivePageContent() {
   }
   const chatChannelId = chatChannelIdRef.current ?? handle;
 
-  // Fetch creator + stream from API
+  // Keep streamStateRef in sync so the polling scheduler can read it without deps
+  useEffect(() => { streamStateRef.current = streamState; }, [streamState]);
+
+  // Fetch creator + stream from API — polls every 5s when offline/connecting, 15s when playing
   useEffect(() => {
+    let cancelled = false;
+
     const fetchInfo = async () => {
       pollCountRef.current += 1;
       const attempt = pollCountRef.current;
@@ -296,9 +302,23 @@ function LivePageContent() {
       }
     };
 
+    const schedule = () => {
+      // 5s when not yet playing (offline / connecting / ended) to catch stream fast
+      // 15s when playing to reduce server load
+      const delay = streamStateRef.current === "playing" ? 15_000 : 5_000;
+      pollingRef.current = setTimeout(async () => {
+        if (cancelled) return;
+        await fetchInfo();
+        if (!cancelled) schedule();
+      }, delay);
+    };
+
     fetchInfo();
-    pollingRef.current = setInterval(fetchInfo, 15_000);
-    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+    schedule();
+    return () => {
+      cancelled = true;
+      if (pollingRef.current) clearTimeout(pollingRef.current);
+    };
   }, [handle, directPlaybackId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Unblock loading immediately when ?p= is present (API result enriches later)
@@ -535,6 +555,13 @@ function LivePageContent() {
                   >
                     Visit Profile
                   </Link>
+                )}
+                {diagLines.length > 0 && (
+                  <div className="mt-2 w-full max-w-xs bg-black/40 border border-white/10 rounded-lg p-3 space-y-1">
+                    {diagLines.map((l, i) => (
+                      <p key={i} className="text-white/30 text-[10px] font-mono leading-snug break-all">{l}</p>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
