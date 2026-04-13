@@ -325,13 +325,22 @@ function LivePageContent() {
       hlsRef.current = hls;
       hls.loadSource(playbackUrl);
       hls.attachMedia(videoEl);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        videoEl.play().catch(() => {});
+      hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+        setDiagLines(prev => [...prev.slice(-3), `HLS manifest parsed — ${data.levels?.length ?? 0} quality levels`]);
+        videoEl.play().catch((e) => {
+          setDiagLines(prev => [...prev.slice(-3), `play() blocked: ${e?.message ?? e}`]);
+        });
+      });
+      hls.on(Hls.Events.LEVEL_LOADED, (_, data) => {
+        const segs = data.details?.fragments?.length ?? 0;
+        const live = data.details?.live;
+        setDiagLines(prev => [...prev.slice(-3), `Media playlist: ${segs} segments, live=${live}`]);
+      });
+      hls.on(Hls.Events.FRAG_LOADED, () => {
+        setDiagLines(prev => [...prev.slice(-3), `Segment data received — video should start`]);
       });
 
-      // Retry fatal errors (e.g. manifest 404 during stream startup) with backoff.
-      // Only give up after MAX_FATAL_RETRIES — this prevents "Stream has ended"
-      // from firing when the stream is starting but CDN isn't ready yet.
+      // Retry fatal errors with backoff — don't immediately show "ended"
       let fatalRetries = 0;
       const MAX_FATAL_RETRIES = 4;
       hls.on(Hls.Events.ERROR, (_, data) => {
@@ -339,13 +348,13 @@ function LivePageContent() {
         if (fatalRetries < MAX_FATAL_RETRIES) {
           fatalRetries++;
           setHlsRetry(fatalRetries);
-          const delay = fatalRetries * 5_000; // 5s, 10s, 15s, 20s
-          setDiagLines(prev => [...prev.slice(-2), `HLS fatal (${data.type}): retry ${fatalRetries}/${MAX_FATAL_RETRIES} in ${delay/1000}s`]);
+          const delay = fatalRetries * 5_000;
+          setDiagLines(prev => [...prev.slice(-3), `HLS fatal (${data.details}): retry ${fatalRetries}/${MAX_FATAL_RETRIES} in ${delay/1000}s`]);
           setTimeout(() => {
             if (hlsRef.current === hls) hls.loadSource(playbackUrl);
           }, delay);
         } else {
-          setDiagLines(prev => [...prev.slice(-2), `HLS: ${MAX_FATAL_RETRIES} retries exhausted → ended`]);
+          setDiagLines(prev => [...prev.slice(-3), `HLS: all retries exhausted → ended`]);
           setStreamState("ended");
         }
       });
@@ -449,7 +458,7 @@ function LivePageContent() {
 
                 {/* Connecting overlay */}
                 {streamState === "connecting" && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3 px-4">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 gap-3 px-4">
                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#EB83EA]" />
                     <p className="text-gray-300 text-sm font-medium">Connecting to stream…</p>
                     {hlsRetry > 0 && (
