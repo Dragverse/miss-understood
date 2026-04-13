@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Hls from "hls.js";
 import { FiVolume2, FiVolumeX, FiMaximize2, FiMessageSquare, FiSend, FiClock } from "react-icons/fi";
+
 import { usePrivy } from "@privy-io/react-auth";
 import { useStreamStore } from "@/lib/store/stream";
 import { supabase } from "@/lib/supabase/client";
@@ -13,7 +14,6 @@ interface LivestreamEmbedProps {
   creatorDID: string;
   creatorName: string;
   creatorHandle?: string;
-  bannerUrl?: string;
 }
 
 interface StreamInfo {
@@ -130,7 +130,7 @@ function ChatPanel({ channelId }: { channelId: string }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export function LivestreamEmbed({ creatorDID, creatorName, creatorHandle, bannerUrl }: LivestreamEmbedProps) {
+export function LivestreamEmbed({ creatorDID, creatorName, creatorHandle }: LivestreamEmbedProps) {
   const [streamInfo, setStreamInfo] = useState<StreamInfo>({ isLive: false });
   const [upcoming, setUpcoming] = useState<UpcomingStream | null>(null);
   const [checking, setChecking] = useState(true);
@@ -263,56 +263,24 @@ export function LivestreamEmbed({ creatorDID, creatorName, creatorHandle, banner
 
   // ── Offline / loading ─────────────────────────────────────────────────────
   return (
-    <div className="relative w-full h-[380px] md:h-[480px] overflow-hidden bg-[#0f071a]">
-      {/* Banner as background */}
-      {bannerUrl ? (
-        <Image src={bannerUrl} alt="Profile banner" fill className="object-cover" priority />
-      ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA]/20 via-[#7c3aed]/20 to-[#1a0b2e]" />
-      )}
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/55" />
+    <div className="relative w-full h-[380px] md:h-[480px] overflow-hidden bg-[#1a0b2e]">
+      <Image src="/currently-offline.jpg" alt="Currently Offline" fill className="object-cover" priority />
 
-      {/* Centered TV test-pattern card */}
-      <div className="absolute inset-0 flex items-center justify-center px-4">
-        <div className="relative w-full max-w-xl aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10">
-          {/* Test pattern stripes */}
-          <div className="absolute inset-0 flex">
-            {["#c0c0c0","#c0c000","#00c0c0","#00c000","#c000c0","#c00000","#0000c0","#000000"].map((c, i) => (
-              <div key={i} className="flex-1 h-full" style={{ backgroundColor: c }} />
-            ))}
-          </div>
-          {/* Bottom black bar */}
-          <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-black" />
-          {/* CURRENTLY OFFLINE text */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-            <span className="text-[#ffe600] font-black text-4xl md:text-5xl lg:text-6xl uppercase tracking-tight drop-shadow-lg" style={{ fontFamily: "var(--font-heading, sans-serif)", WebkitTextStroke: "2px rgba(0,0,0,0.4)" }}>
-              Currently
-            </span>
-            <span className="text-[#ffe600] font-black text-4xl md:text-5xl lg:text-6xl uppercase tracking-tight drop-shadow-lg" style={{ fontFamily: "var(--font-heading, sans-serif)", WebkitTextStroke: "2px rgba(0,0,0,0.4)" }}>
-              Offline
-            </span>
-          </div>
-          {/* OFFLINE badge */}
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-gray-800/90 rounded-md">
-            <span className="w-2 h-2 bg-gray-400 rounded-full" />
-            <span className="text-gray-200 text-xs font-bold uppercase tracking-wide">Offline</span>
-          </div>
+      {/* Offline badge — same style as hero section */}
+      {!checking && (
+        <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#C62828]">
+          <span className="w-2 h-2 bg-white rounded-full" />
+          <span className="text-xs font-bold uppercase text-white">Offline</span>
         </div>
-      </div>
+      )}
 
-      {/* Upcoming stream banner */}
+      {/* Upcoming stream pill */}
       {upcoming && !checking && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-black/70 backdrop-blur-sm rounded-full border border-[#EB83EA]/30">
-          <FiClock className="w-3.5 h-3.5 text-[#EB83EA]" />
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-black/70 backdrop-blur-sm rounded-full border border-[#EB83EA]/30 whitespace-nowrap">
+          <FiClock className="w-3.5 h-3.5 text-[#EB83EA] flex-shrink-0" />
           <span className="text-white text-sm font-medium">{upcoming.title}</span>
           <span className="text-gray-400 text-xs">· {formatDate(upcoming.scheduledAt)}</span>
         </div>
-      )}
-
-      {/* Link to stream page when a handle is available */}
-      {creatorHandle && (
-        <Link href={`/live/${creatorHandle}`} className="absolute inset-0" aria-label="View stream page" />
       )}
     </div>
   );

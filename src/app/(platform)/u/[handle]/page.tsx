@@ -296,7 +296,6 @@ export default function DynamicProfilePage() {
         creatorDID={creator.did}
         creatorName={creator.displayName}
         creatorHandle={creator.handle}
-        bannerUrl={creator.banner ?? undefined}
       />
 
       {/* Profile info — below the stream area */}
@@ -304,7 +303,7 @@ export default function DynamicProfilePage() {
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-6">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-5 md:gap-8">
             {/* Avatar */}
-            <div className="relative flex-shrink-0 -mt-16 md:-mt-20">
+            <div className="relative flex-shrink-0">
               {isCreatorLive && (
                 <>
                   <span className="absolute -inset-2 rounded-full animate-ping bg-red-500/30" />
