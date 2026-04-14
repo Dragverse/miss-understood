@@ -35,7 +35,7 @@ export function Navbar() {
   const { setSession, setCreator, clearAuth, creator } = useAuth();
   const { canStream } = useCanLivestream();
   const { openStreamModal } = useStreamStore();
-  const { blueskyProfile, blueskyConnected, farcasterHandle, userHandle } = useAuthUser();
+  const { blueskyProfile, blueskyConnected, farcasterHandle } = useAuthUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
@@ -296,7 +296,7 @@ export function Navbar() {
                     Dashboard
                   </Link>
                   <Link
-                    href={userHandle ? `/u/${userHandle}` : "/profile"}
+                    href={creator?.handle ? `/u/${creator.handle}` : "/profile"}
                     className="block w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-white/5 rounded-xl transition-colors"
                   >
                     Profile
@@ -390,7 +390,7 @@ export function Navbar() {
         <div className="md:hidden bg-[#1a0b2e] border-t border-white/10">
           <div className="flex flex-col p-4 space-y-2">
             <Link
-              href={userHandle ? `/u/${userHandle}` : "/profile"}
+              href={creator?.handle ? `/u/${creator.handle}` : "/profile"}
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition"
             >
