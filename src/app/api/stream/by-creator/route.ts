@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         let isLive = false;
 
         // 1. Ask Livepeer API
-        if (LIVEPEER_API_KEY) {
+        if (LIVEPEER_API_KEY && stream.livepeer_stream_id) {
           try {
             const res = await fetch(
               `https://livepeer.studio/api/stream/${stream.livepeer_stream_id}`,

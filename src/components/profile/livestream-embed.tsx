@@ -137,44 +137,56 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
   const activeStream = useStreamStore((s) => s.activeStream);
   const isOwnActiveStream = activeStream?.creatorDID === creatorDID;
 
-  // Poll stream status
+  // Poll stream status — 5s when offline, 15s when confirmed live
+  const isLiveRef = useRef(false);
   useEffect(() => {
+    let cancelled = false;
+    const timerRef = { id: null as ReturnType<typeof setTimeout> | null };
+
     const check = async () => {
       try {
         const res = await fetch(`/api/stream/by-creator?creatorDID=${encodeURIComponent(creatorDID)}`);
-        if (!res.ok) return;
+        if (!res.ok || cancelled) return;
         const data = await res.json();
         if (data.streams?.length > 0) {
           const s = data.streams[0];
+          isLiveRef.current = true;
           setStreamInfo({ isLive: true, id: s.id, playbackId: s.playbackId, playbackUrl: s.playbackUrl, title: s.name || `${creatorName} is live!` });
         } else {
+          isLiveRef.current = false;
           setStreamInfo({ isLive: false });
         }
         setUpcoming(data.upcoming?.length > 0 ? { title: data.upcoming[0].name || "Upcoming Stream", scheduledAt: data.upcoming[0].scheduledAt } : null);
       } catch {
         // silent
       }
+      if (!cancelled) timerRef.id = setTimeout(check, isLiveRef.current ? 15_000 : 5_000);
     };
+
     check();
-    const interval = setInterval(check, 10_000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      if (timerRef.id !== null) clearTimeout(timerRef.id);
+    };
   }, [creatorDID, creatorName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const effectivePlaybackId = streamInfo.playbackId ?? (isOwnActiveStream ? activeStream?.playbackId : undefined);
   const playbackUrl = streamInfo.playbackUrl || (effectivePlaybackId ? `https://livepeercdn.studio/hls/${effectivePlaybackId}/index.m3u8` : null);
 
+  // Show player if API confirmed live OR if this is the creator's own active stream (instant, no API lag)
+  const showPlayer = streamInfo.isLive || (isOwnActiveStream && !!activeStream?.playbackId);
   const chatChannelId = streamInfo.id ?? effectivePlaybackId ?? creatorDID;
   const isConnecting = isOwnActiveStream && !streamInfo.isLive;
 
   // ── Always render the same grid shell; content switches by state ──────────
   return (
     <div className="w-full">
-      <div className={`grid grid-cols-1 lg:h-[400px] ${streamInfo.isLive ? "lg:grid-cols-[1fr_300px]" : ""}`}>
+      <div className={`grid grid-cols-1 lg:h-[400px] ${showPlayer ? "lg:grid-cols-[1fr_300px]" : ""}`}>
 
         {/* ── Player column ── */}
         <div className="relative aspect-video lg:aspect-auto lg:h-full bg-black overflow-hidden">
 
-          {streamInfo.isLive && playbackUrl ? (
+          {showPlayer && playbackUrl ? (
             <>
               {/* @livepeer/react Player — handles HLS/WebRTC/CORS correctly */}
               <Player.Root src={getSrc(playbackUrl)} autoPlay volume={0}>
@@ -240,7 +252,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
         </div>
 
         {/* ── Chat column — desktop only, only when live ── */}
-        {streamInfo.isLive && (
+        {showPlayer && (
           <div className="h-[350px] lg:h-full border-t lg:border-t-0 lg:border-l border-white/10">
             <ChatPanel channelId={chatChannelId} />
           </div>
