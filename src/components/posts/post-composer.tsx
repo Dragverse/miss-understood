@@ -327,15 +327,14 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
       {/* Bottom bar: platforms display + actions */}
       <div className="flex items-center justify-between pt-3 border-t border-white/5">
         <div className="flex items-center gap-1">
-          {/* Photo upload */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={mediaFiles.length >= 4}
-            className="p-2.5 rounded-full hover:bg-[#EB83EA]/10 text-[#EB83EA] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          {/* Photo upload — label triggers native picker on iOS */}
+          <label
+            htmlFor="post-media-input"
+            className={`p-2.5 rounded-full hover:bg-[#EB83EA]/10 text-[#EB83EA] transition-all cursor-pointer ${mediaFiles.length >= 4 ? "opacity-30 pointer-events-none" : ""}`}
             aria-label="Add photos"
           >
             <FiImage size={20} />
-          </button>
+          </label>
 
           {/* Emoji picker toggle */}
           <button
@@ -396,6 +395,7 @@ export function PostComposer({ onPostCreated, placeholder = "Share your story...
 
       <input
         ref={fileInputRef}
+        id="post-media-input"
         type="file"
         accept="image/*,.gif"
         multiple

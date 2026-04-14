@@ -34,6 +34,8 @@ interface ChatMessage {
   text: string;
   userName: string;
   userAvatar: string;
+  userDID?: string;
+  isCreator?: boolean;
   ts: number;
 }
 
@@ -45,20 +47,20 @@ function formatDate(dateStr: string) {
 }
 
 // ── Inline chat panel ─────────────────────────────────────────────────────────
-function ChatPanel({ channelId }: { channelId: string }) {
+function ChatPanel({ channelId, creatorDID }: { channelId: string; creatorDID: string }) {
   const { authenticated, login } = usePrivy();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [userInfo, setUserInfo] = useState<{ name: string; avatar: string } | null>(null);
+  const [userInfo, setUserInfo] = useState<{ name: string; avatar: string; did: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelRef = useRef<any>(null);
 
   useEffect(() => {
     if (!authenticated) return;
-    fetch("/api/user/me").then(r => r.json()).then(d => {
+    fetch("/api/user/me", { credentials: "include" }).then(r => r.json()).then(d => {
       const p = d.creator ?? d.profile;
-      if (p) setUserInfo({ name: p.display_name || p.handle || "Viewer", avatar: p.avatar || "/defaultpfp.png" });
+      if (p) setUserInfo({ name: p.display_name || p.handle || "Viewer", avatar: p.avatar || "/defaultpfp.png", did: p.did || "" });
     }).catch(() => {});
   }, [authenticated]);
 
@@ -78,8 +80,9 @@ function ChatPanel({ channelId }: { channelId: string }) {
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || !channelRef.current) return;
-    const info = userInfo ?? { name: "Viewer", avatar: "/defaultpfp.png" };
-    const msg: ChatMessage = { id: `${Date.now()}-${Math.random()}`, text, userName: info.name, userAvatar: info.avatar, ts: Date.now() };
+    const info = userInfo ?? { name: "Viewer", avatar: "/defaultpfp.png", did: "" };
+    const isCreator = !!info.did && info.did === creatorDID;
+    const msg: ChatMessage = { id: `${Date.now()}-${Math.random()}`, text, userName: info.name, userAvatar: info.avatar, userDID: info.did, isCreator, ts: Date.now() };
     setInput("");
     await channelRef.current.send({ type: "broadcast", event: "msg", payload: msg });
   };
@@ -99,7 +102,13 @@ function ChatPanel({ channelId }: { channelId: string }) {
             <div key={m.id} className="flex gap-2">
               <Image src={m.userAvatar} alt={m.userName} width={24} height={24} className="rounded-full object-cover flex-shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <span className="text-xs font-bold text-[#EB83EA]">{m.userName} </span>
+                <span className={`text-xs font-bold ${m.isCreator ? "text-yellow-400" : "text-[#EB83EA]"}`}>{m.userName}</span>
+                {m.isCreator && (
+                  <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-yellow-400/20 text-yellow-400 uppercase tracking-wide border border-yellow-400/30">
+                    Creator
+                  </span>
+                )}
+                {" "}
                 <span className="text-sm text-gray-300 break-words">{m.text}</span>
               </div>
             </div>
@@ -332,7 +341,7 @@ export function LivestreamEmbed({ creatorDID, creatorName, creatorHandle }: Live
         {/* ── Chat column — desktop only, only when live ── */}
         {showPlayer && (
           <div className="h-[350px] lg:h-full border-t lg:border-t-0 lg:border-l border-white/10">
-            <ChatPanel channelId={chatChannelId} />
+            <ChatPanel channelId={chatChannelId} creatorDID={creatorDID} />
           </div>
         )}
       </div>

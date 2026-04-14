@@ -355,12 +355,6 @@ export default function DynamicProfilePage() {
                     <h1 className="text-2xl md:text-3xl font-bold text-white drop-shadow-2xl leading-tight">
                       {creator.displayName}
                     </h1>
-                    {isCreatorLive && (
-                      <span className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500 rounded-full shadow-lg shadow-red-500/30 flex-shrink-0">
-                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                        <span className="text-white text-xs font-bold uppercase tracking-wide">Live Now</span>
-                      </span>
-                    )}
                     <VerificationBadge
                       badgeType={getUserBadgeType(
                         creator.did,

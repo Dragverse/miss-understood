@@ -92,6 +92,12 @@ export function StreamModal({ onClose }: StreamModalProps) {
   // User handle for viewer URL
   const [userHandle, setUserHandle] = useState<string>("");
 
+  // Mobile detection — getDisplayMedia is not supported on iOS and WebRTC is unreliable on cellular
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+  }, []);
+
   // Client-side validation
   const validateTitle = (value: string): string => {
     if (value.length === 0) {
@@ -1251,13 +1257,20 @@ export function StreamModal({ onClose }: StreamModalProps) {
           {/* STEP 1.5: Choose Streaming Method */}
           {step === 'method' && streamInfo && (
             <div className="space-y-6">
-              <p className="text-gray-300 text-center mb-6">
-                Choose how you want to stream. Browser streaming is quick and easy, while OBS/Streamlabs offers professional features.
-              </p>
+              {isMobile ? (
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-sm text-yellow-200">
+                  <p className="font-semibold mb-1">Mobile streaming tip</p>
+                  <p className="text-yellow-200/70">Browser streaming isn&apos;t supported on mobile. Use <strong>Larix Broadcaster</strong> (iOS/Android) or any RTMP app with the credentials below.</p>
+                </div>
+              ) : (
+                <p className="text-gray-300 text-center mb-6">
+                  Choose how you want to stream. Browser streaming is quick and easy, while OBS/Streamlabs offers professional features.
+                </p>
+              )}
 
-              <div className="grid grid-cols-2 gap-4">
-                {/* Browser Streaming Option */}
-                <button
+              <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "grid-cols-2"}`}>
+                {/* Browser Streaming Option — hidden on mobile */}
+                {!isMobile && <button
                   onClick={() => {
                     setStreamingMethod('browser');
                     setStep('setup');
@@ -1276,7 +1289,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
                       <li>• Low latency</li>
                     </ul>
                   </div>
-                </button>
+                </button>}
 
                 {/* OBS/Streamlabs Option */}
                 <button
@@ -1347,14 +1360,16 @@ export function StreamModal({ onClose }: StreamModalProps) {
                       <p className="text-xs text-gray-400">Stream from webcam</p>
                     </button>
 
-                    <button
-                      onClick={startScreenShare}
-                      className="p-4 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl transition-all group"
-                    >
-                      <FiMonitor className="w-8 h-8 text-[#EB83EA] mx-auto mb-2 group-hover:scale-110 transition" />
-                      <h4 className="font-bold text-white mb-1">Screen</h4>
-                      <p className="text-xs text-gray-400">Share your screen</p>
-                    </button>
+                    {!isMobile && (
+                      <button
+                        onClick={startScreenShare}
+                        className="p-4 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl transition-all group"
+                      >
+                        <FiMonitor className="w-8 h-8 text-[#EB83EA] mx-auto mb-2 group-hover:scale-110 transition" />
+                        <h4 className="font-bold text-white mb-1">Screen</h4>
+                        <p className="text-xs text-gray-400">Share your screen</p>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1384,9 +1399,11 @@ export function StreamModal({ onClose }: StreamModalProps) {
             <div className="space-y-6">
               {/* Info Banner */}
               <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-                <h3 className="text-blue-400 font-semibold mb-2">Professional Streaming Setup</h3>
+                <h3 className="text-blue-400 font-semibold mb-2">{isMobile ? "Mobile Streaming Setup" : "Professional Streaming Setup"}</h3>
                 <p className="text-sm text-gray-400">
-                  Copy these credentials into OBS Studio or Streamlabs. Once you start streaming from your software, your stream will automatically appear on your profile.
+                  {isMobile
+                    ? "Copy these credentials into a mobile RTMP app. We recommend Larix Broadcaster (free, iOS & Android) — set the URL to the Server URL below and the stream name to your Stream Key."
+                    : "Copy these credentials into OBS Studio or Streamlabs. Once you start streaming from your software, your stream will automatically appear on your profile."}
                 </p>
               </div>
 
@@ -1437,13 +1454,24 @@ export function StreamModal({ onClose }: StreamModalProps) {
               {/* Instructions */}
               <div className="p-4 bg-[#2f2942] rounded-xl">
                 <h4 className="font-bold text-white mb-3">Setup Instructions:</h4>
-                <ol className="text-sm text-gray-300 space-y-2 list-decimal list-inside">
-                  <li>Open OBS Studio or Streamlabs</li>
-                  <li>Go to Settings → Stream</li>
-                  <li>Select &quot;Custom&quot; as the service</li>
-                  <li>Paste the Server URL and Stream Key above</li>
-                  <li>Click &quot;Start Streaming&quot; in your software</li>
-                </ol>
+                {isMobile ? (
+                  <ol className="text-sm text-gray-300 space-y-2 list-decimal list-inside">
+                    <li>Download <strong>Larix Broadcaster</strong> (free on iOS &amp; Android)</li>
+                    <li>Open the app → tap the gear icon → <strong>Connections</strong></li>
+                    <li>Tap <strong>New connection</strong> and set type to RTMP</li>
+                    <li>Paste the Server URL into the URL field</li>
+                    <li>Paste the Stream Key into the Stream name field</li>
+                    <li>Save and tap the record button to go live</li>
+                  </ol>
+                ) : (
+                  <ol className="text-sm text-gray-300 space-y-2 list-decimal list-inside">
+                    <li>Open OBS Studio or Streamlabs</li>
+                    <li>Go to Settings → Stream</li>
+                    <li>Select &quot;Custom&quot; as the service</li>
+                    <li>Paste the Server URL and Stream Key above</li>
+                    <li>Click &quot;Start Streaming&quot; in your software</li>
+                  </ol>
+                )}
               </div>
 
               {/* Viewer URLs */}
