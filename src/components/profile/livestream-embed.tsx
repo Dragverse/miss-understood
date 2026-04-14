@@ -241,7 +241,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
 
         {/* ── Chat column — desktop only, only when live ── */}
         {streamInfo.isLive && (
-          <div className="hidden lg:block h-full border-l border-white/10">
+          <div className="h-[350px] lg:h-full border-t lg:border-t-0 lg:border-l border-white/10">
             <ChatPanel channelId={chatChannelId} />
           </div>
         )}

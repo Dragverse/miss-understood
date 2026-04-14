@@ -362,13 +362,10 @@ export default function DynamicProfilePage() {
                       {creator.displayName}
                     </h1>
                     {isCreatorLive && (
-                      <Link
-                        href={`/live/${handle}`}
-                        className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500 hover:bg-red-600 rounded-full transition shadow-lg shadow-red-500/30 flex-shrink-0"
-                      >
+                      <span className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500 rounded-full shadow-lg shadow-red-500/30 flex-shrink-0">
                         <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                         <span className="text-white text-xs font-bold uppercase tracking-wide">Live Now</span>
-                      </Link>
+                      </span>
                     )}
                     <VerificationBadge
                       badgeType={getUserBadgeType(

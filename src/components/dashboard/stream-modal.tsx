@@ -1178,14 +1178,13 @@ export function StreamModal({ onClose }: StreamModalProps) {
               {userHandle && streamInfo?.playbackId && (
                 <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl space-y-3">
                   <div>
-                    <h4 className="text-green-400 font-semibold mb-1">Direct stream link (share this)</h4>
-                    <p className="text-xs text-gray-400 mb-2">Works even before the stream appears on your profile.</p>
+                    <h4 className="text-green-400 font-semibold mb-1">Share your profile (viewers watch here)</h4>
                     <div className="flex gap-2">
                       <span className="flex-1 px-3 py-2 bg-[#2f2942] border border-green-500/30 rounded-lg text-green-400 text-sm truncate">
-                        {`${typeof window !== "undefined" ? window.location.origin : ""}/live/${userHandle}?p=${streamInfo.playbackId}`}
+                        {`${typeof window !== "undefined" ? window.location.origin : ""}/u/${userHandle}`}
                       </span>
                       <button
-                        onClick={() => copyToClipboard(`${typeof window !== "undefined" ? window.location.origin : ""}/live/${userHandle}?p=${streamInfo.playbackId}`, "Stream link")}
+                        onClick={() => copyToClipboard(`${typeof window !== "undefined" ? window.location.origin : ""}/u/${userHandle}`, "Profile link")}
                         className="p-2 bg-green-500/20 hover:bg-green-500/30 rounded-lg transition shrink-0"
                       >
                         <FiCopy className="w-5 h-5 text-green-400" />
@@ -1286,49 +1285,29 @@ export function StreamModal({ onClose }: StreamModalProps) {
                 </button>
               </div>
 
-              {/* Share links — only render once we have a handle and playbackId */}
-              {userHandle && streamInfo?.playbackId && (() => {
+              {/* Share links — only render once we have a handle */}
+              {userHandle && (() => {
                 const origin = typeof window !== "undefined" ? window.location.origin : "";
-                const streamUrl = `${origin}/live/${userHandle}?p=${streamInfo.playbackId}`;
                 const profileUrl = `${origin}/u/${userHandle}`;
                 return (
                   <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 space-y-3">
                     <div>
-                      <p className="text-sm font-semibold text-white mb-1">Direct stream link</p>
-                      <p className="text-xs text-gray-400 mb-2">Share this with your audience.</p>
-                      <div className="flex gap-2">
-                        <a
-                          href={streamUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 px-4 py-2 bg-[#2f2942] border border-blue-500/30 rounded-lg text-blue-400 text-sm hover:bg-[#3f3952] transition truncate"
-                        >
-                          {streamUrl}
-                        </a>
-                        <button
-                          onClick={() => copyToClipboard(streamUrl, "Stream link")}
-                          className="p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition shrink-0"
-                        >
-                          <FiCopy className="w-5 h-5 text-blue-400" />
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Also visible on your profile:</p>
+                      <p className="text-sm font-semibold text-white mb-1">Share your profile</p>
+                      <p className="text-xs text-gray-400 mb-2">Viewers watch the stream directly on your profile.</p>
                       <div className="flex gap-2">
                         <a
                           href={profileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex-1 px-4 py-2 bg-[#2f2942] border border-white/10 rounded-lg text-gray-400 text-sm hover:bg-[#3f3952] transition truncate"
+                          className="flex-1 px-4 py-2 bg-[#2f2942] border border-blue-500/30 rounded-lg text-blue-400 text-sm hover:bg-[#3f3952] transition truncate"
                         >
                           {profileUrl}
                         </a>
                         <button
-                          onClick={() => copyToClipboard(profileUrl, "Profile URL")}
-                          className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition shrink-0"
+                          onClick={() => copyToClipboard(profileUrl, "Profile link")}
+                          className="p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition shrink-0"
                         >
-                          <FiCopy className="w-5 h-5 text-gray-400" />
+                          <FiCopy className="w-5 h-5 text-blue-400" />
                         </button>
                       </div>
                     </div>
