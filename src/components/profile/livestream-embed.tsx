@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import Hls from "hls.js";
-import { FiVolume2, FiVolumeX, FiMaximize2, FiMessageSquare, FiSend, FiClock } from "react-icons/fi";
+import * as Player from "@livepeer/react/player";
+import { getSrc } from "@livepeer/react/external";
+import { FiMessageSquare, FiSend, FiClock } from "react-icons/fi";
 
 import { usePrivy } from "@privy-io/react-auth";
 import { useStreamStore } from "@/lib/store/stream";
@@ -132,12 +133,6 @@ function ChatPanel({ channelId }: { channelId: string }) {
 export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProps) {
   const [streamInfo, setStreamInfo] = useState<StreamInfo>({ isLive: false });
   const [upcoming, setUpcoming] = useState<UpcomingStream | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
-  const [playerError, setPlayerError] = useState(false);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsRef = useRef<Hls | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const activeStream = useStreamStore((s) => s.activeStream);
   const isOwnActiveStream = activeStream?.creatorDID === creatorDID;
@@ -151,10 +146,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
         const data = await res.json();
         if (data.streams?.length > 0) {
           const s = data.streams[0];
-          setStreamInfo(prev => {
-            if (!prev.isLive) setPlayerError(false);
-            return { isLive: true, id: s.id, playbackId: s.playbackId, playbackUrl: s.playbackUrl, title: s.name || `${creatorName} is live!` };
-          });
+          setStreamInfo({ isLive: true, id: s.id, playbackId: s.playbackId, playbackUrl: s.playbackUrl, title: s.name || `${creatorName} is live!` });
         } else {
           setStreamInfo({ isLive: false });
         }
@@ -171,64 +163,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
   const effectivePlaybackId = streamInfo.playbackId ?? (isOwnActiveStream ? activeStream?.playbackId : undefined);
   const playbackUrl = streamInfo.playbackUrl || (effectivePlaybackId ? `https://livepeercdn.studio/hls/${effectivePlaybackId}/index.m3u8` : null);
 
-  // HLS setup
-  useEffect(() => {
-    if (!streamInfo.isLive || !playbackUrl) return;
-    const videoEl = videoRef.current;
-    if (!videoEl) return;
-    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    setPlayerError(false);
-
-    let effectActive = true;
-
-    if (Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: true, lowLatencyMode: true, startLevel: -1 });
-      hlsRef.current = hls;
-      hls.loadSource(playbackUrl);
-      hls.attachMedia(videoEl);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => { videoEl.play().catch(() => {}); });
-      // Retry indefinitely — polling will set isLive=false when stream truly ends
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (!data.fatal) return;
-        setTimeout(() => {
-          if (effectActive && hlsRef.current === hls) hls.loadSource(playbackUrl);
-        }, 5_000);
-      });
-    } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
-      const tryPlay = () => {
-        videoEl.src = playbackUrl;
-        videoEl.play().catch(() => {});
-      };
-      const onIosError = () => {
-        if (!effectActive) return;
-        setTimeout(() => { if (effectActive) tryPlay(); }, 5_000);
-      };
-      videoEl.addEventListener("error", onIosError);
-      tryPlay();
-      return () => {
-        effectActive = false;
-        videoEl.removeEventListener("error", onIosError);
-        if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-      };
-    } else {
-      setPlayerError(true);
-    }
-    return () => {
-      effectActive = false;
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    };
-  }, [streamInfo.isLive, playbackUrl]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { if (videoRef.current) videoRef.current.muted = isMuted; }, [isMuted]);
-
-  const handleFullscreen = () => {
-    const el = containerRef.current;
-    if (!el) return;
-    document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen?.();
-  };
-
   const chatChannelId = streamInfo.id ?? effectivePlaybackId ?? creatorDID;
-
   const isConnecting = isOwnActiveStream && !streamInfo.isLive;
 
   // ── Always render the same grid shell; content switches by state ──────────
@@ -237,42 +172,34 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
       <div className={`grid grid-cols-1 lg:h-[400px] ${streamInfo.isLive ? "lg:grid-cols-[1fr_300px]" : ""}`}>
 
         {/* ── Player column ── */}
-        <div ref={containerRef} className="relative aspect-video lg:aspect-auto lg:h-full bg-black group overflow-hidden">
+        <div className="relative aspect-video lg:aspect-auto lg:h-full bg-black overflow-hidden">
 
-          {streamInfo.isLive ? (
+          {streamInfo.isLive && playbackUrl ? (
             <>
+              {/* @livepeer/react Player — handles HLS/WebRTC/CORS correctly */}
+              <Player.Root src={getSrc(playbackUrl)} autoPlay volume={0}>
+                <Player.Container className="w-full h-full">
+                  <Player.Video className="w-full h-full object-cover" />
+                  <Player.Controls autoHide={3000} className="p-3">
+                    <div className="flex items-center gap-3">
+                      <Player.MuteTrigger className="w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label="Mute" />
+                      <Player.FullscreenTrigger className="ml-auto w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label="Fullscreen" />
+                    </div>
+                  </Player.Controls>
+                </Player.Container>
+              </Player.Root>
+
               {/* LIVE badge */}
-              <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 bg-red-500 rounded-md text-xs font-bold text-white shadow-lg">
+              <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 bg-red-500 rounded-md text-xs font-bold text-white shadow-lg pointer-events-none">
                 <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                 LIVE
               </div>
 
               {/* Stream title */}
               {streamInfo.title && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium max-w-[60%] truncate">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium max-w-[60%] truncate pointer-events-none">
                   {streamInfo.title}
                 </div>
-              )}
-
-              {playerError ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black gap-3">
-                  <p className="text-gray-400 text-sm">Stream temporarily unavailable</p>
-                  <button onClick={() => setPlayerError(false)} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm transition">
-                    Retry
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" muted playsInline autoPlay />
-                  <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
-                    <button onClick={() => setIsMuted(m => !m)} className="w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label={isMuted ? "Unmute" : "Mute"}>
-                      {isMuted ? <FiVolumeX className="w-4 h-4 text-white" /> : <FiVolume2 className="w-4 h-4 text-white" />}
-                    </button>
-                    <button onClick={handleFullscreen} className="ml-auto w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label="Fullscreen">
-                      <FiMaximize2 className="w-4 h-4 text-white" />
-                    </button>
-                  </div>
-                </>
               )}
             </>
           ) : (
@@ -285,7 +212,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
                 className="object-cover"
               />
 
-              {/* Status badge — top-left, mirrors the LIVE badge position */}
+              {/* Status badge */}
               <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 bg-black/70 backdrop-blur-sm rounded-md text-xs font-bold text-white/70 shadow-lg border border-white/10">
                 {isConnecting ? (
                   <>
@@ -300,7 +227,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
                 )}
               </div>
 
-              {/* Upcoming stream pill — bottom-left */}
+              {/* Upcoming stream pill */}
               {upcoming && (
                 <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full border border-[#EB83EA]/30">
                   <FiClock className="w-3.5 h-3.5 text-[#EB83EA] flex-shrink-0" />

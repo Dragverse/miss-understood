@@ -4,13 +4,11 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import Hls from "hls.js";
+import * as Player from "@livepeer/react/player";
+import { getSrc } from "@livepeer/react/external";
 import { usePrivy } from "@privy-io/react-auth";
 import {
   FiArrowLeft,
-  FiVolume2,
-  FiVolumeX,
-  FiMaximize2,
   FiUsers,
   FiSend,
   FiMessageSquare,
@@ -213,11 +211,6 @@ function LivePageContent() {
   const [creator, setCreator] = useState<Creator | null>(null);
   const [stream, setStream] = useState<StreamInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
-
-  // playerKey increments whenever we need to (re)initialise the HLS player.
-  // Using a key avoids the fragile boolean-expression dependency array trick.
-  const [playerKey, setPlayerKey] = useState(0);
 
   // Stream playback state machine
   // 'connecting'  — player set up, waiting for first frame
@@ -229,14 +222,10 @@ function LivePageContent() {
     directPlaybackId || storePlaybackId ? "connecting" : "offline";
   const [streamState, setStreamState] = useState<StreamState>(initialState);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsRef = useRef<Hls | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollCountRef = useRef(0);
   const streamStateRef = useRef(streamState);
   const [diagLines, setDiagLines] = useState<string[]>([]);
-  const [needsTap, setNeedsTap] = useState(false);
 
 
   const playbackUrl =
@@ -280,12 +269,9 @@ function LivePageContent() {
         if (data.stream) {
           setDiagLines([`Poll #${attempt}: stream found ✓ (id: ${data.stream.id?.slice(0,8)}…)`]);
           setStream(data.stream);
-          // Allow recovery: if we were offline or gave up, reinit the player
+          // Allow recovery: if we were offline or gave up, move to connecting
           setStreamState((prev) => {
-            if (prev === "offline" || prev === "ended") {
-              setPlayerKey((k) => k + 1);
-              return "connecting";
-            }
+            if (prev === "offline" || prev === "ended") return "connecting";
             return prev;
           });
         } else if (!directPlaybackId && !storePlaybackId) {
@@ -325,74 +311,6 @@ function LivePageContent() {
   useEffect(() => {
     if (directPlaybackId) setLoading(false);
   }, [directPlaybackId]);
-
-  // HLS player — re-runs when playbackUrl changes or playerKey increments
-  useEffect(() => {
-    if (!playbackUrl || streamState === "offline") return;
-    const videoEl = videoRef.current;
-    if (!videoEl) return;
-
-    let effectActive = true;
-    let iosErrorListener: (() => void) | null = null;
-
-    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-
-    const onPlaying = () => setStreamState("playing");
-    const onEnded   = () => setStreamState("ended");
-    videoEl.addEventListener("playing", onPlaying);
-    videoEl.addEventListener("ended",   onEnded);
-
-    if (Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: true, lowLatencyMode: true, startLevel: -1 });
-      hlsRef.current = hls;
-      hls.loadSource(playbackUrl);
-      hls.attachMedia(videoEl);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => { videoEl.play().catch(() => {}); });
-      // On fatal error, destroy + rebuild the whole HLS instance via playerKey.
-      // loadSource() on a broken instance doesn't reset hls.js internal state.
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (!data.fatal) return;
-        setDiagLines(prev => [...prev.slice(-2), `HLS fatal (${data.type}) — rebuilding in 5s`]);
-        setTimeout(() => {
-          if (effectActive) setPlayerKey(k => k + 1);
-        }, 5_000);
-      });
-    } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
-      // iOS Safari native HLS — do NOT call load() before play() (causes AbortError)
-      const tryPlay = () => {
-        videoEl.src = playbackUrl;
-        videoEl.play().catch(() => { setNeedsTap(true); });
-      };
-      iosErrorListener = () => {
-        if (!effectActive) return;
-        setDiagLines(prev => [...prev.slice(-2), `iOS HLS error — retrying in 5s`]);
-        setTimeout(() => { if (effectActive) tryPlay(); }, 5_000);
-      };
-      videoEl.addEventListener("error", iosErrorListener);
-      tryPlay();
-    } else {
-      setStreamState("ended");
-    }
-
-    return () => {
-      effectActive = false;
-      videoEl.removeEventListener("playing", onPlaying);
-      videoEl.removeEventListener("ended",   onEnded);
-      if (iosErrorListener) videoEl.removeEventListener("error", iosErrorListener);
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    };
-  }, [playbackUrl, playerKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Sync mute
-  useEffect(() => {
-    if (videoRef.current) videoRef.current.muted = isMuted;
-  }, [isMuted]);
-
-  const handleFullscreen = () => {
-    const el = containerRef.current;
-    if (!el) return;
-    document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen?.();
-  };
 
   if (loading) {
     return (
@@ -454,33 +372,29 @@ function LivePageContent() {
           {/* Player column */}
           <div className="space-y-4">
             {isPlayerVisible ? (
-              <div
-                ref={containerRef}
-                className="relative w-full aspect-video bg-black rounded-[20px] overflow-hidden group"
-              >
-                {/* Video element always mounted when player is visible */}
-                <video
-                  ref={videoRef}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  muted
-                  playsInline
+              <div className="relative w-full aspect-video bg-black rounded-[20px] overflow-hidden">
+                {/* @livepeer/react Player — handles HLS + WebRTC + CORS correctly */}
+                <Player.Root
+                  src={getSrc(playbackUrl ?? "")}
                   autoPlay
-                />
+                  volume={0}
+                >
+                  <Player.Container className="w-full h-full">
+                    <Player.Video className="w-full h-full object-cover" onLoadedData={() => setStreamState("playing")} />
+                    <Player.Controls autoHide={3000} className="p-4">
+                      <div className="flex items-center gap-3">
+                        <Player.MuteTrigger className="w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label="Mute" />
+                        <Player.FullscreenTrigger className="ml-auto w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label="Fullscreen" />
+                      </div>
+                    </Player.Controls>
+                  </Player.Container>
+                </Player.Root>
 
-                {/* Connecting overlay */}
+                {/* Connecting overlay — shown until first frame */}
                 {streamState === "connecting" && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 gap-3 px-4">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 gap-3 px-4 pointer-events-none">
                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#EB83EA]" />
                     <p className="text-gray-300 text-sm font-medium">Connecting to stream…</p>
-                    {needsTap && (
-                      <button
-                        onClick={() => { videoRef.current?.play().catch(() => {}); setNeedsTap(false); }}
-                        className="mt-1 px-5 py-2.5 bg-[#EB83EA] hover:bg-[#E748E6] text-white rounded-full text-sm font-bold transition shadow-lg"
-                      >
-                        Tap to play
-                      </button>
-                    )}
-                    {/* Diagnostic panel — helps debug detection issues */}
                     {diagLines.length > 0 && (
                       <div className="mt-2 w-full max-w-xs bg-black/60 border border-white/10 rounded-lg p-3 space-y-1">
                         {diagLines.map((l, i) => (
@@ -509,26 +423,6 @@ function LivePageContent() {
                         Visit Profile
                       </Link>
                     )}
-                  </div>
-                )}
-
-                {/* Controls overlay — only when playing */}
-                {streamState === "playing" && (
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
-                    <button
-                      onClick={() => setIsMuted((m) => !m)}
-                      className="w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition"
-                      aria-label={isMuted ? "Unmute" : "Mute"}
-                    >
-                      {isMuted ? <FiVolumeX className="w-4 h-4 text-white" /> : <FiVolume2 className="w-4 h-4 text-white" />}
-                    </button>
-                    <button
-                      onClick={handleFullscreen}
-                      className="ml-auto w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition"
-                      aria-label="Fullscreen"
-                    >
-                      <FiMaximize2 className="w-4 h-4 text-white" />
-                    </button>
                   </div>
                 )}
               </div>
