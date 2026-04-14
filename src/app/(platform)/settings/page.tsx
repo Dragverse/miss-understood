@@ -259,8 +259,8 @@ function SettingsContent() {
       // No Ceramic or fallback profile, use Privy data
       const defaultCreator: Creator = {
         did: user.id,
-        handle: userHandle || userEmail?.split('@')[0] || "user",
-        displayName: userHandle || userEmail?.split('@')[0] || "Drag Artist",
+        handle: userEmail?.split('@')[0] || "user",
+        displayName: userEmail?.split('@')[0] || "Drag Artist",
         avatar: user?.twitter?.profilePictureUrl || "/defaultpfp.png",
         description: "Welcome to my Dragverse profile!",
         followerCount: 0,
@@ -948,7 +948,7 @@ function SettingsContent() {
   }
 
   if (!isAuthenticated) {
-    router.push("/profile");
+    router.push("/");
     return null;
   }
 
@@ -965,7 +965,7 @@ function SettingsContent() {
       {/* Header */}
       <div className="mb-8">
         <button
-          onClick={() => router.push("/profile")}
+          onClick={() => router.push(creator?.handle ? `/u/${creator.handle}` : "/")}
           className="flex items-center gap-2 text-gray-400 hover:text-white transition mb-4"
         >
           <FiArrowLeft className="w-5 h-5" />

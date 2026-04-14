@@ -143,7 +143,7 @@ export function youtubeVideoToVideo(ytVideo: YouTubeVideo): Video {
     tags: ["youtube", "drag"],
     source: "youtube",
     externalUrl: `https://www.youtube.com/watch?v=${videoId}`,
-    internalUrl: `/profile/${ytVideo.snippet.channelTitle.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+    internalUrl: `/u/${ytVideo.snippet.channelTitle.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
     // Store YouTube-specific metadata
     youtubeId: videoId,
     youtubeChannelId: ytVideo.snippet.channelId,

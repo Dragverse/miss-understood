@@ -598,7 +598,7 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
     tags: ["drag", "bluesky"],
     source: "bluesky", // Mark as external content
     externalUrl: `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split("/").pop()}`,
-    internalUrl: `/profile/${post.author.handle}`, // Internal Dragverse profile route
+    internalUrl: `/u/${post.author.handle}`, // Internal Dragverse profile route
     uri: post.uri, // Bluesky post URI for likes
     cid: post.cid, // Bluesky post CID for likes
   };
@@ -754,7 +754,7 @@ export function blueskyPostToContent(post: BlueskyPost): any | null {
     tags: ["drag", "bluesky"],
     source: "bluesky",
     externalUrl: `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split("/").pop()}`,
-    internalUrl: `/profile/${post.author.handle}`,
+    internalUrl: `/u/${post.author.handle}`,
     uri: post.uri,
     cid: post.cid,
   };

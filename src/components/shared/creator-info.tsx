@@ -104,7 +104,7 @@ export function CreatorInfo({
 
   if (linkToProfile) {
     return (
-      <Link href={`/profile/${handle || did}`} className="block">
+      <Link href={handle ? `/u/${handle}` : "#"} className="block">
         {content}
       </Link>
     );

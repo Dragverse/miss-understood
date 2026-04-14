@@ -180,7 +180,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
           </h3>
           <div className="text-xs text-gray-400 mt-1">
             <Link
-              href={`/profile/${video.creator.handle}`}
+              href={`/u/${video.creator.handle}`}
               className="hover:text-white"
               onClick={(e) => e.stopPropagation()}
             >
@@ -311,7 +311,7 @@ export function VideoCard({ video, layout = "grid" }: VideoCardProps) {
               {video.title}
             </h3>
             <Link
-              href={`/profile/${video.creator.handle}`}
+              href={`/u/${video.creator.handle}`}
               className="text-xs text-gray-400 hover:text-white transition mt-1 flex items-center gap-1"
               onClick={(e) => e.stopPropagation()}
             >

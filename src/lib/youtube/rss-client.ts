@@ -205,7 +205,7 @@ async function rssVideoToVideo(rssVideo: RSSVideo): Promise<Video> {
     tags: ["youtube", "drag"],
     source: "youtube",
     externalUrl: `https://www.youtube.com/watch?v=${videoId}`,
-    internalUrl: `/profile/${channel?.handle || "youtube"}`,
+    internalUrl: `/u/${channel?.handle || "youtube"}`,
     youtubeId: videoId,
     youtubeChannelId: channelId,
   };

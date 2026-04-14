@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
           type: 'follow',
           source: 'dragverse',
           message: `${follower?.display_name || 'Someone'} followed you`,
-          link: `/profile/${follower?.handle}`,
+          link: `/u/${follower?.handle}`,
         });
       } catch (notifError) {
         console.error('Failed to create follow notification:', notifError);

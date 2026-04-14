@@ -34,7 +34,7 @@ export function CreatorCard({
 
   return (
     <Link
-      href={`/profile/${handle}`}
+      href={`/u/${handle}`}
       className="block bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/40 transition-all shadow-lg hover:shadow-xl hover:shadow-[#EB83EA]/20 hover:scale-[1.02]"
     >
       <div className={`flex ${variant === "full" ? "flex-col" : "flex-row"} items-center gap-4`}>

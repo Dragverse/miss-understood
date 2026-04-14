@@ -282,15 +282,6 @@ export default function DynamicProfilePage() {
   // Render profile
   return (
     <div className="min-h-screen pb-28 md:pb-6">
-      {/* Back Button */}
-      <button
-        onClick={() => router.back()}
-        className="fixed top-20 left-4 z-50 flex items-center gap-2 px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full transition shadow-lg"
-      >
-        <FiArrowLeft className="w-5 h-5" />
-        <span className="hidden sm:inline">Back</span>
-      </button>
-
       {/* ── Unified profile card ────────────────────────────────────────────── */}
       <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-8 pt-4 md:pt-6" id="livestream">
         <div className="relative rounded-[32px] overflow-hidden bg-[#1a0b2e] shadow-2xl">

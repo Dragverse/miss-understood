@@ -115,8 +115,8 @@ export function SearchDropdown() {
                 const isOnBluesky = user.sources?.includes("bluesky") || user.source === "bluesky";
                 // Dragverse users go to internal profile; Bluesky-only opens bsky.app in new tab
                 const profileHref = isOnDragverse
-                  ? `/u/${user.handle.replace(".bsky.social", "")}`
-                  : `https://bsky.app/profile/${user.handle}`;
+                  ? `/u/${user.handle}`
+                  : `https://bsky.app/profile/${user.handle.replace(".bsky.social", "")}`;
                 const isExternal = !isOnDragverse;
                 return (
                   <Link

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
+import { useAuth } from "@/lib/store/auth";
 import { FiHome, FiCompass, FiFilm, FiUser, FiSettings, FiAward, FiBarChart2, FiMessageSquare, FiUsers, FiHeadphones } from "react-icons/fi";
 
 const navItems = [
@@ -15,10 +16,9 @@ const navItems = [
   { href: "/hall-of-fame", icon: FiAward, label: "Hall of Fame" },
 ];
 
-// Authenticated user items (shown at bottom)
-const userNavItems = [
+// Authenticated user items (shown at bottom) — Profile href is resolved dynamically
+const dashboardNavItems = [
   { href: "/dashboard", icon: FiBarChart2, label: "Dashboard" },
-  { href: "/profile", icon: FiUser, label: "Profile" },
 ];
 
 // Mobile bottom nav items
@@ -33,6 +33,7 @@ const mobileNavItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { authenticated } = usePrivy();
+  const { creator } = useAuth();
 
   return (
     <>
@@ -64,25 +65,31 @@ export function Sidebar() {
         {/* User items at bottom (only when authenticated) */}
         {authenticated && (
           <div className="flex flex-col items-center gap-3 border-t border-[#2f2942] pt-3">
-            {userNavItems.map((item) => {
+            {dashboardNavItems.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
-
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   title={item.label}
                   className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all ${
-                    isActive
-                      ? "bg-[#EB83EA] text-white shadow-lg shadow-[#EB83EA]/30"
-                      : "text-gray-400 hover:bg-white/5 hover:text-[#EB83EA]"
+                    isActive ? "bg-[#EB83EA] text-white shadow-lg shadow-[#EB83EA]/30" : "text-gray-400 hover:bg-white/5 hover:text-[#EB83EA]"
                   }`}
                 >
                   <Icon className="w-6 h-6" />
                 </Link>
               );
             })}
+            <Link
+              href={creator?.handle ? `/u/${creator.handle}` : "/profile"}
+              title="Profile"
+              className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all ${
+                pathname.startsWith("/u/") ? "bg-[#EB83EA] text-white shadow-lg shadow-[#EB83EA]/30" : "text-gray-400 hover:bg-white/5 hover:text-[#EB83EA]"
+              }`}
+            >
+              <FiUser className="w-6 h-6" />
+            </Link>
           </div>
         )}
 
