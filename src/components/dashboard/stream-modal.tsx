@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { FiVideo, FiMonitor, FiMic, FiMicOff, FiVideoOff, FiX, FiCopy, FiCheckCircle, FiExternalLink } from "react-icons/fi";
+import { FiVideo, FiMonitor, FiMic, FiMicOff, FiVideoOff, FiX, FiCopy, FiCheckCircle, FiExternalLink, FiAlertTriangle, FiXCircle } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
 import { useStreamStore } from "@/lib/store/stream";
@@ -12,7 +12,7 @@ interface StreamModalProps {
   onClose: () => void;
 }
 
-type StreamStep = 'create' | 'method' | 'setup' | 'streaming' | 'saved';
+type StreamStep = 'create' | 'existing' | 'method' | 'setup' | 'streaming' | 'saved';
 type StreamingMethod = 'browser' | 'obs' | null;
 
 interface StreamInfo {
@@ -132,8 +132,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
               title: activeStream.name
             });
 
-            setStep('method');
-            toast("You have an active stream", { icon: "ℹ️" });
+            // Show a clear "existing stream" screen instead of silently skipping to method
+            setStep('existing');
           }
         }
       } catch (error) {
@@ -996,6 +996,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
         <div className="flex items-center justify-between p-6 border-b border-[#2f2942]">
           <h2 className="text-2xl font-bold text-white">
             {step === 'create' && "Create Livestream"}
+            {step === 'existing' && "Stream Detected"}
             {step === 'method' && `Stream: ${streamInfo?.title || "Choose Method"}`}
             {step === 'setup' && `Stream: ${streamInfo?.title || "Setup"}`}
             {step === 'streaming' && (
@@ -1016,6 +1017,79 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
         {/* Content */}
         <div className="p-6">
+          {/* STEP 0.5: Existing stream detected */}
+          {step === 'existing' && streamInfo && (
+            <div className="space-y-6">
+              {/* Status banner */}
+              <div className="rounded-2xl bg-yellow-500/10 border-2 border-yellow-500/30 p-5 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <FiAlertTriangle className="w-5 h-5 text-yellow-400" />
+                </div>
+                <div>
+                  <p className="font-bold text-yellow-300 mb-1">You have an active stream</p>
+                  <p className="text-sm text-gray-400">
+                    <span className="text-white font-semibold">&quot;{streamInfo.title}&quot;</span> is still marked live
+                    in the system. This usually happens when a previous session ended without properly stopping the broadcast.
+                  </p>
+                </div>
+              </div>
+
+              {/* Stream details */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-[#2f2942] rounded-xl p-4">
+                  <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Stream Title</p>
+                  <p className="text-white font-semibold truncate">{streamInfo.title}</p>
+                </div>
+                <div className="bg-[#2f2942] rounded-xl p-4">
+                  <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Playback ID</p>
+                  <p className="text-white font-mono text-xs truncate">{streamInfo.playbackId || "—"}</p>
+                </div>
+              </div>
+
+              {/* Options */}
+              <div className="space-y-3">
+                <p className="text-sm font-bold text-white">What would you like to do?</p>
+
+                {/* Resume option */}
+                <button
+                  onClick={() => setStep('method')}
+                  className="w-full flex items-center gap-4 p-4 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/50 rounded-2xl transition-all group text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#EB83EA]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#EB83EA]/20 transition">
+                    <FiCheckCircle className="w-5 h-5 text-[#EB83EA]" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white">Continue with this stream</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Use existing credentials to resume via browser or OBS</p>
+                  </div>
+                </button>
+
+                {/* Clear & start fresh */}
+                <button
+                  onClick={async () => {
+                    const authToken = await getAccessToken();
+                    await fetch("/api/stream/clear-all", {
+                      method: "POST",
+                      headers: { Authorization: `Bearer ${authToken}` },
+                    });
+                    setStreamInfo(null);
+                    setStep('create');
+                    toast.success("Stream cleared. Enter a title to start fresh.");
+                  }}
+                  className="w-full flex items-center gap-4 p-4 bg-[#2f2942] hover:bg-red-500/10 border-2 border-red-500/10 hover:border-red-500/40 rounded-2xl transition-all group text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0 group-hover:bg-red-500/20 transition">
+                    <FiXCircle className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white">End it &amp; start fresh</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Terminate this stream on Livepeer and create a brand new one</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* STEP 1: Create Stream */}
           {step === 'create' && (
             <div className="space-y-6">
@@ -1169,28 +1243,11 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => setStep('create')}
+                  onClick={() => setStep(streamInfo ? 'existing' : 'create')}
                   className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full transition"
                 >
                   Back
                 </button>
-                {streamInfo && (
-                  <button
-                    onClick={async () => {
-                      const authToken = await getAccessToken();
-                      await fetch("/api/stream/clear-all", {
-                        method: "POST",
-                        headers: { Authorization: `Bearer ${authToken}` },
-                      });
-                      setStreamInfo(null);
-                      setStep('create');
-                      toast.success("All old streams cleared. You can start fresh.");
-                    }}
-                    className="flex-1 px-6 py-3 bg-red-600/80 hover:bg-red-600 text-white font-semibold rounded-full transition"
-                  >
-                    Clear & Start Fresh
-                  </button>
-                )}
               </div>
             </div>
           )}

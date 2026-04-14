@@ -2,9 +2,13 @@
 
 import { useAuthUser } from "@/lib/privy/hooks";
 import { useRouter } from "next/navigation";
-import { FiVideo, FiHeart, FiUsers, FiEye, FiCopy, FiEdit, FiTrash2, FiZap, FiRadio, FiDownload, FiUpload } from "react-icons/fi";
+import {
+  FiVideo, FiHeart, FiUsers, FiEye, FiCopy, FiEdit, FiTrash2,
+  FiZap, FiRadio, FiDownload, FiUpload, FiAlertTriangle,
+  FiCheckCircle, FiWifi, FiXCircle, FiRefreshCw
+} from "react-icons/fi";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getVideosByCreator, type SupabaseVideo } from "@/lib/supabase/videos";
 import { getCreatorByDID } from "@/lib/supabase/creators";
 import { Video } from "@/types";
@@ -29,6 +33,23 @@ interface StreamRecording {
   views: number;
 }
 
+interface DetectedStream {
+  id: string;
+  title: string;
+  startedAt?: string;
+  playbackId: string;
+}
+
+type LiveStatus = "checking" | "live" | "stuck" | "none";
+
+function formatElapsed(startedAt?: string): string {
+  if (!startedAt) return "";
+  const diff = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+  if (diff < 60) return `${diff}s`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
+}
+
 export default function DashboardPage() {
   const { isAuthenticated, signIn, user } = useAuthUser();
   const { getAccessToken } = usePrivy();
@@ -36,97 +57,126 @@ export default function DashboardPage() {
   const { canStream } = useCanLivestream();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalViews: 0,
-    totalLikes: 0,
-    totalFollowers: 0,
-  });
+  const [stats, setStats] = useState({ totalViews: 0, totalLikes: 0, totalFollowers: 0 });
   const [videos, setVideos] = useState<Video[]>([]);
   const [recordings, setRecordings] = useState<StreamRecording[]>([]);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingRecording, setDeletingRecording] = useState<string | null>(null);
   const [showStreamModal, setShowStreamModal] = useState(false);
-  const { activeStream } = useStreamStore();
+  const [verifiedUserId, setVerifiedUserId] = useState<string>("");
+  const { activeStream, clearActiveStream } = useStreamStore();
 
-  // Load dashboard data from Supabase
+  // Livestream hub state
+  const [liveStatus, setLiveStatus] = useState<LiveStatus>("checking");
+  const [detectedStream, setDetectedStream] = useState<DetectedStream | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
+
+  const checkLiveStatus = useCallback(async (uid: string) => {
+    try {
+      const res = await fetch(`/api/stream/by-creator?creatorDID=${encodeURIComponent(uid)}`);
+      if (!res.ok) { setLiveStatus("none"); return; }
+      const data = await res.json();
+
+      if (data.streams && data.streams.length > 0) {
+        const s = data.streams[0];
+        setDetectedStream({
+          id: s.id,
+          title: s.name || "Unnamed Stream",
+          startedAt: s.startedAt,
+          playbackId: s.playbackId,
+        });
+
+        // If localStorage also shows this stream as active → confirmed live in this session
+        if (activeStream && activeStream.creatorDID === uid) {
+          setLiveStatus("live");
+        } else {
+          // API says active but not in localStorage → stuck/orphaned stream
+          setLiveStatus("stuck");
+        }
+      } else {
+        setDetectedStream(null);
+        // Clear stale localStorage entry if API says no active streams
+        if (activeStream && activeStream.creatorDID === uid) {
+          clearActiveStream();
+        }
+        setLiveStatus("none");
+      }
+    } catch {
+      setLiveStatus("none");
+    }
+  }, [activeStream, clearActiveStream]);
+
+  const handleClearAll = useCallback(async () => {
+    setIsClearing(true);
+    try {
+      const authToken = await getAccessToken();
+      await fetch("/api/stream/clear-all", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      clearActiveStream();
+      setDetectedStream(null);
+      setLiveStatus("none");
+      toast.success("All streams cleared. Ready to go live fresh.");
+    } catch {
+      toast.error("Failed to clear streams.");
+    } finally {
+      setIsClearing(false);
+    }
+  }, [getAccessToken, clearActiveStream]);
+
+  // Load dashboard data
   useEffect(() => {
     async function loadDashboardData() {
       if (!user?.id) return;
-
       setLoading(true);
       try {
-        // CRITICAL FIX: Get the verified user ID from the backend
-        // This ensures we use the same identifier that was stored during video upload
         const authToken = await getAccessToken();
-
-        let verifiedUserId = user.id; // Fallback to client ID
+        let uid = user.id;
 
         try {
-          const meResponse = await fetch("/api/user/me", {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
+          const meRes = await fetch("/api/user/me", {
+            headers: { Authorization: `Bearer ${authToken}` },
           });
-
-          if (meResponse.ok) {
-            const meData = await meResponse.json();
-            verifiedUserId = meData.userId; // Use the verified ID from JWT
-            console.log("✅ Using verified user ID:", verifiedUserId);
-          } else {
-            console.warn("⚠️  Could not verify user ID, using client ID as fallback");
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            uid = meData.userId;
+            setVerifiedUserId(uid);
           }
-        } catch (error) {
-          console.error("Failed to get verified user ID:", error);
-        }
+        } catch {}
 
-        // Fetch user's videos from Supabase using the verified DID
-        // This matches the creator_did that was stored during upload
-        const supabaseVideos = await getVideosByCreator(verifiedUserId);
+        const [supabaseVideos] = await Promise.all([
+          getVideosByCreator(uid),
+          checkLiveStatus(uid),
+        ]);
 
-        // Transform Supabase videos with proper creator data and placeholder thumbnails
         const transformedVideos = await transformVideosWithCreators(supabaseVideos);
-
         setVideos(transformedVideos);
 
-        // Calculate statistics from videos
-        const totalViews = supabaseVideos.reduce((sum: number, v: SupabaseVideo) => sum + (v.views || 0), 0);
-        const totalLikes = supabaseVideos.reduce((sum: number, v: SupabaseVideo) => sum + (v.likes || 0), 0);
+        const totalViews = supabaseVideos.reduce((s: number, v: SupabaseVideo) => s + (v.views || 0), 0);
+        const totalLikes = supabaseVideos.reduce((s: number, v: SupabaseVideo) => s + (v.likes || 0), 0);
 
-        // Fetch creator profile for follower count
         let totalFollowers = 0;
         try {
-          const creator = await getCreatorByDID(verifiedUserId);
+          const creator = await getCreatorByDID(uid);
           totalFollowers = creator?.follower_count || 0;
-        } catch (error) {
-          console.warn("Could not fetch creator profile:", error);
-        }
+        } catch {}
 
-        setStats({
-          totalViews,
-          totalLikes,
-          totalFollowers,
-        });
+        setStats({ totalViews, totalLikes, totalFollowers });
 
-        // Fetch stream recordings if user can livestream
         if (canStream) {
           try {
-            const recordingsResponse = await fetch("/api/stream/recordings", {
-              headers: {
-                Authorization: `Bearer ${authToken}`,
-              },
+            const recRes = await fetch("/api/stream/recordings", {
+              headers: { Authorization: `Bearer ${authToken}` },
             });
-
-            if (recordingsResponse.ok) {
-              const recordingsData = await recordingsResponse.json();
-              setRecordings(recordingsData.recordings || []);
+            if (recRes.ok) {
+              const recData = await recRes.json();
+              setRecordings(recData.recordings || []);
             }
-          } catch (error) {
-            console.warn("Could not fetch recordings:", error);
-          }
+          } catch {}
         }
-      } catch (error) {
-        console.error("Failed to load dashboard data:", error);
-        // Keep zeros if data fetch fails
+      } catch {
+        // keep zeros
       } finally {
         setLoading(false);
       }
@@ -155,31 +205,19 @@ export default function DashboardPage() {
   }
 
   const handleDeleteVideo = async (videoId: string) => {
-    if (!confirm("Are you sure you want to delete this video? This action cannot be undone.")) {
-      return;
-    }
-
+    if (!confirm("Are you sure you want to delete this video? This action cannot be undone.")) return;
     setDeleting(videoId);
     try {
       const authToken = await getAccessToken();
-      const response = await fetch("/api/video/delete", {
+      const res = await fetch("/api/video/delete", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${authToken}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ videoId }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete video");
-      }
-
-      // Remove video from state
+      if (!res.ok) throw new Error("Failed to delete video");
       setVideos(videos.filter(v => v.id !== videoId));
       toast.success("Video deleted successfully");
-    } catch (error) {
-      console.error("Delete error:", error);
+    } catch {
       toast.error("Failed to delete video");
     } finally {
       setDeleting(null);
@@ -187,29 +225,18 @@ export default function DashboardPage() {
   };
 
   const handleDeleteRecording = async (recordingId: string) => {
-    if (!confirm("Are you sure you want to delete this recording? This action cannot be undone.")) {
-      return;
-    }
-
+    if (!confirm("Are you sure you want to delete this recording? This action cannot be undone.")) return;
     setDeletingRecording(recordingId);
     try {
       const authToken = await getAccessToken();
-      const response = await fetch(`/api/stream/recordings?id=${recordingId}`, {
+      const res = await fetch(`/api/stream/recordings?id=${recordingId}`, {
         method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${authToken}`,
-        },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete recording");
-      }
-
-      // Remove recording from state
+      if (!res.ok) throw new Error("Failed to delete recording");
       setRecordings(recordings.filter(r => r.id !== recordingId));
       toast.success("Recording deleted successfully");
-    } catch (error) {
-      console.error("Delete error:", error);
+    } catch {
       toast.error("Failed to delete recording");
     } finally {
       setDeletingRecording(null);
@@ -217,12 +244,7 @@ export default function DashboardPage() {
   };
 
   const handleDownloadRecording = (downloadUrl: string, title: string) => {
-    if (!downloadUrl) {
-      toast.error("Download URL not available");
-      return;
-    }
-
-    // Open download URL in new tab
+    if (!downloadUrl) { toast.error("Download URL not available"); return; }
     window.open(downloadUrl, "_blank");
     toast.success(`Downloading: ${title}`);
   };
@@ -238,6 +260,7 @@ export default function DashboardPage() {
             <LoadingShimmer aspectRatio="square" />
             <LoadingShimmer aspectRatio="square" />
           </div>
+          <LoadingShimmer className="h-48 mb-8" />
           <LoadingShimmer aspectRatio="video" className="h-96" />
         </div>
       </div>
@@ -253,9 +276,10 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header with sparkles */}
-        <div className="mb-8 relative">
+      <div className="max-w-7xl mx-auto space-y-8">
+
+        {/* Header */}
+        <div className="relative">
           <div className="flex items-center gap-4 mb-3">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#EB83EA] to-[#7c3aed] flex items-center justify-center shadow-lg shadow-[#EB83EA]/30">
               <FiZap className="w-7 h-7 text-white" />
@@ -270,8 +294,8 @@ export default function DashboardPage() {
           <div className="absolute -top-2 right-0 text-yellow-300/40 text-3xl animate-pulse">✨</div>
         </div>
 
-        {/* Hero Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
             icon={<FiEye className="w-6 h-6 text-white" />}
             label="Total Views"
@@ -298,23 +322,184 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Active stream banner — shown when the modal was closed mid-stream */}
-        {activeStream && activeStream.creatorDID === user?.id && (
-          <div className="bg-gradient-to-r from-red-900/30 via-red-800/20 to-pink-900/30 border border-red-500/40 rounded-2xl p-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
-              <div>
-                <p className="text-white font-bold text-sm">You&apos;re currently live</p>
-                <p className="text-gray-400 text-xs truncate max-w-[220px]">{activeStream.title}</p>
+        {/* ─── Livestream Studio ─── */}
+        {canStream && (
+          <div className="rounded-3xl border-2 overflow-hidden">
+            {/* LIVE state — actively streaming in this session */}
+            {liveStatus === "live" && activeStream && (
+              <div className="bg-gradient-to-br from-red-950/60 via-[#18122D] to-[#1a0b2e] border-red-500/60 p-6 md:p-8">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                  <div className="flex items-center gap-4">
+                    <div className="relative flex-shrink-0">
+                      <div className="w-14 h-14 rounded-2xl bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/50">
+                        <FiRadio className="w-7 h-7 text-white" />
+                      </div>
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-400 rounded-full animate-ping" />
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-black rounded tracking-widest">● LIVE</span>
+                        {detectedStream?.startedAt && (
+                          <span className="text-gray-400 text-xs">{formatElapsed(detectedStream.startedAt)} elapsed</span>
+                        )}
+                      </div>
+                      <h2 className="text-xl font-bold text-white">{activeStream.title}</h2>
+                      <p className="text-gray-400 text-sm flex items-center gap-1.5 mt-1">
+                        <FiWifi className="w-3.5 h-3.5 text-green-400" />
+                        Broadcasting now — your audience can see you
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => setShowStreamModal(true)}
+                      className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-full transition flex items-center gap-2 shadow-lg shadow-red-500/30"
+                    >
+                      <FiRadio className="w-4 h-4" />
+                      Return to Stream
+                    </button>
+                    <button
+                      onClick={handleClearAll}
+                      disabled={isClearing}
+                      className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full transition flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <FiXCircle className="w-4 h-4" />
+                      {isClearing ? "Ending..." : "End Stream"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick info row */}
+                <div className="mt-6 pt-5 border-t border-red-500/20 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div className="bg-red-500/10 rounded-xl p-3">
+                    <p className="text-gray-500 text-xs mb-1 uppercase tracking-wide">Method</p>
+                    <p className="text-white font-semibold">{activeStream.method === "browser" ? "Browser (WebRTC)" : "OBS / Streamlabs"}</p>
+                  </div>
+                  <div className="bg-red-500/10 rounded-xl p-3">
+                    <p className="text-gray-500 text-xs mb-1 uppercase tracking-wide">Status</p>
+                    <p className="text-green-400 font-semibold flex items-center gap-1">
+                      <FiCheckCircle className="w-3.5 h-3.5" /> Connected
+                    </p>
+                  </div>
+                  <div className="bg-red-500/10 rounded-xl p-3 col-span-2 md:col-span-1">
+                    <p className="text-gray-500 text-xs mb-1 uppercase tracking-wide">Share Link</p>
+                    <button
+                      onClick={() => {
+                        const handle = verifiedUserId;
+                        navigator.clipboard.writeText(`${window.location.origin}/u/${handle}`);
+                        toast.success("Profile link copied!");
+                      }}
+                      className="text-[#EB83EA] hover:text-white text-sm font-semibold flex items-center gap-1 transition"
+                    >
+                      <FiCopy className="w-3 h-3" /> Copy profile link
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-            <button
-              onClick={() => setShowStreamModal(true)}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-full text-sm font-bold transition flex items-center gap-2 flex-shrink-0"
-            >
-              <FiRadio className="w-4 h-4" />
-              Manage Stream
-            </button>
+            )}
+
+            {/* STUCK state — Livepeer/DB says active but not in current session */}
+            {liveStatus === "stuck" && detectedStream && (
+              <div className="bg-gradient-to-br from-yellow-950/40 via-[#18122D] to-[#1a0b2e] border-yellow-500/40 p-6 md:p-8">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-yellow-500/20 border-2 border-yellow-500/40 flex items-center justify-center flex-shrink-0">
+                      <FiAlertTriangle className="w-7 h-7 text-yellow-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded border border-yellow-500/30 tracking-wide">STREAM DETECTED</span>
+                      </div>
+                      <h2 className="text-xl font-bold text-white">{detectedStream.title}</h2>
+                      <p className="text-gray-400 text-sm mt-1">
+                        A stream is marked active in the system but you&apos;re not currently broadcasting.
+                        This can happen if a previous session ended unexpectedly.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 min-w-[200px]">
+                    <button
+                      onClick={() => setShowStreamModal(true)}
+                      className="px-6 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-full transition flex items-center justify-center gap-2"
+                    >
+                      <FiRadio className="w-4 h-4" />
+                      Resume / Manage
+                    </button>
+                    <button
+                      onClick={handleClearAll}
+                      disabled={isClearing}
+                      className="px-6 py-3 bg-red-600/70 hover:bg-red-600 text-white font-semibold rounded-full transition flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <FiXCircle className="w-4 h-4" />
+                      {isClearing ? "Clearing..." : "Force Clear"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-5 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-sm text-yellow-200/80">
+                  <strong>What happened?</strong> Your last stream session may have closed without properly ending the broadcast.
+                  Click <strong>Force Clear</strong> to reset and start fresh, or <strong>Resume</strong> to open the stream manager.
+                </div>
+              </div>
+            )}
+
+            {/* NONE state — no active streams */}
+            {(liveStatus === "none" || liveStatus === "checking") && (
+              <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] border-[#EB83EA]/10 p-6 md:p-8">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 border-2 border-[#EB83EA]/20 flex items-center justify-center flex-shrink-0">
+                      {liveStatus === "checking" ? (
+                        <FiRefreshCw className="w-6 h-6 text-[#EB83EA] animate-spin" />
+                      ) : (
+                        <FiRadio className="w-7 h-7 text-[#EB83EA]" />
+                      )}
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">
+                        {liveStatus === "checking" ? "Checking stream status…" : "Ready to Go Live"}
+                      </h2>
+                      <p className="text-gray-400 text-sm mt-1">
+                        {liveStatus === "checking"
+                          ? "Connecting to Livepeer…"
+                          : "No active stream. Start broadcasting with browser or OBS/Streamlabs."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {liveStatus === "none" && (
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={() => setShowStreamModal(true)}
+                        className="px-8 py-4 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold rounded-full transition-all shadow-lg shadow-red-500/30 hover:shadow-xl hover:scale-[1.02] flex items-center gap-2"
+                      >
+                        <FiRadio className="w-5 h-5" />
+                        Go Live
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {liveStatus === "none" && (
+                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                    {[
+                      { icon: "🌐", title: "Browser Stream", desc: "No software needed — stream from your camera or screen directly in Dragverse." },
+                      { icon: "🎬", title: "OBS / Streamlabs", desc: "Professional setup with scenes, overlays, and multi-source mixing." },
+                      { icon: "📅", title: "Schedule Ahead", desc: "Set a future date and let your audience know when to tune in." },
+                    ].map((item) => (
+                      <div key={item.title} className="bg-[#2f2942]/40 rounded-2xl p-4 border border-[#EB83EA]/10">
+                        <span className="text-2xl mb-2 block">{item.icon}</span>
+                        <h3 className="font-bold text-white mb-1">{item.title}</h3>
+                        <p className="text-gray-500 text-xs">{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -322,32 +507,18 @@ export default function DashboardPage() {
         <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/10 shadow-xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
             <div>
-              <h2 className="text-2xl lg:text-3xl font-bold uppercase tracking-wide mb-2">
-                Your Performances
-              </h2>
+              <h2 className="text-2xl lg:text-3xl font-bold uppercase tracking-wide mb-2">Your Performances</h2>
               <p className="text-gray-400">All your fabulous content in one place</p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              {canStream && (
-                <button
-                  onClick={() => setShowStreamModal(true)}
-                  className="px-8 py-4 text-lg rounded-full font-bold transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02]"
-                >
-                  <FiRadio className="w-5 h-5" />
-                  {activeStream?.creatorDID === user?.id ? "Manage Stream" : "Go Live"}
-                </button>
-              )}
-              <ActionButton
-                onClick={() => router.push('/upload')}
-                icon={<FiVideo className="w-5 h-5" />}
-                size="lg"
-              >
-                Upload New
-              </ActionButton>
-            </div>
+            <ActionButton
+              onClick={() => router.push("/upload")}
+              icon={<FiVideo className="w-5 h-5" />}
+              size="lg"
+            >
+              Upload New
+            </ActionButton>
           </div>
 
-          {/* Videos Grid */}
           <div className="space-y-4">
             {videos.length === 0 ? (
               <EmptyState
@@ -355,7 +526,7 @@ export default function DashboardPage() {
                 title="No Looks Yet"
                 description="Ready for your close-up? Upload your first video and start building your empire!"
                 actionLabel="Upload Your First Look"
-                onAction={() => router.push('/upload')}
+                onAction={() => router.push("/upload")}
               />
             ) : (
               videos.map((video) => (
@@ -364,27 +535,27 @@ export default function DashboardPage() {
                   className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-5 border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/30 transition-all hover:shadow-lg hover:shadow-[#EB83EA]/10 group"
                 >
                   <div className="flex flex-col sm:flex-row gap-5">
-                    {/* Thumbnail */}
                     <div className="relative w-full sm:w-48 h-28 rounded-xl overflow-hidden flex-shrink-0 border-2 border-[#EB83EA]/20 group-hover:border-[#EB83EA]/40 transition-all">
                       <Image
-                        src={video.thumbnail && video.thumbnail.trim() !== '' ? video.thumbnail : '/default-thumbnail.jpg'}
+                        src={video.thumbnail && video.thumbnail.trim() !== "" ? video.thumbnail : "/default-thumbnail.jpg"}
                         alt={video.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="absolute top-2 right-2 px-3 py-1 bg-[#EB83EA] text-white text-xs font-bold rounded-full shadow-lg">
-                        {video.contentType === 'short' ? 'SNAPSHOT' : video.contentType === 'podcast' || video.contentType === 'music' ? 'AUDIO' : 'VIDEO'}
+                        {video.contentType === "short"
+                          ? "SNAPSHOT"
+                          : video.contentType === "podcast" || video.contentType === "music"
+                          ? "AUDIO"
+                          : "VIDEO"}
                       </div>
                     </div>
 
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-xl mb-3 text-white group-hover:text-[#EB83EA] transition-colors">
                         {video.title}
                       </h3>
-
-                      {/* Stats */}
                       <div className="flex flex-wrap gap-4 text-sm mb-4">
                         <span className="flex items-center gap-1.5 text-gray-400">
                           <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
@@ -404,15 +575,13 @@ export default function DashboardPage() {
                           <span className="text-xs">Uploaded {new Date(video.createdAt).toLocaleDateString()}</span>
                         </span>
                       </div>
-
-                      {/* Actions */}
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => copyShareLink(video.id)}
                           className="px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-white hover:text-[#EB83EA]"
                         >
                           <FiCopy className="w-4 h-4" />
-                          {copiedId === video.id ? '✓ Copied!' : 'Share'}
+                          {copiedId === video.id ? "✓ Copied!" : "Share"}
                         </button>
                         <button
                           onClick={() => router.push(`/watch/${video.id}`)}
@@ -434,7 +603,7 @@ export default function DashboardPage() {
                           className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <FiTrash2 className="w-4 h-4" />
-                          {deleting === video.id ? 'Deleting...' : 'Delete'}
+                          {deleting === video.id ? "Deleting…" : "Delete"}
                         </button>
                       </div>
                     </div>
@@ -445,9 +614,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Stream Recordings Section - Only show if user can livestream */}
+        {/* Stream Recordings */}
         {canStream && recordings.length > 0 && (
-          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/10 shadow-xl mt-8">
+          <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/10 shadow-xl">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
               <div>
                 <h2 className="text-2xl lg:text-3xl font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
@@ -458,7 +627,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Recordings Grid */}
             <div className="space-y-4">
               {recordings.map((recording) => (
                 <div
@@ -466,28 +634,23 @@ export default function DashboardPage() {
                   className="bg-gradient-to-br from-[#2f2942]/40 to-[#1a0b2e]/40 rounded-2xl p-5 border-2 border-red-500/10 hover:border-red-500/30 transition-all hover:shadow-lg hover:shadow-red-500/10 group"
                 >
                   <div className="flex flex-col sm:flex-row gap-5">
-                    {/* Thumbnail */}
                     <div className="relative w-full sm:w-48 h-28 rounded-xl overflow-hidden flex-shrink-0 border-2 border-red-500/20 group-hover:border-red-500/40 transition-all">
                       <Image
-                        src={recording.thumbnail || '/default-thumbnail.jpg'}
+                        src={recording.thumbnail || "/default-thumbnail.jpg"}
                         alt={recording.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="absolute top-2 right-2 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
                         <FiRadio className="w-3 h-3" />
-                        {recording.status === 'ready' ? 'RECORDED' : recording.status.toUpperCase()}
+                        {recording.status === "ready" ? "RECORDED" : recording.status.toUpperCase()}
                       </div>
                     </div>
 
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-xl mb-3 text-white group-hover:text-red-400 transition-colors">
                         {recording.title}
                       </h3>
-
-                      {/* Stats */}
                       <div className="flex flex-wrap gap-4 text-sm mb-4">
                         <span className="flex items-center gap-1.5 text-gray-400">
                           <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
@@ -496,40 +659,35 @@ export default function DashboardPage() {
                           <span className="font-semibold">{(recording.views || 0).toLocaleString()}</span>
                           <span className="text-xs">views</span>
                         </span>
-                        <span className="flex items-center gap-1.5 text-gray-400">
-                          <span className="text-xs">Recorded {new Date(recording.recorded_at).toLocaleDateString()}</span>
+                        <span className="text-gray-400 text-xs self-center">
+                          Recorded {new Date(recording.recorded_at).toLocaleDateString()}
                         </span>
                         {recording.duration_seconds && (
-                          <span className="flex items-center gap-1.5 text-gray-400">
-                            <span className="text-xs">{Math.floor(recording.duration_seconds / 60)} minutes</span>
+                          <span className="text-gray-400 text-xs self-center">
+                            {Math.floor(recording.duration_seconds / 60)}m
                           </span>
                         )}
                         {recording.is_published && (
                           <span className="px-2 py-0.5 bg-green-500/10 text-green-400 text-xs rounded-full flex items-center gap-1">
-                            <FiUpload className="w-3 h-3" />
-                            Published
+                            <FiUpload className="w-3 h-3" /> Published
                           </span>
                         )}
                       </div>
-
-                      {/* Actions */}
                       <div className="flex flex-wrap gap-2">
-                        {recording.download_url && recording.status === 'ready' && (
+                        {recording.download_url && recording.status === "ready" && (
                           <button
                             onClick={() => handleDownloadRecording(recording.download_url!, recording.title)}
                             className="px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-white hover:text-[#EB83EA]"
                           >
-                            <FiDownload className="w-4 h-4" />
-                            Download
+                            <FiDownload className="w-4 h-4" /> Download
                           </button>
                         )}
                         {recording.playback_url && (
                           <button
-                            onClick={() => window.open(recording.playback_url, '_blank')}
+                            onClick={() => window.open(recording.playback_url, "_blank")}
                             className="px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-white hover:text-[#EB83EA]"
                           >
-                            <FiEye className="w-4 h-4" />
-                            Watch
+                            <FiEye className="w-4 h-4" /> Watch
                           </button>
                         )}
                         <button
@@ -538,7 +696,7 @@ export default function DashboardPage() {
                           className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <FiTrash2 className="w-4 h-4" />
-                          {deletingRecording === recording.id ? 'Deleting...' : 'Delete'}
+                          {deletingRecording === recording.id ? "Deleting…" : "Delete"}
                         </button>
                       </div>
                     </div>
@@ -550,9 +708,15 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Livestream Modal */}
+      {/* Stream Modal */}
       {showStreamModal && canStream && (
-        <StreamModal onClose={() => setShowStreamModal(false)} />
+        <StreamModal
+          onClose={() => {
+            setShowStreamModal(false);
+            // Refresh live status after modal closes
+            if (verifiedUserId) checkLiveStatus(verifiedUserId);
+          }}
+        />
       )}
     </div>
   );
