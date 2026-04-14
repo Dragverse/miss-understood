@@ -188,6 +188,10 @@ export function StreamModal({ onClose }: StreamModalProps) {
     setIsCreating(true);
     try {
       const authToken = await getAccessToken();
+      if (!authToken) {
+        toast.error("Session expired — please refresh the page and sign in again.");
+        return;
+      }
       const response = await fetch("/api/stream/create", {
         method: "POST",
         headers: {
@@ -620,8 +624,25 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
     } catch (error) {
       console.error("❌ Streaming error:", error);
+      setIsStreaming(false);
 
-      // Provide more specific error guidance
+      // On iOS/iPadOS Safari, WHIP (WebRTC) frequently fails due to codec or
+      // ICE negotiation quirks. Automatically fall back to the RTMP instructions
+      // so the user isn't left stranded.
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      if (isMobile || isSafari) {
+        toast("Browser streaming isn't supported on this device — switching to RTMP mode.", { icon: '📡', duration: 5000 });
+        // Stop camera stream to release the mic/camera locks
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach(t => t.stop());
+          mediaStreamRef.current = null;
+        }
+        setStreamType(null);
+        setStreamingMethod('obs');
+        setStep('setup');
+        return;
+      }
+
       let errorMessage = "Failed to start stream";
       if (error instanceof Error) {
         if (error.message.includes("WHIP negotiation failed")) {
@@ -632,9 +653,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
           errorMessage = error.message;
         }
       }
-
       toast.error(errorMessage);
-      setIsStreaming(false);
     }
   };
 
