@@ -178,7 +178,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
             <>
               {/* @livepeer/react Player — handles HLS/WebRTC/CORS correctly */}
               <Player.Root src={getSrc(playbackUrl)} autoPlay volume={0}>
-                <Player.Container className="w-full h-full">
+                <Player.Container className="absolute inset-0 w-full h-full">
                   <Player.Video className="w-full h-full object-cover" />
                   <Player.Controls autoHide={3000} className="p-3">
                     <div className="flex items-center gap-3">

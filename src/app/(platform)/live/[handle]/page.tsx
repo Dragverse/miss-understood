@@ -379,7 +379,7 @@ function LivePageContent() {
                   autoPlay
                   volume={0}
                 >
-                  <Player.Container className="w-full h-full">
+                  <Player.Container className="absolute inset-0 w-full h-full">
                     <Player.Video className="w-full h-full object-cover" onLoadedData={() => setStreamState("playing")} />
                     <Player.Controls autoHide={3000} className="p-4">
                       <div className="flex items-center gap-3">
