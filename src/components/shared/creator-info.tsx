@@ -55,16 +55,16 @@ export function CreatorInfo({
       <div className="relative flex-shrink-0">
         {isCreatorLive && (
           <>
-            {/* Pulsing glow ring */}
-            <span className={`absolute rounded-full animate-ping bg-red-500/40 ${compact ? "-inset-0.5" : "-inset-1"}`} />
-            {/* Static border */}
-            <span className={`absolute rounded-full border-2 border-red-500 ${compact ? "-inset-0.5" : "-inset-1"}`} />
+            {/* Soft outer glow */}
+            <span className={`absolute rounded-full bg-gradient-to-br from-[#EB83EA] via-fuchsia-400 to-red-400 opacity-50 blur-md animate-pulse ${compact ? "-inset-1" : "-inset-2"}`} />
+            {/* Crisp gradient ring */}
+            <span className={`absolute rounded-full bg-gradient-to-br from-[#EB83EA] via-fuchsia-400 to-red-400 ${compact ? "-inset-0.5" : "-inset-[3px]"}`} />
           </>
         )}
         <div
           className={`relative ${avatarSize} rounded-full overflow-hidden ${
             isCreatorLive
-              ? "border-2 border-red-500"
+              ? "border-2 border-[#1a0b2e]"
               : "border-2 border-[#EB83EA]/30 group-hover:border-[#EB83EA]"
           } transition-all`}
         >

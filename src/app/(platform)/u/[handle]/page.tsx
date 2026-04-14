@@ -324,11 +324,13 @@ export default function DynamicProfilePage() {
               <div className="relative flex-shrink-0">
                 {isCreatorLive && (
                   <>
-                    <span className="absolute -inset-2 rounded-full animate-ping bg-red-500/30" />
-                    <span className="absolute -inset-1 rounded-full border-[3px] border-red-500" />
+                    {/* Soft outer glow */}
+                    <span className="absolute -inset-3 rounded-full bg-gradient-to-br from-[#EB83EA] via-fuchsia-400 to-red-400 opacity-50 blur-lg animate-pulse" />
+                    {/* Crisp gradient ring */}
+                    <span className="absolute -inset-[3px] rounded-full bg-gradient-to-br from-[#EB83EA] via-fuchsia-400 to-red-400" />
                   </>
                 )}
-                <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full border-[3px] border-white/20 overflow-hidden bg-[#2f2942] shadow-2xl">
+                <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full border-[3px] border-[#1a0b2e] overflow-hidden bg-[#2f2942] shadow-2xl">
                   <Image
                     src={creator.avatar}
                     alt={creator.displayName}
