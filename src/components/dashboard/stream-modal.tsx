@@ -1257,20 +1257,13 @@ export function StreamModal({ onClose }: StreamModalProps) {
           {/* STEP 1.5: Choose Streaming Method */}
           {step === 'method' && streamInfo && (
             <div className="space-y-6">
-              {isMobile ? (
-                <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-sm text-yellow-200">
-                  <p className="font-semibold mb-1">Mobile streaming tip</p>
-                  <p className="text-yellow-200/70">Browser streaming isn&apos;t supported on mobile. Use <strong>Larix Broadcaster</strong> (iOS/Android) or any RTMP app with the credentials below.</p>
-                </div>
-              ) : (
-                <p className="text-gray-300 text-center mb-6">
-                  Choose how you want to stream. Browser streaming is quick and easy, while OBS/Streamlabs offers professional features.
-                </p>
-              )}
+              <p className="text-gray-300 text-center">
+                Choose how you want to stream.
+              </p>
 
-              <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "grid-cols-2"}`}>
-                {/* Browser Streaming Option — hidden on mobile */}
-                {!isMobile && <button
+              <div className="grid grid-cols-2 gap-4">
+                {/* Browser Streaming Option */}
+                <button
                   onClick={() => {
                     setStreamingMethod('browser');
                     setStep('setup');
@@ -1281,17 +1274,17 @@ export function StreamModal({ onClose }: StreamModalProps) {
                   <div className="relative">
                     <FiVideo className="w-12 h-12 text-[#EB83EA] mx-auto mb-4 group-hover:scale-110 transition" />
                     <h3 className="font-bold text-white text-lg mb-2">Browser Streaming</h3>
-                    <p className="text-sm text-gray-400 mb-3">Stream from your camera or screen</p>
+                    <p className="text-sm text-gray-400 mb-3">{isMobile ? "Stream from your camera" : "Stream from your camera or screen"}</p>
                     <ul className="text-xs text-gray-500 space-y-1 text-left">
                       <li>• Quick & easy setup</li>
                       <li>• No software needed</li>
-                      <li>• Camera or screen share</li>
+                      {isMobile ? <li>• Camera streaming</li> : <li>• Camera or screen share</li>}
                       <li>• Low latency</li>
                     </ul>
                   </div>
-                </button>}
+                </button>
 
-                {/* OBS/Streamlabs Option */}
+                {/* OBS/Streamlabs/Larix Option */}
                 <button
                   onClick={() => {
                     setStreamingMethod('obs');
@@ -1302,13 +1295,24 @@ export function StreamModal({ onClose }: StreamModalProps) {
                   <div className="absolute inset-0 bg-gradient-to-br from-[#7c3aed]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <div className="relative">
                     <FiMonitor className="w-12 h-12 text-[#7c3aed] mx-auto mb-4 group-hover:scale-110 transition" />
-                    <h3 className="font-bold text-white text-lg mb-2">OBS / Streamlabs</h3>
-                    <p className="text-sm text-gray-400 mb-3">Professional streaming software</p>
+                    <h3 className="font-bold text-white text-lg mb-2">{isMobile ? "RTMP App" : "OBS / Streamlabs"}</h3>
+                    <p className="text-sm text-gray-400 mb-3">{isMobile ? "Stream via Larix or any RTMP app" : "Professional streaming software"}</p>
                     <ul className="text-xs text-gray-500 space-y-1 text-left">
-                      <li>• Multi-camera setup</li>
-                      <li>• Scenes & overlays</li>
-                      <li>• Advanced controls</li>
-                      <li>• Professional quality</li>
+                      {isMobile ? (
+                        <>
+                          <li>• Larix Broadcaster (free)</li>
+                          <li>• Any RTMP streaming app</li>
+                          <li>• Most reliable on mobile</li>
+                          <li>• Works on cellular</li>
+                        </>
+                      ) : (
+                        <>
+                          <li>• Multi-camera setup</li>
+                          <li>• Scenes & overlays</li>
+                          <li>• Advanced controls</li>
+                          <li>• Professional quality</li>
+                        </>
+                      )}
                     </ul>
                   </div>
                 </button>
@@ -1350,7 +1354,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
               {!streamType && (
                 <div>
                   <h3 className="text-lg font-bold text-white mb-3">Choose Video Source</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "grid-cols-2"}`}>
                     <button
                       onClick={startCamera}
                       className="p-4 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl transition-all group"
