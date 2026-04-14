@@ -58,16 +58,48 @@ export async function POST(request: NextRequest) {
           .limit(1);
 
         if (!checkError && existingStreams && existingStreams.length > 0) {
-          return NextResponse.json(
-            {
-              error: "You already have an active stream",
-              activeStream: {
-                id: existingStreams[0].livepeer_stream_id,
-                title: existingStreams[0].title
+          const conflicting = existingStreams[0];
+
+          // Verify the conflicting stream is truly still active on Livepeer before refusing.
+          // A stale is_active=true in DB (e.g. from a self-heal race after clear-all) would
+          // otherwise permanently block new streams until the next self-heal cycle.
+          let trulyActive = true;
+          if (conflicting.livepeer_stream_id) {
+            try {
+              const lpRes = await fetch(
+                `${LIVEPEER_API_URL}/stream/${conflicting.livepeer_stream_id}`,
+                { headers: { Authorization: `Bearer ${apiKey}` } }
+              );
+              if (lpRes.ok) {
+                const lpData = await lpRes.json();
+                if (!lpData.isActive) {
+                  // Livepeer says it's gone — auto-clear the stale DB row and proceed
+                  await supabase
+                    .from("streams")
+                    .update({ is_active: false, updated_at: new Date().toISOString() })
+                    .eq("id", conflicting.id);
+                  console.log(`🔧 Auto-cleared stale stream ${conflicting.id} — Livepeer says not active`);
+                  trulyActive = false;
+                }
               }
-            },
-            { status: 409 } // Conflict
-          );
+            } catch {
+              // Network error — stay conservative, fall through to 409
+            }
+          }
+
+          if (trulyActive) {
+            return NextResponse.json(
+              {
+                error: "You already have an active stream",
+                activeStream: {
+                  id: conflicting.livepeer_stream_id,
+                  title: conflicting.title
+                }
+              },
+              { status: 409 }
+            );
+          }
+          // trulyActive=false → Livepeer confirmed it's gone, proceed to create new stream
         }
       } catch (error) {
         console.warn("Could not check for existing streams:", error);

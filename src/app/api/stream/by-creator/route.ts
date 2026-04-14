@@ -75,8 +75,10 @@ export async function GET(request: NextRequest) {
           isLive = stream.is_active;
         }
 
-        // 2. HLS manifest check (only when not yet confirmed live)
-        if (!isLive && stream.playback_id) {
+        // 2. HLS manifest check — ONLY when Livepeer didn't answer definitively.
+        // The HLS CDN caches segments for 1-2 min after termination, so checking it
+        // when Livepeer already said "not active" causes ghost reactivation.
+        if (!isLive && stream.playback_id && !livepeerDefinitive) {
           isLive = await isHLSManifestLive(stream.playback_id);
         }
 
@@ -86,8 +88,15 @@ export async function GET(request: NextRequest) {
           isLive = stream.is_active;
         }
 
-        // Self-heal the DB — fire-and-forget so every profile visit corrects stale is_active
-        if (isLive && !stream.is_active) {
+        // Self-heal the DB — fire-and-forget so every profile visit corrects stale is_active.
+        // Guard: if this stream was set to inactive within the last 120 seconds, skip
+        // reactivation — it was just terminated and Livepeer may not have settled yet.
+        const recentlyTerminated =
+          !stream.is_active &&
+          stream.updated_at &&
+          Date.now() - new Date(stream.updated_at).getTime() < 120_000;
+
+        if (isLive && !stream.is_active && !recentlyTerminated) {
           void supabase
             .from("streams")
             .update({ is_active: true, started_at: stream.started_at ?? new Date().toISOString() })
