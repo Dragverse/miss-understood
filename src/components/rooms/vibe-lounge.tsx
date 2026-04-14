@@ -115,7 +115,7 @@ export function VibeLounge() {
 
   const { enableAudio, disableAudio, isAudioOn } = useLocalAudio();
   const { enableVideo, disableVideo, isVideoOn, stream: localVideoStream } = useLocalVideo();
-  const { updateMetadata, permissions } = useLocalPeer<{ displayName: string; avatarUrl: string }>({
+  const { updateMetadata, permissions, role } = useLocalPeer<{ displayName: string; avatarUrl: string }>({
     onPermissionsUpdated: (perms) => {
       // Fired when host promotes this listener to speaker
       if (perms.canProduce) {
@@ -125,8 +125,10 @@ export function VibeLounge() {
     },
   });
 
-  // Current user can speak if they're the host or have been promoted
-  const canSpeak = isHost || (permissions?.canProduce ?? false);
+  // Current user can speak if they're the host, have speaker/co-host role, or have been granted canProduce.
+  // Role check is more reliable than permissions on initial render (permissions may be undefined until
+  // Huddle01 processes the token, while role is decoded from the JWT immediately after joinRoom).
+  const canSpeak = isHost || role === "speaker" || role === "co-host" || (permissions?.canProduce ?? false);
 
   const { peerIds: speakerPeerIds } = usePeerIds({ roles: ["host", "co-host", "speaker"] as any });
   const { peerIds: listenerPeerIds } = usePeerIds({ roles: ["listener"] as any });

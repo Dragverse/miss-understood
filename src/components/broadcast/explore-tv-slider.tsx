@@ -9,7 +9,6 @@ import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 
 // Safety-only fallback — videos advance via onEnded; this just guards against stalled playback
 const MAX_SLIDE_DURATION = 5 * 60 * 1000;
-const MAX_VIDEOS = 6;
 
 interface ExploreTVSliderProps {
   videos: Video[];
@@ -18,9 +17,9 @@ interface ExploreTVSliderProps {
 }
 
 export function ExploreTVSlider({ videos }: ExploreTVSliderProps) {
-  const filtered = videos
-    .filter((v) => v.contentType !== "short" && v.contentType !== "live")
-    .slice(0, MAX_VIDEOS);
+  const filtered = videos.filter(
+    (v) => v.contentType !== "short" && v.contentType !== "live"
+  );
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<any>(null);
@@ -217,17 +216,23 @@ export function ExploreTVSlider({ videos }: ExploreTVSliderProps) {
 
       </div>
 
-      {/* Dot indicators */}
+      {/* Indicators */}
       {total > 1 && (
-        <div className="flex gap-1.5 mt-2.5 justify-center">
-          {filtered.map((_, i) => (
-            <div
-              key={i}
-              className={`rounded-full transition-all duration-300 ${
-                idx === i ? "w-5 h-1.5 bg-[#EB83EA]" : "w-1.5 h-1.5 bg-white/30"
-              }`}
-            />
-          ))}
+        <div className="flex gap-1.5 mt-2.5 justify-center items-center">
+          {total <= 12 ? (
+            filtered.map((_, i) => (
+              <div
+                key={i}
+                className={`rounded-full transition-all duration-300 ${
+                  idx === i ? "w-5 h-1.5 bg-[#EB83EA]" : "w-1.5 h-1.5 bg-white/30"
+                }`}
+              />
+            ))
+          ) : (
+            <span className="text-xs text-gray-400">
+              {idx + 1} / {total}
+            </span>
+          )}
         </div>
       )}
     </div>

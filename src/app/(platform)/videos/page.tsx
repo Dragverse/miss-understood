@@ -32,6 +32,44 @@ export default function VideosPage() {
     });
   };
 
+  const mapVideo = (v: any): Video => ({
+    id: v.id,
+    title: v.title,
+    description: v.description || "",
+    thumbnail: v.thumbnail || null,
+    duration: v.duration || 0,
+    views: v.views,
+    likes: v.likes,
+    createdAt: new Date(v.created_at),
+    playbackUrl: v.playback_url || v.playbackUrl || "",
+    livepeerAssetId: v.playback_id || v.livepeer_asset_id || "",
+    contentType: (v.content_type || v.contentType || "long") as any,
+    creator: v.creator ? {
+      did: v.creator.did,
+      handle: v.creator.handle,
+      displayName: v.creator.display_name || v.creator.displayName,
+      avatar: v.creator.avatar || "/defaultpfp.png",
+      description: "",
+      followerCount: 0,
+      followingCount: 0,
+      createdAt: new Date(),
+      verified: v.creator.verified || false,
+    } : {
+      did: v.creator_did || "",
+      handle: "creator",
+      displayName: "Creator",
+      avatar: "/defaultpfp.png",
+      description: "",
+      followerCount: 0,
+      followingCount: 0,
+      createdAt: new Date(),
+      verified: false,
+    },
+    category: v.category || "",
+    tags: v.tags || [],
+    source: "ceramic" as const,
+  });
+
   async function loadVideos(isRefresh = false) {
     if (isRefresh) {
       setRefreshing(true);
@@ -42,60 +80,34 @@ export default function VideosPage() {
     try {
       console.log("[Videos] Fetching Dragverse content...");
 
-      // Fetch Dragverse videos only
-      const supabaseVideos = await getVideos(50).catch((err) => {
-        console.warn("[Videos] Supabase fetch failed:", err);
-        return [];
-      });
+      // Fetch long-form + audio videos and shorts in parallel
+      // Shorts are fetched separately via the API (service role key, no RLS truncation)
+      // so ALL snapshots appear regardless of how many long videos exist
+      const [supabaseVideos, shortsRes] = await Promise.all([
+        getVideos(100).catch((err) => {
+          console.warn("[Videos] Supabase fetch failed:", err);
+          return [];
+        }),
+        fetch("/api/videos/list?limit=100&contentType=short")
+          .then((r) => r.json())
+          .catch(() => ({ success: false, videos: [] })),
+      ]);
 
-      // Transform Supabase videos to Video type
-      const transformedSupabase = (supabaseVideos || []).map((v: any) => ({
-        id: v.id,
-        title: v.title,
-        description: v.description || "",
-        thumbnail: v.thumbnail || null,
-        duration: v.duration || 0,
-        views: v.views,
-        likes: v.likes,
-        createdAt: new Date(v.created_at),
-        playbackUrl: v.playback_url || "",
-        livepeerAssetId: v.playback_id || v.livepeer_asset_id || "",
-        contentType: (v.content_type as any) || "long",
-        creator: v.creator ? {
-          did: v.creator.did,
-          handle: v.creator.handle,
-          displayName: v.creator.display_name,
-          avatar: v.creator.avatar || "/defaultpfp.png",
-          description: "",
-          followerCount: 0,
-          followingCount: 0,
-          createdAt: new Date(),
-          verified: v.creator.verified || false,
-        } : {
-          did: v.creator_did,
-          handle: "creator",
-          displayName: "Creator",
-          avatar: "/defaultpfp.png",
-          description: "",
-          followerCount: 0,
-          followingCount: 0,
-          createdAt: new Date(),
-          verified: false,
-        },
-        category: v.category || "",
-        tags: v.tags || [],
-        source: "ceramic" as const,
-      })) as Video[];
+      const transformed = (supabaseVideos || []).map(mapVideo);
 
-      console.log(`[Videos] Loaded ${transformedSupabase.length} Dragverse videos`);
+      // Merge in shorts from the dedicated API — deduplicate by id
+      const existingIds = new Set(transformed.map((v) => v.id));
+      const apiShorts: Video[] = (shortsRes.success ? shortsRes.videos ?? [] : [])
+        .map(mapVideo)
+        .filter((v: Video) => !existingIds.has(v.id));
 
-      // Deduplicate and sort by date (newest first)
-      const sortedVideos = deduplicateVideos(transformedSupabase)
+      console.log(`[Videos] Loaded ${transformed.length} videos + ${apiShorts.length} extra shorts`);
+
+      const sortedVideos = deduplicateVideos([...transformed, ...apiShorts])
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       setVideos(sortedVideos);
 
-      // If this was a refresh, show notification if new content was found
       if (isRefresh && sortedVideos.length > 0) {
         setNewContentAvailable(true);
         setTimeout(() => setNewContentAvailable(false), 5000);
