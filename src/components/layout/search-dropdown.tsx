@@ -37,13 +37,23 @@ interface SearchResult {
   }>;
 }
 
-export function SearchDropdown() {
+interface SearchDropdownProps {
+  autoFocus?: boolean;
+  onClose?: () => void;
+}
+
+export function SearchDropdown({ autoFocus, onClose }: SearchDropdownProps = {}) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [results, setResults] = useState<SearchResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const debouncedQuery = useDebounce(query, 300);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -91,6 +101,7 @@ export function SearchDropdown() {
       <div className="relative">
         <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -124,7 +135,7 @@ export function SearchDropdown() {
                     href={profileHref}
                     target={isExternal ? "_blank" : undefined}
                     rel={isExternal ? "noopener noreferrer" : undefined}
-                    onClick={() => { setIsOpen(false); setQuery(""); }}
+                    onClick={() => { setIsOpen(false); setQuery(""); onClose?.(); }}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition"
                   >
                     <Image

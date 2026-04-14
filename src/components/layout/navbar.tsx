@@ -19,7 +19,7 @@ import {
   FiGlobe,
   FiHeart,
   FiSettings,
-
+  FiSearch,
 } from "react-icons/fi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
@@ -38,6 +38,7 @@ export function Navbar() {
   const { openStreamModal } = useStreamStore();
   const { blueskyProfile, blueskyConnected, farcasterHandle } = useAuthUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
 
@@ -243,6 +244,15 @@ export function Navbar() {
                 )}
               </div>
 
+              {/* Mobile Search Toggle */}
+              <button
+                className="md:hidden w-11 h-11 rounded-full hover:bg-white/5 flex items-center justify-center transition-all"
+                aria-label="Search"
+                onClick={() => { setMobileSearchOpen(o => !o); setMobileMenuOpen(false); }}
+              >
+                {mobileSearchOpen ? <FiX className="w-5 h-5 text-[#EB83EA]" /> : <FiSearch className="w-5 h-5 text-gray-300" />}
+              </button>
+
               {/* Messages */}
               {authenticated && (
                 <Link
@@ -372,7 +382,7 @@ export function Navbar() {
           {/* Mobile Menu Toggle - Avatar + hamburger */}
           {authenticated && (
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => { setMobileMenuOpen(o => !o); setMobileSearchOpen(false); }}
               className="md:hidden flex items-center gap-2 p-2 text-white min-w-[44px] min-h-[44px]"
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             >
@@ -397,6 +407,13 @@ export function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Mobile Search Panel */}
+      {mobileSearchOpen && (
+        <div className="md:hidden bg-[#1a0b2e] border-t border-white/10 px-4 py-3">
+          <SearchDropdown autoFocus onClose={() => setMobileSearchOpen(false)} />
+        </div>
+      )}
 
       {/* Mobile Menu - Account Actions Only */}
       {mobileMenuOpen && authenticated && (
