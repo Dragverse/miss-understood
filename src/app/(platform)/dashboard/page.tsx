@@ -19,6 +19,7 @@ import { StatsCard, ActionButton, EmptyState, LoadingShimmer } from "@/component
 import { useCanLivestream } from "@/lib/livestream";
 import { StreamModal } from "@/components/dashboard/stream-modal";
 import { useStreamStore } from "@/lib/store/stream";
+import { supabase } from "@/lib/supabase/client";
 
 interface StreamRecording {
   id: string;
@@ -113,6 +114,17 @@ export default function DashboardPage() {
     clearActiveStream();
     // Suppress re-checks for 12 seconds so Livepeer's isActive can settle
     suppressCheckUntil.current = Date.now() + 12_000;
+
+    // Broadcast offline instantly so the profile embed switches right away
+    // (the API also broadcasts, but this fires before the round-trip)
+    if (verifiedUserId && supabase) {
+      supabase.channel(`stream-status:${verifiedUserId}`).send({
+        type: "broadcast",
+        event: "offline",
+        payload: {},
+      }).catch(() => {});
+    }
+
     try {
       const authToken = await getAccessToken();
       await fetch("/api/stream/clear-all", {
@@ -125,7 +137,7 @@ export default function DashboardPage() {
     } finally {
       setIsClearing(false);
     }
-  }, [getAccessToken, clearActiveStream]);
+  }, [getAccessToken, clearActiveStream, verifiedUserId]);
 
   // Load dashboard data
   useEffect(() => {

@@ -59,6 +59,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Broadcast "offline" to the realtime channel so the profile embed
+    // switches to offline immediately — without this, the embed waits up to 15s
+    // for its next poll and keeps showing the live player.
+    try {
+      await supabase.channel(`stream-status:${auth.userId}`).send({
+        type: "broadcast",
+        event: "offline",
+        payload: {},
+      });
+    } catch {
+      // Non-fatal — embed will catch up on next poll
+    }
+
     return NextResponse.json({ cleared: streams.length });
   } catch (error) {
     console.error("Clear-all streams error:", error);
