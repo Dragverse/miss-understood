@@ -62,6 +62,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
   const [scheduledAt, setScheduledAt] = useState("");
   const [stuckStream, setStuckStream] = useState<{ id: string; title: string } | null>(null);
   const [isEndingStuck, setIsEndingStuck] = useState(false);
+  const [isEndingExisting, setIsEndingExisting] = useState(false);
 
   // Save-recording state
   const [isSavingRecording, setIsSavingRecording] = useState(false);
@@ -111,8 +112,11 @@ export function StreamModal({ onClose }: StreamModalProps) {
     setTitleError(validateTitle(value));
   };
 
-  // Check for existing active stream on mount
+  // Check for existing active stream on mount — skip if we already resumed from the store
+  // (the user is live; there can only ever be one stream at a time)
   useEffect(() => {
+    if (resumedStream) return;
+
     const checkExistingStream = async () => {
       if (!user?.id) return;
 
@@ -132,7 +136,6 @@ export function StreamModal({ onClose }: StreamModalProps) {
               title: activeStream.name
             });
 
-            // Show a clear "existing stream" screen instead of silently skipping to method
             setStep('existing');
           }
         }
@@ -142,7 +145,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
     };
 
     checkExistingStream();
-  }, [user, getAccessToken]);
+  }, [user, getAccessToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch user handle for viewer URL
   useEffect(() => {
@@ -850,8 +853,19 @@ export function StreamModal({ onClose }: StreamModalProps) {
       keepaliveIntervalRef.current = null;
     }
 
-    // Update database status to inactive
-    await updateStreamStatus(false);
+    // Update database status to inactive + terminate on Livepeer.
+    // We run both calls: updateStreamStatus sends the PUT (which terminates on Livepeer too),
+    // and clear-all is the belt-and-suspenders fallback if the PUT fails or Livepeer missed it.
+    const authToken = await getAccessToken().catch(() => null);
+    await Promise.allSettled([
+      updateStreamStatus(false),
+      authToken
+        ? fetch("/api/stream/clear-all", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${authToken}` },
+          }).catch(() => {})
+        : Promise.resolve(),
+    ]);
     clearActiveStream();
     if (user?.id) {
       markOffline(user.id);
@@ -931,10 +945,16 @@ export function StreamModal({ onClose }: StreamModalProps) {
         }
         // If user cancels, do nothing (modal stays open)
       } else {
-        // OBS/RTMP — stream lives in external software, safe to just close.
-        // The active stream info is persisted in the store so the user can
-        // reopen this modal from the navbar "Go Live" button at any time.
-        onClose();
+        // OBS/RTMP — ask user whether they're done or just closing the window.
+        // The store holds their credentials so they can reopen mid-stream.
+        if (confirm("Are you done streaming?\n\nChoose OK to end the stream and clear it,\nor Cancel to just close this window (stream stays live in OBS).")) {
+          // User is done — full cleanup
+          stopStreaming();
+          onClose();
+        } else {
+          // User just wants to close the modal; OBS keeps streaming.
+          onClose();
+        }
       }
     } else {
       onClose();
@@ -1066,45 +1086,63 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
                 {/* End & close */}
                 <button
+                  disabled={isEndingExisting}
                   onClick={async () => {
-                    const authToken = await getAccessToken();
-                    await fetch("/api/stream/clear-all", {
-                      method: "POST",
-                      headers: { Authorization: `Bearer ${authToken}` },
-                    });
-                    toast.success("Stream ended.");
-                    onClose();
+                    setIsEndingExisting(true);
+                    try {
+                      const authToken = await getAccessToken();
+                      await fetch("/api/stream/clear-all", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${authToken}` },
+                      });
+                      clearActiveStream();
+                      if (user?.id) markOffline(user.id);
+                      toast.success("Stream ended.");
+                      onClose();
+                    } catch {
+                      toast.error("Failed to end stream. Please try again.");
+                      setIsEndingExisting(false);
+                    }
                   }}
-                  className="w-full flex items-center gap-4 p-4 bg-[#2f2942] hover:bg-red-500/10 border-2 border-red-500/10 hover:border-red-500/40 rounded-2xl transition-all group text-left"
+                  className="w-full flex items-center gap-4 p-4 bg-[#2f2942] hover:bg-red-500/10 border-2 border-red-500/10 hover:border-red-500/40 rounded-2xl transition-all group text-left disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0 group-hover:bg-red-500/20 transition">
                     <FiXCircle className="w-5 h-5 text-red-400" />
                   </div>
                   <div>
-                    <p className="font-bold text-white">End stream &amp; close</p>
+                    <p className="font-bold text-white">{isEndingExisting ? "Ending…" : "End stream & close"}</p>
                     <p className="text-xs text-gray-400 mt-0.5">Terminate this stream — no new stream started</p>
                   </div>
                 </button>
 
                 {/* End & start new */}
                 <button
+                  disabled={isEndingExisting}
                   onClick={async () => {
-                    const authToken = await getAccessToken();
-                    await fetch("/api/stream/clear-all", {
-                      method: "POST",
-                      headers: { Authorization: `Bearer ${authToken}` },
-                    });
-                    setStreamInfo(null);
-                    setStep('create');
-                    toast.success("Stream cleared. Enter a title to go live.");
+                    setIsEndingExisting(true);
+                    try {
+                      const authToken = await getAccessToken();
+                      await fetch("/api/stream/clear-all", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${authToken}` },
+                      });
+                      clearActiveStream();
+                      if (user?.id) markOffline(user.id);
+                      setStreamInfo(null);
+                      setStep('create');
+                      toast.success("Stream cleared. Enter a title to go live.");
+                    } catch {
+                      toast.error("Failed to clear stream. Please try again.");
+                      setIsEndingExisting(false);
+                    }
                   }}
-                  className="w-full flex items-center gap-4 p-4 bg-[#2f2942] hover:bg-[#EB83EA]/10 border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/40 rounded-2xl transition-all group text-left"
+                  className="w-full flex items-center gap-4 p-4 bg-[#2f2942] hover:bg-[#EB83EA]/10 border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/40 rounded-2xl transition-all group text-left disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#EB83EA]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#EB83EA]/20 transition">
                     <FiCheckCircle className="w-5 h-5 text-[#EB83EA]" />
                   </div>
                   <div>
-                    <p className="font-bold text-white">End it &amp; go live fresh</p>
+                    <p className="font-bold text-white">{isEndingExisting ? "Ending…" : "End it & go live fresh"}</p>
                     <p className="text-xs text-gray-400 mt-0.5">Terminate this stream and create a brand new one</p>
                   </div>
                 </button>
