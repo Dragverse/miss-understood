@@ -108,6 +108,8 @@ export async function GET(request: NextRequest) {
           isActive: true,
           playbackId: stream.playback_id,
           playbackUrl: `https://livepeercdn.studio/hls/${stream.playback_id}/index.m3u8`,
+          streamKey: stream.stream_key ?? "",
+          rtmpIngestUrl: stream.stream_key ? `rtmp://rtmp.livepeer.com/live/${stream.stream_key}` : "",
           startedAt: stream.started_at,
           peakViewers: stream.peak_viewers,
           totalViews: stream.total_views,

@@ -123,22 +123,17 @@ export function StreamModal({ onClose }: StreamModalProps) {
           if (data.streams && data.streams.length > 0) {
             const activeStream = data.streams[0];
 
-            // Note: We'd need an API endpoint to fetch stream key for existing streams.
-            // For now, show setup step but user will need to use OBS with existing credentials.
-
             setStreamInfo({
               id: activeStream.id,
-              streamKey: "", // Would need to fetch from secure endpoint
+              streamKey: activeStream.streamKey ?? "",
               playbackId: activeStream.playbackId,
               playbackUrl: activeStream.playbackUrl,
-              rtmpIngestUrl: "", // Would construct from stream key
+              rtmpIngestUrl: activeStream.rtmpIngestUrl ?? "",
               title: activeStream.name
             });
 
             setStep('method');
-            toast("You have an active stream", {
-              icon: "ℹ️"
-            });
+            toast("You have an active stream", { icon: "ℹ️" });
           }
         }
       } catch (error) {
@@ -1175,12 +1170,32 @@ export function StreamModal({ onClose }: StreamModalProps) {
                 </button>
               </div>
 
-              <button
-                onClick={() => setStep('create')}
-                className="w-full px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full transition"
-              >
-                Back
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep('create')}
+                  className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full transition"
+                >
+                  Back
+                </button>
+                {streamInfo && (
+                  <button
+                    onClick={async () => {
+                      const authToken = await getAccessToken();
+                      await fetch(`/api/stream/status/${streamInfo.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+                        body: JSON.stringify({ is_active: false }),
+                      });
+                      setStreamInfo(null);
+                      setStep('create');
+                      toast.success("Stream ended. You can start a new one.");
+                    }}
+                    className="flex-1 px-6 py-3 bg-red-600/80 hover:bg-red-600 text-white font-semibold rounded-full transition"
+                  >
+                    End Stream
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
