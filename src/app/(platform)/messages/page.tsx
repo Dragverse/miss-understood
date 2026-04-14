@@ -63,6 +63,7 @@ export default function MessagesPage() {
   const [isSending, setIsSending] = useState(false);
   const [isLoadingConvos, setIsLoadingConvos] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [dmsUnavailable, setDmsUnavailable] = useState(false);
 
   // New message flow
   const [showNewMessage, setShowNewMessage] = useState(false);
@@ -94,6 +95,10 @@ export default function MessagesPage() {
       if (res.ok) {
         const data = await res.json();
         setConvos(data.convos || []);
+      } else if (res.status === 503) {
+        // Chat proxy unavailable — most likely the OAuth session predates the chat scope.
+        // User needs to reconnect Bluesky to get the transition:chat.bsky scope.
+        setDmsUnavailable(true);
       }
     } catch (err) {
       console.error("[Messages] Failed to load convos:", err);
@@ -286,6 +291,25 @@ export default function MessagesPage() {
           className="px-6 py-3 bg-blue-500 hover:bg-blue-400 text-white font-bold rounded-full transition"
         >
           Go to Settings
+        </a>
+      </div>
+    );
+  }
+
+  if (dmsUnavailable) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4">
+        <SiBluesky className="w-12 h-12 text-blue-400" />
+        <h2 className="text-2xl font-bold text-white">DMs need updated permissions</h2>
+        <p className="text-gray-400 max-w-sm">
+          Direct messages require a newer Bluesky connection. Please disconnect and reconnect your
+          Bluesky account in Settings to enable DMs.
+        </p>
+        <a
+          href="/settings"
+          className="px-6 py-3 bg-blue-500 hover:bg-blue-400 text-white font-bold rounded-full transition"
+        >
+          Reconnect Bluesky in Settings
         </a>
       </div>
     );
