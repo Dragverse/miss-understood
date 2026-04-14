@@ -268,7 +268,7 @@ export default function DynamicProfilePage() {
   }
 
   // Filter content by type
-  const videosList = userVideos.filter(v => v.contentType !== 'short' && v.contentType !== 'podcast' && v.contentType !== 'music');
+  const videosList = userVideos.filter(v => v.contentType !== 'short' && v.contentType !== 'podcast' && v.contentType !== 'music' && v.source !== 'youtube');
   const snapshotsList = userVideos.filter(v => v.contentType === 'short' && v.source !== 'youtube' && v.source !== 'bluesky');
   const audioList = userVideos.filter(v => v.contentType === 'podcast' || v.contentType === 'music');
 
