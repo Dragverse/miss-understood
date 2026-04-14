@@ -49,6 +49,9 @@ export async function GET(request: NextRequest) {
     const results = await Promise.all(
       streams.map(async (stream) => {
         let isLive = false;
+        // Track whether Livepeer gave a definitive answer so we never override
+        // a "not active" response with a stale DB is_active=true.
+        let livepeerDefinitive = false;
 
         // 1. Ask Livepeer API
         if (LIVEPEER_API_KEY && stream.livepeer_stream_id) {
@@ -60,6 +63,7 @@ export async function GET(request: NextRequest) {
             if (res.ok) {
               const data = await res.json();
               isLive = data.isActive ?? false;
+              livepeerDefinitive = true; // Livepeer answered authoritatively
             } else {
               // Livepeer API unavailable — fall back to DB
               isLive = stream.is_active;
@@ -71,13 +75,14 @@ export async function GET(request: NextRequest) {
           isLive = stream.is_active;
         }
 
-        // If Livepeer says inactive, verify with HLS manifest before giving up.
-        // WHIP streams can take a few seconds before isActive updates or HLS is ready,
-        // so trust the DB is_active flag as a final fallback.
-        if (!isLive) {
+        // 2. HLS manifest check (only when not yet confirmed live)
+        if (!isLive && stream.playback_id) {
           isLive = await isHLSManifestLive(stream.playback_id);
         }
-        if (!isLive) {
+
+        // 3. DB fallback ONLY when Livepeer didn't give a definitive answer.
+        // Never let a stale is_active=true override a "not active" from Livepeer.
+        if (!isLive && !livepeerDefinitive) {
           isLive = stream.is_active;
         }
 

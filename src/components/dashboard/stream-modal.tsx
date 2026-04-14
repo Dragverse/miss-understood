@@ -27,13 +27,32 @@ interface StreamInfo {
 
 export function StreamModal({ onClose }: StreamModalProps) {
   const { getAccessToken, user } = usePrivy();
-  const { setActiveStream, clearActiveStream } = useStreamStore();
+  const { setActiveStream, clearActiveStream, activeStream: storedActiveStream } = useStreamStore();
   const { markLive, markOffline } = useLiveCreatorsStore();
 
-  // Step management
-  const [step, setStep] = useState<StreamStep>('create');
-  const [streamInfo, setStreamInfo] = useState<StreamInfo | null>(null);
-  const [streamingMethod, setStreamingMethod] = useState<StreamingMethod>(null);
+  // Restore 'streaming' step if user reopens modal while a stream is already active
+  const resumedStream =
+    storedActiveStream && storedActiveStream.creatorDID === user?.id
+      ? storedActiveStream
+      : null;
+
+  const [step, setStep] = useState<StreamStep>(resumedStream ? 'streaming' : 'create');
+  const [streamInfo, setStreamInfo] = useState<StreamInfo | null>(
+    resumedStream
+      ? {
+          id: resumedStream.id,
+          livepeerStreamId: resumedStream.livepeerStreamId,
+          streamKey: resumedStream.streamKey,
+          playbackId: resumedStream.playbackId,
+          playbackUrl: resumedStream.playbackUrl,
+          rtmpIngestUrl: resumedStream.rtmpIngestUrl,
+          title: resumedStream.title,
+        }
+      : null
+  );
+  const [streamingMethod, setStreamingMethod] = useState<StreamingMethod>(
+    resumedStream ? (resumedStream.method ?? 'obs') : null
+  );
 
   // Stream creation
   const [streamTitle, setStreamTitle] = useState("");
@@ -47,8 +66,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
   const [saveTitle, setSaveTitle] = useState("");
   const [savedVideoId, setSavedVideoId] = useState<string | null>(null);
 
-  // Streaming state
-  const [isStreaming, setIsStreaming] = useState(false);
+  // Streaming state — mark as active when resuming a mid-stream modal reopen
+  const [isStreaming, setIsStreaming] = useState(!!resumedStream);
   const [streamType, setStreamType] = useState<'camera' | 'screen' | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(true);
@@ -540,7 +559,17 @@ export function StreamModal({ onClose }: StreamModalProps) {
       setStep('streaming');
       toast.success("🎥 Live on Dragverse!");
       if (streamInfo?.playbackId && user?.id) {
-        setActiveStream({ creatorDID: user.id, playbackId: streamInfo.playbackId });
+        setActiveStream({
+          creatorDID: user.id,
+          id: streamInfo.id,
+          livepeerStreamId: streamInfo.livepeerStreamId,
+          streamKey: streamInfo.streamKey,
+          playbackId: streamInfo.playbackId,
+          playbackUrl: streamInfo.playbackUrl,
+          rtmpIngestUrl: streamInfo.rtmpIngestUrl,
+          title: streamInfo.title,
+          method: streamingMethod ?? 'obs',
+        });
         markLive(user.id);
         // Broadcast live status via Supabase realtime so profile pages detect instantly
         supabase?.channel(`stream-status:${user.id}`).send({
@@ -880,9 +909,18 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
   // Handle modal close
   const handleClose = () => {
-    if (isStreaming) {
-      if (confirm("You're currently live. Stop stream and close?")) {
-        stopStreaming();
+    if (step === 'streaming' || step === 'saved') {
+      if (streamingMethod === 'browser' && isStreaming) {
+        // Browser WebRTC — closing stops the stream
+        if (confirm("You're currently live. Stop stream and close?")) {
+          stopStreaming();
+          onClose();
+        }
+        // If user cancels, do nothing (modal stays open)
+      } else {
+        // OBS/RTMP — stream lives in external software, safe to just close.
+        // The active stream info is persisted in the store so the user can
+        // reopen this modal from the navbar "Go Live" button at any time.
         onClose();
       }
     } else {

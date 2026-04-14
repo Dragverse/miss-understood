@@ -14,6 +14,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { StatsCard, ActionButton, EmptyState, LoadingShimmer } from "@/components/shared";
 import { useCanLivestream } from "@/lib/livestream";
 import { StreamModal } from "@/components/dashboard/stream-modal";
+import { useStreamStore } from "@/lib/store/stream";
 
 interface StreamRecording {
   id: string;
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingRecording, setDeletingRecording] = useState<string | null>(null);
   const [showStreamModal, setShowStreamModal] = useState(false);
+  const { activeStream } = useStreamStore();
 
   // Load dashboard data from Supabase
   useEffect(() => {
@@ -296,6 +298,26 @@ export default function DashboardPage() {
           />
         </div>
 
+        {/* Active stream banner — shown when the modal was closed mid-stream */}
+        {activeStream && activeStream.creatorDID === user?.id && (
+          <div className="bg-gradient-to-r from-red-900/30 via-red-800/20 to-pink-900/30 border border-red-500/40 rounded-2xl p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
+              <div>
+                <p className="text-white font-bold text-sm">You&apos;re currently live</p>
+                <p className="text-gray-400 text-xs truncate max-w-[220px]">{activeStream.title}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowStreamModal(true)}
+              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-full text-sm font-bold transition flex items-center gap-2 flex-shrink-0"
+            >
+              <FiRadio className="w-4 h-4" />
+              Manage Stream
+            </button>
+          </div>
+        )}
+
         {/* Video Management Section */}
         <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/10 shadow-xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
@@ -312,7 +334,7 @@ export default function DashboardPage() {
                   className="px-8 py-4 text-lg rounded-full font-bold transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02]"
                 >
                   <FiRadio className="w-5 h-5" />
-                  Go Live
+                  {activeStream?.creatorDID === user?.id ? "Manage Stream" : "Go Live"}
                 </button>
               )}
               <ActionButton

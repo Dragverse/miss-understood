@@ -155,8 +155,10 @@ export async function getBlueskyAgent(): Promise<BskyAgent> {
   const password = process.env.BLUESKY_APP_PASSWORD; // App password from Bluesky settings
 
   if (!identifier || !password) {
-    console.warn("[Bluesky] ⚠️  No credentials provided - agent will be unauthenticated");
-    throw new Error("Bluesky credentials not configured");
+    // Return an unauthenticated agent — all public Bluesky AppView endpoints
+    // (searchPosts, getProfile, getAuthorFeed) work without authentication.
+    console.warn("[Bluesky] ⚠️  No credentials — using public unauthenticated agent");
+    return new BskyAgent({ service: BLUESKY_SERVICE });
   }
 
   // Check if credentials have changed
@@ -331,52 +333,51 @@ export async function searchDragContent(
       "#lgbtqdrag",
     ];
 
-    console.log(`[Bluesky] Searching for drag content with ${searchTerms.length} search terms (limit: ${limit})...`);
+    console.log(`[Bluesky] Searching for drag content with ${searchTerms.length} search terms in parallel (limit: ${limit})...`);
 
-    // Search with each term and collect results
-    for (const term of searchTerms) {
-      try {
-        const searchResults = await executeWithRetry(
-          (agent) => agent.app.bsky.feed.searchPosts({
-            q: term,
-            limit: Math.ceil(limit / searchTerms.length),
-          }),
+    // Search all terms in parallel for speed
+    const perTerm = Math.max(3, Math.ceil(limit / searchTerms.length));
+    const settledResults = await Promise.allSettled(
+      searchTerms.map((term) =>
+        executeWithRetry(
+          (agent) => agent.app.bsky.feed.searchPosts({ q: term, limit: perTerm }),
           `searchDragContent("${term}")`
-        );
+        )
+      )
+    );
 
-        if (searchResults.data.posts && searchResults.data.posts.length > 0) {
-          const posts = searchResults.data.posts.map((post: any) => ({
-            uri: post.uri,
-            cid: post.cid,
-            author: {
-              did: post.author.did,
-              handle: post.author.handle,
-              displayName: post.author.displayName,
-              avatar: post.author.avatar,
-            },
-            text: post.record.text || "",
-            createdAt: post.record.createdAt || post.indexedAt,
-            embed: post.embed
-              ? {
-                  type: post.embed.$type,
-                  video: post.embed.video,
-                  external: post.embed.external,
-                  images: post.embed.images,
-                }
-              : undefined,
-            likeCount: post.likeCount || 0,
-            replyCount: post.replyCount || 0,
-            repostCount: post.repostCount || 0,
-          }));
-
-          allPosts.push(...posts);
-          console.log(`[Bluesky] Found ${posts.length} posts for "${term}"`);
-        }
-      } catch (error) {
-        console.warn(`[Bluesky] Search failed for "${term}":`, error);
+    for (let i = 0; i < settledResults.length; i++) {
+      const result = settledResults[i];
+      if (result.status === "rejected") {
+        console.warn(`[Bluesky] Search failed for "${searchTerms[i]}":`, result.reason);
         continue;
       }
+      const posts = (result.value.data.posts || []).map((post: any) => ({
+        uri: post.uri,
+        cid: post.cid,
+        author: {
+          did: post.author.did,
+          handle: post.author.handle,
+          displayName: post.author.displayName,
+          avatar: post.author.avatar,
+        },
+        text: post.record.text || "",
+        createdAt: post.record.createdAt || post.indexedAt,
+        embed: post.embed
+          ? {
+              type: post.embed.$type,
+              video: post.embed.video,
+              external: post.embed.external,
+              images: post.embed.images,
+            }
+          : undefined,
+        likeCount: post.likeCount || 0,
+        replyCount: post.replyCount || 0,
+        repostCount: post.repostCount || 0,
+      }));
+      allPosts.push(...posts);
     }
+    console.log(`[Bluesky] Parallel search collected ${allPosts.length} raw posts`);
 
     // Remove duplicates by URI
     const uniquePosts = Array.from(
