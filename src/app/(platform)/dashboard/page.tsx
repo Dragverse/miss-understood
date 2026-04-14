@@ -8,7 +8,7 @@ import {
   FiCheckCircle, FiWifi, FiXCircle, FiRefreshCw
 } from "react-icons/fi";
 import Image from "next/image";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getVideosByCreator, type SupabaseVideo } from "@/lib/supabase/videos";
 import { getCreatorByDID } from "@/lib/supabase/creators";
 import { Video } from "@/types";
@@ -70,8 +70,11 @@ export default function DashboardPage() {
   const [liveStatus, setLiveStatus] = useState<LiveStatus>("checking");
   const [detectedStream, setDetectedStream] = useState<DetectedStream | null>(null);
   const [isClearing, setIsClearing] = useState(false);
+  // After a clear, suppress re-checks for 12s so Livepeer's isActive has time to settle
+  const suppressCheckUntil = useRef<number>(0);
 
   const checkLiveStatus = useCallback(async (uid: string) => {
+    if (Date.now() < suppressCheckUntil.current) return;
     try {
       const res = await fetch(`/api/stream/by-creator?creatorDID=${encodeURIComponent(uid)}`);
       if (!res.ok) { setLiveStatus("none"); return; }
@@ -85,17 +88,13 @@ export default function DashboardPage() {
           startedAt: s.startedAt,
           playbackId: s.playbackId,
         });
-
-        // If localStorage also shows this stream as active → confirmed live in this session
         if (activeStream && activeStream.creatorDID === uid) {
           setLiveStatus("live");
         } else {
-          // API says active but not in localStorage → stuck/orphaned stream
           setLiveStatus("stuck");
         }
       } else {
         setDetectedStream(null);
-        // Clear stale localStorage entry if API says no active streams
         if (activeStream && activeStream.creatorDID === uid) {
           clearActiveStream();
         }
@@ -107,19 +106,22 @@ export default function DashboardPage() {
   }, [activeStream, clearActiveStream]);
 
   const handleClearAll = useCallback(async () => {
+    // Immediately update UI — don't wait for API
     setIsClearing(true);
+    setLiveStatus("none");
+    setDetectedStream(null);
+    clearActiveStream();
+    // Suppress re-checks for 12 seconds so Livepeer's isActive can settle
+    suppressCheckUntil.current = Date.now() + 12_000;
     try {
       const authToken = await getAccessToken();
       await fetch("/api/stream/clear-all", {
         method: "POST",
         headers: { Authorization: `Bearer ${authToken}` },
       });
-      clearActiveStream();
-      setDetectedStream(null);
-      setLiveStatus("none");
-      toast.success("All streams cleared. Ready to go live fresh.");
+      toast.success("Stream cleared — ready to go live fresh.");
     } catch {
-      toast.error("Failed to clear streams.");
+      toast.error("Failed to clear streams. Try again.");
     } finally {
       setIsClearing(false);
     }
@@ -402,46 +404,42 @@ export default function DashboardPage() {
 
             {/* STUCK state — Livepeer/DB says active but not in current session */}
             {liveStatus === "stuck" && detectedStream && (
-              <div className="bg-gradient-to-br from-yellow-950/40 via-[#18122D] to-[#1a0b2e] border-yellow-500/40 p-6 md:p-8">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-yellow-500/20 border-2 border-yellow-500/40 flex items-center justify-center flex-shrink-0">
-                      <FiAlertTriangle className="w-7 h-7 text-yellow-400" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded border border-yellow-500/30 tracking-wide">STREAM DETECTED</span>
-                      </div>
-                      <h2 className="text-xl font-bold text-white">{detectedStream.title}</h2>
-                      <p className="text-gray-400 text-sm mt-1">
-                        A stream is marked active in the system but you&apos;re not currently broadcasting.
-                        This can happen if a previous session ended unexpectedly.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-3 min-w-[200px]">
-                    <button
-                      onClick={() => setShowStreamModal(true)}
-                      className="px-6 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-full transition flex items-center justify-center gap-2"
-                    >
-                      <FiRadio className="w-4 h-4" />
-                      Resume / Manage
-                    </button>
-                    <button
-                      onClick={handleClearAll}
-                      disabled={isClearing}
-                      className="px-6 py-3 bg-red-600/70 hover:bg-red-600 text-white font-semibold rounded-full transition flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <FiXCircle className="w-4 h-4" />
-                      {isClearing ? "Clearing..." : "Force Clear"}
-                    </button>
-                  </div>
+              <div className="bg-gradient-to-br from-orange-950/40 via-[#18122D] to-[#1a0b2e] border-orange-500/40 p-6 md:p-8">
+                {/* Top: clear explanation first */}
+                <div className="flex items-start gap-3 mb-5 p-4 bg-orange-500/10 border border-orange-500/20 rounded-2xl">
+                  <FiAlertTriangle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-orange-200/90 leading-relaxed">
+                    Your previous stream <span className="font-bold text-white">&quot;{detectedStream.title}&quot;</span> didn&apos;t end cleanly.
+                    The broadcast is still registered as active.{" "}
+                    <span className="text-orange-300 font-semibold">Click &quot;Clear &amp; Start Fresh&quot; below to reset it</span> — you can then go live normally.
+                  </p>
                 </div>
 
-                <div className="mt-5 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-sm text-yellow-200/80">
-                  <strong>What happened?</strong> Your last stream session may have closed without properly ending the broadcast.
-                  Click <strong>Force Clear</strong> to reset and start fresh, or <strong>Resume</strong> to open the stream manager.
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <button
+                    onClick={handleClearAll}
+                    disabled={isClearing}
+                    className="flex-1 sm:flex-none px-8 py-4 bg-[#EB83EA] hover:bg-[#E748E6] disabled:opacity-60 text-white font-bold rounded-full transition-all shadow-lg shadow-[#EB83EA]/30 hover:shadow-xl hover:scale-[1.02] flex items-center justify-center gap-2 text-base"
+                  >
+                    {isClearing ? (
+                      <>
+                        <FiRefreshCw className="w-4 h-4 animate-spin" />
+                        Clearing…
+                      </>
+                    ) : (
+                      <>
+                        <FiXCircle className="w-4 h-4" />
+                        Clear &amp; Start Fresh
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setShowStreamModal(true)}
+                    className="flex-1 sm:flex-none px-6 py-4 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full transition flex items-center justify-center gap-2"
+                  >
+                    <FiRadio className="w-4 h-4" />
+                    Open Stream Manager
+                  </button>
                 </div>
               </div>
             )}
