@@ -130,14 +130,15 @@ function ChatPanel({ channelId }: { channelId: string }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProps) {
+export function LivestreamEmbed({ creatorDID, creatorName, creatorHandle }: LivestreamEmbedProps) {
   const [streamInfo, setStreamInfo] = useState<StreamInfo>({ isLive: false });
   const [upcoming, setUpcoming] = useState<UpcomingStream | null>(null);
 
   const activeStream = useStreamStore((s) => s.activeStream);
   const isOwnActiveStream = activeStream?.creatorDID === creatorDID;
 
-  // Poll stream status — 5s when offline, 15s when confirmed live
+  // Poll using /api/stream/live (same API the dedicated page used — proven working)
+  // Falls back to /api/stream/by-creator when no handle available
   const isLiveRef = useRef(false);
   useEffect(() => {
     let cancelled = false;
@@ -145,18 +146,28 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
 
     const check = async () => {
       try {
-        const res = await fetch(`/api/stream/by-creator?creatorDID=${encodeURIComponent(creatorDID)}`);
+        const url = creatorHandle
+          ? `/api/stream/live?handle=${encodeURIComponent(creatorHandle)}`
+          : `/api/stream/by-creator?creatorDID=${encodeURIComponent(creatorDID)}`;
+        const res = await fetch(url);
         if (!res.ok || cancelled) return;
         const data = await res.json();
-        if (data.streams?.length > 0) {
-          const s = data.streams[0];
+
+        // /api/stream/live returns { stream, creator }
+        // /api/stream/by-creator returns { streams, upcoming }
+        const stream = data.stream ?? data.streams?.[0] ?? null;
+
+        if (stream) {
           isLiveRef.current = true;
-          setStreamInfo({ isLive: true, id: s.id, playbackId: s.playbackId, playbackUrl: s.playbackUrl, title: s.name || `${creatorName} is live!` });
+          setStreamInfo({ isLive: true, id: stream.id, playbackId: stream.playbackId, playbackUrl: stream.playbackUrl, title: stream.title || stream.name || `${creatorName} is live!` });
         } else {
           isLiveRef.current = false;
           setStreamInfo({ isLive: false });
         }
-        setUpcoming(data.upcoming?.length > 0 ? { title: data.upcoming[0].name || "Upcoming Stream", scheduledAt: data.upcoming[0].scheduledAt } : null);
+
+        if (data.upcoming?.length > 0) {
+          setUpcoming({ title: data.upcoming[0].name || "Upcoming Stream", scheduledAt: data.upcoming[0].scheduledAt });
+        }
       } catch {
         // silent
       }
@@ -168,7 +179,7 @@ export function LivestreamEmbed({ creatorDID, creatorName }: LivestreamEmbedProp
       cancelled = true;
       if (timerRef.id !== null) clearTimeout(timerRef.id);
     };
-  }, [creatorDID, creatorName]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [creatorHandle, creatorDID, creatorName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const effectivePlaybackId = streamInfo.playbackId ?? (isOwnActiveStream ? activeStream?.playbackId : undefined);
   const playbackUrl = streamInfo.playbackUrl || (effectivePlaybackId ? `https://livepeercdn.studio/hls/${effectivePlaybackId}/index.m3u8` : null);

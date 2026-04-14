@@ -320,6 +320,7 @@ export default function DynamicProfilePage() {
               <LivestreamEmbed
                 creatorDID={creator.did}
                 creatorName={creator.displayName}
+                creatorHandle={creator.handle}
               />
             </div>
           </div>
