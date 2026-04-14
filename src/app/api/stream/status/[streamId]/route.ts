@@ -108,7 +108,7 @@ export async function PUT(
 
     const { streamId } = await params;
     const body = await request.json();
-    const { is_active, livepeerStreamId, playbackId, title } = body;
+    const { is_active, livepeerStreamId, playbackId, title, streamKey, rtmpIngestUrl } = body;
 
     if (typeof is_active !== 'boolean') {
       return NextResponse.json(
@@ -152,8 +152,10 @@ export async function PUT(
           .insert({
             creator_did: userId,
             livepeer_stream_id: healLivepeerStreamId,
+            stream_key: (streamKey as string | undefined) ?? healLivepeerStreamId,
             playback_id: healPlaybackId,
             playback_url: playbackUrl,
+            rtmp_ingest_url: (rtmpIngestUrl as string | undefined) ?? `rtmp://rtmp.livepeer.com/live/${streamKey ?? healLivepeerStreamId}`,
             title: (title as string | undefined) ?? "Live Stream",
             is_active: false,
           })

@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
 import { useStreamStore } from "@/lib/store/stream";
 import { useLiveCreatorsStore } from "@/lib/store/live-creators";
+import { supabase } from "@/lib/supabase/client";
 
 interface StreamModalProps {
   onClose: () => void;
@@ -536,6 +537,12 @@ export function StreamModal({ onClose }: StreamModalProps) {
       if (streamInfo?.playbackId && user?.id) {
         setActiveStream({ creatorDID: user.id, playbackId: streamInfo.playbackId });
         markLive(user.id);
+        // Broadcast live status via Supabase realtime so profile pages detect instantly
+        supabase?.channel(`stream-status:${user.id}`).send({
+          type: "broadcast",
+          event: "live",
+          payload: { playbackId: streamInfo.playbackId, title: streamInfo.title },
+        });
       }
 
       // Update database status to active
@@ -756,6 +763,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
           livepeerStreamId: streamInfo.livepeerStreamId,
           playbackId: streamInfo.playbackId,
           title: streamInfo.title,
+          streamKey: streamInfo.streamKey,
+          rtmpIngestUrl: streamInfo.rtmpIngestUrl,
         })
       });
 
@@ -797,7 +806,14 @@ export function StreamModal({ onClose }: StreamModalProps) {
     // Update database status to inactive
     await updateStreamStatus(false);
     clearActiveStream();
-    if (user?.id) markOffline(user.id);
+    if (user?.id) {
+      markOffline(user.id);
+      supabase?.channel(`stream-status:${user.id}`).send({
+        type: "broadcast",
+        event: "offline",
+        payload: {},
+      });
+    }
     console.log('✅ Database updated: is_active = false');
 
     // Close WebRTC peer connection

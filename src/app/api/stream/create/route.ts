@@ -138,13 +138,12 @@ export async function POST(request: NextRequest) {
             rtmp_ingest_url: rtmpIngestUrl,
             title: name,
             is_active: false, // Stream starts inactive until user goes live
-            scheduled_at: scheduledAt || null,
           })
           .select("id")
           .single();
 
         if (dbError) {
-          console.error("Failed to save stream to database:", dbError);
+          console.error("Failed to save stream to database:", dbError.message, dbError.details, dbError.code);
 
           // If table doesn't exist, warn but continue
           if (dbError.message?.includes("relation") && dbError.message?.includes("does not exist")) {

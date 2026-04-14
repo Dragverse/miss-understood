@@ -136,10 +136,30 @@ export function LivestreamEmbed({ creatorDID, creatorName, creatorHandle }: Live
 
   const activeStream = useStreamStore((s) => s.activeStream);
   const isOwnActiveStream = activeStream?.creatorDID === creatorDID;
-
-  // Poll using /api/stream/live (same API the dedicated page used — proven working)
-  // Falls back to /api/stream/by-creator when no handle available
   const isLiveRef = useRef(false);
+
+  // Supabase realtime: instant detection when creator goes live in any tab/window
+  useEffect(() => {
+    if (!supabase) return;
+    const ch = supabase.channel(`stream-status:${creatorDID}`);
+    ch.on("broadcast", { event: "live" }, ({ payload }) => {
+      isLiveRef.current = true;
+      setStreamInfo({
+        isLive: true,
+        playbackId: payload.playbackId,
+        playbackUrl: `https://livepeercdn.studio/hls/${payload.playbackId}/index.m3u8`,
+        title: payload.title || `${creatorName} is live!`,
+      });
+    });
+    ch.on("broadcast", { event: "offline" }, () => {
+      isLiveRef.current = false;
+      setStreamInfo({ isLive: false });
+    });
+    ch.subscribe();
+    return () => { ch.unsubscribe(); };
+  }, [creatorDID, creatorName]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Poll using /api/stream/live as fallback for visitors who missed the realtime broadcast
   useEffect(() => {
     let cancelled = false;
     const timerRef = { id: null as ReturnType<typeof setTimeout> | null };
