@@ -34,9 +34,19 @@ export async function POST(request: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const chatAgent = (agent as any).withProxy("bsky_chat", "did:web:api.bsky.chat");
-    const res = await chatAgent.chat.bsky.convo.getConvoForMembers({
-      members: [blueskyDID, did],
-    });
+    let res: any;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      res = await (chatAgent as any).chat.bsky.convo.getConvoForMembers({
+        members: [blueskyDID, did],
+      });
+    } catch (chatErr: any) {
+      console.error("[dms/convo] Chat proxy error:", chatErr?.message ?? chatErr, "status:", chatErr?.status);
+      return NextResponse.json(
+        { error: "Chat unavailable", detail: chatErr?.message ?? "Failed to reach Bluesky chat service" },
+        { status: 503 }
+      );
+    }
 
     return NextResponse.json({ convo: res.data.convo });
   } catch (error) {

@@ -25,7 +25,7 @@ export async function GET() {
     policy_uri: `${appUrl}/privacy`,
     redirect_uris: [`${appUrl}/api/bluesky/oauth/callback`],
     grant_types: ["authorization_code", "refresh_token"],
-    scope: "atproto transition:generic",
+    scope: "atproto transition:generic transition:chat.bsky",
     response_types: ["code"],
     application_type: "web",
     token_endpoint_auth_method: "private_key_jwt",

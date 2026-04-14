@@ -29,7 +29,19 @@ export async function GET(request: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const chatAgent = (agent as any).withProxy("bsky_chat", "did:web:api.bsky.chat");
-    const res = await chatAgent.chat.bsky.convo.listConvos({ limit: 40 });
+    let res: any;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      res = await (chatAgent as any).chat.bsky.convo.listConvos({ limit: 40 });
+    } catch (chatErr: any) {
+      // Surface the actual Bluesky API error — e.g. scope/auth issues return a descriptive message
+      console.error("[dms/convos] Chat proxy error:", chatErr?.message ?? chatErr, "status:", chatErr?.status);
+      return NextResponse.json(
+        { error: "Chat unavailable", detail: chatErr?.message ?? "Failed to reach Bluesky chat service" },
+        { status: 503 }
+      );
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const convos: any[] = res.data.convos ?? [];
 
     if (convos.length === 0) {

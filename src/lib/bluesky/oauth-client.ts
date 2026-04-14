@@ -105,7 +105,7 @@ export async function getOAuthClient(): Promise<NodeOAuthClient> {
       client_uri: appUrl,
       redirect_uris: [`${appUrl}/api/bluesky/oauth/callback`],
       grant_types: ["authorization_code", "refresh_token"],
-      scope: "atproto transition:generic",
+      scope: "atproto transition:generic transition:chat.bsky",
       response_types: ["code"],
       application_type: "web",
       token_endpoint_auth_method: "private_key_jwt",
