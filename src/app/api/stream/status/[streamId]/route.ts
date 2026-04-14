@@ -107,7 +107,8 @@ export async function PUT(
     }
 
     const { streamId } = await params;
-    const { is_active } = await request.json();
+    const body = await request.json();
+    const { is_active, livepeerStreamId, playbackId, title } = body;
 
     if (typeof is_active !== 'boolean') {
       return NextResponse.json(
@@ -138,11 +139,40 @@ export async function PUT(
       if (byLivepeer) streamRow = byLivepeer;
     }
 
+    // Self-heal: if no DB row exists but we have enough info, insert one now.
+    // This covers the case where the stream-creation DB insert failed silently.
     if (!streamRow) {
-      return NextResponse.json(
-        { error: "Stream not found" },
-        { status: 404 }
-      );
+      const healPlaybackId = playbackId as string | undefined;
+      const healLivepeerStreamId = (livepeerStreamId as string | undefined) ?? streamId;
+
+      if (healPlaybackId) {
+        const playbackUrl = `https://livepeercdn.studio/hls/${healPlaybackId}/index.m3u8`;
+        const { data: inserted, error: insertError } = await supabase
+          .from("streams")
+          .insert({
+            creator_did: userId,
+            livepeer_stream_id: healLivepeerStreamId,
+            playback_id: healPlaybackId,
+            playback_url: playbackUrl,
+            title: (title as string | undefined) ?? "Live Stream",
+            is_active: false,
+          })
+          .select("id, creator_did")
+          .single();
+
+        if (!insertError && inserted) {
+          console.log(`🔧 Self-healed: inserted missing stream row ${inserted.id} for creator ${userId}`);
+          streamRow = inserted;
+        } else {
+          console.error("Self-heal insert failed:", insertError);
+          return NextResponse.json({ error: "Stream not found and could not be created" }, { status: 404 });
+        }
+      } else {
+        return NextResponse.json(
+          { error: "Stream not found" },
+          { status: 404 }
+        );
+      }
     }
 
     if (streamRow.creator_did !== userId) {

@@ -16,6 +16,7 @@ type StreamingMethod = 'browser' | 'obs' | null;
 
 interface StreamInfo {
   id: string;
+  livepeerStreamId?: string;
   streamKey: string;
   playbackId: string;
   playbackUrl: string;
@@ -187,6 +188,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
       const data = await response.json();
       setStreamInfo({
         id: data.id,
+        livepeerStreamId: data.livepeerStreamId,
         streamKey: data.streamKey,
         playbackId: data.playbackId,
         playbackUrl: data.playbackUrl,
@@ -749,7 +751,12 @@ export function StreamModal({ onClose }: StreamModalProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`
         },
-        body: JSON.stringify({ is_active: isActive })
+        body: JSON.stringify({
+          is_active: isActive,
+          livepeerStreamId: streamInfo.livepeerStreamId,
+          playbackId: streamInfo.playbackId,
+          title: streamInfo.title,
+        })
       });
 
       console.log(`📡 Response status: ${response.status} ${response.statusText}`);
