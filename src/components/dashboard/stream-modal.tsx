@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { FiVideo, FiMonitor, FiMic, FiMicOff, FiVideoOff, FiX, FiCopy, FiChevronDown, FiChevronUp, FiCheckCircle, FiExternalLink } from "react-icons/fi";
+import { FiVideo, FiMonitor, FiMic, FiMicOff, FiVideoOff, FiX, FiCopy, FiCheckCircle, FiExternalLink } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
 import { useStreamStore } from "@/lib/store/stream";
@@ -60,6 +60,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [scheduleForLater, setScheduleForLater] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
+  const [stuckStream, setStuckStream] = useState<{ id: string; title: string } | null>(null);
+  const [isEndingStuck, setIsEndingStuck] = useState(false);
 
   // Save-recording state
   const [isSavingRecording, setIsSavingRecording] = useState(false);
@@ -71,7 +73,6 @@ export function StreamModal({ onClose }: StreamModalProps) {
   const [streamType, setStreamType] = useState<'camera' | 'screen' | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(true);
-  const [showRTMPDetails, setShowRTMPDetails] = useState(false);
 
   // Refs for WebRTC
   const setupVideoRef = useRef<HTMLVideoElement>(null);
@@ -122,10 +123,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
           if (data.streams && data.streams.length > 0) {
             const activeStream = data.streams[0];
 
-            // Fetch full stream details including stream key
-            const authToken = await getAccessToken();
-            // Note: We'd need an API endpoint to fetch stream key for existing streams
-            // For now, show setup step but user will need to use OBS with existing credentials
+            // Note: We'd need an API endpoint to fetch stream key for existing streams.
+            // For now, show setup step but user will need to use OBS with existing credentials.
 
             setStreamInfo({
               id: activeStream.id,
@@ -201,10 +200,8 @@ export function StreamModal({ onClose }: StreamModalProps) {
         const errorData = await response.json().catch(() => ({}));
 
         if (response.status === 409 && errorData.activeStream) {
-          toast.error(`You already have an active stream: "${errorData.activeStream.title}". Please end it first.`, {
-            duration: 5000
-          });
-          throw new Error("Active stream already exists");
+          setStuckStream(errorData.activeStream);
+          return;
         }
 
         throw new Error(errorData.error || "Failed to create stream");
@@ -235,6 +232,30 @@ export function StreamModal({ onClose }: StreamModalProps) {
       }
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  // End stuck stream, then retry creation
+  const handleEndStuckAndRetry = async () => {
+    if (!stuckStream) return;
+    setIsEndingStuck(true);
+    try {
+      const authToken = await getAccessToken();
+      await fetch(`/api/stream/status/${stuckStream.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ is_active: false }),
+      });
+      setStuckStream(null);
+      // Retry stream creation after clearing the stuck entry
+      await handleCreateStream();
+    } catch {
+      toast.error("Failed to end existing stream. Please try again.");
+    } finally {
+      setIsEndingStuck(false);
     }
   };
 
@@ -928,16 +949,16 @@ export function StreamModal({ onClose }: StreamModalProps) {
     }
   };
 
-  // ESC key to close
+  // ESC key to close — use a ref so the listener never becomes stale
+  const handleCloseRef = useRef(handleClose);
+  useEffect(() => { handleCloseRef.current = handleClose; });
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleClose();
-      }
+      if (e.key === 'Escape') handleCloseRef.current();
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isStreaming]);
+  }, []); // Registers once; handleCloseRef always has the latest handler
 
   // Cleanup on unmount
   useEffect(() => {
@@ -1027,6 +1048,33 @@ export function StreamModal({ onClose }: StreamModalProps) {
                   <p className="text-xs text-red-400 mt-1">{titleError}</p>
                 )}
               </div>
+
+              {/* Stuck stream recovery */}
+              {stuckStream && (
+                <div className="rounded-2xl border-2 border-yellow-500/40 bg-yellow-500/10 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-yellow-300">
+                    You already have an active stream: &quot;{stuckStream.title}&quot;
+                  </p>
+                  <p className="text-xs text-yellow-200/70">
+                    End it to start a new one, or cancel and manage it from your dashboard.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleEndStuckAndRetry}
+                      disabled={isEndingStuck}
+                      className="flex-1 px-4 py-2 text-sm font-bold rounded-full bg-yellow-500 hover:bg-yellow-400 text-black transition disabled:opacity-50"
+                    >
+                      {isEndingStuck ? "Ending..." : "End it & start fresh"}
+                    </button>
+                    <button
+                      onClick={() => setStuckStream(null)}
+                      className="px-4 py-2 text-sm font-bold rounded-full bg-white/10 hover:bg-white/20 text-white transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Schedule for later */}
               <div>
@@ -1264,9 +1312,9 @@ export function StreamModal({ onClose }: StreamModalProps) {
                 <ol className="text-sm text-gray-300 space-y-2 list-decimal list-inside">
                   <li>Open OBS Studio or Streamlabs</li>
                   <li>Go to Settings → Stream</li>
-                  <li>Select "Custom" as the service</li>
+                  <li>Select &quot;Custom&quot; as the service</li>
                   <li>Paste the Server URL and Stream Key above</li>
-                  <li>Click "Start Streaming" in your software</li>
+                  <li>Click &quot;Start Streaming&quot; in your software</li>
                 </ol>
               </div>
 

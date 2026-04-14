@@ -17,10 +17,33 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://dragverse.app";
+const OG_IMAGE = `${APP_URL}/dragverse.jpg`;
+
 export const metadata: Metadata = {
-  title: "Dragverse - Creator Platform",
+  metadataBase: new URL(APP_URL),
+  title: {
+    default: "Dragverse — Creator Platform for Drag Artists",
+    template: "%s | Dragverse",
+  },
   description:
-    "Stream, share, and discover amazing drag content. Upload shorts, long videos, podcasts, and music.",
+    "Stream, share, and discover amazing drag performances. Upload videos, shorts, audio, and music on the decentralized creator platform built for drag artists worldwide.",
+  keywords: [
+    "drag queen",
+    "drag king",
+    "drag performer",
+    "livestream",
+    "drag videos",
+    "LGBTQ creator",
+    "drag community",
+    "drag makeup",
+    "ballroom",
+    "voguing",
+    "queer art",
+  ],
+  authors: [{ name: "Dragverse" }],
+  creator: "Dragverse",
+  publisher: "Dragverse",
   manifest: "/manifest.json",
   icons: {
     icon: "/dragverse-app-icon.jpg",
@@ -31,6 +54,32 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Dragverse",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Dragverse",
+    title: "Dragverse — Creator Platform for Drag Artists",
+    description:
+      "Stream, share, and discover amazing drag performances. Upload videos, shorts, audio, and music.",
+    url: APP_URL,
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Dragverse" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Dragverse — Creator Platform for Drag Artists",
+    description:
+      "Stream, share, and discover amazing drag performances. Upload videos, shorts, audio, and music.",
+    images: [OG_IMAGE],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 

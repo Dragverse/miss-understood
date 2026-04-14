@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getIronSession } from "iron-session";
-import { sessionOptions, SessionData } from "@/lib/session/config";
-import { getBlueskyAgent } from "@/lib/bluesky/client";
+import { verifyAuth, verifyAuthFromCookies } from "@/lib/auth/verify";
+import { getBlueskyOAuthDID, getOAuthAgent } from "@/lib/bluesky/oauth-client";
 
 /**
  * GET /api/bluesky/profile
@@ -9,34 +8,35 @@ import { getBlueskyAgent } from "@/lib/bluesky/client";
  */
 export async function GET(request: NextRequest) {
   try {
-    const response = NextResponse.json({ error: "Not connected" });
-    const session = await getIronSession<SessionData>(
-      request,
-      response,
-      sessionOptions
-    );
+    const auth =
+      (await verifyAuthFromCookies(request).catch(() => null)) ||
+      (await verifyAuth(request).catch(() => null));
 
-    if (!session.bluesky) {
+    if (!auth?.authenticated || !auth.userId) {
       return NextResponse.json(
         { error: "No Bluesky account connected" },
         { status: 401 }
       );
     }
 
-    // Get Bluesky agent and fetch full profile
-    let agent;
-    try {
-      agent = await getBlueskyAgent();
-    } catch (agentError) {
-      console.error("Bluesky agent initialization failed:", agentError);
+    const blueskyDID = await getBlueskyOAuthDID(auth.userId);
+    if (!blueskyDID) {
+      return NextResponse.json(
+        { error: "No Bluesky account connected" },
+        { status: 401 }
+      );
+    }
+
+    const agent = await getOAuthAgent(blueskyDID);
+    if (!agent) {
       return NextResponse.json(
         { error: "Bluesky session expired. Please reconnect your Bluesky account." },
         { status: 401 }
       );
     }
-    const profileData = await agent.getProfile({ actor: session.bluesky.handle });
 
-    // Extract profile information
+    const profileData = await agent.getProfile({ actor: blueskyDID });
+
     const profile = {
       handle: profileData.data.handle,
       displayName: profileData.data.displayName || profileData.data.handle,
@@ -49,10 +49,7 @@ export async function GET(request: NextRequest) {
       did: profileData.data.did,
     };
 
-    return NextResponse.json({
-      success: true,
-      profile,
-    });
+    return NextResponse.json({ success: true, profile });
   } catch (error) {
     console.error("Profile fetch error:", error);
     return NextResponse.json(

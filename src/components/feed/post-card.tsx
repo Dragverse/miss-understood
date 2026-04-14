@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiExternalLink, FiBookmark, FiUserPlus, FiUserCheck, FiMoreHorizontal, FiTrash2 } from "react-icons/fi";
+import { FiExternalLink, FiBookmark, FiUserPlus, FiUserCheck, FiMoreHorizontal, FiTrash2, FiRepeat } from "react-icons/fi";
 import { SiBluesky } from "react-icons/si";
 import { parseTextWithLinks } from "@/lib/text-parser";
 import { CommentModal } from "./comment-modal";
@@ -59,6 +59,9 @@ export function PostCard({ post }: PostCardProps) {
   const [dragverseCard, setDragverseCard] = useState<any>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isReposted, setIsReposted] = useState(false);
+  const [repostCount, setRepostCount] = useState((post as any).repostCount || 0);
+  const [isReposting, setIsReposting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isOwnPost = user?.id && post.creator.did && post.creator.did === user.id;
@@ -228,6 +231,43 @@ export function PostCard({ post }: PostCardProps) {
     }
 
     window.dispatchEvent(new Event("storage"));
+  };
+
+  const toggleRepost = async () => {
+    const isBlueskyPost = post.uri?.startsWith("at://");
+    if (!isBlueskyPost) {
+      toast("Reposting is coming soon for Dragverse posts", { icon: "🔁" });
+      return;
+    }
+    if (!user) {
+      toast.error("Sign in to repost");
+      return;
+    }
+    if (isReposting) return;
+
+    const nextState = !isReposted;
+    setIsReposted(nextState);
+    setRepostCount((c: number) => nextState ? c + 1 : Math.max(0, c - 1));
+    setIsReposting(true);
+    try {
+      const authToken = await getAccessToken();
+      const res = await fetch("/api/bluesky/repost", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({
+          postUri: post.uri,
+          postCid: (post as any).cid,
+          action: nextState ? "repost" : "unrepost",
+        }),
+      });
+      if (!res.ok) throw new Error("repost failed");
+    } catch {
+      setIsReposted(!nextState);
+      setRepostCount((c: number) => nextState ? Math.max(0, c - 1) : c + 1);
+      toast.error("Failed to repost. Please try again.");
+    } finally {
+      setIsReposting(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -625,6 +665,19 @@ export function PostCard({ post }: PostCardProps) {
         />
 
         <div className="flex items-center gap-4 text-gray-400 text-sm">
+          {post.uri?.startsWith("at://") && (
+            <button
+              onClick={toggleRepost}
+              disabled={isReposting}
+              className={`flex items-center gap-1.5 transition-colors ${
+                isReposted ? "text-green-400" : "hover:text-green-400"
+              }`}
+              aria-label={isReposted ? "Undo repost" : "Repost"}
+            >
+              <FiRepeat className="w-4 h-4" />
+              {repostCount > 0 && <span>{repostCount}</span>}
+            </button>
+          )}
           <button
             onClick={toggleBookmark}
             className={`flex items-center gap-1.5 transition-colors ${

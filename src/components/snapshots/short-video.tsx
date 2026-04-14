@@ -215,7 +215,7 @@ export function ShortVideo({ video, isActive, onNext, onEnded, onError, onDelete
     async function fetchCommentCount() {
       if (video.source !== "ceramic") return;
       try {
-        const response = await fetch(`/api/comments?videoId=${video.id}`);
+        const response = await fetch(`/api/social/comment?videoId=${video.id}`);
         if (response.ok) {
           const data = await response.json();
           setCommentCount(data.comments?.length || 0);

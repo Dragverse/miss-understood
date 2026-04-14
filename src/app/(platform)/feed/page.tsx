@@ -15,6 +15,8 @@ function FeedContent() {
   const searchParams = useSearchParams();
   const filter = searchParams?.get("filter");
   const hashtag = searchParams?.get("hashtag");
+  const feedUri = searchParams?.get("feedUri") || null;
+  const listUri = searchParams?.get("listUri") || null;
   const showBookmarks = filter === "bookmarks";
 
   const [posts, setPosts] = useState<any[]>([]);
@@ -28,6 +30,8 @@ function FeedContent() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [newContentAvailable, setNewContentAvailable] = useState(false);
+  const [customFeedPosts, setCustomFeedPosts] = useState<any[]>([]);
+  const [customFeedLoading, setCustomFeedLoading] = useState(false);
 
   // Suppress YouTube tracking errors (blocked by ad blockers)
   useEffect(() => {
@@ -56,6 +60,34 @@ function FeedContent() {
       fetch("/api/posts/backfill-creators", { method: "POST", credentials: "include" }).catch(() => {});
     }
   }, [isAuthenticated]);
+
+  // Load custom feed (saved feed generator or list) when URI params are present
+  useEffect(() => {
+    if (!feedUri && !listUri) {
+      setCustomFeedPosts([]);
+      return;
+    }
+
+    async function loadCustomFeed() {
+      setCustomFeedLoading(true);
+      try {
+        const endpoint = feedUri
+          ? `/api/bluesky/feed-generator?uri=${encodeURIComponent(feedUri)}`
+          : `/api/bluesky/list-feed?uri=${encodeURIComponent(listUri!)}`;
+        const res = await fetch(endpoint, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setCustomFeedPosts(data.posts || []);
+        }
+      } catch (err) {
+        console.error("[Feed] Failed to load custom feed:", err);
+      } finally {
+        setCustomFeedLoading(false);
+      }
+    }
+
+    loadCustomFeed();
+  }, [feedUri, listUri]);
 
   // Handle post deletion
   const handlePostDeleted = (postId: string) => {
@@ -214,6 +246,10 @@ function FeedContent() {
                 <FiMessageSquare className="w-5 h-5 md:w-6 md:h-6 text-[#EB83EA]" />
                 {showBookmarks
                   ? "Bookmarks"
+                  : feedUri
+                  ? "Saved Feed"
+                  : listUri
+                  ? "List Feed"
                   : hashtag
                   ? hashtag
                   : "What's Happening"}
@@ -275,7 +311,7 @@ function FeedContent() {
           )}
 
           {/* Sort and Filter Controls */}
-          {!showBookmarks && (
+          {!showBookmarks && !feedUri && !listUri && (
             <div className="flex flex-wrap items-center gap-2 mb-6">
               <div className="flex gap-1.5 p-1 bg-white/5 rounded-xl border border-white/5">
                 <button
@@ -351,13 +387,32 @@ function FeedContent() {
           )}
 
           {/* Posts Feed */}
-          {loading ? (
+          {/* Custom Feed / List view */}
+          {(feedUri || listUri) && (
+            customFeedLoading ? (
+              <div className="space-y-6">
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
+              </div>
+            ) : customFeedPosts.length === 0 ? (
+              <p className="text-gray-400 text-center py-12">No posts found in this feed.</p>
+            ) : (
+              <div className="space-y-6">
+                {customFeedPosts.map((post: any) => (
+                  <BlueskyPostCard key={post.id || post.uri} post={post} />
+                ))}
+              </div>
+            )
+          )}
+
+          {!feedUri && !listUri && loading ? (
             <div className="space-y-6">
               <CardSkeleton />
               <CardSkeleton />
               <CardSkeleton />
             </div>
-          ) : (
+          ) : !feedUri && !listUri && (
             <div className="space-y-6">
               {/* Dragverse Native Posts */}
               {dragversePosts

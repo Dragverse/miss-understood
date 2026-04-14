@@ -11,6 +11,7 @@ import {
   FiVideo,
   FiUser,
   FiBell,
+  FiMail,
   FiPlus,
   FiMessageSquare,
   FiHeadphones,
@@ -242,6 +243,18 @@ export function Navbar() {
                 )}
               </div>
 
+              {/* Messages */}
+              {authenticated && (
+                <Link
+                  href="/messages"
+                  className="relative w-11 h-11 rounded-full hover:bg-white/5 flex items-center justify-center transition-all"
+                  title="Messages"
+                  aria-label="Messages"
+                >
+                  <FiMail className="w-5 h-5 text-gray-300" />
+                </Link>
+              )}
+
               {/* Notifications — visible on all screen sizes, left of avatar */}
               <Link
                 href="/notifications"
@@ -440,6 +453,13 @@ export function Navbar() {
                 <FiVideo className="w-5 h-5" /> Go Live
               </button>
             )}
+            <Link
+              href="/messages"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition min-h-[44px]"
+            >
+              <FiMail className="w-5 h-5" /> Messages
+            </Link>
             <Link
               href="/settings"
               onClick={() => setMobileMenuOpen(false)}

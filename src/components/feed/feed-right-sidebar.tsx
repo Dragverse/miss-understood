@@ -2,8 +2,21 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { FiZap, FiTrendingUp, FiBookmark, FiUpload, FiVideo, FiAlertTriangle } from "react-icons/fi";
+import { FiTrendingUp, FiBookmark, FiUpload, FiVideo, FiAlertTriangle, FiRss, FiList } from "react-icons/fi";
 import { useAuthUser } from "@/lib/privy/hooks";
+import { usePrivy } from "@privy-io/react-auth";
+
+interface SavedFeed {
+  uri: string;
+  displayName: string;
+  avatar?: string | null;
+}
+
+interface UserList {
+  uri: string;
+  name: string;
+  itemCount: number;
+}
 
 interface TrendingTopic {
   hashtag: string;
@@ -33,10 +46,13 @@ const FALLBACK_TRENDING = [
 ];
 
 export function FeedRightSidebar() {
-  const { creator } = useAuthUser();
+  const { creator, isAuthenticated, blueskyConnected } = useAuthUser();
+  const { getAccessToken } = usePrivy();
   const [bookmarkCount, setBookmarkCount] = useState(0);
   const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([]);
   const [isLivestreamApproved, setIsLivestreamApproved] = useState(false);
+  const [savedFeeds, setSavedFeeds] = useState<SavedFeed[]>([]);
+  const [userLists, setUserLists] = useState<UserList[]>([]);
 
   useEffect(() => {
     const updateBookmarkCount = () => {
@@ -89,6 +105,36 @@ export function FeedRightSidebar() {
     }
     loadTrending();
   }, []);
+
+  // Load saved feeds and lists when Bluesky is connected
+  useEffect(() => {
+    if (!isAuthenticated || !blueskyConnected) return;
+
+    async function loadBlueskyExtras() {
+      try {
+        const token = await getAccessToken();
+        const headers = { Authorization: `Bearer ${token}` };
+
+        const [feedsRes, listsRes] = await Promise.all([
+          fetch("/api/bluesky/saved-feeds", { headers }),
+          fetch("/api/bluesky/lists", { headers }),
+        ]);
+
+        if (feedsRes.ok) {
+          const data = await feedsRes.json();
+          setSavedFeeds((data.feeds || []).slice(0, 5));
+        }
+        if (listsRes.ok) {
+          const data = await listsRes.json();
+          setUserLists((data.lists || []).slice(0, 5));
+        }
+      } catch {
+        // Non-critical — sidebar extras
+      }
+    }
+
+    loadBlueskyExtras();
+  }, [isAuthenticated, blueskyConnected, getAccessToken]);
 
   return (
     <aside className="space-y-6 sticky top-6">
@@ -225,6 +271,55 @@ export function FeedRightSidebar() {
           ))}
         </div>
       </div>
+
+      {/* Saved Feeds — Bluesky */}
+      {blueskyConnected && savedFeeds.length > 0 && (
+        <div className="p-6 rounded-[24px] bg-gradient-to-br from-[#1a0b2e] to-[#2a1545] border-2 border-[#2f2942] shadow-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-full bg-blue-500/20">
+              <FiRss className="w-5 h-5 text-blue-400" />
+            </div>
+            <h3 className="font-heading text-lg font-black uppercase tracking-wide">Saved Feeds</h3>
+          </div>
+          <div className="space-y-1">
+            {savedFeeds.map((feed) => (
+              <Link
+                key={feed.uri}
+                href={`/feed?feedUri=${encodeURIComponent(feed.uri)}`}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 transition text-sm text-gray-300 hover:text-white"
+              >
+                <FiRss className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" />
+                <span className="truncate">{feed.displayName}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Your Lists — Bluesky */}
+      {blueskyConnected && userLists.length > 0 && (
+        <div className="p-6 rounded-[24px] bg-gradient-to-br from-[#1a0b2e] to-[#2a1545] border-2 border-[#2f2942] shadow-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-full bg-[#EB83EA]/20">
+              <FiList className="w-5 h-5 text-[#EB83EA]" />
+            </div>
+            <h3 className="font-heading text-lg font-black uppercase tracking-wide">Your Lists</h3>
+          </div>
+          <div className="space-y-1">
+            {userLists.map((list) => (
+              <Link
+                key={list.uri}
+                href={`/feed?listUri=${encodeURIComponent(list.uri)}`}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 transition text-sm text-gray-300 hover:text-white"
+              >
+                <FiList className="w-3.5 h-3.5 flex-shrink-0 text-[#EB83EA]" />
+                <span className="truncate">{list.name}</span>
+                <span className="ml-auto text-xs text-gray-500">{list.itemCount}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
