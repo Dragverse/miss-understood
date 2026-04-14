@@ -929,6 +929,11 @@ export function StreamModal({ onClose }: StreamModalProps) {
         }),
       });
       const data = await res.json();
+      // 202 = recording still processing on Livepeer's side — ask user to retry
+      if (res.status === 202 && data.recording_processing) {
+        toast('Recording is still processing — wait a minute then try saving again.', { icon: '⏳', duration: 6000 });
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'Failed to save');
       setSavedVideoId(data.videoId);
       toast.success('Livestream saved to your profile!');
