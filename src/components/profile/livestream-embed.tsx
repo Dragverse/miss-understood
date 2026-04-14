@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import * as Player from "@livepeer/react/player";
 import { getSrc } from "@livepeer/react/external";
-import { FiMessageSquare, FiSend, FiClock } from "react-icons/fi";
+import { FiMessageSquare, FiSend, FiClock, FiPlay, FiPause, FiVolume2, FiVolumeX, FiMaximize2 } from "react-icons/fi";
 
 import { usePrivy } from "@privy-io/react-auth";
 import { useStreamStore } from "@/lib/store/stream";
@@ -57,7 +57,8 @@ function ChatPanel({ channelId }: { channelId: string }) {
   useEffect(() => {
     if (!authenticated) return;
     fetch("/api/user/me").then(r => r.json()).then(d => {
-      if (d.profile) setUserInfo({ name: d.profile.display_name || d.profile.handle || "Viewer", avatar: d.profile.avatar || "/defaultpfp.png" });
+      const p = d.creator ?? d.profile;
+      if (p) setUserInfo({ name: p.display_name || p.handle || "Viewer", avatar: p.avatar || "/defaultpfp.png" });
     }).catch(() => {});
   }, [authenticated]);
 
@@ -223,25 +224,71 @@ export function LivestreamEmbed({ creatorDID, creatorName, creatorHandle }: Live
               <Player.Root src={getSrc(playbackUrl)} autoPlay volume={0}>
                 <Player.Container className="absolute inset-0 w-full h-full">
                   <Player.Video className="w-full h-full object-cover" />
-                  <Player.Controls autoHide={3000} className="p-3">
-                    <div className="flex items-center gap-3">
-                      <Player.MuteTrigger className="w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label="Mute" />
-                      <Player.FullscreenTrigger className="ml-auto w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition" aria-label="Fullscreen" />
+                  <Player.Controls autoHide={3000} className="absolute inset-0 flex flex-col justify-end">
+                    {/* Bottom control bar */}
+                    <div className="bg-gradient-to-t from-black/80 via-black/30 to-transparent px-3 pt-8 pb-3">
+                      <div className="flex items-center gap-2">
+
+                        {/* Play / Pause */}
+                        <Player.PlayPauseTrigger
+                          className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors group/play"
+                          aria-label="Play / Pause"
+                        >
+                          <span className="block group-data-[playing=true]/play:hidden">
+                            <FiPlay className="w-4 h-4 text-white" />
+                          </span>
+                          <span className="hidden group-data-[playing=true]/play:block">
+                            <FiPause className="w-4 h-4 text-white" />
+                          </span>
+                        </Player.PlayPauseTrigger>
+
+                        {/* Mute toggle */}
+                        <Player.MuteTrigger
+                          className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors group/mute"
+                          aria-label="Mute"
+                        >
+                          <span className="block group-data-[muted=true]/mute:hidden">
+                            <FiVolume2 className="w-4 h-4 text-white" />
+                          </span>
+                          <span className="hidden group-data-[muted=true]/mute:block">
+                            <FiVolumeX className="w-4 h-4 text-white" />
+                          </span>
+                        </Player.MuteTrigger>
+
+                        {/* Volume slider */}
+                        <Player.Volume className="relative flex items-center w-20 h-4 group/vol cursor-pointer">
+                          <Player.Track className="h-1 w-full bg-white/30 rounded-full relative overflow-hidden">
+                            <Player.Range className="absolute h-full bg-white rounded-full" />
+                          </Player.Track>
+                          <Player.Thumb className="w-3 h-3 bg-white rounded-full absolute opacity-0 group-hover/vol:opacity-100 transition-opacity shadow" />
+                        </Player.Volume>
+
+                        {/* LIVE pill */}
+                        <div className="ml-1 flex items-center gap-1 px-2 py-0.5 bg-red-500 rounded text-[10px] font-bold text-white">
+                          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                          LIVE
+                        </div>
+
+                        {/* Fullscreen */}
+                        <Player.FullscreenTrigger
+                          className="ml-auto w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
+                          aria-label="Fullscreen"
+                        >
+                          <FiMaximize2 className="w-4 h-4 text-white" />
+                        </Player.FullscreenTrigger>
+
+                      </div>
                     </div>
                   </Player.Controls>
                 </Player.Container>
               </Player.Root>
 
-              {/* LIVE badge */}
-              <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 bg-red-500 rounded-md text-xs font-bold text-white shadow-lg pointer-events-none">
-                <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                LIVE
-              </div>
-
-              {/* Stream title */}
+              {/* Stream title top bar */}
               {streamInfo.title && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium max-w-[60%] truncate pointer-events-none">
-                  {streamInfo.title}
+                <div className="absolute top-3 left-3 right-3 z-10 flex items-center gap-2 pointer-events-none">
+                  <div className="px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium truncate max-w-full">
+                    {streamInfo.title}
+                  </div>
                 </div>
               )}
             </>
