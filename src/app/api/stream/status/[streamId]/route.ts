@@ -207,6 +207,24 @@ export async function PUT(
       );
     }
 
+    // When ending a stream, also terminate it on Livepeer so their isActive
+    // resets immediately (otherwise the self-heal in by-creator re-activates it).
+    if (!is_active) {
+      const apiKey = process.env.LIVEPEER_API_KEY;
+      const { data: streamRow2 } = await supabase
+        .from("streams")
+        .select("livepeer_stream_id")
+        .eq("id", realId)
+        .single();
+
+      if (apiKey && streamRow2?.livepeer_stream_id) {
+        fetch(`${LIVEPEER_API_URL}/stream/${streamRow2.livepeer_stream_id}/terminate`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${apiKey}` },
+        }).catch(() => {}); // fire-and-forget, non-blocking
+      }
+    }
+
     console.log(`✅ Stream ${streamId} status updated: is_active=${is_active}`);
 
     return NextResponse.json({

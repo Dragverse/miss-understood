@@ -236,16 +236,13 @@ export function StreamModal({ onClose }: StreamModalProps) {
     setIsEndingStuck(true);
     try {
       const authToken = await getAccessToken();
-      await fetch(`/api/stream/status/${stuckStream.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ is_active: false }),
+      // Clear all active streams (also terminates on Livepeer so isActive resets)
+      await fetch("/api/stream/clear-all", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       setStuckStream(null);
-      // Retry stream creation after clearing the stuck entry
+      // Retry stream creation after clearing
       await handleCreateStream();
     } catch {
       toast.error("Failed to end existing stream. Please try again.");
@@ -1181,18 +1178,17 @@ export function StreamModal({ onClose }: StreamModalProps) {
                   <button
                     onClick={async () => {
                       const authToken = await getAccessToken();
-                      await fetch(`/api/stream/status/${streamInfo.id}`, {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-                        body: JSON.stringify({ is_active: false }),
+                      await fetch("/api/stream/clear-all", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${authToken}` },
                       });
                       setStreamInfo(null);
                       setStep('create');
-                      toast.success("Stream ended. You can start a new one.");
+                      toast.success("All old streams cleared. You can start fresh.");
                     }}
                     className="flex-1 px-6 py-3 bg-red-600/80 hover:bg-red-600 text-white font-semibold rounded-full transition"
                   >
-                    End Stream
+                    Clear & Start Fresh
                   </button>
                 )}
               </div>
