@@ -422,8 +422,7 @@ export default function DashboardPage() {
                   <FiAlertTriangle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-orange-200/90 leading-relaxed">
                     Your previous stream <span className="font-bold text-white">&quot;{detectedStream.title}&quot;</span> didn&apos;t end cleanly.
-                    The broadcast is still registered as active.{" "}
-                    <span className="text-orange-300 font-semibold">Click &quot;Clear &amp; Start Fresh&quot; below to reset it</span> — you can then go live normally.
+                    The broadcast is still registered as active. Click <span className="text-orange-300 font-semibold">End Stream</span> to clear it.
                   </p>
                 </div>
 
@@ -436,12 +435,12 @@ export default function DashboardPage() {
                     {isClearing ? (
                       <>
                         <FiRefreshCw className="w-4 h-4 animate-spin" />
-                        Clearing…
+                        Ending…
                       </>
                     ) : (
                       <>
                         <FiXCircle className="w-4 h-4" />
-                        Clear &amp; Start Fresh
+                        End Stream
                       </>
                     )}
                   </button>
@@ -450,7 +449,7 @@ export default function DashboardPage() {
                     className="flex-1 sm:flex-none px-6 py-4 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full transition flex items-center justify-center gap-2"
                   >
                     <FiRadio className="w-4 h-4" />
-                    Open Stream Manager
+                    Go Live Instead
                   </button>
                 </div>
               </div>

@@ -1064,7 +1064,29 @@ export function StreamModal({ onClose }: StreamModalProps) {
                   </div>
                 </button>
 
-                {/* Clear & start fresh */}
+                {/* End & close */}
+                <button
+                  onClick={async () => {
+                    const authToken = await getAccessToken();
+                    await fetch("/api/stream/clear-all", {
+                      method: "POST",
+                      headers: { Authorization: `Bearer ${authToken}` },
+                    });
+                    toast.success("Stream ended.");
+                    onClose();
+                  }}
+                  className="w-full flex items-center gap-4 p-4 bg-[#2f2942] hover:bg-red-500/10 border-2 border-red-500/10 hover:border-red-500/40 rounded-2xl transition-all group text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0 group-hover:bg-red-500/20 transition">
+                    <FiXCircle className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white">End stream &amp; close</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Terminate this stream — no new stream started</p>
+                  </div>
+                </button>
+
+                {/* End & start new */}
                 <button
                   onClick={async () => {
                     const authToken = await getAccessToken();
@@ -1074,16 +1096,16 @@ export function StreamModal({ onClose }: StreamModalProps) {
                     });
                     setStreamInfo(null);
                     setStep('create');
-                    toast.success("Stream cleared. Enter a title to start fresh.");
+                    toast.success("Stream cleared. Enter a title to go live.");
                   }}
-                  className="w-full flex items-center gap-4 p-4 bg-[#2f2942] hover:bg-red-500/10 border-2 border-red-500/10 hover:border-red-500/40 rounded-2xl transition-all group text-left"
+                  className="w-full flex items-center gap-4 p-4 bg-[#2f2942] hover:bg-[#EB83EA]/10 border-2 border-[#EB83EA]/10 hover:border-[#EB83EA]/40 rounded-2xl transition-all group text-left"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0 group-hover:bg-red-500/20 transition">
-                    <FiXCircle className="w-5 h-5 text-red-400" />
+                  <div className="w-10 h-10 rounded-xl bg-[#EB83EA]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#EB83EA]/20 transition">
+                    <FiCheckCircle className="w-5 h-5 text-[#EB83EA]" />
                   </div>
                   <div>
-                    <p className="font-bold text-white">End it &amp; start fresh</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Terminate this stream on Livepeer and create a brand new one</p>
+                    <p className="font-bold text-white">End it &amp; go live fresh</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Terminate this stream and create a brand new one</p>
                   </div>
                 </button>
               </div>
