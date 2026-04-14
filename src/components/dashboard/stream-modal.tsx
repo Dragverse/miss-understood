@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { FiVideo, FiMonitor, FiMic, FiMicOff, FiVideoOff, FiX, FiCopy, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { FiVideo, FiMonitor, FiMic, FiMicOff, FiVideoOff, FiX, FiCopy, FiChevronDown, FiChevronUp, FiCheckCircle, FiExternalLink } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { usePrivy } from "@privy-io/react-auth";
 import { useStreamStore } from "@/lib/store/stream";
@@ -12,7 +12,7 @@ interface StreamModalProps {
   onClose: () => void;
 }
 
-type StreamStep = 'create' | 'method' | 'setup' | 'streaming';
+type StreamStep = 'create' | 'method' | 'setup' | 'streaming' | 'saved';
 type StreamingMethod = 'browser' | 'obs' | null;
 
 interface StreamInfo {
@@ -41,6 +41,11 @@ export function StreamModal({ onClose }: StreamModalProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [scheduleForLater, setScheduleForLater] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
+
+  // Save-recording state
+  const [isSavingRecording, setIsSavingRecording] = useState(false);
+  const [saveTitle, setSaveTitle] = useState("");
+  const [savedVideoId, setSavedVideoId] = useState<string | null>(null);
 
   // Streaming state
   const [isStreaming, setIsStreaming] = useState(false);
@@ -837,11 +842,40 @@ export function StreamModal({ onClose }: StreamModalProps) {
 
     setIsStreaming(false);
     setStreamType(null);
-    setStreamingMethod(null);
-    setConnectionQuality('good'); // Reset connection quality
-    streamStartTimeRef.current = 0; // Reset stream start time
-    setStep('method');
-    toast.success("Stream stopped");
+    setConnectionQuality('good');
+    streamStartTimeRef.current = 0;
+    // Pre-fill save title from stream title, then show save dialog
+    setSaveTitle(streamInfo?.title ?? "");
+    setSavedVideoId(null);
+    setStep('saved');
+  };
+
+  // Save the livestream as a video on the creator's profile
+  const saveRecording = async () => {
+    if (!streamInfo || !saveTitle.trim()) return;
+    setIsSavingRecording(true);
+    try {
+      const authToken = await getAccessToken();
+      const res = await fetch('/api/stream/save-recording', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({
+          streamId: streamInfo.id,
+          livepeerStreamId: streamInfo.livepeerStreamId,
+          playbackId: streamInfo.playbackId,
+          title: saveTitle.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save');
+      setSavedVideoId(data.videoId);
+      toast.success('Livestream saved to your profile!');
+    } catch (err) {
+      console.error('Save recording failed:', err);
+      toast.error('Could not save recording. Try again later.');
+    } finally {
+      setIsSavingRecording(false);
+    }
   };
 
   // Handle modal close
@@ -919,6 +953,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
                 LIVE
               </span>
             )}
+            {step === 'saved' && "Stream Ended"}
           </h2>
           <button
             onClick={handleClose}
@@ -1337,6 +1372,87 @@ export function StreamModal({ onClose }: StreamModalProps) {
                   </div>
                 );
               })()}
+            </div>
+          )}
+
+          {/* STEP 4: Save Recording */}
+          {step === 'saved' && (
+            <div className="space-y-6">
+              {savedVideoId ? (
+                /* ── Success state ── */
+                <div className="flex flex-col items-center gap-4 py-6 text-center">
+                  <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <FiCheckCircle className="w-8 h-8 text-green-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-1">Recording saved!</h3>
+                    <p className="text-gray-400 text-sm">Your stream is now available on your profile.</p>
+                  </div>
+                  {userHandle && (
+                    <a
+                      href={`/watch/${savedVideoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-[#EB83EA]/20 hover:bg-[#EB83EA]/30 border border-[#EB83EA]/40 rounded-xl text-[#EB83EA] font-semibold text-sm transition"
+                    >
+                      <FiExternalLink className="w-4 h-4" />
+                      Watch your recording
+                    </a>
+                  )}
+                  <button
+                    onClick={handleClose}
+                    className="text-sm text-gray-500 hover:text-gray-300 transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : (
+                /* ── Save / discard dialog ── */
+                <>
+                  <div className="flex flex-col items-center gap-3 text-center pb-2">
+                    <div className="w-14 h-14 rounded-full bg-purple-500/20 flex items-center justify-center">
+                      <FiVideo className="w-7 h-7 text-[#EB83EA]" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white">Save your stream?</h3>
+                      <p className="text-gray-400 text-sm mt-1">
+                        Add it to your profile as a replay video so fans can watch it later.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-white mb-2">
+                      Recording title
+                    </label>
+                    <input
+                      type="text"
+                      value={saveTitle}
+                      onChange={(e) => setSaveTitle(e.target.value)}
+                      maxLength={100}
+                      placeholder="Enter a title for the recording…"
+                      className="w-full px-4 py-3 bg-[#2f2942] border border-[#4a3f6b] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#EB83EA] transition"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={saveRecording}
+                      disabled={isSavingRecording || !saveTitle.trim()}
+                      className="flex-1 py-3 bg-gradient-to-r from-[#EB83EA] to-purple-500 hover:opacity-90 rounded-xl text-white font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {isSavingRecording ? "Saving…" : "Save to Profile"}
+                    </button>
+                    <button
+                      onClick={handleClose}
+                      disabled={isSavingRecording}
+                      className="flex-1 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-gray-300 font-semibold transition disabled:opacity-40"
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         name,
+        record: true, // Enable recording so the stream can be saved as a video after ending
         profiles: [
           {
             name: "720p",

@@ -11,6 +11,7 @@ import { AudiosSection } from "@/components/home/audios-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
 import { LiveNowSection } from "@/components/home/live-now-section";
 import { UpcomingPremieresSection } from "@/components/home/upcoming-premieres-section";
+import { PastLivestreamsSection } from "@/components/home/past-livestreams-section";
 import { getVideos } from "@/lib/supabase/videos";
 import { Video } from "@/types";
 import { USE_MOCK_DATA } from "@/lib/config/env";
@@ -220,6 +221,9 @@ export default function HomePage() {
 
               {/* Upcoming Premieres — hidden when none scheduled */}
               <UpcomingPremieresSection />
+
+              {/* Past Livestreams — replay cards */}
+              <PastLivestreamsSection />
 
               {/* Dragverse Snapshots (Shorts) - Native vertical videos */}
               <SnapshotsSection shorts={shorts} />
