@@ -14,6 +14,7 @@ interface LiveStream {
   creatorHandle: string | null;
   creatorName: string;
   creatorAvatar: string | null;
+  creatorBanner: string | null;
   peakViewers: number;
 }
 
@@ -45,12 +46,11 @@ export function LiveNowSection() {
 
   return (
     <section className="space-y-6">
-      {/* Header — matches site section style */}
+      {/* Header */}
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-3">
           <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-red-500/20 to-pink-500/20 flex items-center justify-center">
             <FiRadio className="text-red-400 w-5 h-5" />
-            {/* Pulse ring */}
             <span className="absolute inset-0 rounded-full animate-ping bg-red-500/20" />
           </div>
           <h2 className="font-heading text-2xl lg:text-3xl uppercase tracking-wide whitespace-nowrap font-black">
@@ -65,50 +65,75 @@ export function LiveNowSection() {
       </div>
 
       {/* Stream cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {displayStreams.map((stream) => {
           const href = `/u/${stream.creatorHandle}`;
+          const avatar = getSafeAvatar(stream.creatorAvatar ?? "", "/defaultpfp.png");
 
           return (
             <Link
               key={stream.id}
               href={href}
-              className="group relative bg-[#1a0b2e] rounded-[20px] border border-[#2f2942] hover:border-red-500/40 transition-all overflow-hidden"
+              className="group relative rounded-2xl overflow-hidden border-2 border-transparent hover:border-red-500/60 transition-all duration-300 bg-[#18122D]"
             >
-              {/* Thumbnail area — gradient with live indicator */}
-              <div className="relative aspect-video bg-gradient-to-br from-red-900/30 via-[#2a0f42] to-[#1a0b2e] flex items-center justify-center overflow-hidden">
-                {/* Subtle animated background */}
-                <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_50%_50%,rgba(235,131,234,0.15),transparent_60%)]" />
-                <FiRadio className="w-8 h-8 text-white/15" />
+              {/* Card thumbnail — banner bg or gradient, creator avatar centered */}
+              <div className="relative aspect-[3/4] overflow-hidden">
 
-                {/* LIVE badge */}
-                <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-red-500 rounded-md text-xs font-bold text-white shadow-lg">
+                {/* Background — blurred banner or gradient */}
+                {stream.creatorBanner ? (
+                  <Image
+                    src={stream.creatorBanner}
+                    alt=""
+                    fill
+                    className="object-cover scale-110 blur-sm opacity-40 group-hover:opacity-50 transition-opacity"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-900/40 via-[#2a0f42] to-[#1a0b2e]" />
+                )}
+
+                {/* Dark overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30" />
+
+                {/* Creator avatar — centered with pulsing live ring */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="relative">
+                    {/* Outer pulse ring */}
+                    <span className="absolute inset-0 rounded-full animate-ping bg-red-500/40 scale-110" />
+                    {/* Red ring */}
+                    <div className="absolute -inset-1 rounded-full bg-red-500 opacity-80" />
+                    {/* Avatar */}
+                    <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-white/20 shadow-2xl">
+                      <Image
+                        src={avatar}
+                        alt={stream.creatorName}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* LIVE badge — top left */}
+                <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-0.5 bg-red-500 rounded-md text-[10px] font-bold text-white shadow-lg z-10">
                   <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                   LIVE
                 </div>
 
-                {/* Viewer count */}
+                {/* Viewer count — top right */}
                 {stream.peakViewers > 0 && (
-                  <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/70 rounded-md text-xs font-bold text-white">
-                    {stream.peakViewers.toLocaleString()} watching
+                  <div className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-black/70 backdrop-blur-sm rounded-md text-[10px] font-bold text-white z-10">
+                    {stream.peakViewers.toLocaleString()} 👁
                   </div>
                 )}
-              </div>
 
-              {/* Info */}
-              <div className="p-4">
-                <h3 className="font-bold text-white mb-3 line-clamp-2 group-hover:text-[#EB83EA] transition-colors text-sm leading-snug">
-                  {stream.title}
-                </h3>
-                <div className="flex items-center gap-2.5">
-                  <Image
-                    src={getSafeAvatar(stream.creatorAvatar ?? "", "/defaultpfp.png")}
-                    alt={stream.creatorName}
-                    width={28}
-                    height={28}
-                    className="rounded-full object-cover ring-1 ring-white/10"
-                  />
-                  <p className="text-sm text-gray-300 font-medium truncate">{stream.creatorName}</p>
+                {/* Bottom info overlay */}
+                <div className="absolute bottom-0 left-0 right-0 px-3 py-3 z-10">
+                  <p className="text-white font-bold text-sm leading-snug line-clamp-2 drop-shadow-lg">
+                    {stream.title}
+                  </p>
+                  <p className="text-red-300 text-xs font-medium mt-1 truncate">
+                    @{stream.creatorHandle}
+                  </p>
                 </div>
               </div>
             </Link>

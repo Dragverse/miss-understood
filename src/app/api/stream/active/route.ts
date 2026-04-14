@@ -38,7 +38,8 @@ export async function GET() {
         profiles:creators!creator_did (
           handle,
           display_name,
-          avatar
+          avatar,
+          banner
         )
       `)
       .or(`is_active.eq.true,created_at.gte.${since}`)
@@ -114,6 +115,7 @@ export async function GET() {
           creatorHandle: profile?.handle ?? null,
           creatorName: profile?.display_name ?? "Creator",
           creatorAvatar: profile?.avatar ?? null,
+          creatorBanner: profile?.banner ?? null,
         };
       })
     );

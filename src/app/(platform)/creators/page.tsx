@@ -6,6 +6,7 @@ import Image from "next/image";
 import { FiUsers, FiVideo, FiEye, FiHeart, FiCheck, FiSearch, FiFilter, FiStar, FiCalendar, FiActivity, FiClock, FiTrendingUp, FiMic } from "react-icons/fi";
 import { VerificationBadge } from "@/components/profile/verification-badge";
 import { getUserBadgeType } from "@/lib/verification";
+import { LiveNowSection } from "@/components/home/live-now-section";
 
 // Custom loading card component that matches creator card layout
 function CreatorLoadingCard() {
@@ -184,6 +185,9 @@ export default function CreatorsDirectory() {
             </div>
           </div>
         </div>
+
+        {/* Live Now — only visible when creators are streaming */}
+        <LiveNowSection />
 
         {/* Search and Filters */}
         <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 border-2 border-[#EB83EA]/10 mb-6">
