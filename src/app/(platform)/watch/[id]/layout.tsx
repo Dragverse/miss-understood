@@ -25,7 +25,7 @@ export async function generateMetadata({
     `Watch "${title}" by ${creatorName} on Dragverse.`;
   const videoUrl = `${APP_URL}/watch/${id}`;
   const thumbnail =
-    video.thumbnail_url ||
+    video.thumbnail ||
     `${APP_URL}/default-thumbnail.jpg`;
 
   return {
