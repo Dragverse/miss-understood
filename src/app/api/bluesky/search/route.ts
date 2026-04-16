@@ -80,8 +80,9 @@ export async function GET(request: NextRequest) {
       repostCount: item.repostCount || 0,
     }));
 
-    const converter = contentType === "all" ? blueskyPostToContent : blueskyPostToVideo;
-    const posts = normalizedPosts.map(converter).filter((post) => post !== null);
+    const posts = normalizedPosts
+      .map(post => contentType === "all" ? blueskyPostToContent(post) : blueskyPostToVideo(post))
+      .filter((post) => post !== null);
 
     // Sort by engagement
     const sortedPosts = sortPostsByEngagement(posts);
