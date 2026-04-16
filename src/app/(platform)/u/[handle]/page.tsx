@@ -50,6 +50,17 @@ export default function DynamicProfilePage() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [bioExpanded, setBioExpanded] = useState(false);
   const isCreatorLive = useLiveCreatorsStore((s) => s.isLive(creator?.did));
+
+  // Only show the livestream section for creators who are approved streamers (pink/golden badge)
+  // or are currently live. Regular profiles shouldn't show the offline embed or chat.
+  const creatorBadgeType = creator ? getUserBadgeType(
+    creator.did,
+    undefined,
+    !!creator.blueskyHandle,
+    !!creator.farcasterHandle
+  ) : null;
+  const creatorCanLivestream = creatorBadgeType === 'golden' || creatorBadgeType === 'pink';
+  const showLivestreamSection = isCreatorLive || creatorCanLivestream;
   const [connectedBlueskyStats, setConnectedBlueskyStats] = useState<{ followersCount: number; followsCount: number } | null>(null);
   const profileLoadedRef = useRef<string | null>(null);
 
@@ -305,16 +316,18 @@ export default function DynamicProfilePage() {
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/90" />
           </div>
 
-          {/* Livestream player */}
-          <div className="relative z-10 p-3 sm:p-4 pb-0">
-            <div className="rounded-[20px] overflow-hidden shadow-xl">
-              <LivestreamEmbed
-                creatorDID={creator.did}
-                creatorName={creator.displayName}
-                creatorHandle={creator.handle}
-              />
+          {/* Livestream player — only for approved streamers or when live */}
+          {showLivestreamSection && (
+            <div className="relative z-10 p-3 sm:p-4 pb-0">
+              <div className="rounded-[20px] overflow-hidden shadow-xl">
+                <LivestreamEmbed
+                  creatorDID={creator.did}
+                  creatorName={creator.displayName}
+                  creatorHandle={creator.handle}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Creator info */}
           <div className="relative z-10 px-4 sm:px-6 md:px-8 pt-4 pb-5 md:pb-6">
