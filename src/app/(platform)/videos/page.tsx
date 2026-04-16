@@ -78,17 +78,18 @@ export default function VideosPage() {
     }
 
     try {
-      console.log("[Videos] Fetching Dragverse content...");
+      console.log("[Videos] Fetching Dragverse + Bluesky content...");
 
-      // Fetch long-form + audio videos and shorts in parallel
-      // Shorts are fetched separately via the API (service role key, no RLS truncation)
-      // so ALL snapshots appear regardless of how many long videos exist
-      const [supabaseVideos, shortsRes] = await Promise.all([
+      // Fetch Dragverse videos, shorts, and curated Bluesky drag videos in parallel
+      const [supabaseVideos, shortsRes, blueskyRes] = await Promise.all([
         getVideos(100).catch((err) => {
           console.warn("[Videos] Supabase fetch failed:", err);
           return [];
         }),
         fetch("/api/videos/list?limit=100&contentType=short")
+          .then((r) => r.json())
+          .catch(() => ({ success: false, videos: [] })),
+        fetch("/api/bluesky/feed?limit=40&contentType=videos&sortBy=recent")
           .then((r) => r.json())
           .catch(() => ({ success: false, videos: [] })),
       ]);
@@ -101,9 +102,14 @@ export default function VideosPage() {
         .map(mapVideo)
         .filter((v: Video) => !existingIds.has(v.id));
 
-      console.log(`[Videos] Loaded ${transformed.length} videos + ${apiShorts.length} extra shorts`);
+      // Merge in curated Bluesky drag videos — already typed as Video[]
+      const blueskyVideos: Video[] = (blueskyRes.videos ?? []).filter(
+        (v: any) => !existingIds.has(v.id) && v.playbackUrl
+      );
 
-      const sortedVideos = deduplicateVideos([...transformed, ...apiShorts])
+      console.log(`[Videos] Loaded ${transformed.length} Dragverse + ${apiShorts.length} extra shorts + ${blueskyVideos.length} Bluesky videos`);
+
+      const sortedVideos = deduplicateVideos([...transformed, ...apiShorts, ...blueskyVideos])
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       setVideos(sortedVideos);

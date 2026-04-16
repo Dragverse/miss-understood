@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
+import { getBlueskyAgent } from "@/lib/bluesky/client";
 
 /**
  * GET /api/posts/feed
@@ -47,16 +48,52 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Transform posts to include social handles properly (snake_case to camelCase)
-    const transformedPosts = posts?.map(post => ({
-      ...post,
-      source: "dragverse", // Mark as Dragverse native content for filtering
-      creator: post.creator ? {
-        ...post.creator,
-        blueskyHandle: (post.creator as any).bluesky_handle,
-        farcasterHandle: (post.creator as any).farcaster_handle,
-      } : undefined
-    })) || [];
+    // Enrich posts that were crossposted to Bluesky with live like/reply counts.
+    // app.bsky.feed.getPosts accepts up to 25 URIs per call.
+    const bskyUriMap = new Map<string, { likeCount: number; replyCount: number; repostCount: number }>();
+    const postsWithUri = (posts || []).filter((p: any) => p.bluesky_post_uri);
+
+    if (postsWithUri.length > 0) {
+      try {
+        const agent = await getBlueskyAgent();
+        const uris = postsWithUri.map((p: any) => p.bluesky_post_uri as string);
+
+        // Batch in chunks of 25 (AT Protocol limit)
+        for (let i = 0; i < uris.length; i += 25) {
+          const chunk = uris.slice(i, i + 25);
+          const res = await agent.app.bsky.feed.getPosts({ uris: chunk });
+          for (const bskyPost of res.data.posts) {
+            bskyUriMap.set(bskyPost.uri, {
+              likeCount: (bskyPost as any).likeCount || 0,
+              replyCount: (bskyPost as any).replyCount || 0,
+              repostCount: (bskyPost as any).repostCount || 0,
+            });
+          }
+        }
+      } catch (err) {
+        // Non-fatal — fall back to Dragverse-only counts
+        console.warn("[Posts feed] Bluesky count enrichment failed:", err);
+      }
+    }
+
+    // Transform posts to include social handles and merged Bluesky counts
+    const transformedPosts = posts?.map(post => {
+      const bsky = post.bluesky_post_uri ? bskyUriMap.get(post.bluesky_post_uri) : null;
+      return {
+        ...post,
+        // Combine Dragverse + Bluesky counts so the post shows total engagement
+        likes: (post.likes || 0) + (bsky?.likeCount || 0),
+        comment_count: (post.comment_count || 0) + (bsky?.replyCount || 0),
+        repost_count: (post.repost_count || 0) + (bsky?.repostCount || 0),
+        bluesky_likes: bsky?.likeCount || 0,
+        source: "dragverse",
+        creator: post.creator ? {
+          ...post.creator,
+          blueskyHandle: (post.creator as any).bluesky_handle,
+          farcasterHandle: (post.creator as any).farcaster_handle,
+        } : undefined,
+      };
+    }) || [];
 
     return NextResponse.json({
       success: true,
