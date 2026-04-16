@@ -346,6 +346,21 @@ export function StreamModal({ onClose }: StreamModalProps) {
       return;
     }
 
+    // iOS/Safari cannot reliably use WHIP (WebRTC ingest) — skip the attempt
+    // and switch directly to RTMP so the user gets credentials immediately.
+    const isSafariUA = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (isMobile || isSafariUA) {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(t => t.stop());
+        mediaStreamRef.current = null;
+      }
+      setStreamType(null);
+      setStreamingMethod('obs');
+      setStep('setup');
+      toast("Use Larix Broadcaster or any RTMP app to go live on mobile.", { icon: '📡', duration: 5000 });
+      return;
+    }
+
     try {
       setIsStreaming(true);
       toast.success("Connecting to Livepeer...");
@@ -1282,64 +1297,104 @@ export function StreamModal({ onClose }: StreamModalProps) {
           {step === 'method' && streamInfo && (
             <div className="space-y-6">
               <p className="text-gray-300 text-center">
-                Choose how you want to stream.
+                {isMobile ? "Choose how to stream from your device." : "Choose how you want to stream."}
               </p>
 
+              {/* On mobile: RTMP first (recommended), browser second. Desktop: browser first. */}
               <div className="grid grid-cols-2 gap-4">
-                {/* Browser Streaming Option */}
-                <button
-                  onClick={() => {
-                    setStreamingMethod('browser');
-                    setStep('setup');
-                  }}
-                  className="p-8 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/60 rounded-2xl transition-all group relative overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="relative">
-                    <FiVideo className="w-12 h-12 text-[#EB83EA] mx-auto mb-4 group-hover:scale-110 transition" />
-                    <h3 className="font-bold text-white text-lg mb-2">Browser Streaming</h3>
-                    <p className="text-sm text-gray-400 mb-3">{isMobile ? "Stream from your camera" : "Stream from your camera or screen"}</p>
-                    <ul className="text-xs text-gray-500 space-y-1 text-left">
-                      <li>• Quick & easy setup</li>
-                      <li>• No software needed</li>
-                      {isMobile ? <li>• Camera streaming</li> : <li>• Camera or screen share</li>}
-                      <li>• Low latency</li>
-                    </ul>
-                  </div>
-                </button>
-
-                {/* OBS/Streamlabs/Larix Option */}
-                <button
-                  onClick={() => {
-                    setStreamingMethod('obs');
-                    setStep('setup');
-                  }}
-                  className="p-8 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/60 rounded-2xl transition-all group relative overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#7c3aed]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="relative">
-                    <FiMonitor className="w-12 h-12 text-[#7c3aed] mx-auto mb-4 group-hover:scale-110 transition" />
-                    <h3 className="font-bold text-white text-lg mb-2">{isMobile ? "RTMP App" : "OBS / Streamlabs"}</h3>
-                    <p className="text-sm text-gray-400 mb-3">{isMobile ? "Stream via Larix or any RTMP app" : "Professional streaming software"}</p>
-                    <ul className="text-xs text-gray-500 space-y-1 text-left">
-                      {isMobile ? (
-                        <>
+                {isMobile ? (
+                  <>
+                    {/* RTMP App — recommended on mobile */}
+                    <button
+                      onClick={() => {
+                        setStreamingMethod('obs');
+                        setStep('setup');
+                      }}
+                      className="p-8 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#7c3aed]/40 hover:border-[#7c3aed]/80 rounded-2xl transition-all group relative overflow-hidden"
+                    >
+                      <div className="absolute top-2 right-2 px-2 py-0.5 bg-green-500 rounded-full text-[10px] font-bold text-white">RECOMMENDED</div>
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#7c3aed]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <div className="relative">
+                        <FiMonitor className="w-12 h-12 text-[#7c3aed] mx-auto mb-4 group-hover:scale-110 transition" />
+                        <h3 className="font-bold text-white text-lg mb-2">RTMP App</h3>
+                        <p className="text-sm text-gray-400 mb-3">Stream via Larix or any RTMP app</p>
+                        <ul className="text-xs text-gray-500 space-y-1 text-left">
                           <li>• Larix Broadcaster (free)</li>
                           <li>• Any RTMP streaming app</li>
                           <li>• Most reliable on mobile</li>
                           <li>• Works on cellular</li>
-                        </>
-                      ) : (
-                        <>
+                        </ul>
+                      </div>
+                    </button>
+
+                    {/* Browser / Camera preview — note it routes to RTMP */}
+                    <button
+                      onClick={() => {
+                        setStreamingMethod('browser');
+                        setStep('setup');
+                      }}
+                      className="p-8 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/60 rounded-2xl transition-all group relative overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <div className="relative">
+                        <FiVideo className="w-12 h-12 text-[#EB83EA] mx-auto mb-4 group-hover:scale-110 transition" />
+                        <h3 className="font-bold text-white text-lg mb-2">Camera Preview</h3>
+                        <p className="text-sm text-gray-400 mb-3">Check your look, then get RTMP credentials</p>
+                        <ul className="text-xs text-gray-500 space-y-1 text-left">
+                          <li>• Preview your camera</li>
+                          <li>• Switches to RTMP to go live</li>
+                          <li>• No software needed</li>
+                        </ul>
+                      </div>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Browser Streaming — desktop default */}
+                    <button
+                      onClick={() => {
+                        setStreamingMethod('browser');
+                        setStep('setup');
+                      }}
+                      className="p-8 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/60 rounded-2xl transition-all group relative overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <div className="relative">
+                        <FiVideo className="w-12 h-12 text-[#EB83EA] mx-auto mb-4 group-hover:scale-110 transition" />
+                        <h3 className="font-bold text-white text-lg mb-2">Browser Streaming</h3>
+                        <p className="text-sm text-gray-400 mb-3">Stream from your camera or screen</p>
+                        <ul className="text-xs text-gray-500 space-y-1 text-left">
+                          <li>• Quick & easy setup</li>
+                          <li>• No software needed</li>
+                          <li>• Camera or screen share</li>
+                          <li>• Low latency</li>
+                        </ul>
+                      </div>
+                    </button>
+
+                    {/* OBS/Streamlabs */}
+                    <button
+                      onClick={() => {
+                        setStreamingMethod('obs');
+                        setStep('setup');
+                      }}
+                      className="p-8 bg-[#2f2942] hover:bg-[#3f3952] border-2 border-[#EB83EA]/20 hover:border-[#EB83EA]/60 rounded-2xl transition-all group relative overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#7c3aed]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <div className="relative">
+                        <FiMonitor className="w-12 h-12 text-[#7c3aed] mx-auto mb-4 group-hover:scale-110 transition" />
+                        <h3 className="font-bold text-white text-lg mb-2">OBS / Streamlabs</h3>
+                        <p className="text-sm text-gray-400 mb-3">Professional streaming software</p>
+                        <ul className="text-xs text-gray-500 space-y-1 text-left">
                           <li>• Multi-camera setup</li>
                           <li>• Scenes & overlays</li>
                           <li>• Advanced controls</li>
                           <li>• Professional quality</li>
-                        </>
-                      )}
-                    </ul>
-                  </div>
-                </button>
+                        </ul>
+                      </div>
+                    </button>
+                  </>
+                )}
               </div>
 
               <div className="flex gap-3">
@@ -1409,7 +1464,7 @@ export function StreamModal({ onClose }: StreamModalProps) {
                     onClick={startStreaming}
                     className="px-8 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded-full font-bold transition-all shadow-lg"
                   >
-                    Go Live
+                    {isMobile ? "Get RTMP Credentials" : "Go Live"}
                   </button>
                   <button
                     onClick={() => setStep('method')}

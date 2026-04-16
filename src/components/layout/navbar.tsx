@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   FiUpload,
   FiLogOut,
@@ -37,6 +38,7 @@ export function Navbar() {
   const { canStream } = useCanLivestream();
   const { openStreamModal } = useStreamStore();
   const { blueskyProfile, blueskyConnected, farcasterHandle } = useAuthUser();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
@@ -159,6 +161,11 @@ export function Navbar() {
               walletAddress: data.creator.wallet_address,
               tipCount: data.creator.tip_count || 0,
             });
+
+            // New user: redirect to their profile so they can see it right away
+            if (data.isNew && data.creator.handle) {
+              router.push(`/u/${data.creator.handle}`);
+            }
           }
         } catch {
           // Non-critical — avatar will fall back to Bluesky/Twitter/default

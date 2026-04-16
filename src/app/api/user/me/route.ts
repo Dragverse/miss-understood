@@ -89,6 +89,15 @@ export async function GET(request: NextRequest) {
 
         creator = newCreator;
         console.log(`[UserMe] Auto-created creator profile:`, newCreator?.id);
+
+        // Return with isNew flag so the client can redirect to their profile
+        return NextResponse.json({
+          success: true,
+          userId,
+          authenticated: true,
+          creator,
+          isNew: true,
+        });
       } catch (error) {
         console.error(`[UserMe] Failed to auto-create creator:`, error);
         // Continue anyway - creator can be created later
