@@ -78,18 +78,15 @@ export default function VideosPage() {
     }
 
     try {
-      console.log("[Videos] Fetching Dragverse + Bluesky content...");
+      console.log("[Videos] Fetching Dragverse content...");
 
-      // Fetch Dragverse videos, shorts, and curated Bluesky drag videos in parallel
-      const [supabaseVideos, shortsRes, blueskyRes] = await Promise.all([
+      // Fetch Dragverse videos and shorts in parallel
+      const [supabaseVideos, shortsRes] = await Promise.all([
         getVideos(100).catch((err) => {
           console.warn("[Videos] Supabase fetch failed:", err);
           return [];
         }),
         fetch("/api/videos/list?limit=100&contentType=short")
-          .then((r) => r.json())
-          .catch(() => ({ success: false, videos: [] })),
-        fetch("/api/bluesky/feed?limit=40&contentType=videos&sortBy=recent")
           .then((r) => r.json())
           .catch(() => ({ success: false, videos: [] })),
       ]);
@@ -102,14 +99,9 @@ export default function VideosPage() {
         .map(mapVideo)
         .filter((v: Video) => !existingIds.has(v.id));
 
-      // Merge in curated Bluesky drag videos — already typed as Video[]
-      const blueskyVideos: Video[] = (blueskyRes.videos ?? []).filter(
-        (v: any) => !existingIds.has(v.id) && v.playbackUrl
-      );
+      console.log(`[Videos] Loaded ${transformed.length} Dragverse + ${apiShorts.length} extra shorts`);
 
-      console.log(`[Videos] Loaded ${transformed.length} Dragverse + ${apiShorts.length} extra shorts + ${blueskyVideos.length} Bluesky videos`);
-
-      const sortedVideos = deduplicateVideos([...transformed, ...apiShorts, ...blueskyVideos])
+      const sortedVideos = deduplicateVideos([...transformed, ...apiShorts])
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       setVideos(sortedVideos);

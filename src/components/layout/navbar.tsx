@@ -42,6 +42,7 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [unreadDmCount, setUnreadDmCount] = useState(0);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
 
   // Get wallet address and fetch USDC balance
@@ -98,6 +99,26 @@ export function Navbar() {
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [authenticated, getAccessToken]);
+
+  // Fetch unread DM count (only when Bluesky is connected)
+  useEffect(() => {
+    if (!authenticated || !blueskyConnected) return;
+
+    async function fetchUnreadDms() {
+      try {
+        const res = await fetch("/api/bluesky/dms/unread");
+        if (!res.ok) return;
+        const data = await res.json();
+        setUnreadDmCount(data.count || 0);
+      } catch {
+        // Non-critical — ignore silently
+      }
+    }
+
+    fetchUnreadDms();
+    const interval = setInterval(fetchUnreadDms, 60_000);
+    return () => clearInterval(interval);
+  }, [authenticated, blueskyConnected]);
 
   // Close create menu when clicking outside
   useEffect(() => {
@@ -269,6 +290,13 @@ export function Navbar() {
                   aria-label="Messages"
                 >
                   <FiMail className="w-5 h-5 text-gray-300" />
+                  {unreadDmCount > 0 && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#EB83EA] rounded-full flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-white">
+                        {unreadDmCount > 9 ? "9+" : unreadDmCount}
+                      </span>
+                    </div>
+                  )}
                 </Link>
               )}
 

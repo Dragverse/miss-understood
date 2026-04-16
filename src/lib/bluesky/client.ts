@@ -610,7 +610,7 @@ export function blueskyPostToVideo(post: BlueskyPost): any | null {
  * This is more permissive than blueskyPostToVideo and includes all content types
  * Filters for drag-relevant content to keep the feed focused
  */
-export function blueskyPostToContent(post: BlueskyPost): any | null {
+export function blueskyPostToContent(post: BlueskyPost, fromCurated = false): any | null {
   const hasNativeVideo = !!post.embed?.video;
   const hasExternalVideo =
     post.embed?.external &&
@@ -656,31 +656,18 @@ export function blueskyPostToContent(post: BlueskyPost): any | null {
   const postTextLower = post.text.toLowerCase();
   const hasDragKeyword = dragKeywords.some(keyword => postTextLower.includes(keyword));
 
-  // ENHANCED FILTERING - STRICT MODE:
-  // For trending photos and visual content, require drag keywords
-  // This ensures high-quality, drag-focused content
-
-  if (hasImages && !hasVideo) {
-    // Photo/image posts MUST have drag keywords to appear in trending
-    if (!hasDragKeyword && (post.likeCount || 0) < 20) {
-      return null; // Images need drag keywords or very high engagement
+  if (fromCurated) {
+    // Posts from curated drag accounts: only drop completely empty posts
+    if (!hasVideo && !hasImages && (!hasText || post.text.length < 3)) return null;
+  } else {
+    // STRICT MODE for non-curated/broad search results:
+    // Require drag keywords or high engagement to keep the feed focused
+    if (hasImages && !hasVideo) {
+      if (!hasDragKeyword && (post.likeCount || 0) < 20) return null;
     }
-  }
-
-  if (hasVideo) {
-    // Videos can be more lenient - accept if from curated accounts
-    // But still prefer posts with drag keywords
-  }
-
-  if (!hasVideo && !hasImages) {
-    // Text-only posts need to be substantial AND drag-related
-    if (!hasText || post.text.length < 50) {
-      return null; // Too short
-    }
-
-    // Require drag keywords OR high engagement (15+ likes)
-    if (!hasDragKeyword && (post.likeCount || 0) < 15) {
-      return null; // Not drag-focused and low engagement
+    if (!hasVideo && !hasImages) {
+      if (!hasText || post.text.length < 50) return null;
+      if (!hasDragKeyword && (post.likeCount || 0) < 15) return null;
     }
   }
 

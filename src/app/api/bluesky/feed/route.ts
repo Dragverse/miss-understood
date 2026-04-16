@@ -63,12 +63,14 @@ export async function GET(request: NextRequest) {
     // Convert posts based on content type
     let videos;
     if (contentType === "all") {
-      // Include videos, images, and text posts
+      // Include videos, images, and text posts.
+      // Pass fromCurated=true so posts from curated drag accounts aren't
+      // keyword-filtered — we already curated the sources upstream.
       videos = posts
-        .map(blueskyPostToContent)
+        .map(post => blueskyPostToContent(post, true))
         .filter((video) => video !== null);
     } else {
-      // Only videos (default behavior)
+      // Only videos (default behavior) — strict filtering applies
       videos = posts
         .map(blueskyPostToVideo)
         .filter((video) => video !== null);
