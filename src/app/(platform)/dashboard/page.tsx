@@ -593,7 +593,7 @@ export default function DashboardPage() {
                           {copiedId === video.id ? "✓ Copied!" : "Share"}
                         </button>
                         <button
-                          onClick={() => router.push(`/watch/${video.id}`)}
+                          onClick={() => router.push(video.contentType === 'short' ? `/snapshots?v=${video.id}` : `/watch/${video.id}`)}
                           className="px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-white hover:text-[#EB83EA]"
                         >
                           <FiEye className="w-4 h-4" />

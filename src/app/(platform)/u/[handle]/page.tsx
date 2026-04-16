@@ -574,7 +574,13 @@ export default function DynamicProfilePage() {
                       className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
                       onClick={() => {
                         const upcoming = video.premiereMode === 'countdown' && video.publishedAt && new Date(video.publishedAt) > new Date();
-                        router.push(upcoming ? `/premiere/${video.id}` : `/watch/${video.id}`);
+                        router.push(
+                          upcoming
+                            ? `/premiere/${video.id}`
+                            : video.contentType === 'short'
+                            ? `/snapshots?v=${video.id}`
+                            : `/watch/${video.id}`
+                        );
                       }}
                     >
                       <Image

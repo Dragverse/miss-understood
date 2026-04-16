@@ -242,6 +242,13 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           return;
         }
 
+        // Redirect shorts to the vertical snapshots player
+        if (formattedVideo.contentType === 'short') {
+          console.log("[Watch] Redirecting short to /snapshots player");
+          window.location.href = `/snapshots?v=${resolvedParams.id}`;
+          return;
+        }
+
         setVideo(formattedVideo);
         setLikes(formattedVideo.likes);
         setAccessDenied(false);
@@ -935,7 +942,11 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                   <div className="space-y-2">
                     {creatorVideos.map((v) => {
                       // Determine correct route based on content type
-                      const route = (v.contentType === 'podcast' || v.contentType === 'music') ? `/listen/${v.id}` : `/watch/${v.id}`;
+                      const route = v.contentType === 'short'
+                        ? `/snapshots?v=${v.id}`
+                        : (v.contentType === 'podcast' || v.contentType === 'music')
+                        ? `/listen/${v.id}`
+                        : `/watch/${v.id}`;
                       return (
                         <Link
                           key={v.id}
