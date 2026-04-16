@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     }));
 
     const transformedPosts = posts
-      .map(blueskyPostToContent)
+      .map(post => blueskyPostToContent(post))
       .filter((post) => post !== null);
 
     console.log(`[UserFeed] Loaded ${transformedPosts.length} posts for ${handle}`);
