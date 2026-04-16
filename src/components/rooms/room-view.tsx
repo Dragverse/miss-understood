@@ -54,6 +54,7 @@ export function RoomView({ roomId }: RoomViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [handRaised, setHandRaised] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Refs for cleanup callbacks (state values aren't accessible in closures)
@@ -61,6 +62,10 @@ export function RoomView({ roomId }: RoomViewProps) {
   const joinedRef = useRef(false);
   const tokenRef = useRef("");
   const hasEndedRef = useRef(false);
+  const joinedAtRef = useRef<number | null>(null);
+  const warningShownRef = useRef(false);
+
+  const SESSION_LIMIT_SECS = 60 * 60; // 1 hour
 
   const displayName = creator?.displayName || "Drag Artist";
   const avatarUrl = creator?.avatar || "/defaultpfp.png";
@@ -71,7 +76,12 @@ export function RoomView({ roomId }: RoomViewProps) {
 
   // Huddle01 hooks
   const { joinRoom, leaveRoom, closeRoom, state: roomState } = useRoom({
-    onJoin: () => { setJoined(true); setJoining(false); },
+    onJoin: () => {
+      setJoined(true);
+      setJoining(false);
+      joinedAtRef.current = Date.now();
+      setTimeLeft(SESSION_LIMIT_SECS);
+    },
     onLeave: () => { setJoined(false); clearActiveRoom(); },
     onFailed: () => { toast.error("Failed to connect to room"); setJoining(false); },
   });
@@ -174,7 +184,7 @@ export function RoomView({ roomId }: RoomViewProps) {
     if (hasEndedRef.current) return;
     hasEndedRef.current = true;
     try {
-      if (isHost) {
+      if (isHostRef.current) {
         await fetch("/api/rooms/end", {
           method: "DELETE",
           headers: {
@@ -225,6 +235,42 @@ export function RoomView({ roomId }: RoomViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 1-hour session limit: warn at 5 min, auto-end at 0
+  useEffect(() => {
+    if (!joined || joinedAtRef.current === null) return;
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - joinedAtRef.current!) / 1000);
+      const remaining = SESSION_LIMIT_SECS - elapsed;
+
+      if (remaining <= 0) {
+        clearInterval(interval);
+        setTimeLeft(0);
+        toast("Session limit reached (1 hour). Ending room.", { icon: "⏰" });
+        handleLeave();
+        return;
+      }
+
+      setTimeLeft(remaining);
+
+      if (remaining <= 5 * 60 && !warningShownRef.current) {
+        warningShownRef.current = true;
+        toast("5 minutes left in this session.", { icon: "⏰", duration: 6000 });
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joined]);
+
+  const formatTimeLeft = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   const handleSendChat = () => {
     if (!chatInput.trim()) return;
     const text = chatInput.trim();
@@ -271,7 +317,18 @@ export function RoomView({ roomId }: RoomViewProps) {
       {/* Room header */}
       <div className="mb-6">
         <h1 className="text-white font-black text-2xl leading-tight">{title}</h1>
-        <p className="text-gray-400 text-sm mt-1">Hosted by @{hostName}</p>
+        <div className="flex items-center gap-3 mt-1">
+          <p className="text-gray-400 text-sm">Hosted by @{hostName}</p>
+          {timeLeft !== null && timeLeft <= 10 * 60 && (
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+              timeLeft <= 5 * 60
+                ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+            }`}>
+              ⏰ {formatTimeLeft(timeLeft)} left
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Speakers */}
@@ -380,7 +437,7 @@ export function RoomView({ roomId }: RoomViewProps) {
           }`}
         >
           {isAudioOn ? <FiMic className="w-4 h-4" /> : <FiMicOff className="w-4 h-4" />}
-          <span className="hidden sm:inline">{isAudioOn ? "Muted Off" : "Muted"}</span>
+          <span className="hidden sm:inline">{isAudioOn ? "Mic On" : "Muted"}</span>
         </button>
 
         {/* Video toggle (host / speakers only) */}

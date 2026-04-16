@@ -195,10 +195,10 @@ export function SnapshotsSection({ shorts }: SnapshotsSectionProps) {
         {shorts.length > 0 && (
           <Link href="/snapshots" className="flex-shrink-0 snap-start">
             <div className="relative w-[140px] sm:w-[160px] md:w-[180px] aspect-[9/16] rounded-[24px] overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-shadow bg-black border-2 border-[#EB83EA]/40">
-              {/* ONLINE badge */}
-              <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1.5 bg-[#4CAF50] rounded-full">
-                <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                <span className="text-white text-[10px] font-bold uppercase tracking-wide">Online</span>
+              {/* Snapshots badge */}
+              <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-[#EB83EA] to-[#7c3aed] rounded-full shadow-lg">
+                <span className="w-2 h-2 bg-white rounded-full" />
+                <span className="text-white text-[10px] font-bold uppercase tracking-wide">On Air</span>
               </div>
               {/* Auto-playing muted video */}
               <video
@@ -240,9 +240,10 @@ export function SnapshotsSection({ shorts }: SnapshotsSectionProps) {
                 <FiHeart className="w-3.5 h-3.5 text-[#EB83EA] fill-[#EB83EA]" />
                 <span className="text-white text-xs font-bold">{formatNumber(video.likes)}</span>
               </div>
-              {/* Title */}
+              {/* Title + creator */}
               <div className="absolute bottom-0 left-0 right-0 p-4">
                 <p className="text-white text-sm font-bold line-clamp-2 leading-tight">{video.title}</p>
+                <p className="text-gray-400 text-xs mt-1 truncate">{video.creator.displayName}</p>
               </div>
             </div>
           </Link>

@@ -1,7 +1,7 @@
 import type { Video } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
-import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
+import { getSafeThumbnail, getSafeAvatar } from "@/lib/utils/thumbnail-helpers";
 
 interface ShortCardProps {
   video: Video;
@@ -40,10 +40,20 @@ export function ShortCard({ video }: ShortCardProps) {
           </div>
         </div>
 
-        {/* Title */}
+        {/* Title + creator */}
         <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-[#EB83EA] transition leading-snug px-1">
           {video.title}
         </h3>
+        <div className="flex items-center gap-1.5 mt-1 px-1">
+          <Image
+            src={getSafeAvatar(video.creator.avatar, "/defaultpfp.png")}
+            alt={video.creator.displayName}
+            width={16}
+            height={16}
+            className="rounded-full flex-shrink-0"
+          />
+          <span className="text-xs text-gray-400 truncate">{video.creator.displayName}</span>
+        </div>
       </div>
     </Link>
   );
