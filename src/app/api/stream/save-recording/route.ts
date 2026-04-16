@@ -148,29 +148,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Insert into videos table
-    const { data: video, error: insertError } = await supabase
+    // 4. Insert into videos table.
+    // Try with livepeer_stream_id first; if the column doesn't exist yet
+    // (migration not run), fall back to inserting without it so the save
+    // still succeeds. Run supabase-migration-videos-stream-id.sql to add
+    // the column permanently.
+    const baseInsert = {
+      creator_id: creator.id,
+      creator_did: userId,
+      title,
+      description: description ?? null,
+      playback_id: recordingPlaybackId,
+      playback_url: playbackUrl,
+      content_type: "live",
+      visibility: "public",
+      views: 0,
+      likes: 0,
+      tip_count: 0,
+      total_tips_usd: 0,
+      created_at: new Date().toISOString(),
+    };
+
+    let { data: video, error: insertError } = await supabase
       .from("videos")
-      .insert({
-        creator_id: creator.id,
-        creator_did: userId,
-        title,
-        description: description ?? null,
-        playback_id: recordingPlaybackId,
-        playback_url: playbackUrl,
-        livepeer_stream_id: livepeerStreamId, // stored so repair API can re-fetch sessions
-        content_type: "live",
-        visibility: "public",
-        views: 0,
-        likes: 0,
-        tip_count: 0,
-        total_tips_usd: 0,
-        created_at: new Date().toISOString(),
-      })
+      .insert({ ...baseInsert, livepeer_stream_id: livepeerStreamId })
       .select("id")
       .single();
 
-    if (insertError) {
+    // If insert failed due to missing column, retry without it
+    if (insertError && insertError.message?.includes("livepeer_stream_id")) {
+      console.warn("[save-recording] livepeer_stream_id column missing — retrying without it. Run supabase-migration-videos-stream-id.sql.");
+      ({ data: video, error: insertError } = await supabase
+        .from("videos")
+        .insert(baseInsert)
+        .select("id")
+        .single());
+    }
+
+    if (insertError || !video) {
       console.error("[save-recording] Video insert failed:", insertError);
       return NextResponse.json(
         { error: "Failed to save recording as video" },

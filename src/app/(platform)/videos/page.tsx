@@ -12,6 +12,7 @@ import { Video } from "@/types";
 import { FiSearch, FiRefreshCw, FiVideo } from "react-icons/fi";
 import { LoadingShimmer } from "@/components/shared";
 import { ExploreTVSlider } from "@/components/broadcast/explore-tv-slider";
+import { LiveNowSection } from "@/components/home/live-now-section";
 
 export default function VideosPage() {
   const [activeCategory, setActiveCategory] = useState("All");
@@ -177,6 +178,13 @@ export default function VideosPage() {
         {/* TV Slider — full width, above everything */}
         {!isFiltering && !loading && (
           <ExploreTVSlider videos={longVideos} autoPlayInterval={7000} />
+        )}
+
+        {/* Live Now — only renders when someone is live */}
+        {!isFiltering && (
+          <div className="mb-6">
+            <LiveNowSection />
+          </div>
         )}
 
         <div className="grid grid-cols-12 gap-8">

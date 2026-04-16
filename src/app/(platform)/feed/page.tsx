@@ -2,7 +2,6 @@
 
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { FiMessageSquare, FiTrendingUp, FiPlus, FiRefreshCw } from "react-icons/fi";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { PostCard as BlueskyPostCard } from "@/components/feed/post-card";
@@ -19,11 +18,9 @@ function FeedContent() {
   const listUri = searchParams?.get("listUri") || null;
   const showBookmarks = filter === "bookmarks";
 
-  const [posts, setPosts] = useState<any[]>([]);
-  const [dragversePosts, setDragversePosts] = useState<any[]>([]);
+  const [allPosts, setAllPosts] = useState<any[]>([]);
   const [dragverseLoading, setDragverseLoading] = useState(true);
   const [externalLoading, setExternalLoading] = useState(true);
-  const [hasBluesky, setHasBluesky] = useState(false);
   const [sortBy, setSortBy] = useState<"engagement" | "recent">("engagement");
   const [contentFilter, setContentFilter] = useState<"all" | "youtube" | "bluesky" | "dragverse">("all");
   const [showComposer, setShowComposer] = useState(false);
@@ -48,15 +45,9 @@ function FeedContent() {
     };
   }, []);
 
-  // Check Bluesky session status (non-blocking)
+  // Background creator backfill (non-blocking)
   useEffect(() => {
     if (isAuthenticated) {
-      fetch("/api/bluesky/session")
-        .then((res) => res.json())
-        .then((data) => setHasBluesky(data.connected))
-        .catch(() => {});
-
-      // Background backfill
       fetch("/api/posts/backfill-creators", { method: "POST", credentials: "include" }).catch(() => {});
     }
   }, [isAuthenticated]);
@@ -91,7 +82,7 @@ function FeedContent() {
 
   // Handle post deletion
   const handlePostDeleted = (postId: string) => {
-    setDragversePosts((posts) => posts.filter((p) => p.id !== postId));
+    setAllPosts((prev) => prev.filter((p) => p.id !== postId));
   };
 
   // Deduplicate content by ID/URI
@@ -105,7 +96,7 @@ function FeedContent() {
     });
   }, []);
 
-  // Progressive feed loading - Dragverse first, then external sources
+  // Progressive feed loading — Dragverse first (fast), then merge external sources
   const loadFeed = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
@@ -115,23 +106,34 @@ function FeedContent() {
     }
     setSearchError(null);
 
-    // Load Dragverse posts FIRST (fast, our own DB)
+    // Normalize a Dragverse DB post to the shape PostCard expects
+    const normalizeDragversePost = (p: any) => ({
+      ...p,
+      source: p.source || "dragverse",
+      createdAt: p.created_at || p.createdAt,
+      description: p.text_content || p.description || "",
+      creator: p.creator
+        ? {
+            displayName: p.creator.display_name || p.creator.displayName,
+            handle: p.creator.handle,
+            avatar: p.creator.avatar,
+            did: p.creator.did,
+            blueskyHandle: p.creator.bluesky_handle || p.creator.blueskyHandle,
+          }
+        : undefined,
+    });
+
+    // ── Step 1: Load Dragverse posts (fast, own DB) ──
+    let dragverseData: any[] = [];
     try {
       const dragverseRes = await fetch("/api/posts/feed?limit=20");
       if (dragverseRes.ok) {
         const data = await dragverseRes.json();
-        let dragverseData = deduplicateContent(data.posts || []);
-        dragverseData.sort((a: any, b: any) =>
-          new Date(b.createdAt || b.created_at || b.indexedAt).getTime() -
-          new Date(a.createdAt || a.created_at || a.indexedAt).getTime()
-        );
-
+        dragverseData = (data.posts || []).map(normalizeDragversePost);
         if (showBookmarks) {
           const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
-          dragverseData = dragverseData.filter((post: any) => bookmarks.includes(post.id));
+          dragverseData = dragverseData.filter((p: any) => bookmarks.includes(p.id));
         }
-
-        setDragversePosts(dragverseData);
       }
     } catch (error) {
       console.error("Failed to load Dragverse posts:", error);
@@ -139,7 +141,12 @@ function FeedContent() {
       setDragverseLoading(false);
     }
 
-    // Load external sources in background (slower, don't block UI)
+    // Show Dragverse posts immediately while external sources load
+    setAllPosts(deduplicateContent(dragverseData).sort((a: any, b: any) =>
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    ));
+
+    // ── Step 2: Load external sources (slower) ──
     try {
       const [blueskyRes, youtubeRes] = await Promise.all([
         fetch(
@@ -187,18 +194,19 @@ function FeedContent() {
         }
       }
 
-      externalPosts = deduplicateContent(externalPosts);
-      externalPosts.sort((a: any, b: any) =>
-        new Date(b.createdAt || b.indexedAt).getTime() -
-        new Date(a.createdAt || a.indexedAt).getTime()
+      // Merge Dragverse + external into one unified timeline sorted by date
+      let merged = deduplicateContent([...dragverseData, ...externalPosts]);
+      merged.sort((a: any, b: any) =>
+        new Date(b.createdAt || b.indexedAt || 0).getTime() -
+        new Date(a.createdAt || a.indexedAt || 0).getTime()
       );
 
       if (showBookmarks) {
         const bookmarks = JSON.parse(localStorage.getItem("dragverse_bookmarks") || "[]");
-        externalPosts = externalPosts.filter((post: any) => bookmarks.includes(post.id));
+        merged = merged.filter((p: any) => bookmarks.includes(p.id));
       }
 
-      setPosts(externalPosts);
+      setAllPosts(merged);
 
       if (isRefresh && externalPosts.length > 0) {
         setNewContentAvailable(true);
@@ -224,15 +232,9 @@ function FeedContent() {
   }, [loadFeed]);
 
   const handlePostCreated = () => {
-    fetch("/api/posts/feed?limit=20")
-      .then((res) => res.json())
-      .then((data) => setDragversePosts(data.posts || []))
-      .catch((error) => console.error("Failed to reload posts:", error));
+    loadFeed(true);
     setShowComposer(false);
   };
-
-  // Compute loading state - show skeleton only while Dragverse (primary) is loading
-  const loading = dragverseLoading;
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12">
@@ -406,92 +408,72 @@ function FeedContent() {
             )
           )}
 
-          {!feedUri && !listUri && loading ? (
-            <div className="space-y-6">
-              <CardSkeleton />
-              <CardSkeleton />
-              <CardSkeleton />
-            </div>
-          ) : !feedUri && !listUri && (
-            <div className="space-y-6">
-              {/* Dragverse Native Posts */}
-              {dragversePosts
-                .filter((post) => {
-                  if (contentFilter === "all") return true;
-                  if (contentFilter === "dragverse") return (post as any).source === "dragverse" || (post as any).source === "ceramic";
-                  return false;
-                })
-                .map((post) => (
-                  <BlueskyPostCard
-                    key={`dragverse-${post.id}`}
-                    post={{
-                      ...post,
-                      description: post.text_content || post.description || "",
-                      createdAt: post.created_at || post.createdAt,
-                      thumbnail: post.media_urls?.[0] || post.thumbnail,
-                      creator: post.creator ? {
-                        displayName: post.creator.display_name || post.creator.displayName,
-                        handle: post.creator.handle,
-                        avatar: post.creator.avatar,
-                        did: post.creator.did,
-                        blueskyHandle: post.creator.blueskyHandle,
-                      } : post.creator,
-                    }}
-                  />
-                ))}
+          {/* Main unified feed */}
+          {!feedUri && !listUri && (
+            dragverseLoading ? (
+              <div className="space-y-6">
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Unified interleaved timeline */}
+                {allPosts
+                  .filter((post) => {
+                    if (contentFilter === "all") return true;
+                    if (contentFilter === "dragverse") return post.source === "dragverse" || post.source === "ceramic";
+                    if (contentFilter === "youtube") return post.source === "youtube";
+                    if (contentFilter === "bluesky") return post.source !== "youtube" && post.source !== "dragverse" && post.source !== "ceramic";
+                    return true;
+                  })
+                  .map((post) => (
+                    <BlueskyPostCard
+                      key={post.id || post.uri}
+                      post={{
+                        ...post,
+                        thumbnail: post.media_urls?.[0] || post.thumbnail,
+                      }}
+                    />
+                  ))}
 
-              {/* External content loading indicator */}
-              {externalLoading && contentFilter !== "dragverse" && (
-                <div className="flex items-center justify-center py-4 gap-3 text-gray-400">
-                  <FiRefreshCw className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Loading more content...</span>
-                </div>
-              )}
-
-              {/* External Posts (Bluesky, YouTube, etc.) */}
-              {posts
-                .filter((post) => {
-                  if (contentFilter === "all") return true;
-                  if (contentFilter === "youtube") return (post as any).source === "youtube";
-                  if (contentFilter === "bluesky") return (post as any).source !== "youtube" && (post as any).source !== "dragverse" && (post as any).source !== "ceramic";
-                  if (contentFilter === "dragverse") return false;
-                  return false;
-                })
-                .map((post) => (
-                  <BlueskyPostCard key={`external-${post.id}`} post={post} />
-                ))}
-
-              {dragversePosts.filter((post) => {
-                if (contentFilter === "all") return true;
-                if (contentFilter === "dragverse") return (post as any).source === "dragverse" || (post as any).source === "ceramic";
-                return false;
-              }).length === 0 && posts.filter((post) => {
-                if (contentFilter === "all") return true;
-                if (contentFilter === "youtube") return (post as any).source === "youtube";
-                if (contentFilter === "bluesky") return (post as any).source !== "youtube" && (post as any).source !== "dragverse" && (post as any).source !== "ceramic";
-                if (contentFilter === "dragverse") return false;
-                return false;
-              }).length === 0 && !externalLoading && !searchError && (
-                <div className="text-center py-20">
-                  <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
-                    <FiMessageSquare className="w-10 h-10 text-[#EB83EA]" />
+                {/* "Loading more" indicator while external sources are still fetching */}
+                {externalLoading && contentFilter !== "dragverse" && (
+                  <div className="flex items-center justify-center py-4 gap-3 text-gray-400">
+                    <FiRefreshCw className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading more content...</span>
                   </div>
-                  <h2 className="text-2xl font-bold mb-3">
-                    {showBookmarks ? "No Bookmarks Yet" : "The Stage is Set"}
-                  </h2>
-                  <p className="text-gray-400 text-lg mb-2">
-                    {showBookmarks
-                      ? "Start bookmarking posts to save them here"
-                      : "Waiting for the first act to begin"}
-                  </p>
-                  <p className="text-gray-500 text-sm">
-                    {showBookmarks
-                      ? "Tap the bookmark icon on any post to save it"
-                      : "Be the first to share something fabulous with the community"}
-                  </p>
-                </div>
-              )}
-            </div>
+                )}
+
+                {/* Empty state */}
+                {allPosts.filter((post) => {
+                  if (contentFilter === "all") return true;
+                  if (contentFilter === "dragverse") return post.source === "dragverse" || post.source === "ceramic";
+                  if (contentFilter === "youtube") return post.source === "youtube";
+                  if (contentFilter === "bluesky") return post.source !== "youtube" && post.source !== "dragverse" && post.source !== "ceramic";
+                  return true;
+                }).length === 0 && !externalLoading && !searchError && (
+                  <div className="text-center py-20">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#EB83EA]/20 to-[#7c3aed]/20 flex items-center justify-center">
+                      <FiMessageSquare className="w-10 h-10 text-[#EB83EA]" />
+                    </div>
+                    <h2 className="text-2xl font-bold mb-3">
+                      {showBookmarks ? "No Bookmarks Yet" : "The Stage is Set"}
+                    </h2>
+                    <p className="text-gray-400 text-lg mb-2">
+                      {showBookmarks
+                        ? "Start bookmarking posts to save them here"
+                        : "Waiting for the first act to begin"}
+                    </p>
+                    <p className="text-gray-500 text-sm">
+                      {showBookmarks
+                        ? "Tap the bookmark icon on any post to save it"
+                        : "Be the first to share something fabulous with the community"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )
           )}
         </div>
 

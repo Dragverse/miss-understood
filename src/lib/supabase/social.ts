@@ -180,14 +180,7 @@ export async function getComments(videoId: string, limit = 50): Promise<Comment[
 
   const { data, error } = await supabase
     .from('comments')
-    .select(`
-      *,
-      author:creators!author_did(
-        display_name,
-        handle,
-        avatar
-      )
-    `)
+    .select('*')
     .eq('video_id', videoId)
     .is('parent_comment_id', null) // Only top-level comments
     .order('created_at', { ascending: false })
@@ -202,14 +195,7 @@ export async function getReplies(parentCommentId: string, limit = 50): Promise<C
 
   const { data, error } = await supabase
     .from('comments')
-    .select(`
-      *,
-      author:creators!author_did(
-        display_name,
-        handle,
-        avatar
-      )
-    `)
+    .select('*')
     .eq('parent_comment_id', parentCommentId)
     .order('created_at', { ascending: true })
     .limit(limit);

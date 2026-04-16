@@ -37,7 +37,7 @@ export function ExploreTVSlider({ videos }: ExploreTVSliderProps) {
   const goTo = useCallback(
     (next: number) => {
       setIdx(((next % total) + total) % total);
-      setIsLoading(true);
+      // Don't reset to loading between videos — avoids thumbnail flashing between transitions
     },
     [total]
   );

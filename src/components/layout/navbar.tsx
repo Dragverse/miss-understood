@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   FiUpload,
   FiLogOut,
@@ -39,6 +39,7 @@ export function Navbar() {
   const { openStreamModal } = useStreamStore();
   const { blueskyProfile, blueskyConnected, farcasterHandle } = useAuthUser();
   const router = useRouter();
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
@@ -119,6 +120,13 @@ export function Navbar() {
     const interval = setInterval(fetchUnreadDms, 60_000);
     return () => clearInterval(interval);
   }, [authenticated, blueskyConnected]);
+
+  // Clear DM badge as soon as the user opens the messages page
+  useEffect(() => {
+    if (pathname?.startsWith("/messages")) {
+      setUnreadDmCount(0);
+    }
+  }, [pathname]);
 
   // Close create menu when clicking outside
   useEffect(() => {

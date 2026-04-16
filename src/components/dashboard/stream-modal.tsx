@@ -618,6 +618,18 @@ export function StreamModal({ onClose }: StreamModalProps) {
           event: "live",
           payload: { playbackId: streamInfo.playbackId, title: streamInfo.title },
         });
+
+        // Auto-post to Bluesky — fire and forget, never blocks the stream
+        getAccessToken().then((token) => {
+          if (!token) return;
+          const postText =
+            `🔴 I'm live now on Dragverse!\n\n${streamInfo.title}\n\nWatch now 👉 https://dragverse.app\n\n#dragverse #drag #livestream #live`;
+          fetch("/api/bluesky/post", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ text: postText }),
+          }).catch(() => {/* non-critical */});
+        }).catch(() => {/* non-critical */});
       }
 
       // Update database status to active
