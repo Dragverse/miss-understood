@@ -17,7 +17,7 @@ const GOLDEN_BADGE_USERS: string[] = [
 
 // Pink badge - Verified creators
 const PINK_BADGE_USERS: string[] = [
-  // Add verified creator IDs here
+  "did:privy:cmklyta3o007vjp0cd6iwt7im", // Sababa
 ];
 
 // Environment variable overrides
