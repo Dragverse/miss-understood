@@ -26,6 +26,8 @@ import { getUserBadgeType } from "@/lib/verification";
 import { PostCard as FeedPostCard } from "@/components/feed/post-card";
 import { ProfileShareModal } from "@/components/profile/profile-share-modal";
 import { useLiveCreatorsStore } from "@/lib/store/live-creators";
+import { CreatorBoard } from "@/components/profile/creator-board";
+import { useBoard } from "@/lib/hooks/use-board";
 
 /**
  * Dynamic Profile Page - Instagram Style
@@ -50,6 +52,12 @@ export default function DynamicProfilePage() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [bioExpanded, setBioExpanded] = useState(false);
   const isCreatorLive = useLiveCreatorsStore((s) => s.isLive(creator?.did));
+
+  // The creator's arranged board. Only Dragverse profiles have one — external
+  // Bluesky profiles fall back to the tab layout further down.
+  const { board, mutations: boardMutations } = useBoard(
+    profileType === "dragverse" ? handle : null
+  );
 
   // Only show the livestream section for creators who are approved streamers (pink/golden badge)
   // or are currently live. Regular profiles shouldn't show the offline embed or chat.
@@ -283,6 +291,15 @@ export default function DynamicProfilePage() {
   const snapshotsList = userVideos.filter(v => v.contentType === 'short' && v.source !== 'youtube' && v.source !== 'bluesky');
   const audioList = userVideos.filter(v => v.contentType === 'podcast' || v.contentType === 'music');
 
+  // Loaded once here and handed to every block, so a board with a dozen
+  // blocks doesn't issue a dozen requests for the same creator's content.
+  const blockContent = {
+    creator: creator!,
+    videos: [...videosList, ...snapshotsList],
+    audio: audioList,
+    posts: userPosts,
+  };
+
   // Stats - total content count across all types
   const stats = {
     contentCount: userVideos.length + userPosts.length,
@@ -481,7 +498,18 @@ export default function DynamicProfilePage() {
 
       {/* Content area */}
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
-        {/* Content Section with Icon Tabs */}
+        {/*
+          Dragverse creators get the board they arranged. External Bluesky
+          profiles have no profile_blocks rows, so they keep the tab layout —
+          that path is also the acquisition funnel for unclaimed profiles.
+        */}
+        {profileType === "dragverse" && board ? (
+          <CreatorBoard
+            board={board}
+            content={blockContent}
+            onMutate={board.isOwner ? boardMutations : undefined}
+          />
+        ) : (
         <div>
           {/* Icon-Based Tabs (Instagram Style) */}
           <div className="flex justify-center gap-12 border-t border-[#2f2942] mb-8">
@@ -784,6 +812,7 @@ export default function DynamicProfilePage() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Share Profile Modal */}
