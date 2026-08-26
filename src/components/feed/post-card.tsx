@@ -17,18 +17,19 @@ import { usePrivy } from "@privy-io/react-auth";
 import { getVideo } from "@/lib/supabase/videos";
 import { transformVideoWithCreator } from "@/lib/supabase/transform-video";
 import toast from "react-hot-toast";
+import { VERTICAL_VIDEO_ENABLED } from "@/config/features";
 
 interface PostCardProps {
   post: {
     id: string;
-    creator: {
+    creator?: {
       displayName: string;
       handle: string;
       avatar: string;
       did?: string;
       blueskyHandle?: string;
       walletAddress?: string;
-    };
+    } | null;
     description: string;
     thumbnail?: string;
     createdAt: Date | string;
@@ -64,7 +65,16 @@ export function PostCard({ post }: PostCardProps) {
   const [isReposting, setIsReposting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const isOwnPost = user?.id && post.creator.did && post.creator.did === user.id;
+  const creator = post.creator ?? {
+    displayName: "Unknown",
+    handle: "unknown",
+    avatar: "/defaultpfp.png",
+    did: undefined,
+    blueskyHandle: undefined,
+    walletAddress: undefined,
+  };
+
+  const isOwnPost = user?.id && creator.did && creator.did === user.id;
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -85,11 +95,11 @@ export function PostCard({ post }: PostCardProps) {
     const likes = JSON.parse(localStorage.getItem("dragverse_likes") || "[]");
     setIsLiked(likes.includes(post.id));
 
-    if (post.creator.did) {
+    if (creator.did) {
       const following = JSON.parse(localStorage.getItem("dragverse_following") || "[]");
-      setIsFollowing(following.includes(post.creator.did));
+      setIsFollowing(following.includes(creator.did));
     }
-  }, [post.id, post.creator.did]);
+  }, [post.id, creator.did]);
 
   // Detect and fetch audio from /listen/ links in description
   useEffect(() => {
@@ -308,7 +318,7 @@ export function PostCard({ post }: PostCardProps) {
   const toggleFollow = async (e: React.MouseEvent) => {
     e.preventDefault();
 
-    if (!post.creator.did) return;
+    if (!creator.did) return;
 
     setIsFollowLoading(true);
     try {
@@ -317,7 +327,7 @@ export function PostCard({ post }: PostCardProps) {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({
-          did: post.creator.did,
+          did: creator.did,
           action: isFollowing ? "unfollow" : "follow",
         }),
       });
@@ -327,11 +337,11 @@ export function PostCard({ post }: PostCardProps) {
       if (data.success) {
         const following = JSON.parse(localStorage.getItem("dragverse_following") || "[]");
         if (isFollowing) {
-          const updated = following.filter((did: string) => did !== post.creator.did);
+          const updated = following.filter((did: string) => did !== creator.did);
           localStorage.setItem("dragverse_following", JSON.stringify(updated));
           setIsFollowing(false);
         } else {
-          following.push(post.creator.did);
+          following.push(creator.did);
           localStorage.setItem("dragverse_following", JSON.stringify(following));
           setIsFollowing(true);
         }
@@ -352,11 +362,11 @@ export function PostCard({ post }: PostCardProps) {
       <div className="flex items-start gap-3 mb-2">
         <div className="flex-1">
           <CreatorInfo
-            avatar={post.creator.avatar}
-            displayName={post.creator.displayName}
-            handle={post.creator.handle}
-            did={post.creator.did}
-            verified={!!post.creator.blueskyHandle}
+            avatar={creator.avatar}
+            displayName={creator.displayName}
+            handle={creator.handle}
+            did={creator.did}
+            verified={!!creator.blueskyHandle}
             date={post.createdAt}
           />
         </div>
@@ -384,7 +394,7 @@ export function PostCard({ post }: PostCardProps) {
                 </div>
               )}
             </div>
-          ) : post.creator.did && (post as any).source !== "youtube" ? (
+          ) : creator.did && (post as any).source !== "youtube" ? (
             <button
               onClick={toggleFollow}
               disabled={isFollowLoading}
@@ -560,7 +570,7 @@ export function PostCard({ post }: PostCardProps) {
         if (dragverseCard.contentType === "short") {
           return (
             <Link
-              href={`/snapshots?v=${dragverseCard.id}`}
+              href={VERTICAL_VIDEO_ENABLED ? `/snapshots?v=${dragverseCard.id}` : `/watch/${dragverseCard.id}`}
               className="mb-4 block rounded-xl overflow-hidden border border-[#EB83EA]/20 hover:border-[#EB83EA]/50 transition-all bg-[#0f071a] group"
             >
               <div className="relative w-full" style={{ aspectRatio: "2/3" }}>
@@ -687,14 +697,14 @@ export function PostCard({ post }: PostCardProps) {
           >
             <FiBookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
           </button>
-          {!isOwnPost && post.creator.walletAddress && post.creator.did && (
+          {!isOwnPost && creator.walletAddress && creator.did && (
             <TipButton
               creator={{
-                displayName: post.creator.displayName,
-                handle: post.creator.handle,
-                avatar: post.creator.avatar,
-                did: post.creator.did,
-                walletAddress: post.creator.walletAddress,
+                displayName: creator.displayName,
+                handle: creator.handle,
+                avatar: creator.avatar,
+                did: creator.did,
+                walletAddress: creator.walletAddress,
               } as any}
               variant="secondary"
               size="sm"
@@ -733,8 +743,8 @@ export function PostCard({ post }: PostCardProps) {
       postUri={post.uri || `dragverse:${post.id}`}
       postCid={post.cid || ""}
       postAuthor={{
-        displayName: post.creator.displayName,
-        handle: post.creator.handle,
+        displayName: creator.displayName,
+        handle: creator.handle,
       }}
       onCommentPosted={() => setCommentCount(prev => prev + 1)}
     />

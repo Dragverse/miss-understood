@@ -29,32 +29,17 @@ export async function GET(request: NextRequest) {
     let posts;
 
     if (source === "accounts") {
-      // Fetch from curated drag-related accounts (filtered for valid handles only)
-      const dragAccounts = getValidDragAccountHandles();
+      // Fetch from a small sample of curated drag-related accounts in parallel
+      const dragAccounts = getValidDragAccountHandles().slice(0, 10);
       console.log(`[Bluesky API] Fetching from ${dragAccounts.length} curated drag accounts`);
       posts = await getDragAccountsPosts(dragAccounts, limit);
     } else {
-      // HYBRID APPROACH: Fetch from BOTH search AND ALL curated accounts in parallel
-      // This ensures we get:
-      // 1. Broad drag content from search (hashtags, keywords) - 50%
-      // 2. Content from ALL 80+ curated creators in drag-accounts.ts - 50%
-      console.log("[Bluesky API] Using hybrid approach: search + ALL curated accounts");
-
-      // Get ALL curated drag accounts (80+ accounts from drag-accounts.ts)
-      const allCuratedAccounts = getValidDragAccountHandles();
-      console.log(`[Bluesky API] Fetching from ${allCuratedAccounts.length} curated accounts`);
-
-      const [searchPosts, accountPosts] = await Promise.all([
-        searchDragContent(Math.ceil(limit * 0.5)), // 50% from search
-        getDragAccountsPosts(allCuratedAccounts, Math.ceil(limit * 0.5)) // 50% from ALL curated accounts
-      ]);
-
-      // Combine and deduplicate by URI
-      const allPosts = [...searchPosts, ...accountPosts];
-      const uniquePostsMap = new Map(allPosts.map(post => [post.uri, post]));
-      posts = Array.from(uniquePostsMap.values());
-
-      console.log(`[Bluesky API] Hybrid results: ${searchPosts.length} from search + ${accountPosts.length} from accounts = ${posts.length} unique`);
+      // Use search only — fast, parallel, and keyword-targeted.
+      // The curated-accounts loop was sequential (~100 accounts) and always
+      // timed out on Vercel serverless functions before returning any data.
+      console.log("[Bluesky API] Fetching via keyword search");
+      posts = await searchDragContent(limit);
+      console.log(`[Bluesky API] Search returned ${posts.length} posts`);
     }
 
     // Sort posts by engagement or recency

@@ -106,6 +106,8 @@ export function Navbar() {
     if (!authenticated || !blueskyConnected) return;
 
     async function fetchUnreadDms() {
+      // While the user is on the messages page, keep badge at 0
+      if (pathname?.startsWith("/messages")) return;
       try {
         const res = await fetch("/api/bluesky/dms/unread");
         if (!res.ok) return;
@@ -119,7 +121,7 @@ export function Navbar() {
     fetchUnreadDms();
     const interval = setInterval(fetchUnreadDms, 60_000);
     return () => clearInterval(interval);
-  }, [authenticated, blueskyConnected]);
+  }, [authenticated, blueskyConnected, pathname]);
 
   // Clear DM badge as soon as the user opens the messages page
   useEffect(() => {
