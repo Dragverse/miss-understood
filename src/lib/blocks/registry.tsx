@@ -25,6 +25,7 @@ import {
   GalleryBlock,
   LinksBlock,
   MusicBlock,
+  NotesBlock,
   TextBlock,
   VideoShowcaseBlock,
   type BlockContent,
@@ -78,7 +79,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
   gallery: {
     label: "Gallery",
     icon: FiImage,
-    description: "A grid of your photos.",
+    description: "Your photos as a swipeable strip, or a grid.",
     view: GalleryBlock,
     addable: true,
   },
@@ -96,12 +97,19 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     view: LinksBlock,
     addable: true,
   },
-  text: {
-    label: "Note",
-    icon: FiType,
-    description: "Say anything. Plain text, your words.",
-    view: TextBlock,
+  notes: {
+    label: "Notes",
+    icon: FiEdit3,
+    description: "Short thoughts you write. Post them from your dashboard.",
+    view: NotesBlock,
     addable: true,
+  },
+  text: {
+    label: "Text",
+    icon: FiType,
+    description: "A fixed block of prose that doesn't change.",
+    view: TextBlock,
+    addable: false, // superseded by `notes`; existing blocks still render
   },
   booking: {
     label: "Book me",

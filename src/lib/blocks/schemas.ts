@@ -79,10 +79,28 @@ export const upcomingConfigSchema = z.object({
 });
 
 export const galleryConfigSchema = z.object({
-  limit: z.number().int().min(1).max(60).default(9),
+  limit: z.number().int().min(1).max(60).default(12),
+  /**
+   * `slider` is the default: a board column is narrow, and a horizontal strip
+   * shows more of a set than a cramped grid does. `grid` stays available for
+   * creators who want everything visible at once.
+   */
+  layout: z.enum(["slider", "grid"]).default("slider"),
+  /** Slides visible at once in slider layout; ignored for a single image. */
+  perView: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2),
   columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).default(3),
   /** When set, only posts carrying this tag appear. */
   tag: z.string().trim().max(60).optional(),
+});
+
+/**
+ * Notes are `posts` rows without media — the block only chooses how many to
+ * show. The writing itself happens in the dashboard composer.
+ */
+export const notesConfigSchema = z.object({
+  limit: z.number().int().min(1).max(30).default(5),
+  /** Collapse long notes behind a "more" toggle rather than filling a column. */
+  truncate: z.boolean().default(true),
 });
 
 export const videoShowcaseConfigSchema = z.object({
@@ -174,6 +192,7 @@ export const BLOCK_CONFIG_SCHEMAS = {
   music: musicConfigSchema,
   livestream: livestreamConfigSchema,
   links: linksConfigSchema,
+  notes: notesConfigSchema,
   text: textConfigSchema,
   booking: bookingConfigSchema,
   embed: embedConfigSchema,

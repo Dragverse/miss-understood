@@ -13,6 +13,8 @@ export const BLOCK_TYPES = [
   "music",
   "livestream",
   "links",
+  "notes",
+  /** @deprecated Superseded by `notes`. Kept so existing rows still render. */
   "text",
   "booking",
   "embed",

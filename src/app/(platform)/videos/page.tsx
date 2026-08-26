@@ -5,6 +5,7 @@ import Link from "next/link";
 import { VideoCard } from "@/components/video/video-card";
 import { RightSidebar } from "@/components/home/right-sidebar";
 import { SnapshotsSection } from "@/components/home/snapshots-section";
+import { VERTICAL_VIDEO_ENABLED } from "@/config/features";
 import { AudiosSection } from "@/components/home/audios-section";
 import { categories } from "@/lib/utils/mock-data";
 import { getVideos } from "@/lib/supabase/videos";
@@ -269,7 +270,7 @@ export default function VideosPage() {
           </div>
 
           {/* Snapshots Section (Shorts) - Always show unless empty */}
-          {shorts.length > 0 && !isFiltering && (
+          {VERTICAL_VIDEO_ENABLED && shorts.length > 0 && !isFiltering && (
             <SnapshotsSection shorts={shorts} />
           )}
 

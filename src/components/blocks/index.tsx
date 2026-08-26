@@ -1,8 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiPlay, FiHeadphones, FiExternalLink, FiMapPin, FiUsers } from "react-icons/fi";
+import { useKeenSlider } from "keen-slider/react";
+import "keen-slider/keen-slider.min.css";
+import {
+  FiPlay,
+  FiHeadphones,
+  FiExternalLink,
+  FiMapPin,
+  FiUsers,
+  FiChevronLeft,
+  FiChevronRight,
+} from "react-icons/fi";
 import { BlockEmpty } from "./block-shell";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 import type { Creator, Video } from "@/types";
@@ -144,27 +155,211 @@ export function GalleryBlock({ config, content }: BlockViewProps<"gallery">) {
 
   if (photos.length === 0) return <BlockEmpty message="No photos yet." />;
 
-  const columnClass =
-    config.columns === 2 ? "grid-cols-2" : config.columns === 4 ? "grid-cols-4" : "grid-cols-3";
+  // A single image is shown full-width with its natural proportions rather
+  // than cropped into a square slide — one photo is a statement, not a set.
+  if (photos.length === 1) {
+    return (
+      <div className="relative w-full rounded-lg overflow-hidden bg-black/40">
+        <Image
+          src={photos[0].url}
+          alt=""
+          width={1200}
+          height={1200}
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="w-full h-auto object-contain"
+        />
+      </div>
+    );
+  }
+
+  if (config.layout === "grid") {
+    const columnClass =
+      config.columns === 2 ? "grid-cols-2" : config.columns === 4 ? "grid-cols-4" : "grid-cols-3";
+    return (
+      <div className={`grid ${columnClass} gap-1.5`}>
+        {photos.map((photo, index) => (
+          <div
+            key={`${photo.postId}-${index}`}
+            className="relative aspect-square rounded overflow-hidden bg-black/40"
+          >
+            <Image src={photo.url} alt="" fill sizes="(max-width: 768px) 33vw, 16vw" className="object-cover" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return <GallerySlider photos={photos} perView={config.perView} />;
+}
+
+function GallerySlider({
+  photos,
+  perView,
+}: {
+  photos: Array<{ url: string; postId: string }>;
+  perView: number;
+}) {
+  // Never ask the slider to show more slides than exist, which would leave a
+  // gap and disable dragging.
+  const slidesPerView = Math.min(perView, photos.length);
+  const [current, setCurrent] = useState(0);
+  const [ready, setReady] = useState(false);
+
+  const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
+    slides: { perView: slidesPerView, spacing: 6 },
+    slideChanged: (slider) => setCurrent(slider.track.details.rel),
+    created: () => setReady(true),
+  });
+
+  const maxIndex = Math.max(0, photos.length - slidesPerView);
 
   return (
-    <div className={`grid ${columnClass} gap-1.5`}>
-      {photos.map((photo, index) => (
-        <div
-          key={`${photo.postId}-${index}`}
-          className="relative aspect-square rounded overflow-hidden bg-black/40"
-        >
-          <Image
-            src={photo.url}
-            alt=""
-            fill
-            sizes="(max-width: 768px) 33vw, 16vw"
-            className="object-cover"
+    <div className="relative group/gallery">
+      <div ref={sliderRef} className="keen-slider rounded-lg overflow-hidden">
+        {photos.map((photo, index) => (
+          <div
+            key={`${photo.postId}-${index}`}
+            className="keen-slider__slide relative aspect-square bg-black/40"
+          >
+            <Image src={photo.url} alt="" fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
+          </div>
+        ))}
+      </div>
+
+      {ready && photos.length > slidesPerView && (
+        <>
+          <SliderArrow
+            side="left"
+            disabled={current === 0}
+            onClick={() => instanceRef.current?.prev()}
           />
-        </div>
-      ))}
+          <SliderArrow
+            side="right"
+            disabled={current >= maxIndex}
+            onClick={() => instanceRef.current?.next()}
+          />
+          <div className="flex justify-center gap-1.5 mt-2" aria-hidden="true">
+            {Array.from({ length: maxIndex + 1 }).map((_, index) => (
+              <span
+                key={index}
+                className={`h-1 rounded-full transition-all ${
+                  index === current
+                    ? "w-4 bg-[color:var(--board-accent,var(--color-dragverse-primary))]"
+                    : "w-1 bg-white/25"
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
+}
+
+function SliderArrow({
+  side,
+  onClick,
+  disabled,
+}: {
+  side: "left" | "right";
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  const Icon = side === "left" ? FiChevronLeft : FiChevronRight;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={side === "left" ? "Previous photos" : "Next photos"}
+      className={`absolute top-1/2 -translate-y-1/2 ${
+        side === "left" ? "left-1" : "right-1"
+      } p-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white opacity-0 group-hover/gallery:opacity-100 focus-visible:opacity-100 transition-opacity disabled:!opacity-0`}
+    >
+      <Icon aria-hidden="true" size={16} />
+    </button>
+  );
+}
+
+// ============================================
+// Notes
+// ============================================
+
+/**
+ * A creator's written notes — `posts` rows with text and no media. Written
+ * from the dashboard composer, which can also send them to Bluesky.
+ */
+export function NotesBlock({ config, content }: BlockViewProps<"notes">) {
+  const notes = content.posts
+    .filter((post) => (post.text_content ?? "").trim().length > 0)
+    .filter((post) => (post.media_urls?.length ?? 0) === 0)
+    .slice(0, config.limit);
+
+  if (notes.length === 0) return <BlockEmpty message="No notes yet." />;
+
+  return (
+    <ul className="space-y-3">
+      {notes.map((note) => (
+        <li
+          key={note.id}
+          className="pb-3 border-b border-[color:var(--color-border-dragverse)] last:border-0 last:pb-0"
+        >
+          <Note body={note.text_content ?? ""} createdAt={note.created_at} truncate={config.truncate} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const NOTE_CLAMP = 280;
+
+function Note({
+  body,
+  createdAt,
+  truncate,
+}: {
+  body: string;
+  createdAt?: string;
+  truncate: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = truncate && body.length > NOTE_CLAMP;
+  const shown = isLong && !expanded ? `${body.slice(0, NOTE_CLAMP).trimEnd()}…` : body;
+
+  return (
+    <>
+      {/* Text node, never dangerouslySetInnerHTML — notes are plain text. */}
+      <p className="text-sm leading-relaxed whitespace-pre-wrap">{shown}</p>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="mt-1 text-xs text-white/50 hover:text-white transition-colors"
+        >
+          {expanded ? "less" : "more"}
+        </button>
+      )}
+      {createdAt && (
+        <time
+          dateTime={createdAt}
+          className="block mt-1.5 text-[11px] uppercase tracking-wide text-white/35"
+        >
+          {formatNoteDate(createdAt)}
+        </time>
+      )}
+    </>
+  );
+}
+
+function formatNoteDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const days = Math.floor((Date.now() - date.getTime()) / 86_400_000);
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  return date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
 // ============================================

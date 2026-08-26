@@ -18,6 +18,9 @@ import { usePrivy } from "@privy-io/react-auth";
 import { StatsCard, ActionButton, EmptyState, LoadingShimmer } from "@/components/shared";
 import { useCanLivestream } from "@/lib/livestream";
 import { StreamModal } from "@/components/dashboard/stream-modal";
+import { BoardEditor } from "@/components/dashboard/board-editor";
+import { NoteComposer } from "@/components/dashboard/note-composer";
+import { VERTICAL_VIDEO_ENABLED } from "@/config/features";
 import { useStreamStore } from "@/lib/store/stream";
 import { supabase } from "@/lib/supabase/client";
 
@@ -59,6 +62,9 @@ export default function DashboardPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalViews: 0, totalLikes: 0, totalFollowers: 0 });
+  const [creatorHandle, setCreatorHandle] = useState<string | null>(null);
+  // Bumped after posting a note so the board editor refetches.
+  const [boardVersion, setBoardVersion] = useState(0);
   const [videos, setVideos] = useState<Video[]>([]);
   const [recordings, setRecordings] = useState<StreamRecording[]>([]);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -174,6 +180,8 @@ export default function DashboardPage() {
         try {
           const creator = await getCreatorByDID(uid);
           totalFollowers = creator?.follower_count || 0;
+          // The board editor addresses the board by handle, same as /u/[handle].
+          if (creator?.handle) setCreatorHandle(creator.handle);
         } catch {}
 
         setStats({ totalViews, totalLikes, totalFollowers });
@@ -512,6 +520,26 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Board: the creator's public page, and the notes that land on it */}
+        <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/10 shadow-xl mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-2xl lg:text-3xl font-bold uppercase tracking-wide mb-2">Your Board</h2>
+              <p className="text-gray-400">Write a note, and arrange what people see on your profile</p>
+            </div>
+            {creatorHandle && (
+              <ActionButton onClick={() => router.push(`/u/${creatorHandle}`)} size="lg">
+                View profile
+              </ActionButton>
+            )}
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6 items-start">
+            <NoteComposer onPosted={() => setBoardVersion((v) => v + 1)} />
+            <BoardEditor key={boardVersion} handle={creatorHandle} />
+          </div>
+        </div>
+
         {/* Video Management Section */}
         <div className="bg-gradient-to-br from-[#18122D] to-[#1a0b2e] rounded-3xl p-6 md:p-8 border-2 border-[#EB83EA]/10 shadow-xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
@@ -593,7 +621,13 @@ export default function DashboardPage() {
                           {copiedId === video.id ? "✓ Copied!" : "Share"}
                         </button>
                         <button
-                          onClick={() => router.push(video.contentType === 'short' ? `/snapshots?v=${video.id}` : `/watch/${video.id}`)}
+                          onClick={() => router.push(
+                            // Shorts have no public feed while vertical video is off,
+                            // so they open in the standard player like everything else.
+                            VERTICAL_VIDEO_ENABLED && video.contentType === 'short'
+                              ? `/snapshots?v=${video.id}`
+                              : `/watch/${video.id}`
+                          )}
                           className="px-4 py-2 bg-[#2f2942] hover:bg-[#EB83EA]/20 border border-[#EB83EA]/20 hover:border-[#EB83EA]/40 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-white hover:text-[#EB83EA]"
                         >
                           <FiEye className="w-4 h-4" />

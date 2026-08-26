@@ -28,6 +28,7 @@ import { ProfileShareModal } from "@/components/profile/profile-share-modal";
 import { useLiveCreatorsStore } from "@/lib/store/live-creators";
 import { CreatorBoard } from "@/components/profile/creator-board";
 import { useBoard } from "@/lib/hooks/use-board";
+import { VERTICAL_VIDEO_ENABLED } from "@/config/features";
 
 /**
  * Dynamic Profile Page - Instagram Style
@@ -530,7 +531,7 @@ export default function DynamicProfilePage() {
               )}
             </button>
 
-            {snapshotsList.length > 0 && (
+            {VERTICAL_VIDEO_ENABLED && snapshotsList.length > 0 && (
               <button
                 onClick={() => setActiveTab("snapshots")}
                 className={`flex items-center gap-2 py-4 px-2 transition relative ${
@@ -543,7 +544,7 @@ export default function DynamicProfilePage() {
               >
                 <FiFilm className="w-6 h-6" />
                 <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Snapshots</span>
-                {activeTab === "snapshots" && (
+                {VERTICAL_VIDEO_ENABLED && activeTab === "snapshots" && (
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
                 )}
               </button>

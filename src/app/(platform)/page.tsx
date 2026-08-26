@@ -6,6 +6,7 @@ import { FiSearch } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { HeroSection } from "@/components/home/hero-section";
 import { SnapshotsSection } from "@/components/home/snapshots-section";
+import { VERTICAL_VIDEO_ENABLED } from "@/config/features";
 import { HorizontalVideosSection } from "@/components/home/horizontal-videos-section";
 import { AudiosSection } from "@/components/home/audios-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
@@ -226,7 +227,7 @@ export default function HomePage() {
               <PastLivestreamsSection />
 
               {/* Dragverse Snapshots (Shorts) - Native vertical videos */}
-              <SnapshotsSection shorts={shorts} />
+              {VERTICAL_VIDEO_ENABLED && <SnapshotsSection shorts={shorts} />}
 
               {/* Horizontal Videos Section - Native long-form videos */}
               <HorizontalVideosSection videos={horizontalVideos} />
