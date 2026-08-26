@@ -645,3 +645,13 @@ export function useAudioPlayer() {
   if (!context) throw new Error("useAudioPlayer must be used within AudioPlayerProvider");
   return context;
 }
+
+/**
+ * Same as useAudioPlayer but returns null instead of throwing when there is no
+ * provider. For components that should degrade rather than take their whole
+ * page down — a profile board block can't justify crashing the board because
+ * audio isn't available.
+ */
+export function useOptionalAudioPlayer() {
+  return useContext(AudioPlayerContext) ?? null;
+}

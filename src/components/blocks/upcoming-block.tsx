@@ -58,7 +58,7 @@ export function UpcomingBlock({ config, content }: BlockViewProps<"upcoming">) {
   if (filtered.length === 0) return <BlockEmpty message="No dates listed yet." />;
 
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-2.5">
       {filtered.map((event) => (
         <li key={event.id}>
           <EventRow event={event} />
@@ -72,14 +72,20 @@ function EventRow({ event }: { event: DragEvent }) {
   const location = formatEventLocation(event);
 
   return (
-    <article className="flex gap-3">
+    <article className="group flex gap-3.5 rounded-2xl border border-[#2f2942]/60 bg-white/[0.03] p-3 transition-colors hover:border-[#2f2942]">
       {event.flyerUrl ? (
-        <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-black/40 flex-shrink-0">
-          <Image src={event.flyerUrl} alt="" fill sizes="64px" className="object-cover" />
+        <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-[#2f2942]/60 bg-[#0f071a] flex-shrink-0">
+          <Image
+            src={event.flyerUrl}
+            alt=""
+            fill
+            sizes="80px"
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
+          />
         </div>
       ) : (
-        <div className="w-16 h-16 rounded-lg bg-white/5 flex flex-col items-center justify-center flex-shrink-0">
-          <FiCalendar aria-hidden="true" size={16} className="text-white/40" />
+        <div className="w-20 h-20 rounded-xl bg-white/5 border border-[#2f2942]/60 grid place-items-center flex-shrink-0">
+          <FiCalendar aria-hidden="true" size={18} className="text-white/30" />
         </div>
       )}
 
@@ -96,7 +102,7 @@ function EventRow({ event }: { event: DragEvent }) {
           </span>
         </div>
 
-        <h3 className="text-sm font-medium truncate">{event.title}</h3>
+        <h3 className="text-base font-bold leading-snug truncate">{event.title}</h3>
 
         {location && (
           <p className="flex items-center gap-1 text-xs text-white/55 truncate">

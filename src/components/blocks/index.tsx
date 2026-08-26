@@ -7,6 +7,7 @@ import { useKeenSlider } from "keen-slider/react";
 import "keen-slider/keen-slider.min.css";
 import {
   FiPlay,
+  FiPause,
   FiHeadphones,
   FiExternalLink,
   FiMapPin,
@@ -16,6 +17,7 @@ import {
 } from "react-icons/fi";
 import { BlockEmpty } from "./block-shell";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
+import { useOptionalAudioPlayer, type AudioTrack } from "@/contexts/AudioPlayerContext";
 import type { Creator, Video } from "@/types";
 import type {
   BlockConfigMap,
@@ -65,7 +67,7 @@ export function AboutBlock({ config, content }: BlockViewProps<"about">) {
   return (
     <div className="space-y-3">
       {creator.description && (
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{creator.description}</p>
+        <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{creator.description}</p>
       )}
 
       {shown.length > 0 && (
@@ -107,9 +109,9 @@ export function VideoShowcaseBlock({ config, content }: BlockViewProps<"video_sh
           <li key={video.id}>
             <Link
               href={`/watch/${video.id}`}
-              className="flex items-center gap-3 group rounded-lg p-1 -m-1 hover:bg-white/5 transition-colors"
+              className="flex items-center gap-3 group rounded-2xl p-2 -m-0.5 hover:bg-white/5 transition-colors"
             >
-              <div className="relative w-24 aspect-video rounded overflow-hidden flex-shrink-0 bg-black/40">
+              <div className="relative w-24 aspect-video rounded-xl overflow-hidden flex-shrink-0 border border-[#2f2942]/60 bg-[#0f071a]">
                 <Image
                   src={getSafeThumbnail(video.thumbnail)}
                   alt=""
@@ -118,7 +120,7 @@ export function VideoShowcaseBlock({ config, content }: BlockViewProps<"video_sh
                   className="object-cover"
                 />
               </div>
-              <span className="text-sm line-clamp-2 group-hover:text-[color:var(--board-accent,var(--color-dragverse-primary))]">
+              <span className="text-sm font-medium line-clamp-2 group-hover:text-[color:var(--board-accent,var(--color-dragverse-primary))] transition-colors">
                 {video.title}
               </span>
             </Link>
@@ -141,7 +143,7 @@ export function VideoShowcaseBlock({ config, content }: BlockViewProps<"video_sh
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-2.5">
       {videos.map((video) => (
         <VideoTile key={video.id} video={video} showTitle={config.showTitles} size="grid" />
       ))}
@@ -161,22 +163,26 @@ function VideoTile({
 }) {
   return (
     <Link href={`/watch/${video.id}`} className="group block">
-      <div className="relative aspect-video rounded-lg overflow-hidden bg-black/40">
+      <div className="relative aspect-video rounded-[20px] overflow-hidden border-2 border-[#2f2942]/60 group-hover:border-[#2f2942] bg-[#0f071a] shadow-lg transition-all">
         <Image
           src={getSafeThumbnail(video.thumbnail)}
           alt=""
           fill
           sizes={size === "hero" ? "(max-width: 768px) 100vw, 50vw" : "(max-width: 768px) 50vw, 25vw"}
-          className="object-cover group-hover:scale-105 transition-transform duration-200"
+          className="object-cover group-hover:scale-105 transition-transform duration-500"
         />
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-          <span className="rounded-full bg-black/60 p-3 backdrop-blur-sm">
+          <span className="rounded-full bg-black/70 backdrop-blur-sm border border-white/10 p-3.5">
             <FiPlay aria-hidden="true" size={size === "hero" ? 24 : 18} />
           </span>
         </div>
       </div>
       {showTitle && (
-        <p className={`mt-1.5 line-clamp-2 ${size === "hero" ? "text-sm font-medium" : "text-xs"}`}>
+        <p
+          className={`mt-2 line-clamp-2 ${
+            size === "hero" ? "text-base font-bold leading-snug" : "text-xs font-medium"
+          }`}
+        >
           {video.title}
         </p>
       )}
@@ -218,7 +224,7 @@ export function GalleryBlock({ config, content }: BlockViewProps<"gallery">) {
     const photo = shown[0];
     return (
       <figure className="m-0">
-        <div className="relative w-full rounded-lg overflow-hidden bg-black/40">
+        <div className="relative w-full rounded-[20px] overflow-hidden border-2 border-[#2f2942]/60 bg-[#0f071a] shadow-lg">
           <Image
             src={photo.url}
             alt={photo.caption ?? ""}
@@ -239,15 +245,18 @@ export function GalleryBlock({ config, content }: BlockViewProps<"gallery">) {
     const columnClass =
       config.columns === 2 ? "grid-cols-2" : config.columns === 4 ? "grid-cols-4" : "grid-cols-3";
     return (
-      <div className={`grid ${columnClass} gap-1.5`}>
+      <div className={`grid ${columnClass} gap-2.5`}>
         {shown.map((photo) => (
-          <div key={photo.key} className="relative aspect-square rounded overflow-hidden bg-black/40">
+          <div
+            key={photo.key}
+            className="group relative aspect-square rounded-[20px] overflow-hidden border-2 border-[#2f2942]/60 hover:border-[#2f2942] bg-[#0f071a] shadow-lg transition-all"
+          >
             <Image
               src={photo.url}
               alt={photo.caption ?? ""}
               fill
               sizes="(max-width: 768px) 33vw, 16vw"
-              className="object-cover"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
           </div>
         ))}
@@ -258,14 +267,14 @@ export function GalleryBlock({ config, content }: BlockViewProps<"gallery">) {
   return (
     <MediaSlider perView={config.perView} count={shown.length} label="photos">
       {shown.map((photo) => (
-        <figure key={photo.key} className="keen-slider__slide m-0">
-          <div className="relative aspect-square bg-black/40 rounded overflow-hidden">
+        <figure key={photo.key} className="keen-slider__slide m-0 group">
+          <div className="relative aspect-square rounded-[20px] overflow-hidden border-2 border-[#2f2942]/60 group-hover:border-[#2f2942] bg-[#0f071a] shadow-lg transition-all">
             <Image
               src={photo.url}
               alt={photo.caption ?? ""}
               fill
               sizes="(max-width: 768px) 50vw, 25vw"
-              className="object-cover"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
           </div>
           {config.showCaptions && photo.caption && (
@@ -303,7 +312,7 @@ function MediaSlider({
   const [ready, setReady] = useState(false);
 
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
-    slides: { perView: slidesPerView, spacing: 6 },
+    slides: { perView: slidesPerView, spacing: 10 },
     slideChanged: (slider) => setCurrent(slider.track.details.rel),
     created: () => setReady(true),
   });
@@ -392,11 +401,11 @@ export function NotesBlock({ config, content }: BlockViewProps<"notes">) {
   if (notes.length === 0) return <BlockEmpty message="No notes yet." />;
 
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-2.5">
       {notes.map((note) => (
         <li
           key={note.id}
-          className="pb-3 border-b border-[color:var(--color-border-dragverse)] last:border-0 last:pb-0"
+          className="rounded-2xl bg-white/[0.03] border border-[#2f2942]/60 px-3.5 py-3"
         >
           <Note body={note.text_content ?? ""} createdAt={note.created_at} truncate={config.truncate} />
         </li>
@@ -460,31 +469,135 @@ function formatNoteDate(iso: string): string {
 // Music
 // ============================================
 
+/**
+ * The creator's tracks as a working player.
+ *
+ * Drives the app's existing global AudioPlayerContext rather than mounting its
+ * own <audio>, so playback survives navigating away from the profile and can't
+ * fight the persistent player for the same output.
+ */
 export function MusicBlock({ config, content }: BlockViewProps<"music">) {
   const tracks = orderByPinned(content.audio, config.pinnedTrackIds).slice(0, config.limit);
+  const player = useOptionalAudioPlayer();
 
   if (tracks.length === 0) return <BlockEmpty message="No tracks yet." />;
 
+  const playlist: AudioTrack[] = tracks.map((track) => ({
+    id: track.id,
+    title: track.title,
+    artist: content.creator.displayName,
+    thumbnail: track.thumbnail || "",
+    audioUrl: track.playbackUrl,
+    duration: track.duration,
+    type: "uploaded",
+    creatorDid: content.creator.did,
+    contentType: track.contentType,
+  }));
+
+  const currentId = player?.currentTrack?.id;
+
   return (
-    <ol className="space-y-1">
-      {tracks.map((track, index) => (
-        <li key={track.id}>
-          <Link
-            href={`/listen/${track.id}`}
-            className="flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-white/5 transition-colors group"
-          >
-            <span className="text-xs text-white/40 w-5 text-right tabular-nums">{index + 1}</span>
-            <FiHeadphones
-              aria-hidden="true"
-              size={14}
-              className="text-white/40 group-hover:text-[color:var(--board-accent,var(--color-dragverse-primary))]"
-            />
-            <span className="text-sm truncate flex-1">{track.title}</span>
-          </Link>
-        </li>
-      ))}
+    <ol className="space-y-1.5">
+      {tracks.map((track, index) => {
+        const isCurrent = currentId === track.id;
+        const isPlaying = isCurrent && !!player?.isPlaying;
+
+        return (
+          <li key={track.id}>
+            <div
+              className={`flex items-center gap-3 py-2.5 px-3 rounded-2xl transition-colors ${
+                isCurrent ? "bg-white/[0.07]" : "hover:bg-white/5"
+              }`}
+            >
+              {/* Without the provider (or a playable URL) fall back to the
+                  dedicated listen page rather than showing a dead button. */}
+              {player && track.playbackUrl ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isCurrent) player.togglePlayPause();
+                    else player.playTrack(playlist[index], playlist);
+                  }}
+                  aria-label={isPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
+                  className="flex-shrink-0 w-9 h-9 rounded-full grid place-items-center bg-[color:var(--board-accent,var(--color-dragverse-primary))] text-[#12061c] hover:opacity-90 transition-opacity"
+                >
+                  {isPlaying ? <FiPause size={15} /> : <FiPlay size={15} />}
+                </button>
+              ) : (
+                <Link
+                  href={`/listen/${track.id}`}
+                  aria-label={`Open ${track.title}`}
+                  className="flex-shrink-0 w-9 h-9 rounded-full grid place-items-center bg-white/10 hover:bg-white/20 transition-colors"
+                >
+                  <FiHeadphones size={15} />
+                </Link>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <p
+                  className={`text-sm font-medium truncate ${
+                    isCurrent ? "text-[color:var(--board-accent,var(--color-dragverse-primary))]" : ""
+                  }`}
+                >
+                  {track.title}
+                </p>
+                {isCurrent && player ? (
+                  <TrackProgress
+                    currentTime={player.currentTime}
+                    duration={player.duration || track.duration || 0}
+                  />
+                ) : (
+                  track.duration > 0 && (
+                    <p className="text-[11px] text-white/40 tabular-nums">
+                      {formatDuration(track.duration)}
+                    </p>
+                  )
+                )}
+              </div>
+
+              <Link
+                href={`/listen/${track.id}`}
+                aria-label={`Track page for ${track.title}`}
+                className="flex-shrink-0 p-1.5 rounded-full text-white/35 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <FiExternalLink size={13} />
+              </Link>
+            </div>
+          </li>
+        );
+      })}
     </ol>
   );
+}
+
+/** Elapsed bar for the track currently playing. */
+function TrackProgress({ currentTime, duration }: { currentTime: number; duration: number }) {
+  const pct = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+  return (
+    <div className="mt-1">
+      <div
+        className="h-0.5 rounded-full bg-white/15 overflow-hidden"
+        role="progressbar"
+        aria-valuenow={Math.round(pct)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className="h-full bg-[color:var(--board-accent,var(--color-dragverse-primary))] transition-[width] duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="mt-0.5 text-[11px] text-white/40 tabular-nums">
+        {formatDuration(currentTime)} / {formatDuration(duration)}
+      </p>
+    </div>
+  );
+}
+
+function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
+  const total = Math.floor(seconds);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
 // ============================================
@@ -514,7 +627,7 @@ export function LinksBlock({ config }: BlockViewProps<"links">) {
           href={link.url}
           target="_blank"
           rel="noopener noreferrer nofollow"
-          className="flex items-center justify-between gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium border border-[color:var(--color-border-dragverse)] hover:border-[color:var(--board-accent,var(--color-dragverse-primary))] hover:bg-white/5 transition-colors"
+          className="flex items-center justify-between gap-2 w-full px-4 py-3 rounded-2xl text-sm font-bold border-2 border-[#2f2942]/60 hover:border-[color:var(--board-accent,var(--color-dragverse-primary))] hover:bg-white/5 transition-all"
         >
           <span className="truncate">{link.label}</span>
           <FiExternalLink aria-hidden="true" size={14} className="flex-shrink-0 opacity-50" />
