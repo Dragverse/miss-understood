@@ -91,6 +91,15 @@ export function VideoShowcaseBlock({ config, content }: BlockViewProps<"video_sh
 
   if (videos.length === 0) return <BlockEmpty message="No videos yet." />;
 
+  // Hero: one video carries the block. Explicit pick wins, then the first
+  // pinned one, then the newest — so the block is never empty just because
+  // the featured video was deleted.
+  if (config.layout === "hero") {
+    const featured =
+      videos.find((v) => v.id === config.featuredVideoId) ?? videos[0];
+    return <VideoTile video={featured} showTitle={config.showTitles} size="hero" />;
+  }
+
   if (config.layout === "list") {
     return (
       <ul className="space-y-2">
@@ -119,56 +128,110 @@ export function VideoShowcaseBlock({ config, content }: BlockViewProps<"video_sh
     );
   }
 
+  if (config.layout === "slider") {
+    return (
+      <MediaSlider perView={config.perView} count={videos.length} label="videos">
+        {videos.map((video) => (
+          <div key={video.id} className="keen-slider__slide">
+            <VideoTile video={video} showTitle={config.showTitles} size="slide" />
+          </div>
+        ))}
+      </MediaSlider>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 gap-2">
       {videos.map((video) => (
-        <Link key={video.id} href={`/watch/${video.id}`} className="group">
-          <div className="relative aspect-video rounded-lg overflow-hidden bg-black/40">
-            <Image
-              src={getSafeThumbnail(video.thumbnail)}
-              alt=""
-              fill
-              sizes="(max-width: 768px) 50vw, 25vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-200"
-            />
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
-              <FiPlay aria-hidden="true" size={20} />
-            </div>
-          </div>
-          <p className="mt-1.5 text-xs line-clamp-2">{video.title}</p>
-        </Link>
+        <VideoTile key={video.id} video={video} showTitle={config.showTitles} size="grid" />
       ))}
     </div>
   );
 }
+
+/** One video thumbnail linking to the player. Shared by every layout. */
+function VideoTile({
+  video,
+  showTitle,
+  size,
+}: {
+  video: Video;
+  showTitle: boolean;
+  size: "hero" | "grid" | "slide";
+}) {
+  return (
+    <Link href={`/watch/${video.id}`} className="group block">
+      <div className="relative aspect-video rounded-lg overflow-hidden bg-black/40">
+        <Image
+          src={getSafeThumbnail(video.thumbnail)}
+          alt=""
+          fill
+          sizes={size === "hero" ? "(max-width: 768px) 100vw, 50vw" : "(max-width: 768px) 50vw, 25vw"}
+          className="object-cover group-hover:scale-105 transition-transform duration-200"
+        />
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="rounded-full bg-black/60 p-3 backdrop-blur-sm">
+            <FiPlay aria-hidden="true" size={size === "hero" ? 24 : 18} />
+          </span>
+        </div>
+      </div>
+      {showTitle && (
+        <p className={`mt-1.5 line-clamp-2 ${size === "hero" ? "text-sm font-medium" : "text-xs"}`}>
+          {video.title}
+        </p>
+      )}
+    </Link>
+  );
+}
+
 
 // ============================================
 // Gallery
 // ============================================
 
 export function GalleryBlock({ config, content }: BlockViewProps<"gallery">) {
-  const photos = content.posts
-    .filter((post) => (post.media_urls?.length ?? 0) > 0)
-    .filter((post) => !config.tag || post.tags?.includes(config.tag))
-    .flatMap((post) => (post.media_urls ?? []).map((url) => ({ url, postId: post.id })))
-    .slice(0, config.limit);
+  // Curated uploads win outright. The post-derived fallback keeps galleries
+  // working on boards that predate uploading.
+  const curated = config.images ?? [];
+  const photos =
+    curated.length > 0
+      ? curated.map((image, index) => ({ url: image.url, caption: image.caption, key: `c${index}` }))
+      : content.posts
+          .filter((post) => (post.media_urls?.length ?? 0) > 0)
+          .filter((post) => !config.tag || post.tags?.includes(config.tag))
+          .flatMap((post) =>
+            (post.media_urls ?? []).map((url, index) => ({
+              url,
+              caption: undefined as string | undefined,
+              key: `${post.id}-${index}`,
+            }))
+          );
 
-  if (photos.length === 0) return <BlockEmpty message="No photos yet." />;
+  const shown = photos.slice(0, config.limit);
 
-  // A single image is shown full-width with its natural proportions rather
-  // than cropped into a square slide — one photo is a statement, not a set.
-  if (photos.length === 1) {
+  if (shown.length === 0) return <BlockEmpty message="No photos yet." />;
+
+  // One photo — whether that's all there is, or the creator chose `single` —
+  // renders full-width at its natural proportions. A lone photo is a
+  // statement, not a cropped tile.
+  if (config.layout === "single" || shown.length === 1) {
+    const photo = shown[0];
     return (
-      <div className="relative w-full rounded-lg overflow-hidden bg-black/40">
-        <Image
-          src={photos[0].url}
-          alt=""
-          width={1200}
-          height={1200}
-          sizes="(max-width: 768px) 100vw, 50vw"
-          className="w-full h-auto object-contain"
-        />
-      </div>
+      <figure className="m-0">
+        <div className="relative w-full rounded-lg overflow-hidden bg-black/40">
+          <Image
+            src={photo.url}
+            alt={photo.caption ?? ""}
+            width={1200}
+            height={1200}
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="w-full h-auto object-contain"
+          />
+        </div>
+        {config.showCaptions && photo.caption && (
+          <figcaption className="mt-1.5 text-xs text-white/60">{photo.caption}</figcaption>
+        )}
+      </figure>
     );
   }
 
@@ -177,31 +240,65 @@ export function GalleryBlock({ config, content }: BlockViewProps<"gallery">) {
       config.columns === 2 ? "grid-cols-2" : config.columns === 4 ? "grid-cols-4" : "grid-cols-3";
     return (
       <div className={`grid ${columnClass} gap-1.5`}>
-        {photos.map((photo, index) => (
-          <div
-            key={`${photo.postId}-${index}`}
-            className="relative aspect-square rounded overflow-hidden bg-black/40"
-          >
-            <Image src={photo.url} alt="" fill sizes="(max-width: 768px) 33vw, 16vw" className="object-cover" />
+        {shown.map((photo) => (
+          <div key={photo.key} className="relative aspect-square rounded overflow-hidden bg-black/40">
+            <Image
+              src={photo.url}
+              alt={photo.caption ?? ""}
+              fill
+              sizes="(max-width: 768px) 33vw, 16vw"
+              className="object-cover"
+            />
           </div>
         ))}
       </div>
     );
   }
 
-  return <GallerySlider photos={photos} perView={config.perView} />;
+  return (
+    <MediaSlider perView={config.perView} count={shown.length} label="photos">
+      {shown.map((photo) => (
+        <figure key={photo.key} className="keen-slider__slide m-0">
+          <div className="relative aspect-square bg-black/40 rounded overflow-hidden">
+            <Image
+              src={photo.url}
+              alt={photo.caption ?? ""}
+              fill
+              sizes="(max-width: 768px) 50vw, 25vw"
+              className="object-cover"
+            />
+          </div>
+          {config.showCaptions && photo.caption && (
+            <figcaption className="mt-1 text-[11px] text-white/60 line-clamp-2">
+              {photo.caption}
+            </figcaption>
+          )}
+        </figure>
+      ))}
+    </MediaSlider>
+  );
 }
 
-function GallerySlider({
-  photos,
+/**
+ * Horizontal slider shared by the photo and video galleries.
+ *
+ * Children must each carry `keen-slider__slide`. Arrows and dots only appear
+ * when there is actually something to scroll to.
+ */
+function MediaSlider({
   perView,
+  count,
+  label,
+  children,
 }: {
-  photos: Array<{ url: string; postId: string }>;
   perView: number;
+  count: number;
+  label: string;
+  children: React.ReactNode;
 }) {
   // Never ask the slider to show more slides than exist, which would leave a
   // gap and disable dragging.
-  const slidesPerView = Math.min(perView, photos.length);
+  const slidesPerView = Math.min(perView, count);
   const [current, setCurrent] = useState(0);
   const [ready, setReady] = useState(false);
 
@@ -211,30 +308,25 @@ function GallerySlider({
     created: () => setReady(true),
   });
 
-  const maxIndex = Math.max(0, photos.length - slidesPerView);
+  const maxIndex = Math.max(0, count - slidesPerView);
 
   return (
-    <div className="relative group/gallery">
-      <div ref={sliderRef} className="keen-slider rounded-lg overflow-hidden">
-        {photos.map((photo, index) => (
-          <div
-            key={`${photo.postId}-${index}`}
-            className="keen-slider__slide relative aspect-square bg-black/40"
-          >
-            <Image src={photo.url} alt="" fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
-          </div>
-        ))}
+    <div className="relative group/slider">
+      <div ref={sliderRef} className="keen-slider">
+        {children}
       </div>
 
-      {ready && photos.length > slidesPerView && (
+      {ready && count > slidesPerView && (
         <>
           <SliderArrow
             side="left"
+            label={`Previous ${label}`}
             disabled={current === 0}
             onClick={() => instanceRef.current?.prev()}
           />
           <SliderArrow
             side="right"
+            label={`Next ${label}`}
             disabled={current >= maxIndex}
             onClick={() => instanceRef.current?.next()}
           />
@@ -258,10 +350,12 @@ function GallerySlider({
 
 function SliderArrow({
   side,
+  label,
   onClick,
   disabled,
 }: {
   side: "left" | "right";
+  label: string;
   onClick: () => void;
   disabled: boolean;
 }) {
@@ -271,10 +365,10 @@ function SliderArrow({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-label={side === "left" ? "Previous photos" : "Next photos"}
+      aria-label={label}
       className={`absolute top-1/2 -translate-y-1/2 ${
         side === "left" ? "left-1" : "right-1"
-      } p-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white opacity-0 group-hover/gallery:opacity-100 focus-visible:opacity-100 transition-opacity disabled:!opacity-0`}
+      } p-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white opacity-0 group-hover/slider:opacity-100 focus-visible:opacity-100 transition-opacity disabled:!opacity-0`}
     >
       <Icon aria-hidden="true" size={16} />
     </button>

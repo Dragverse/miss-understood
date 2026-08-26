@@ -31,6 +31,7 @@ import {
   type BlockContent,
   type BlockViewProps,
 } from "@/components/blocks";
+import { UpcomingBlock } from "@/components/blocks/upcoming-block";
 import { BlockEmpty } from "@/components/blocks/block-shell";
 import { defaultConfigFor } from "./schemas";
 import type { BlockType } from "./types";
@@ -67,6 +68,13 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     icon: FiUser,
     description: "Bio, pronouns, where you're based, drag family.",
     view: AboutBlock,
+    addable: true,
+  },
+  upcoming: {
+    label: "Upcoming",
+    icon: FiCalendar,
+    description: "Your gigs, shows and streams — venue, flyer, tickets.",
+    view: UpcomingBlock,
     addable: true,
   },
   video_showcase: {
@@ -119,14 +127,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     addable: true,
   },
 
-  // --- Ship in later phases -------------------------------------------------
-  upcoming: {
-    label: "Upcoming",
-    icon: FiCalendar,
-    description: "Your gigs, shows and streams.",
-    view: notYetBlock("No dates listed yet."),
-    addable: false, // events land in phase 2
-  },
+  // --- Not built yet: these render a placeholder ----------------------------
   livestream: {
     label: "Live",
     icon: FiRadio,

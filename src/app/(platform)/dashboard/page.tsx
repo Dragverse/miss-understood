@@ -20,6 +20,7 @@ import { useCanLivestream } from "@/lib/livestream";
 import { StreamModal } from "@/components/dashboard/stream-modal";
 import { BoardEditor } from "@/components/dashboard/board-editor";
 import { NoteComposer } from "@/components/dashboard/note-composer";
+import { EventsEditor } from "@/components/dashboard/events-editor";
 import { VERTICAL_VIDEO_ENABLED } from "@/config/features";
 import { useStreamStore } from "@/lib/store/stream";
 import { supabase } from "@/lib/supabase/client";
@@ -535,8 +536,16 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6 items-start">
-            <NoteComposer onPosted={() => setBoardVersion((v) => v + 1)} />
-            <BoardEditor key={boardVersion} handle={creatorHandle} />
+            <div className="space-y-6">
+              <NoteComposer onPosted={() => setBoardVersion((v) => v + 1)} />
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-white mb-3">
+                  Gigs &amp; dates
+                </h3>
+                <EventsEditor handle={creatorHandle} />
+              </div>
+            </div>
+            <BoardEditor key={boardVersion} handle={creatorHandle} creatorDid={verifiedUserId || user?.id || null} />
           </div>
         </div>
 

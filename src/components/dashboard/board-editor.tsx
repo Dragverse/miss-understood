@@ -17,13 +17,14 @@ import {
 import { BLOCK_REGISTRY, addableBlockTypes, blockLabel } from "@/lib/blocks/registry";
 import { editorFieldsFor, isFieldRelevant, type EditorField } from "@/lib/blocks/editor-fields";
 import { BLOCK_VISIBILITIES, type BlockType, type ColumnIndex, type ViewerBlock } from "@/lib/blocks/types";
+import { ImagesField, VideoPickerField, type BlockImage } from "./block-media-fields";
 
 /**
  * The creator's control panel for their board: what's on it, what order, and
  * every block's settings. Lives in the dashboard so editing happens in one
  * place rather than being scattered across the public profile.
  */
-export function BoardEditor({ handle }: { handle: string | null }) {
+export function BoardEditor({ handle, creatorDid }: { handle: string | null; creatorDid: string | null }) {
   const { getAccessToken, authenticated } = usePrivy();
   const [blocks, setBlocks] = useState<ViewerBlock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -175,6 +176,7 @@ export function BoardEditor({ handle }: { handle: string | null }) {
           <li key={block.id}>
             <BlockRow
               block={block}
+              creatorDid={creatorDid}
               index={index}
               total={blocks.length}
               busy={busy}
@@ -236,6 +238,7 @@ export function BoardEditor({ handle }: { handle: string | null }) {
 
 function BlockRow({
   block,
+  creatorDid,
   index,
   total,
   busy,
@@ -248,6 +251,7 @@ function BlockRow({
   onRemove,
 }: {
   block: ViewerBlock;
+  creatorDid: string | null;
   index: number;
   total: number;
   busy: boolean;
@@ -309,6 +313,7 @@ function BlockRow({
       {expanded && (
         <BlockSettings
           block={block}
+          creatorDid={creatorDid}
           fields={fields}
           busy={busy}
           onPatch={onPatch}
@@ -346,12 +351,14 @@ function RowButton({
 
 function BlockSettings({
   block,
+  creatorDid,
   fields,
   busy,
   onPatch,
   onRemove,
 }: {
   block: ViewerBlock;
+  creatorDid: string | null;
   fields: EditorField[];
   busy: boolean;
   onPatch: (body: Record<string, unknown>) => void;
@@ -399,7 +406,13 @@ function BlockSettings({
       {fields
         .filter((field) => isFieldRelevant(block.type, field, draft))
         .map((field) => (
-          <ConfigField key={field.key} field={field} value={draft[field.key]} onChange={set} />
+          <ConfigField
+            key={field.key}
+            field={field}
+            value={draft[field.key]}
+            creatorDid={creatorDid}
+            onChange={set}
+          />
         ))}
 
       {fields.length === 0 && (
@@ -468,13 +481,36 @@ const inputClass =
 function ConfigField({
   field,
   value,
+  creatorDid,
   onChange,
 }: {
   field: EditorField;
   value: unknown;
+  creatorDid: string | null;
   onChange: (key: string, value: unknown) => void;
 }) {
   switch (field.kind) {
+    case "images":
+      return (
+        <ImagesField
+          label={field.label}
+          help={field.help}
+          value={Array.isArray(value) ? (value as BlockImage[]) : []}
+          onChange={(images) => onChange(field.key, images)}
+        />
+      );
+
+    case "videoPicker":
+      return (
+        <VideoPickerField
+          label={field.label}
+          help={field.help}
+          creatorDid={creatorDid}
+          value={typeof value === "string" ? value : undefined}
+          onChange={(id) => onChange(field.key, id)}
+        />
+      );
+
     case "toggle":
       return (
         <label className="flex items-start gap-2.5 cursor-pointer">

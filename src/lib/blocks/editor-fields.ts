@@ -14,7 +14,11 @@ export type EditorField =
   | { kind: "number"; key: string; label: string; min: number; max: number; help?: string }
   | { kind: "toggle"; key: string; label: string; help?: string }
   | { kind: "select"; key: string; label: string; options: Array<{ value: string | number; label: string }> }
-  | { kind: "links"; key: string; label: string };
+  | { kind: "links"; key: string; label: string }
+  /** Upload, caption, reorder and remove images stored on the block itself. */
+  | { kind: "images"; key: string; label: string; help?: string }
+  /** Pick one of the creator's own videos. */
+  | { kind: "videoPicker"; key: string; label: string; help?: string };
 
 /**
  * Fields shown for each block type. Types absent from this map have nothing
@@ -42,14 +46,22 @@ export const BLOCK_EDITOR_FIELDS: Partial<Record<BlockType, EditorField[]>> = {
 
   gallery: [
     {
+      kind: "images",
+      key: "images",
+      label: "Photos",
+      help: "Upload your own. Leave empty to show photos from your posts instead.",
+    },
+    {
       kind: "select",
       key: "layout",
       label: "Layout",
       options: [
         { value: "slider", label: "Slider — swipeable strip" },
         { value: "grid", label: "Grid — all at once" },
+        { value: "single", label: "Single — one photo only" },
       ],
     },
+    { kind: "toggle", key: "showCaptions", label: "Show captions" },
     {
       kind: "select",
       key: "perView",
@@ -86,11 +98,29 @@ export const BLOCK_EDITOR_FIELDS: Partial<Record<BlockType, EditorField[]>> = {
       label: "Layout",
       options: [
         { value: "grid", label: "Grid" },
+        { value: "slider", label: "Slider — swipeable strip" },
+        { value: "hero", label: "Hero — one video only" },
         { value: "list", label: "List" },
-        { value: "hero", label: "Hero" },
+      ],
+    },
+    {
+      kind: "videoPicker",
+      key: "featuredVideoId",
+      label: "Highlighted video",
+      help: "Which video carries the block. Defaults to your newest.",
+    },
+    {
+      kind: "select",
+      key: "perView",
+      label: "Videos per slide",
+      options: [
+        { value: 1, label: "1 — large" },
+        { value: 2, label: "2" },
+        { value: 3, label: "3 — compact" },
       ],
     },
     { kind: "number", key: "limit", label: "Videos to show", min: 1, max: 24 },
+    { kind: "toggle", key: "showTitles", label: "Show titles" },
   ],
 
   music: [{ kind: "number", key: "limit", label: "Tracks to show", min: 1, max: 50 }],
@@ -144,7 +174,7 @@ export function editorFieldsFor(type: BlockType): EditorField[] {
 }
 
 /**
- * Gallery's slider and grid settings are mutually irrelevant — showing both at
+ * Layout-specific settings are mutually irrelevant — showing all of them at
  * once makes the form look broken. Hide whichever doesn't apply.
  */
 export function isFieldRelevant(
@@ -152,8 +182,22 @@ export function isFieldRelevant(
   field: EditorField,
   config: Record<string, unknown>
 ): boolean {
-  if (type !== "gallery") return true;
-  if (field.key === "perView") return config.layout !== "grid";
-  if (field.key === "columns") return config.layout === "grid";
+  const layout = config.layout;
+
+  if (type === "gallery") {
+    if (field.key === "perView") return layout === "slider";
+    if (field.key === "columns") return layout === "grid";
+    // A single photo has nothing to page through and no count to cap.
+    if (field.key === "limit") return layout !== "single";
+    return true;
+  }
+
+  if (type === "video_showcase") {
+    if (field.key === "perView") return layout === "slider";
+    if (field.key === "featuredVideoId") return layout === "hero";
+    if (field.key === "limit") return layout !== "hero";
+    return true;
+  }
+
   return true;
 }

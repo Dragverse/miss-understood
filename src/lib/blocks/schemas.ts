@@ -30,6 +30,30 @@ const hexColor = z
   .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Must be a hex colour");
 
 /**
+ * Media the creator uploaded, which must live on our own Supabase storage.
+ *
+ * Accepting an arbitrary remote URL here would leak every visitor's IP to a
+ * third party and let the image be swapped for something else after a
+ * moderator had looked at it. Uploads go through /api/upload/image-v2, which
+ * returns exactly this shape of URL.
+ *
+ * Falls back to accepting any https URL when NEXT_PUBLIC_SUPABASE_URL is
+ * absent, so a misconfigured environment can't silently reject every legit
+ * upload — the host check is a hardening measure, not the auth boundary.
+ */
+const mediaUrl = externalUrl.refine((value) => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return value.startsWith("https://");
+  try {
+    const allowedHost = new URL(supabaseUrl).hostname.toLowerCase();
+    const host = new URL(value).hostname.toLowerCase();
+    return host === allowedHost;
+  } catch {
+    return false;
+  }
+}, "Images must be uploaded to Dragverse");
+
+/**
  * Embeds are restricted to a host allowlist rather than accepting arbitrary
  * iframe URLs. An open embed block is an open redirect and a clickjacking
  * surface, and there is no way to sanitise a third-party frame after the fact.
@@ -78,19 +102,32 @@ export const upcomingConfigSchema = z.object({
     .default([]),
 });
 
+/** An image uploaded straight into a block, rather than derived from a post. */
+export const blockImageSchema = z.object({
+  url: mediaUrl,
+  caption: z.string().trim().max(200).optional(),
+});
+
 export const galleryConfigSchema = z.object({
+  /**
+   * Photos uploaded to this gallery from the dashboard. When non-empty these
+   * win outright; the post-derived fallback below only applies to galleries
+   * the creator hasn't curated yet, so an existing board keeps working.
+   */
+  images: z.array(blockImageSchema).max(60).default([]),
   limit: z.number().int().min(1).max(60).default(12),
   /**
    * `slider` is the default: a board column is narrow, and a horizontal strip
-   * shows more of a set than a cramped grid does. `grid` stays available for
-   * creators who want everything visible at once.
+   * shows more of a set than a cramped grid does. `single` shows just the
+   * first image, for a creator who wants one photo to carry the block.
    */
-  layout: z.enum(["slider", "grid"]).default("slider"),
+  layout: z.enum(["slider", "grid", "single"]).default("slider"),
   /** Slides visible at once in slider layout; ignored for a single image. */
   perView: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2),
   columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).default(3),
-  /** When set, only posts carrying this tag appear. */
+  /** Only applies to the post-derived fallback. */
   tag: z.string().trim().max(60).optional(),
+  showCaptions: z.boolean().default(true),
 });
 
 /**
@@ -107,7 +144,16 @@ export const videoShowcaseConfigSchema = z.object({
   limit: z.number().int().min(1).max(24).default(6),
   /** Explicit ordering wins; otherwise newest first. */
   pinnedVideoIds: z.array(z.uuid()).max(24).default([]),
-  layout: z.enum(["grid", "list", "hero"]).default("grid"),
+  /**
+   * `hero` highlights a single video — `featuredVideoId` if set, else the
+   * first pinned one, else the newest.
+   */
+  layout: z.enum(["slider", "grid", "list", "hero"]).default("grid"),
+  /** Only meaningful for `hero`. */
+  featuredVideoId: z.uuid().optional(),
+  /** Slides visible at once in slider layout. */
+  perView: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2),
+  showTitles: z.boolean().default(true),
 });
 
 export const musicConfigSchema = z.object({
