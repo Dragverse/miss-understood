@@ -28,7 +28,7 @@ import { ProfileShareModal } from "@/components/profile/profile-share-modal";
 import { useLiveCreatorsStore } from "@/lib/store/live-creators";
 import { CreatorBoard } from "@/components/profile/creator-board";
 import { useBoard } from "@/lib/hooks/use-board";
-import { VERTICAL_VIDEO_ENABLED } from "@/config/features";
+import { VERTICAL_VIDEO_ENABLED, FARCASTER_UI_ENABLED } from "@/config/features";
 import { ProfileTabs, isProfileTab, type ProfileTab } from "@/components/profile/profile-tabs";
 import { EventRow } from "@/components/blocks/upcoming-block";
 import { NoteCard } from "@/components/notes/note-card";
@@ -347,12 +347,12 @@ export default function DynamicProfilePage() {
   // "Watchers" is every follower source combined.
   //
   // creators.follower_count is the maintained aggregate — /api/stats/aggregate
-  // writes it as the sum of Dragverse + Bluesky + Farcaster + YouTube, and the
-  // dashboard reads the same column. Trust it as the total rather than
-  // re-summing here, so the two screens can never disagree.
+  // writes it, and the dashboard reads the same column. Trust it as the total
+  // rather than re-summing here, so the two screens can never disagree.
   //
-  // An earlier version summed only three platforms and silently dropped
-  // Farcaster, which is why the profile read low against the dashboard.
+  // Farcaster is excluded from that aggregate (see FARCASTER_UI_ENABLED), so
+  // it must not appear in this breakdown either or the parts won't add up to
+  // the whole.
   const watcherBreakdown = [
     { label: "Dragverse", count: creator.dragverseFollowerCount ?? 0 },
     {
@@ -363,7 +363,6 @@ export default function DynamicProfilePage() {
         creator.blueskyFollowerCount ??
         0,
     },
-    { label: "Farcaster", count: creator.farcasterFollowerCount ?? 0 },
     { label: "YouTube", count: creator.youtubeSubscriberCount ?? 0 },
   ].filter((entry) => entry.count > 0);
 
@@ -484,7 +483,7 @@ export default function DynamicProfilePage() {
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <p className="text-white/80 text-sm md:text-base">@{creator.handle}</p>
                     {creator.blueskyHandle && <BlueskyBadge handle={creator.blueskyHandle} />}
-                    {creator.farcasterHandle && <FarcasterBadge username={creator.farcasterHandle} />}
+                    {FARCASTER_UI_ENABLED && creator.farcasterHandle && <FarcasterBadge username={creator.farcasterHandle} />}
                     {creator.youtubeChannelId && <YouTubeBadge channelId={creator.youtubeChannelId} channelName={creator.youtubeChannelName} />}
                     {creator.instagramHandle && <InstagramBadge handle={creator.instagramHandle} />}
                     {creator.tiktokHandle && <TikTokBadge handle={creator.tiktokHandle} />}

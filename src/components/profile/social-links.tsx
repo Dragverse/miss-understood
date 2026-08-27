@@ -3,6 +3,7 @@ import { FaInstagram, FaTiktok } from "react-icons/fa";
 import { SiBluesky } from "react-icons/si";
 import { Creator } from "@/types";
 import { FarcasterIcon } from "@/components/profile/farcaster-badge";
+import { FARCASTER_UI_ENABLED } from "@/config/features";
 
 interface SocialLinksProps {
   creator: Creator;
@@ -38,7 +39,7 @@ export function SocialLinks({ creator }: SocialLinksProps) {
       icon: <SiBluesky className="w-5 h-5" />,
       color: "text-blue-500",
     },
-  ];
+  ].filter((account) => account.name !== "Farcaster" || FARCASTER_UI_ENABLED);
 
   const hasWebsite = creator.website && creator.website.trim().length > 0;
   const hasSocialAccounts = socialAccounts.some(account => account.handle);

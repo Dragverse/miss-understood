@@ -6,6 +6,7 @@ import { FaWhatsapp } from "react-icons/fa";
 import { SiBluesky, SiThreads } from "react-icons/si";
 import toast from "react-hot-toast";
 import { FarcasterIcon } from "@/components/profile/farcaster-badge";
+import { FARCASTER_UI_ENABLED } from "@/config/features";
 
 interface ProfileShareModalProps {
   isOpen: boolean;
@@ -137,6 +138,7 @@ export function ProfileShareModal({
               <SiBluesky className="w-6 h-6 text-[#0085FF]" />
               <span className="text-xs">Bluesky</span>
             </button>
+            {FARCASTER_UI_ENABLED && (
             <button
               onClick={() => shareToSocial("farcaster")}
               className="flex flex-col items-center gap-2 p-4 bg-[#0f071a] hover:bg-[#8465CB]/10 border border-[#2f2942] hover:border-[#8465CB]/50 rounded-xl transition"
@@ -144,6 +146,8 @@ export function ProfileShareModal({
               <FarcasterIcon className="w-6 h-6" />
               <span className="text-xs">Farcaster</span>
             </button>
+            )}
+            {FARCASTER_UI_ENABLED && (
             <button
               onClick={() => shareToSocial("lens")}
               className="flex flex-col items-center gap-2 p-4 bg-[#0f071a] hover:bg-[#00501E]/10 border border-[#2f2942] hover:border-[#00501E]/50 rounded-xl transition"
@@ -151,6 +155,7 @@ export function ProfileShareModal({
               <LensIcon className="w-6 h-6 text-[#6BC674]" />
               <span className="text-xs">Lens</span>
             </button>
+            )}
             <button
               onClick={() => shareToSocial("twitter")}
               className="flex flex-col items-center gap-2 p-4 bg-[#0f071a] hover:bg-[#1DA1F2]/10 border border-[#2f2942] hover:border-[#1DA1F2]/50 rounded-xl transition"

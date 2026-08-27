@@ -3,6 +3,7 @@
  */
 
 import { getChannelStats } from "@/lib/youtube/client";
+import { FARCASTER_UI_ENABLED } from "@/config/features";
 
 export interface AggregatedStats {
   // Total counts (sum of all platforms)
@@ -191,7 +192,15 @@ export async function aggregateFollowerStats(creator: {
   }
 
   // Calculate totals
-  const totalFollowers = dragverseFollowers + blueskyFollowers + farcasterFollowers + youtubeSubscribers;
+  // Farcaster is still fetched and stored per-platform, but deliberately kept
+  // out of the headline total: it inflated the number without representing an
+  // audience that shows up for a drag creator. Flip FARCASTER_UI_ENABLED and
+  // add it back here together — the profile breakdown must sum to this total.
+  const totalFollowers =
+    dragverseFollowers +
+    blueskyFollowers +
+    youtubeSubscribers +
+    (FARCASTER_UI_ENABLED ? farcasterFollowers : 0);
   const totalFollowing = dragverseFollowing + blueskyFollowing + farcasterFollowing;
 
   console.log(`[Aggregate] Total: ${totalFollowers} followers, ${totalFollowing} following`);
