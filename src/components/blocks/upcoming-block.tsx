@@ -49,7 +49,7 @@ export function UpcomingBlock({ config, content }: BlockViewProps<"upcoming">) {
   }, [handle, config.limit, config.showPast]);
 
   if (events === null) {
-    return <p className="text-sm text-white/40">Loading dates…</p>;
+    return <p className="text-sm opacity-50">Loading dates…</p>;
   }
 
   const filtered =
@@ -72,9 +72,9 @@ export function EventRow({ event }: { event: DragEvent }) {
   const location = formatEventLocation(event);
 
   return (
-    <article className="group flex gap-3.5 rounded-2xl border border-[#2f2942]/60 bg-white/[0.03] p-3 transition-colors hover:border-[#2f2942]">
+    <article className="group flex gap-3.5 rounded-2xl bg-black/[0.06] p-3 transition-colors hover:bg-black/[0.1]">
       {event.flyerUrl ? (
-        <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-[#2f2942]/60 bg-[#0f071a] flex-shrink-0">
+        <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-black/20 flex-shrink-0">
           <Image
             src={event.flyerUrl}
             alt=""
@@ -84,8 +84,8 @@ export function EventRow({ event }: { event: DragEvent }) {
           />
         </div>
       ) : (
-        <div className="w-20 h-20 rounded-xl bg-white/5 border border-[#2f2942]/60 grid place-items-center flex-shrink-0">
-          <FiCalendar aria-hidden="true" size={18} className="text-white/30" />
+        <div className="w-20 h-20 rounded-xl bg-black/10 grid place-items-center flex-shrink-0">
+          <FiCalendar aria-hidden="true" size={18} className="opacity-30" />
         </div>
       )}
 
@@ -93,32 +93,32 @@ export function EventRow({ event }: { event: DragEvent }) {
         <div className="flex items-baseline gap-2 flex-wrap">
           <time
             dateTime={event.startsAt}
-            className="text-[11px] uppercase tracking-wide text-[color:var(--board-accent,var(--color-dragverse-primary))]"
+            className="text-[11px] font-bold uppercase tracking-wide opacity-70"
           >
             {formatEventDate(event.startsAt, event.timezone, { withTime: !event.isAllDay })}
           </time>
-          <span className="text-[10px] uppercase tracking-wide text-white/35">
+          <span className="text-[10px] uppercase tracking-wide opacity-45">
             {EVENT_KIND_LABELS[event.kind]}
           </span>
         </div>
 
-        <h3 className="text-base font-bold leading-snug truncate">{event.title}</h3>
+        <h3 className="font-heading text-lg uppercase leading-none truncate">{event.title}</h3>
 
         {location && (
-          <p className="flex items-center gap-1 text-xs text-white/55 truncate">
+          <p className="flex items-center gap-1 text-xs opacity-70 truncate">
             <FiMapPin aria-hidden="true" size={11} className="flex-shrink-0" />
             {location}
           </p>
         )}
 
         {event.description && (
-          <p className="mt-1 text-xs text-white/60 line-clamp-2 whitespace-pre-wrap">
+          <p className="mt-1 text-xs opacity-70 line-clamp-2 whitespace-pre-wrap">
             {event.description}
           </p>
         )}
 
         {event.lineup.length > 0 && (
-          <p className="mt-1 flex items-center gap-1 text-[11px] text-white/45 truncate">
+          <p className="mt-1 flex items-center gap-1 text-[11px] opacity-55 truncate">
             <FiUsers aria-hidden="true" size={10} className="flex-shrink-0" />
             {event.lineup.join(" · ")}
           </p>
@@ -126,19 +126,19 @@ export function EventRow({ event }: { event: DragEvent }) {
 
         <div className="mt-1.5 flex items-center gap-3 flex-wrap">
           {(event.priceText || event.isFree) && (
-            <span className="text-[11px] text-white/50">
+            <span className="text-[11px] opacity-60">
               {event.isFree ? "Free" : event.priceText}
             </span>
           )}
           {event.ageRestriction && (
-            <span className="text-[11px] text-white/50">{event.ageRestriction}</span>
+            <span className="text-[11px] opacity-60">{event.ageRestriction}</span>
           )}
           {event.ticketUrl && (
             <a
               href={event.ticketUrl}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-[color:var(--board-accent,var(--color-dragverse-primary))] hover:underline"
+              className="inline-flex items-center gap-1 rounded-full bg-[color:var(--color-action-yellow)] px-2.5 py-1 text-[11px] font-bold uppercase hover:opacity-90 transition-opacity"
             >
               Tickets
               <FiExternalLink aria-hidden="true" size={10} />

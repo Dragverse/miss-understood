@@ -641,10 +641,10 @@ export function LinksBlock({ config }: BlockViewProps<"links">) {
           href={link.url}
           target="_blank"
           rel="noopener noreferrer nofollow"
-          className="flex items-center justify-between gap-2 w-full px-4 py-3 rounded-2xl text-sm font-bold border-2 border-[#2f2942]/60 hover:border-[color:var(--board-accent,var(--color-dragverse-primary))] hover:bg-white/5 transition-all"
+          className="flex items-center justify-between gap-2 w-full px-4 py-3.5 rounded-2xl bg-[color:var(--color-action-yellow)] text-[color:var(--color-card-ink)] font-heading text-base uppercase tracking-tight hover:opacity-90 transition-opacity"
         >
           <span className="truncate">{link.label}</span>
-          <FiExternalLink aria-hidden="true" size={14} className="flex-shrink-0 opacity-50" />
+          <FiExternalLink aria-hidden="true" size={14} className="flex-shrink-0 opacity-60" />
         </a>
       ))}
     </div>
@@ -709,7 +709,7 @@ export function BookingBlock({ config, content }: BlockViewProps<"booking">) {
             href={config.bookingUrl}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="px-3 py-2 rounded-lg text-sm font-medium bg-[color:var(--board-accent,var(--color-dragverse-primary))] text-black hover:opacity-90 transition-opacity"
+            className="px-4 py-2.5 rounded-2xl bg-[color:var(--color-action-yellow)] text-[color:var(--color-card-ink)] font-heading text-sm uppercase hover:opacity-90 transition-opacity"
           >
             Book {content.creator.displayName}
           </a>
@@ -717,7 +717,7 @@ export function BookingBlock({ config, content }: BlockViewProps<"booking">) {
         {config.email && (
           <a
             href={`mailto:${config.email}`}
-            className="px-3 py-2 rounded-lg text-sm font-medium border border-[color:var(--color-border-dragverse)] hover:bg-white/5 transition-colors"
+            className="px-4 py-2.5 rounded-2xl border-2 border-current/30 text-sm font-bold hover:bg-black/10 transition-colors"
           >
             Email
           </a>
