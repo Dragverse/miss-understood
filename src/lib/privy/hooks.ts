@@ -17,9 +17,10 @@ export function useAuthUser() {
     unlinkEmail,
     unlinkGoogle,
     unlinkTwitch,
+    unlinkInstagram,
   } = usePrivy();
   const { wallets } = useWallets();
-  const { linkWallet, linkEmail, linkGoogle, linkTwitch } = useLinkAccount();
+  const { linkWallet, linkEmail, linkGoogle, linkTwitch, linkInstagram } = useLinkAccount();
   const { session, creator } = useAuth();
   const { profile: blueskyProfile, isConnected: blueskyConnected } = useBlueskyProfile();
 
@@ -62,11 +63,14 @@ export function useAuthUser() {
     linkEmail,
     linkGoogle,
     linkTwitch,
+    linkInstagram,
     unlinkWallet,
     unlinkEmail,
     unlinkGoogle,
     unlinkTwitch,
-    // Privy's linked Twitch account, if any.
+    unlinkInstagram,
+    // Privy's linked social accounts, if any.
     twitchAccount: user?.twitch ?? null,
+    instagramAccount: user?.instagram ?? null,
   };
 }
