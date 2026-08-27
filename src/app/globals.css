@@ -18,6 +18,22 @@
   --color-dragverse-purple: #7c3aed;
   --color-dragverse-purple-dark: #6d28d9;
 
+  /* Creator board card surfaces.
+     Contrast measured with contrastRatio() in src/lib/blocks/theme.ts:
+       card-ink on card-pink        11.83:1
+       card-ink on card-pink-strong  8.62:1  (unused; strong uses white)
+       white    on card-pink-strong  4.30:1  large-text AA, quote type only
+       card-ink on action-yellow    15.06:1
+       card-ink on badge-green      11.79:1
+     card-pink-strong is deeper than the wireframe's magenta on purpose: at the
+     wireframe value white text measured 2.28:1, which is unreadable. This is
+     the brightest magenta that still carries white display text. */
+  --color-card-pink: #E9B8F5;
+  --color-card-pink-strong: #C13FD0;
+  --color-card-ink: #12061c;
+  --color-action-yellow: #F2E600;
+  --color-badge-green: #7BE04A;
+
   /* Dark Backgrounds */
   --color-bg-dark: #0f071a;
   --color-bg-card: #1a0b2e;

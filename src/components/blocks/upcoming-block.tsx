@@ -68,7 +68,7 @@ export function UpcomingBlock({ config, content }: BlockViewProps<"upcoming">) {
   );
 }
 
-function EventRow({ event }: { event: DragEvent }) {
+export function EventRow({ event }: { event: DragEvent }) {
   const location = formatEventLocation(event);
 
   return (

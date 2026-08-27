@@ -141,6 +141,8 @@ export function CreatorBoard({ board, content, onMutate }: CreatorBoardProps) {
         key={block.id}
         title={title}
         theme={board.theme}
+        variant={definition.variant}
+        hideTitle={definition.hideTitle}
         editing={editing}
         visibility={block.visibility}
         hidden={block.hidden}

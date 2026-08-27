@@ -32,6 +32,7 @@ import {
 import { UpcomingBlock } from "@/components/blocks/upcoming-block";
 import { BlockEmpty } from "@/components/blocks/block-shell";
 import { defaultConfigFor } from "./schemas";
+import type { BlockVariant } from "@/components/blocks/block-shell";
 import type { BlockType } from "./types";
 
 export interface BlockDefinition {
@@ -48,6 +49,10 @@ export interface BlockDefinition {
    * picker, so a creator can't add something that will look broken.
    */
   addable: boolean;
+  /** Card treatment. Defaults to the filled pink card. */
+  variant?: BlockVariant;
+  /** Suppress the heading for blocks that read better untitled. */
+  hideTitle?: boolean;
 }
 
 /**
@@ -69,6 +74,8 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     addable: true,
   },
   video_showcase: {
+    variant: "bare",
+    hideTitle: true,
     label: "Videos",
     icon: FiFilm,
     description: "Pin your best videos, or show the newest automatically.",
@@ -76,6 +83,8 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     addable: true,
   },
   gallery: {
+    variant: "bare",
+    hideTitle: true,
     label: "Gallery",
     icon: FiImage,
     description: "Your photos as a swipeable strip, or a grid.",
@@ -83,6 +92,8 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     addable: true,
   },
   music: {
+    variant: "dark",
+    hideTitle: true,
     label: "Music",
     icon: FiMusic,
     description: "Your tracks and mixes as a playlist.",
@@ -97,6 +108,8 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     addable: true,
   },
   notes: {
+    variant: "bare",
+    hideTitle: true,
     label: "Notes",
     icon: FiEdit3,
     description: "Short thoughts you write. Post them from your dashboard.",

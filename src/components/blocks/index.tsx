@@ -16,6 +16,7 @@ import {
   FiChevronRight,
 } from "react-icons/fi";
 import { BlockEmpty } from "./block-shell";
+import { NoteCard } from "@/components/notes/note-card";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 import { useOptionalAudioPlayer, type AudioTrack } from "@/contexts/AudioPlayerContext";
 import type { Creator, Video } from "@/types";
@@ -66,7 +67,7 @@ export function VideoShowcaseBlock({ config, content }: BlockViewProps<"video_sh
 
   if (config.layout === "list") {
     return (
-      <ul className="space-y-2">
+      <ul className="space-y-2 p-4">
         {videos.map((video) => (
           <li key={video.id}>
             <Link
@@ -105,7 +106,7 @@ export function VideoShowcaseBlock({ config, content }: BlockViewProps<"video_sh
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2.5">
+    <div className="grid grid-cols-2 gap-2.5 p-4">
       {videos.map((video) => (
         <VideoTile key={video.id} video={video} showTitle={config.showTitles} size="grid" />
       ))}
@@ -124,8 +125,14 @@ function VideoTile({
   size: "hero" | "grid" | "slide";
 }) {
   return (
-    <Link href={`/watch/${video.id}`} className="group block">
-      <div className="relative aspect-video rounded-[20px] overflow-hidden border-2 border-[#2f2942]/60 group-hover:border-[#2f2942] bg-[#0f071a] shadow-lg transition-all">
+    <Link href={`/watch/${video.id}`} className="group relative block">
+      <div
+        className={`relative aspect-video overflow-hidden bg-[#0f071a] transition-all ${
+          size === "hero"
+            ? ""
+            : "rounded-[18px] border-2 border-[#2f2942]/60 group-hover:border-[#2f2942]"
+        }`}
+      >
         <Image
           src={getSafeThumbnail(video.thumbnail)}
           alt=""
@@ -141,8 +148,10 @@ function VideoTile({
       </div>
       {showTitle && (
         <p
-          className={`mt-2 line-clamp-2 ${
-            size === "hero" ? "text-base font-bold leading-snug" : "text-xs font-medium"
+          className={`line-clamp-2 ${
+            size === "hero"
+              ? "absolute bottom-0 inset-x-0 z-10 p-4 pt-10 bg-gradient-to-t from-black/85 to-transparent font-heading text-lg uppercase leading-none text-white"
+              : "mt-2 text-xs font-medium"
           }`}
         >
           {video.title}
@@ -186,7 +195,7 @@ export function GalleryBlock({ config, content }: BlockViewProps<"gallery">) {
     const photo = shown[0];
     return (
       <figure className="m-0">
-        <div className="relative w-full rounded-[20px] overflow-hidden border-2 border-[#2f2942]/60 bg-[#0f071a] shadow-lg">
+        <div className="relative w-full overflow-hidden bg-[#0f071a]">
           <Image
             src={photo.url}
             alt={photo.caption ?? ""}
@@ -207,7 +216,7 @@ export function GalleryBlock({ config, content }: BlockViewProps<"gallery">) {
     const columnClass =
       config.columns === 2 ? "grid-cols-2" : config.columns === 4 ? "grid-cols-4" : "grid-cols-3";
     return (
-      <div className={`grid ${columnClass} gap-2.5`}>
+      <div className={`grid ${columnClass} gap-2.5 p-4`}>
         {shown.map((photo) => (
           <div
             key={photo.key}
@@ -230,7 +239,7 @@ export function GalleryBlock({ config, content }: BlockViewProps<"gallery">) {
     <MediaSlider perView={config.perView} count={shown.length} label="photos">
       {shown.map((photo) => (
         <figure key={photo.key} className="keen-slider__slide m-0 group">
-          <div className="relative aspect-square rounded-[20px] overflow-hidden border-2 border-[#2f2942]/60 group-hover:border-[#2f2942] bg-[#0f071a] shadow-lg transition-all">
+          <div className="relative aspect-square overflow-hidden bg-[#0f071a]">
             <Image
               src={photo.url}
               alt={photo.caption ?? ""}
@@ -357,75 +366,21 @@ function SliderArrow({
 export function NotesBlock({ config, content }: BlockViewProps<"notes">) {
   const notes = content.posts
     .filter((post) => (post.text_content ?? "").trim().length > 0)
-    .filter((post) => (post.media_urls?.length ?? 0) === 0)
     .slice(0, config.limit);
 
   if (notes.length === 0) return <BlockEmpty message="No notes yet." />;
 
+  // Rendered with the shared NoteCard so a note is identical on the board, the
+  // Notes tab and the feed. The block itself is `bare` — each note is a card.
   return (
-    <ul className="space-y-2.5">
+    <div className="space-y-3">
       {notes.map((note) => (
-        <li
-          key={note.id}
-          className="rounded-2xl bg-white/[0.03] border border-[#2f2942]/60 px-3.5 py-3"
-        >
-          <Note body={note.text_content ?? ""} createdAt={note.created_at} truncate={config.truncate} />
-        </li>
+        <NoteCard key={note.id} note={note} />
       ))}
-    </ul>
+    </div>
   );
 }
 
-const NOTE_CLAMP = 280;
-
-function Note({
-  body,
-  createdAt,
-  truncate,
-}: {
-  body: string;
-  createdAt?: string;
-  truncate: boolean;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const isLong = truncate && body.length > NOTE_CLAMP;
-  const shown = isLong && !expanded ? `${body.slice(0, NOTE_CLAMP).trimEnd()}…` : body;
-
-  return (
-    <>
-      {/* Text node, never dangerouslySetInnerHTML — notes are plain text. */}
-      <p className="text-sm leading-relaxed whitespace-pre-wrap">{shown}</p>
-      {isLong && (
-        <button
-          type="button"
-          onClick={() => setExpanded((value) => !value)}
-          className="mt-1 text-xs text-white/50 hover:text-white transition-colors"
-        >
-          {expanded ? "less" : "more"}
-        </button>
-      )}
-      {createdAt && (
-        <time
-          dateTime={createdAt}
-          className="block mt-1.5 text-[11px] uppercase tracking-wide text-white/35"
-        >
-          {formatNoteDate(createdAt)}
-        </time>
-      )}
-    </>
-  );
-}
-
-function formatNoteDate(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-
-  const days = Math.floor((Date.now() - date.getTime()) / 86_400_000);
-  if (days === 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 7) return `${days} days ago`;
-  return date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-}
 
 // ============================================
 // Music

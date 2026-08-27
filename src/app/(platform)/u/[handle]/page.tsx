@@ -29,6 +29,10 @@ import { useLiveCreatorsStore } from "@/lib/store/live-creators";
 import { CreatorBoard } from "@/components/profile/creator-board";
 import { useBoard } from "@/lib/hooks/use-board";
 import { VERTICAL_VIDEO_ENABLED } from "@/config/features";
+import { ProfileTabs, isProfileTab, type ProfileTab } from "@/components/profile/profile-tabs";
+import { EventRow } from "@/components/blocks/upcoming-block";
+import { NoteCard } from "@/components/notes/note-card";
+import type { DragEvent } from "@/lib/events/types";
 
 /**
  * Dynamic Profile Page - Instagram Style
@@ -43,7 +47,8 @@ export default function DynamicProfilePage() {
 
   const [profileType, setProfileType] = useState<"loading" | "dragverse" | "bluesky" | "not-found">("loading");
   const [creator, setCreator] = useState<Creator | null>(null);
-  const [activeTab, setActiveTab] = useState<"videos" | "snapshots" | "audio" | "posts">("videos");
+  // The board is the landing view; ?tab= deep-links the rest.
+  const [activeTab, setActiveTab] = useState<ProfileTab>("user");
   const currentUserDID = user?.id;
 
   // Content states
@@ -70,10 +75,39 @@ export default function DynamicProfilePage() {
   ) : null;
   const creatorCanLivestream = creatorBadgeType === 'golden' || creatorBadgeType === 'pink';
   const showLivestreamSection = isCreatorLive || creatorCanLivestream;
+  const [events, setEvents] = useState<DragEvent[]>([]);
+  const hasEvents = events.length > 0;
   const [connectedBlueskyStats, setConnectedBlueskyStats] = useState<{ followersCount: number; followsCount: number } | null>(null);
   const profileLoadedRef = useRef<string | null>(null);
 
   // Reset when handle changes
+  // Honour ?tab= on first load. Runs once: after that the tab bar owns the
+  // state and writes back to the URL itself.
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (isProfileTab(requested)) setActiveTab(requested);
+  }, []);
+
+  // Events power both the Events tab and whether that tab is offered.
+  useEffect(() => {
+    if (profileType !== "dragverse" || !handle) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(
+          `/api/events?handle=${encodeURIComponent(handle)}&limit=50`
+        );
+        const data = await response.json();
+        if (!cancelled && response.ok) setEvents(data.events ?? []);
+      } catch {
+        if (!cancelled) setEvents([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [handle, profileType]);
+
   useEffect(() => {
     profileLoadedRef.current = null;
     setProfileType("loading");
@@ -291,6 +325,15 @@ export default function DynamicProfilePage() {
   const videosList = userVideos.filter(v => v.contentType !== 'short' && v.contentType !== 'podcast' && v.contentType !== 'music' && v.source !== 'youtube');
   const snapshotsList = userVideos.filter(v => v.contentType === 'short' && v.source !== 'youtube' && v.source !== 'bluesky');
   const audioList = userVideos.filter(v => v.contentType === 'podcast' || v.contentType === 'music');
+
+  // Only offer a tab when it has something behind it, so a new creator sees
+  // just the board rather than four empty sections. Events are fetched by the
+  // panel itself, so the tab is always offered on your own profile.
+  const availableTabs = new Set<ProfileTab>();
+  if (videosList.length > 0 || snapshotsList.length > 0) availableTabs.add("videos");
+  if (audioList.length > 0) availableTabs.add("audio");
+  if (userPosts.length > 0) availableTabs.add("notes");
+  if (hasEvents || currentUserDID === creator.did) availableTabs.add("events");
 
   // Loaded once here and handed to every block, so a board with a dozen
   // blocks doesn't issue a dozen requests for the same creator's content.
@@ -511,89 +554,29 @@ export default function DynamicProfilePage() {
           profiles have no profile_blocks rows, so they keep the tab layout —
           that path is also the acquisition funnel for unclaimed profiles.
         */}
-        {profileType === "dragverse" && board ? (
+        <ProfileTabs
+          active={activeTab}
+          available={availableTabs}
+          onChange={(tab) => {
+            setActiveTab(tab);
+            // Keep the tab in the URL so sections are linkable and survive a
+            // refresh. replaceState avoids stacking history on every click.
+            const url = new URL(window.location.href);
+            if (tab === "user") url.searchParams.delete("tab");
+            else url.searchParams.set("tab", tab);
+            window.history.replaceState(null, "", url);
+          }}
+        />
+
+        {activeTab === "user" && board && (
           <CreatorBoard
             board={board}
             content={blockContent}
             onMutate={board.isOwner ? boardMutations : undefined}
           />
-        ) : (
+        )}
+
         <div>
-          {/* Icon-Based Tabs (Instagram Style) */}
-          <div className="flex justify-center gap-12 border-t border-[#2f2942] mb-8">
-            <button
-              onClick={() => setActiveTab("videos")}
-              className={`flex items-center gap-2 py-4 px-2 transition relative ${
-                activeTab === "videos"
-                  ? "text-[#EB83EA]"
-                  : "text-gray-500 hover:text-gray-300"
-              }`}
-              aria-label="View videos content"
-              aria-current={activeTab === "videos" ? "page" : undefined}
-            >
-              <FiGrid className="w-6 h-6" />
-              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Videos</span>
-              {activeTab === "videos" && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
-              )}
-            </button>
-
-            {VERTICAL_VIDEO_ENABLED && snapshotsList.length > 0 && (
-              <button
-                onClick={() => setActiveTab("snapshots")}
-                className={`flex items-center gap-2 py-4 px-2 transition relative ${
-                  activeTab === "snapshots"
-                    ? "text-[#EB83EA]"
-                    : "text-gray-500 hover:text-gray-300"
-                }`}
-                aria-label="View snapshots content"
-                aria-current={activeTab === "snapshots" ? "page" : undefined}
-              >
-                <FiFilm className="w-6 h-6" />
-                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Snapshots</span>
-                {VERTICAL_VIDEO_ENABLED && activeTab === "snapshots" && (
-                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
-                )}
-              </button>
-            )}
-
-            {audioList.length > 0 && (
-              <button
-                onClick={() => setActiveTab("audio")}
-                className={`flex items-center gap-2 py-4 px-2 transition relative ${
-                  activeTab === "audio"
-                    ? "text-[#EB83EA]"
-                    : "text-gray-500 hover:text-gray-300"
-                }`}
-                aria-label="View audio content"
-                aria-current={activeTab === "audio" ? "page" : undefined}
-              >
-                <FiHeadphones className="w-6 h-6" />
-                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Audio</span>
-                {activeTab === "audio" && (
-                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
-                )}
-              </button>
-            )}
-
-            <button
-              onClick={() => setActiveTab("posts")}
-              className={`flex items-center gap-2 py-4 px-2 transition relative ${
-                activeTab === "posts"
-                  ? "text-[#EB83EA]"
-                  : "text-gray-500 hover:text-gray-300"
-              }`}
-              aria-label="View posts and photos"
-              aria-current={activeTab === "posts" ? "page" : undefined}
-            >
-              <FiMessageSquare className="w-6 h-6" />
-              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider">Posts</span>
-              {activeTab === "posts" && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#EB83EA]"></div>
-              )}
-            </button>
-
-          </div>
 
           {/* Tab Content - 3 Column Grid */}
           {activeTab === "videos" && (
@@ -678,57 +661,6 @@ export default function DynamicProfilePage() {
             </div>
           )}
 
-          {activeTab === "snapshots" && (
-            <div>
-              {snapshotsList.length > 0 ? (
-                <>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-1">
-                    {snapshotsList.map((snapshot) => (
-                      <Link
-                        key={snapshot.id}
-                        href={
-                          snapshot.premiereMode === 'countdown' && snapshot.publishedAt && new Date(snapshot.publishedAt) > new Date()
-                            ? `/premiere/${snapshot.id}`
-                            : `/snapshots?v=${snapshot.id}`
-                        }
-                        className="relative aspect-square group bg-black overflow-hidden cursor-pointer"
-                      >
-                        <Image
-                          src={getSafeThumbnail(snapshot.thumbnail, '/default-thumbnail.jpg', (snapshot as any).playbackId)}
-                          alt={snapshot.title}
-                          fill
-                          className="object-cover group-hover:opacity-80 transition-opacity"
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <div className="flex items-center gap-4 text-white">
-                            <div className="flex items-center gap-1">
-                              <FiEye className="w-5 h-5" />
-                              <span className="font-semibold">{snapshot.views?.toLocaleString() || 0}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <FiHeart className="w-5 h-5" />
-                              <span className="font-semibold">{snapshot.likes?.toLocaleString() || 0}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="absolute top-2 right-2 bg-[#EB83EA] p-2 rounded-full">
-                          <FiFilm className="w-4 h-4 text-white" />
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
-                    <FiFilm className="w-10 h-10 text-gray-500" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">No Snapshots Yet</h3>
-                  <p className="text-gray-400">Short-form content will appear here</p>
-                </div>
-              )}
-            </div>
-          )}
 
           {activeTab === "audio" && (
             <div>
@@ -779,48 +711,53 @@ export default function DynamicProfilePage() {
             </div>
           )}
 
-          {activeTab === "posts" && (
+          {activeTab === "events" && (
+            <div className="max-w-3xl mx-auto">
+              {events.length > 0 ? (
+                <ul className="space-y-3">
+                  {events.map((event) => (
+                    <li key={event.id}>
+                      <EventRow event={event} />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-center py-16">
+                  <h3 className="text-xl font-bold mb-2">No Dates Yet</h3>
+                  <p className="text-gray-400">
+                    {currentUserDID === creator.did
+                      ? "Add gigs and shows from your dashboard."
+                      : `When ${creator.displayName} announces dates, they'll appear here`}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "notes" && (
             <div>
               {userPosts.length > 0 ? (
-                <div className="max-w-4xl mx-auto space-y-6">
-                  {userPosts.filter(post => post && typeof post === 'object').map((post) => (
-                    <FeedPostCard
-                      key={post.id}
-                      post={{
-                        ...post,
-                        description: post.text_content || post.description || "",
-                        createdAt: post.created_at || post.createdAt,
-                        thumbnail: post.media_urls?.[0] || post.thumbnail,
-                        creator: post.creator ? {
-                          displayName: post.creator.display_name || post.creator.displayName,
-                          handle: post.creator.handle,
-                          avatar: post.creator.avatar,
-                          did: post.creator.did,
-                          blueskyHandle: post.creator.blueskyHandle,
-                        } : {
-                          displayName: creator!.displayName,
-                          handle: creator!.handle,
-                          avatar: creator!.avatar,
-                          did: creator!.did,
-                          blueskyHandle: creator!.blueskyHandle,
-                        },
-                      }}
-                    />
-                  ))}
+                <div className="columns-1 sm:columns-2 gap-4 [column-fill:_balance] max-w-4xl mx-auto">
+                  {userPosts
+                    .filter((post) => post && typeof post === "object")
+                    .map((post) => (
+                      <div key={post.id} className="mb-4 break-inside-avoid">
+                        <NoteCard note={post} />
+                      </div>
+                    ))}
                 </div>
               ) : (
                 <div className="text-center py-16">
                   <div className="w-20 h-20 rounded-2xl bg-[#2f2942]/40 flex items-center justify-center mx-auto mb-4">
                     <FiMessageSquare className="w-10 h-10 text-gray-500" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2">No Posts Yet</h3>
-                  <p className="text-gray-400">When {creator?.displayName} shares stories, they&apos;ll appear here</p>
+                  <h3 className="text-xl font-bold mb-2">No Notes Yet</h3>
+                  <p className="text-gray-400">When {creator?.displayName} writes something, it&apos;ll appear here</p>
                 </div>
               )}
             </div>
           )}
         </div>
-        )}
       </div>
 
       {/* Share Profile Modal */}
