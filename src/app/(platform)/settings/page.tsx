@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FiUser, FiLink2, FiUpload, FiSave, FiArrowLeft, FiAlertTriangle, FiShare2, FiDollarSign } from "react-icons/fi";
-import { SiBluesky, SiYoutube } from "react-icons/si";
+import { SiTwitch, SiBluesky, SiYoutube } from "react-icons/si";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAuthUser } from "@/lib/privy/hooks";
@@ -35,6 +35,9 @@ function SettingsContent() {
     unlinkWallet,
     unlinkEmail,
     unlinkGoogle,
+    linkTwitch,
+    unlinkTwitch,
+    twitchAccount,
   } = useAuthUser();
 
   const [activeSection, setActiveSection] = useState<"profile" | "accounts" | "wallet" | "crosspost" | "danger">("profile");
@@ -167,6 +170,71 @@ function SettingsContent() {
       } catch (error) {
         console.error("Failed to unlink email:", error);
         toast.error("Failed to disconnect email");
+      }
+    }
+  };
+
+  // Connecting via Privy links the account but doesn't persist anything to
+  // our own row, so the profile badge and follower sync would stay blank until
+  // the creator happened to press Save. Persist it once, only when we don't
+  // already have a handle, and say so rather than doing it silently.
+  useEffect(() => {
+    const username = twitchAccount?.username;
+    if (!username || !isAuthenticated) return;
+    if (formData.twitchHandle) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        if (!token || cancelled) return;
+
+        // Targeted endpoint on purpose — /api/profile/update upserts the
+        // whole row and a partial body would wipe the rest of the profile.
+        const response = await fetch("/api/user/twitch", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ handle: username }),
+        });
+        if (!response.ok || cancelled) return;
+
+        setFormData((prev) => ({ ...prev, twitchHandle: username }));
+        toast.success(`Twitch @${username} added to your profile`);
+      } catch (error) {
+        console.error("[Settings] Failed to save Twitch handle:", error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [twitchAccount?.username, isAuthenticated, formData.twitchHandle, getAccessToken]);
+
+  // Handle Twitch unlinking. Also clears the stored handle, otherwise the
+  // profile would keep showing a Twitch badge for a disconnected account.
+  const handleUnlinkTwitch = async () => {
+    if (!canUnlinkAccount()) {
+      toast.error("Cannot unlink: You must have at least one authentication method");
+      return;
+    }
+    if (!twitchAccount?.subject) return;
+
+    if (confirm("Disconnect your Twitch account?")) {
+      try {
+        await unlinkTwitch(twitchAccount.subject);
+        const token = await getAccessToken();
+        if (token) {
+          await fetch("/api/user/twitch", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ handle: null }),
+          }).catch(() => {});
+        }
+        setFormData((prev) => ({ ...prev, twitchHandle: "" }));
+        toast.success("Twitch disconnected");
+      } catch (error) {
+        console.error("Failed to unlink Twitch:", error);
+        toast.error("Failed to disconnect Twitch");
       }
     }
   };
@@ -1714,6 +1782,50 @@ function SettingsContent() {
                       </div>
                     </div>
                   )}
+
+                  {/* Twitch — connecting fills in the handle, which is all
+                      the Helix API needs for follower count and live status. */}
+                  <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#9146FF] flex items-center justify-center">
+                        <SiTwitch className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">Twitch</p>
+                        {twitchAccount?.username ? (
+                          <p className="text-sm text-gray-400">@{twitchAccount.username}</p>
+                        ) : (
+                          <p className="text-sm text-gray-400">
+                            Adds your Twitch followers to your watcher count
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {twitchAccount ? (
+                        <>
+                          <span className="text-xs px-3 py-1 bg-green-500/10 text-green-500 rounded-full">
+                            Connected
+                          </span>
+                          {canUnlinkAccount() && (
+                            <button
+                              onClick={handleUnlinkTwitch}
+                              className="text-sm px-3 py-1 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500 rounded-lg transition"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => linkTwitch()}
+                          className="text-sm px-4 py-2 bg-[#9146FF] hover:bg-[#7d3ce0] text-white rounded-lg transition font-medium"
+                        >
+                          Connect
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
                   {/* Bluesky */}
                   <div className="flex items-center justify-between p-4 bg-[#0f071a] rounded-xl border border-[#2f2942]">
