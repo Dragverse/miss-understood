@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, Suspense } from "react";
 import { FiUploadCloud, FiCheck, FiFilm, FiUpload, FiLoader, FiClock, FiMusic, FiMic, FiEyeOff } from "react-icons/fi";
 import toast from "react-hot-toast";
+import { VERTICAL_VIDEO_ENABLED } from "@/config/features";
 import { uploadVideoToLivepeer, waitForAssetReady } from "@/lib/livepeer/client-upload";
 import { uploadAudioToSupabase } from "@/lib/supabase/client-audio-upload";
 import { useAuthUser } from "@/lib/privy/hooks";
@@ -26,7 +27,11 @@ function UploadPageContent() {
 
   // Auto-select media type based on URL parameter
   const initialMediaType = typeParam === "audio" ? "audio" : "video";
-  const initialContentType = typeParam === "audio" ? "podcast" : "short";
+  // Vertical uploads are hidden, so video defaults to long-form. The "short"
+  // path is untouched underneath — existing shorts still play and re-enabling
+  // the flag restores the option.
+  const initialContentType =
+    typeParam === "audio" ? "podcast" : VERTICAL_VIDEO_ENABLED ? "short" : "long";
 
   const [formData, setFormData] = useState({
     mediaType: initialMediaType as "video" | "audio",
@@ -408,9 +413,16 @@ function UploadPageContent() {
       if (isValid) {
         if (formData.mediaType === "video") {
           const orientation = await detectVideoOrientation(file);
-          const newContentType: "short" | "long" = orientation === "portrait" ? "short" : "long";
+          // With vertical hidden, a portrait file still uploads — as long-form
+          // — rather than silently creating a short with no surface to appear on.
+          const newContentType: "short" | "long" =
+            orientation === "portrait" && VERTICAL_VIDEO_ENABLED ? "short" : "long";
           if (orientation !== "unknown" && newContentType !== formData.contentType) {
-            toast.success(orientation === "portrait" ? "Snapshot selected — vertical video detected" : "Video selected — horizontal video detected");
+            toast.success(
+              orientation === "portrait" && VERTICAL_VIDEO_ENABLED
+                ? "Snapshot selected — vertical video detected"
+                : "Video selected"
+            );
           }
           setFormData((prev) => ({
             ...prev,
@@ -1013,7 +1025,7 @@ function UploadPageContent() {
           <div className="grid grid-cols-2 gap-4">
             <button
               type="button"
-              onClick={() => setFormData({ ...formData, mediaType: "video", contentType: "short", video: null })}
+              onClick={() => setFormData({ ...formData, mediaType: "video", contentType: VERTICAL_VIDEO_ENABLED ? "short" : "long", video: null })}
               className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
                 formData.mediaType === "video"
                   ? "border-[#EB83EA] bg-[#EB83EA]/10"
@@ -1023,7 +1035,7 @@ function UploadPageContent() {
               <FiFilm className={`w-8 h-8 ${formData.mediaType === "video" ? "text-[#EB83EA]" : "text-gray-400"}`} />
               <div className="text-center">
                 <div className="font-bold">Video</div>
-                <div className="text-xs text-gray-400">Short or long-form video content</div>
+                <div className="text-xs text-gray-400">{VERTICAL_VIDEO_ENABLED ? "Short or long-form video content" : "Long-form video content"}</div>
               </div>
             </button>
             <button
@@ -1052,6 +1064,7 @@ function UploadPageContent() {
           <div className="grid grid-cols-2 gap-4">
             {formData.mediaType === "video" ? (
               <>
+                {VERTICAL_VIDEO_ENABLED && (
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, contentType: "short" })}
@@ -1067,6 +1080,7 @@ function UploadPageContent() {
                     <div className="text-xs text-gray-400">Vertical - Max 20 minutes</div>
                   </div>
                 </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, contentType: "long" })}
@@ -1186,9 +1200,16 @@ function UploadPageContent() {
                   if (isValid) {
                     if (formData.mediaType === "video") {
                       const orientation = await detectVideoOrientation(file);
-                      const newContentType: "short" | "long" = orientation === "portrait" ? "short" : "long";
+                      // With vertical hidden, a portrait file still uploads — as long-form
+          // — rather than silently creating a short with no surface to appear on.
+          const newContentType: "short" | "long" =
+            orientation === "portrait" && VERTICAL_VIDEO_ENABLED ? "short" : "long";
                       if (orientation !== "unknown" && newContentType !== formData.contentType) {
-                        toast.success(orientation === "portrait" ? "Snapshot selected — vertical video detected" : "Video selected — horizontal video detected");
+                        toast.success(
+              orientation === "portrait" && VERTICAL_VIDEO_ENABLED
+                ? "Snapshot selected — vertical video detected"
+                : "Video selected"
+            );
                       }
                       setFormData((prev) => ({
                         ...prev,

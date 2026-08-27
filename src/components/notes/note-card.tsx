@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { FiLink, FiArrowUpRight } from "react-icons/fi";
 
 /**
  * A note as stored in `posts`. Only the fields a card actually renders.
@@ -91,6 +92,11 @@ export function NoteCard({
 
         {body && <NoteBody body={body} />}
 
+        {/* First bare URL in the text gets a proper card. Suppressed when the
+            note already has an explicit link button, so the same destination
+            isn't offered twice. */}
+        {!note.link_url && firstUrl(body) && <LinkPreviewCard url={firstUrl(body)!} />}
+
         {showAuthor && note.creator?.handle && (
           <Link
             href={`/u/${note.creator.handle}`}
@@ -122,8 +128,9 @@ function NoteBody({ body }: { body: string }) {
 
   return (
     <>
-      {/* Text node, never dangerouslySetInnerHTML — notes are plain text. */}
-      <p className="text-sm leading-relaxed whitespace-pre-wrap">{shown}</p>
+      {/* Linkified into React elements, never dangerouslySetInnerHTML — the
+          URL text itself is still untrusted input. */}
+      <p className="text-sm leading-relaxed whitespace-pre-wrap">{linkify(shown)}</p>
       {isLong && (
         <button
           type="button"
@@ -160,4 +167,83 @@ export function expiresInLabel(expiresAt?: string | null): string | null {
   const hours = Math.ceil(ms / 3_600_000);
   if (hours > 1) return `Expires in ${hours} hours`;
   return "Expires soon";
+}
+
+const URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+
+/** First http(s) URL in a string, or null. */
+export function firstUrl(text: string): string | null {
+  const match = text.match(URL_RE);
+  if (!match) return null;
+  try {
+    const url = new URL(match[0]);
+    return url.protocol === "http:" || url.protocol === "https:" ? match[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Host without www, for display. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Turn bare URLs in note text into anchors, leaving everything else as plain
+ * text nodes. Returns React children, so nothing is ever parsed as HTML.
+ */
+function linkify(text: string): React.ReactNode[] {
+  return text.split(URL_RE).map((part, index) => {
+    if (index % 2 === 0) return part;
+    let safe = false;
+    try {
+      const { protocol } = new URL(part);
+      safe = protocol === "http:" || protocol === "https:";
+    } catch {
+      safe = false;
+    }
+    if (!safe) return part;
+    return (
+      <a
+        key={index}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        className="underline underline-offset-2 decoration-current/40 hover:decoration-current break-all"
+      >
+        {part}
+      </a>
+    );
+  });
+}
+
+/**
+ * A tappable card for a link mentioned in the note body.
+ *
+ * Shows the host rather than fetching a preview: server-side unfurling would
+ * mean requesting arbitrary third-party URLs from our backend, which is an
+ * SSRF surface and leaks that a Dragverse user is reading the link.
+ */
+function LinkPreviewCard({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer nofollow"
+      className="mt-3 flex items-center gap-3 rounded-2xl bg-black/[0.07] hover:bg-black/[0.12] transition-colors p-3"
+    >
+      <span className="grid place-items-center w-10 h-10 rounded-xl bg-[color:var(--color-action-yellow)] flex-shrink-0">
+        <FiLink aria-hidden="true" size={16} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-bold truncate">{hostOf(url)}</span>
+        <span className="block text-xs opacity-60 truncate">{url}</span>
+      </span>
+      <FiArrowUpRight aria-hidden="true" size={16} className="flex-shrink-0 opacity-50" />
+    </a>
+  );
 }

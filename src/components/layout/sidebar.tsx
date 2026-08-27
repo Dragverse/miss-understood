@@ -4,14 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/store/auth";
-import { FiHome, FiCompass, FiFilm, FiUser, FiSettings, FiAward, FiBarChart2, FiMessageSquare, FiUsers, FiHeadphones } from "react-icons/fi";
+import { FiHome, FiCompass, FiFilm, FiUser, FiSettings, FiAward, FiBarChart2, FiMessageSquare, FiUsers, FiHeadphones, FiCalendar } from "react-icons/fi";
 import { VERTICAL_VIDEO_ENABLED } from "@/config/features";
 
 /** Dropped from every nav while VERTICAL_VIDEO_ENABLED is off. */
 const SNAPSHOTS_ITEM = { href: "/snapshots", icon: FiFilm, label: "Snapshots" };
 
+const EVENTS_ITEM = { href: "/events", icon: FiCalendar, label: "Events" };
+
 const navItems = [
   { href: "/", icon: FiHome, label: "Home" },
+  EVENTS_ITEM,
   { href: "/feed", icon: FiMessageSquare, label: "Feed" },
   { href: "/videos", icon: FiCompass, label: "Explore" },
   ...(VERTICAL_VIDEO_ENABLED ? [SNAPSHOTS_ITEM] : []),
@@ -28,8 +31,9 @@ const dashboardNavItems = [
 // Mobile bottom nav items
 const mobileNavItems = [
   { href: "/", icon: FiHome, label: "Home" },
+  // Events sits where the short-video feed used to be.
+  ...(VERTICAL_VIDEO_ENABLED ? [SNAPSHOTS_ITEM] : [EVENTS_ITEM]),
   { href: "/feed", icon: FiMessageSquare, label: "Feed" },
-  ...(VERTICAL_VIDEO_ENABLED ? [SNAPSHOTS_ITEM] : []),
   { href: "/videos", icon: FiCompass, label: "Explore" },
   { href: "/audio", icon: FiHeadphones, label: "Audio" },
 ];

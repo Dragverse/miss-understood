@@ -344,6 +344,25 @@ export default function DynamicProfilePage() {
     posts: userPosts,
   };
 
+  // "Watchers" is every follower source combined. The stored follower_count
+  // drifts out of date, so prefer the live per-platform numbers and only fall
+  // back to the stored total when we have no breakdown at all (e.g. an
+  // external Bluesky profile).
+  const blueskyWatchers =
+    connectedBlueskyStats?.followersCount ??
+    blueskyProfile?.followersCount ??
+    creator.blueskyFollowerCount ??
+    0;
+  const watcherBreakdown = [
+    { label: "Dragverse", count: creator.dragverseFollowerCount ?? 0 },
+    { label: "Bluesky", count: blueskyWatchers },
+    { label: "YouTube", count: creator.youtubeSubscriberCount ?? 0 },
+  ].filter((entry) => entry.count > 0);
+  const watcherCount =
+    watcherBreakdown.reduce((sum, entry) => sum + entry.count, 0) ||
+    creator.followerCount ||
+    0;
+
   // Stats - total content count across all types
   const stats = {
     contentCount: userVideos.length + userPosts.length,
@@ -359,10 +378,15 @@ export default function DynamicProfilePage() {
         page, not just the header card. Fixed rather than absolute so it stays
         put while the board scrolls over it.
 
+        z-0, NOT -z-10: the app shell in components/layout/index.tsx paints an
+        opaque bg-[#0f071a], and a negative z-index here renders behind it, so
+        the banner never appeared. z-0 sits above that background, and the
+        content below is lifted to z-10 to stay on top.
+
         aria-hidden + pointer-events-none because it's pure decoration and must
         never intercept clicks on the content above it.
       */}
-      <div className="fixed inset-0 -z-10 pointer-events-none" aria-hidden="true">
+      <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
         {creator.banner ? (
           <Image src={creator.banner} alt="" fill className="object-cover" priority />
         ) : (
@@ -378,7 +402,7 @@ export default function DynamicProfilePage() {
       </div>
 
       {/* ── Unified profile card ────────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-8 pt-4 md:pt-6" id="livestream">
+      <div className="relative z-10 max-w-5xl mx-auto px-3 sm:px-4 md:px-8 pt-4 md:pt-6" id="livestream">
         <div className="relative rounded-[32px] overflow-hidden shadow-2xl">
 
           {/* Card scrim only — the banner itself now lives behind the whole page. */}
@@ -465,30 +489,36 @@ export default function DynamicProfilePage() {
                       <span className="font-bold text-lg text-white drop-shadow-lg">
                         {isLoadingContent ? "—" : stats.contentCount}
                       </span>
-                      <span className="text-white/70 ml-1.5">content</span>
+                      <span className="text-white/70 ml-1.5">posts</span>
                     </div>
                     <div className="group relative">
                       <span className="font-bold text-lg text-white drop-shadow-lg">
-                        {(creator.followerCount || 0).toLocaleString()}
+                        {watcherCount.toLocaleString()}
                       </span>
-                      <span className="text-white/70 ml-1.5">followers</span>
-                      {((connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 || (creator.youtubeSubscriberCount || 0) > 0) && (
+                      <span className="text-white/70 ml-1.5">watchers</span>
+                      {watcherBreakdown.length > 1 && (
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                          <div className="bg-[#1a0b2e]/95 border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[160px] backdrop-blur-sm">
-                            <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Also on</div>
+                          <div className="bg-[#1a0b2e]/95 border border-[#EB83EA]/30 rounded-xl p-3 shadow-xl min-w-[170px] backdrop-blur-sm">
+                            <div className="text-xs font-semibold text-gray-400 uppercase mb-2">Across</div>
                             <div className="space-y-1.5 text-sm">
-                              {(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0) > 0 && (
-                                <div className="flex items-center justify-between gap-4">
-                                  <span className="text-[#0085ff]">Bluesky</span>
-                                  <span className="text-white font-medium">{(connectedBlueskyStats?.followersCount || blueskyProfile?.followersCount || 0).toLocaleString()}</span>
+                              {watcherBreakdown.map((entry) => (
+                                <div key={entry.label} className="flex items-center justify-between gap-4">
+                                  <span
+                                    className={
+                                      entry.label === "Bluesky"
+                                        ? "text-[#0085ff]"
+                                        : entry.label === "YouTube"
+                                          ? "text-red-500"
+                                          : "text-[#EB83EA]"
+                                    }
+                                  >
+                                    {entry.label}
+                                  </span>
+                                  <span className="text-white font-medium">
+                                    {entry.count.toLocaleString()}
+                                  </span>
                                 </div>
-                              )}
-                              {(creator.youtubeSubscriberCount || 0) > 0 && (
-                                <div className="flex items-center justify-between gap-4">
-                                  <span className="text-red-500">YouTube</span>
-                                  <span className="text-white font-medium">{(creator.youtubeSubscriberCount || 0).toLocaleString()}</span>
-                                </div>
-                              )}
+                              ))}
                             </div>
                           </div>
                         </div>
@@ -498,7 +528,7 @@ export default function DynamicProfilePage() {
                       <span className="font-bold text-lg text-white drop-shadow-lg">
                         {(creator.followingCount || 0).toLocaleString()}
                       </span>
-                      <span className="text-white/70 ml-1.5">following</span>
+                      <span className="text-white/70 ml-1.5">watching</span>
                     </div>
                     {(creator.tipCount || 0) > 0 && (
                       <div>
@@ -548,7 +578,7 @@ export default function DynamicProfilePage() {
       </div>
 
       {/* Content area */}
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
+      <div className="relative z-10 max-w-5xl mx-auto px-4 md:px-8 py-8">
         {/*
           Dragverse creators get the board they arranged. External Bluesky
           profiles have no profile_blocks rows, so they keep the tab layout —
