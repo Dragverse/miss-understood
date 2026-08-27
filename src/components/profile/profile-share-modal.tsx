@@ -123,7 +123,7 @@ export function ProfileShareModal({
           <label className="block text-sm font-semibold mb-3 text-gray-300">
             Share to Social Media
           </label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
               onClick={() => shareToSocial("threads")}
               className="flex flex-col items-center gap-2 p-4 bg-[#0f071a] hover:bg-white/10 border border-[#2f2942] hover:border-white/50 rounded-xl transition"
