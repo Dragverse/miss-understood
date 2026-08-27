@@ -15,6 +15,7 @@ export interface Creator {
   dragverseFollowerCount?: number; // Followers on Dragverse (Ceramic)
   blueskyFollowerCount?: number; // Followers on Bluesky
   farcasterFollowerCount?: number; // Followers on Farcaster
+  twitchFollowerCount?: number; // Followers on Twitch
   createdAt: Date;
   updatedAt?: Date;
   verified: boolean;
@@ -22,6 +23,7 @@ export interface Creator {
   twitterHandle?: string;
   instagramHandle?: string;
   tiktokHandle?: string;
+  twitchHandle?: string;
   farcasterHandle?: string;
   blueskyHandle?: string; // User's Bluesky handle (if connected)
   blueskyDID?: string; // Bluesky DID (if connected)

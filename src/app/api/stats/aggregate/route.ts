@@ -40,7 +40,9 @@ export async function GET(request: NextRequest) {
         farcaster_fid,
         farcaster_follower_count,
         youtube_channel_id,
-        youtube_subscriber_count
+        youtube_subscriber_count,
+        twitch_handle,
+        twitch_follower_count
       `
       )
       .eq("did", userId)
@@ -83,6 +85,8 @@ export async function GET(request: NextRequest) {
       farcasterFollowerCount: creator.farcaster_follower_count,
       youtubeChannelId: creator.youtube_channel_id,
       youtubeFollowerCount: creator.youtube_subscriber_count,
+      twitchHandle: creator.twitch_handle,
+      twitchFollowerCount: creator.twitch_follower_count,
     });
 
     // Update cached counts in database (async, don't wait)
@@ -94,6 +98,7 @@ export async function GET(request: NextRequest) {
             bluesky_follower_count: stats.blueskyFollowers,
             farcaster_follower_count: stats.farcasterFollowers,
             youtube_subscriber_count: stats.youtubeSubscribers,
+            twitch_follower_count: stats.twitchFollowers,
             follower_count: stats.totalFollowers, // Update total in main column
             updated_at: new Date().toISOString(),
           })

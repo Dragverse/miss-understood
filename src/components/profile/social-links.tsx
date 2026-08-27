@@ -1,6 +1,6 @@
 import { FiLink2, FiGlobe } from "react-icons/fi";
 import { FaInstagram, FaTiktok } from "react-icons/fa";
-import { SiBluesky } from "react-icons/si";
+import { SiBluesky, SiTwitch } from "react-icons/si";
 import { Creator } from "@/types";
 import { FarcasterIcon } from "@/components/profile/farcaster-badge";
 import { FARCASTER_UI_ENABLED } from "@/config/features";
@@ -31,6 +31,13 @@ export function SocialLinks({ creator }: SocialLinksProps) {
       url: creator.farcasterHandle ? `https://warpcast.com/${creator.farcasterHandle}` : null,
       icon: <FarcasterIcon className="w-5 h-5" />,
       color: "text-purple-500",
+    },
+    {
+      name: "Twitch",
+      handle: creator.twitchHandle,
+      url: creator.twitchHandle ? `https://twitch.tv/${creator.twitchHandle}` : null,
+      icon: <SiTwitch className="w-5 h-5" />,
+      color: "text-[#9146FF]",
     },
     {
       name: "Bluesky",

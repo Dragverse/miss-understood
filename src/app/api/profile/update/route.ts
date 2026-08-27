@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       website: body.website,
       instagram_handle: body.instagramHandle,
       tiktok_handle: body.tiktokHandle,
+      twitch_handle: body.twitchHandle,
       wallet_address: body.walletAddress,
     };
 

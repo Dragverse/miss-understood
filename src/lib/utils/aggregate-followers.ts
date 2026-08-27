@@ -3,6 +3,7 @@
  */
 
 import { getChannelStats } from "@/lib/youtube/client";
+import { getTwitchFollowersByLogin } from "@/lib/twitch/client";
 import { FARCASTER_UI_ENABLED } from "@/config/features";
 
 export interface AggregatedStats {
@@ -18,6 +19,7 @@ export interface AggregatedStats {
   farcasterFollowers: number;
   farcasterFollowing: number;
   youtubeSubscribers: number;
+  twitchFollowers: number;
 
   // Metadata
   lastUpdated: Date;
@@ -26,6 +28,7 @@ export interface AggregatedStats {
     bluesky: boolean;
     farcaster: boolean;
     youtube: boolean;
+    twitch: boolean;
   };
 }
 
@@ -140,6 +143,8 @@ export async function aggregateFollowerStats(creator: {
   farcasterFollowingCount?: number;
   youtubeChannelId?: string;
   youtubeFollowerCount?: number;
+  twitchHandle?: string;
+  twitchFollowerCount?: number;
 }): Promise<AggregatedStats> {
   console.log("[Aggregate] Starting follower aggregation...");
 
@@ -151,12 +156,14 @@ export async function aggregateFollowerStats(creator: {
   let farcasterFollowers = creator.farcasterFollowerCount || 0;
   let farcasterFollowing = creator.farcasterFollowingCount || 0;
   let youtubeSubscribers = creator.youtubeFollowerCount || 0;
+  let twitchFollowers = creator.twitchFollowerCount || 0;
 
   const platforms = {
     dragverse: dragverseFollowers > 0,
     bluesky: false,
     farcaster: false,
     youtube: false,
+    twitch: false,
   };
 
   // Fetch fresh Bluesky stats if handle is connected
@@ -191,6 +198,17 @@ export async function aggregateFollowerStats(creator: {
     }
   }
 
+  // Twitch needs only a username — the follower total comes back on an app
+  // access token, so there's nothing for the creator to authorise.
+  if (creator.twitchHandle) {
+    const count = await getTwitchFollowersByLogin(creator.twitchHandle);
+    if (count !== null) {
+      twitchFollowers = count;
+      platforms.twitch = true;
+      console.log(`[Aggregate] Twitch: ${twitchFollowers} followers`);
+    }
+  }
+
   // Calculate totals
   // Farcaster is still fetched and stored per-platform, but deliberately kept
   // out of the headline total: it inflated the number without representing an
@@ -200,6 +218,7 @@ export async function aggregateFollowerStats(creator: {
     dragverseFollowers +
     blueskyFollowers +
     youtubeSubscribers +
+    twitchFollowers +
     (FARCASTER_UI_ENABLED ? farcasterFollowers : 0);
   const totalFollowing = dragverseFollowing + blueskyFollowing + farcasterFollowing;
 
@@ -207,6 +226,7 @@ export async function aggregateFollowerStats(creator: {
 
   return {
     totalFollowers,
+    twitchFollowers,
     totalFollowing,
     dragverseFollowers,
     dragverseFollowing,

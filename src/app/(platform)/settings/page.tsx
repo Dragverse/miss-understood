@@ -49,6 +49,7 @@ function SettingsContent() {
     website: "",
     instagramHandle: "",
     tiktokHandle: "",
+    twitchHandle: "",
   });
 
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -207,6 +208,7 @@ function SettingsContent() {
             website: supabaseProfile.website || "",
             instagramHandle: supabaseProfile.instagram_handle || user?.instagram?.username || "",
             tiktokHandle: supabaseProfile.tiktok_handle || user?.tiktok?.username || "",
+            twitchHandle: supabaseProfile.twitch_handle || user?.twitch?.username || "",
           });
           setBannerPreview(supabaseProfile.banner || null);
           setAvatarPreview(supabaseProfile.avatar || "");
@@ -246,6 +248,7 @@ function SettingsContent() {
             website: profileData.website || "",
             instagramHandle: profileData.instagramHandle || user?.instagram?.username || "",
             tiktokHandle: profileData.tiktokHandle || user?.tiktok?.username || "",
+            twitchHandle: profileData.twitchHandle || user?.twitch?.username || "",
           });
           setBannerPreview(profileData.banner || null);
           setAvatarPreview(profileData.avatar || user?.twitter?.profilePictureUrl || "/defaultpfp.png");
@@ -276,6 +279,7 @@ function SettingsContent() {
         website: "",
         instagramHandle: user?.instagram?.username || "",
         tiktokHandle: user?.tiktok?.username || "",
+        twitchHandle: user?.twitch?.username || "",
       });
       setAvatarPreview(defaultCreator.avatar);
     }
@@ -508,6 +512,7 @@ function SettingsContent() {
           website: formData.website || undefined,
           instagramHandle: formData.instagramHandle || undefined,
           tiktokHandle: formData.tiktokHandle || undefined,
+          twitchHandle: formData.twitchHandle || undefined,
           walletAddress: wallets?.[0]?.address || undefined,
         }),
       });
@@ -1258,6 +1263,33 @@ function SettingsContent() {
                     className="w-full px-4 py-3 bg-[#0f071a] border border-[#2f2942] rounded-xl focus:outline-none focus:border-[#EB83EA] transition disabled:opacity-50"
                     placeholder="username (without @)"
                   />
+                </div>
+
+                {/* Twitch Handle — the username alone is enough to pull
+                    follower count and live status, so no OAuth is needed. */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold mb-2 text-gray-300">
+                    Twitch Handle
+                    {user?.twitch?.username && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        (from connected account)
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={50}
+                    value={formData.twitchHandle}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, twitchHandle: e.target.value }))
+                    }
+                    disabled={isSaving}
+                    className="w-full px-4 py-3 bg-[#0f071a] border border-[#2f2942] rounded-xl focus:outline-none focus:border-[#EB83EA] transition disabled:opacity-50"
+                    placeholder="username (without @)"
+                  />
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    Adds your Twitch followers to your watcher count.
+                  </p>
                 </div>
 
                 {/* YouTube Channel (read-only, managed in Accounts section) */}

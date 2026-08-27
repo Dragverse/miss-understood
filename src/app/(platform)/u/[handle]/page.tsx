@@ -11,6 +11,7 @@ import { FarcasterBadge } from "@/components/profile/farcaster-badge";
 import { YouTubeBadge } from "@/components/profile/youtube-badge";
 import { InstagramBadge } from "@/components/profile/instagram-badge";
 import { TikTokBadge } from "@/components/profile/tiktok-badge";
+import { TwitchBadge } from "@/components/profile/twitch-badge";
 import { WebsiteBadge } from "@/components/profile/website-badge";
 import { ProfileActionButtons } from "@/components/profile/profile-action-buttons";
 import { VerificationBadge } from "@/components/profile/verification-badge";
@@ -364,6 +365,7 @@ export default function DynamicProfilePage() {
         0,
     },
     { label: "YouTube", count: creator.youtubeSubscriberCount ?? 0 },
+    { label: "Twitch", count: creator.twitchFollowerCount ?? 0 },
   ].filter((entry) => entry.count > 0);
 
   const watcherCount =
@@ -487,6 +489,7 @@ export default function DynamicProfilePage() {
                     {creator.youtubeChannelId && <YouTubeBadge channelId={creator.youtubeChannelId} channelName={creator.youtubeChannelName} />}
                     {creator.instagramHandle && <InstagramBadge handle={creator.instagramHandle} />}
                     {creator.tiktokHandle && <TikTokBadge handle={creator.tiktokHandle} />}
+                    {creator.twitchHandle && <TwitchBadge handle={creator.twitchHandle} />}
                     {creator.website && <WebsiteBadge url={creator.website} />}
                   </div>
 
@@ -516,7 +519,9 @@ export default function DynamicProfilePage() {
                                         ? "text-[#0085ff]"
                                         : entry.label === "YouTube"
                                           ? "text-red-500"
-                                          : "text-[#EB83EA]"
+                                          : entry.label === "Twitch"
+                                            ? "text-[#9146FF]"
+                                            : "text-[#EB83EA]"
                                     }
                                   >
                                     {entry.label}
