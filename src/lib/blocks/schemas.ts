@@ -83,16 +83,6 @@ const embedUrl = externalUrl.refine((value) => {
 // Per-block config schemas
 // ============================================
 
-export const aboutConfigSchema = z.object({
-  showPronouns: z.boolean().default(true),
-  showBasedIn: z.boolean().default(true),
-  showDragFamily: z.boolean().default(true),
-  showSocials: z.boolean().default(true),
-  pronouns: z.string().trim().max(60).optional(),
-  basedIn: z.string().trim().max(120).optional(),
-  dragFamily: z.string().trim().max(120).optional(),
-});
-
 export const upcomingConfigSchema = z.object({
   limit: z.number().int().min(1).max(20).default(5),
   /** Past events drop off automatically; this shows a few for context. */
@@ -231,7 +221,6 @@ export const guestbookConfigSchema = z.object({
 // ============================================
 
 export const BLOCK_CONFIG_SCHEMAS = {
-  about: aboutConfigSchema,
   upcoming: upcomingConfigSchema,
   gallery: galleryConfigSchema,
   video_showcase: videoShowcaseConfigSchema,

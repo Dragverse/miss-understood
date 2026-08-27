@@ -25,15 +25,6 @@ export type EditorField =
  * worth configuring, and the editor says so rather than showing an empty form.
  */
 export const BLOCK_EDITOR_FIELDS: Partial<Record<BlockType, EditorField[]>> = {
-  about: [
-    { kind: "text", key: "pronouns", label: "Pronouns", placeholder: "she/her" },
-    { kind: "text", key: "basedIn", label: "Based in", placeholder: "Berlin" },
-    { kind: "text", key: "dragFamily", label: "Drag family", placeholder: "House of…" },
-    { kind: "toggle", key: "showPronouns", label: "Show pronouns" },
-    { kind: "toggle", key: "showBasedIn", label: "Show where you're based" },
-    { kind: "toggle", key: "showDragFamily", label: "Show drag family" },
-  ],
-
   notes: [
     { kind: "number", key: "limit", label: "Notes to show", min: 1, max: 30 },
     {

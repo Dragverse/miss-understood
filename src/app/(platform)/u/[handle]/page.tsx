@@ -311,28 +311,35 @@ export default function DynamicProfilePage() {
   // Render profile
   return (
     <div className="min-h-screen pb-28 md:pb-6">
+      {/*
+        Profile-wide background: the creator's banner sits behind the entire
+        page, not just the header card. Fixed rather than absolute so it stays
+        put while the board scrolls over it.
+
+        aria-hidden + pointer-events-none because it's pure decoration and must
+        never intercept clicks on the content above it.
+      */}
+      <div className="fixed inset-0 -z-10 pointer-events-none" aria-hidden="true">
+        {creator.banner ? (
+          <Image src={creator.banner} alt="" fill className="object-cover" priority />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA] via-[#7c3aed] to-[#1a0b2e]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
+          </div>
+        )}
+        {/*
+          Scrim. Light at the top so the banner reads, deepening to near-solid
+          further down so board text stays legible over a busy photo.
+        */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-[#0f071a]/85 to-[#0f071a]/95" />
+      </div>
+
       {/* ── Unified profile card ────────────────────────────────────────────── */}
       <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-8 pt-4 md:pt-6" id="livestream">
-        <div className="relative rounded-[32px] overflow-hidden bg-[#1a0b2e] shadow-2xl">
+        <div className="relative rounded-[32px] overflow-hidden shadow-2xl">
 
-          {/* Card background: creator's banner */}
-          <div className="absolute inset-0">
-            {creator.banner ? (
-              <Image
-                src={creator.banner}
-                alt="Profile banner"
-                fill
-                className="object-cover"
-                priority
-              />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-[#EB83EA] via-[#7c3aed] to-[#1a0b2e]">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
-              </div>
-            )}
-            {/* Gradient: strong at bottom for readability, light at top */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/90" />
-          </div>
+          {/* Card scrim only — the banner itself now lives behind the whole page. */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] via-black/20 to-black/60" />
 
           {/* Livestream player — only for approved streamers or when live */}
           {showLivestreamSection && (

@@ -47,44 +47,6 @@ export interface BlockViewProps<T extends keyof BlockConfigMap = keyof BlockConf
 }
 
 // ============================================
-// About
-// ============================================
-
-export function AboutBlock({ config, content }: BlockViewProps<"about">) {
-  const { creator } = content;
-  const facts: Array<[string, string | undefined]> = [
-    [config.showPronouns ? "Pronouns" : "", config.pronouns],
-    [config.showBasedIn ? "Based in" : "", config.basedIn],
-    [config.showDragFamily ? "Drag family" : "", config.dragFamily],
-  ];
-
-  const shown = facts.filter(([label, value]) => label && value);
-
-  if (!creator.description && shown.length === 0) {
-    return <BlockEmpty message="Nothing here yet." />;
-  }
-
-  return (
-    <div className="space-y-3">
-      {creator.description && (
-        <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{creator.description}</p>
-      )}
-
-      {shown.length > 0 && (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-          {shown.map(([label, value]) => (
-            <div key={label} className="contents">
-              <dt className="text-white/50">{label}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-    </div>
-  );
-}
-
-// ============================================
 // Video showcase
 // ============================================
 

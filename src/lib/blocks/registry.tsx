@@ -2,7 +2,6 @@
 
 import type { ComponentType } from "react";
 import {
-  FiUser,
   FiCalendar,
   FiImage,
   FiFilm,
@@ -19,7 +18,6 @@ import {
 import type { IconType } from "react-icons";
 
 import {
-  AboutBlock,
   BookingBlock,
   FeaturedFriendsBlock,
   GalleryBlock,
@@ -63,13 +61,6 @@ function notYetBlock(message: string): ComponentType<BlockViewProps> {
 }
 
 export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
-  about: {
-    label: "About me",
-    icon: FiUser,
-    description: "Bio, pronouns, where you're based, drag family.",
-    view: AboutBlock,
-    addable: true,
-  },
   upcoming: {
     label: "Upcoming",
     icon: FiCalendar,

@@ -10,8 +10,12 @@
 import type { CSSProperties } from "react";
 import type { BoardTheme } from "./types";
 
-/** Board backgrounds default to the app's dark surface. */
-const DEFAULT_BOARD_BG = "var(--color-bg-dark)";
+/**
+ * Transparent by default so the profile's own banner shows through the board.
+ * A creator who picks an explicit background still overrides it — this only
+ * governs the "no theme chosen" case.
+ */
+const DEFAULT_BOARD_BG = "transparent";
 
 /** Curated gradients. Creators pick a name; they never supply CSS. */
 export const GRADIENT_PRESETS: Record<string, string> = {

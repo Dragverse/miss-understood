@@ -6,7 +6,6 @@
  */
 
 export const BLOCK_TYPES = [
-  "about",
   "upcoming",
   "gallery",
   "video_showcase",
