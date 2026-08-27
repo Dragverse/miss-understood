@@ -32,8 +32,25 @@ export function Providers({ children }: { children: React.ReactNode }) {
           loginMessage: "Sign in to upload, like, and comment on drag content",
           walletList: ["metamask", "coinbase_wallet", "wallet_connect"],
         },
-        // Primary login methods (shown upfront)
-        loginMethods: ["email", "google", "farcaster", "wallet"],
+        // Login methods, in the order they appear.
+        //
+        // Wallet is off: it was a barrier for drag creators who have no reason
+        // to hold one, and tipping still works because Privy provisions an
+        // embedded wallet on demand. Farcaster is off alongside the rest of
+        // the Farcaster UI (see FARCASTER_UI_ENABLED).
+        //
+        // Twitch and Instagram are here because that's who these creators
+        // already are — and connecting Twitch also gives us the username the
+        // Helix API needs for follower counts.
+        loginMethods: ["email", "google", "twitch", "instagram"],
+        // Required, not incidental: createOnLogin defaults to 'off', so with
+        // wallet login removed a new user would have no wallet at all and
+        // tipping would silently stop working for them — tip-modal.tsx bails
+        // without a wallet address. An embedded wallet keeps tipping alive
+        // without asking a drag creator to understand self-custody.
+        embeddedWallets: {
+          ethereum: { createOnLogin: "users-without-wallets" },
+        },
         // Supported chains for wallet connections
         supportedChains: [base, mainnet, optimism],
       }}
