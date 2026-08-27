@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FiLink, FiArrowUpRight } from "react-icons/fi";
+import { useLightbox } from "@/components/shared/image-lightbox";
 
 /**
  * A note as stored in `posts`. Only the fields a card actually renders.
@@ -46,6 +47,7 @@ export function NoteCard({
   const body = (note.text_content ?? "").trim();
   const image = note.media_urls?.[0];
   const expiry = expiresInLabel(note.expires_at);
+  const lightbox = useLightbox(image ? [{ url: image }] : []);
 
   if (note.note_style === "quote") {
     return (
@@ -67,8 +69,24 @@ export function NoteCard({
   return (
     <article className="rounded-[28px] overflow-hidden bg-[color:var(--color-card-pink)] text-[color:var(--color-card-ink)] shadow-lg">
       {image && (
-        <div className="relative w-full aspect-[4/3] bg-black/20">
-          <Image src={image} alt="" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+        <div className="relative w-full bg-black/20">
+          {/* Natural proportions, not a 4:3 crop — a note's photo is usually
+              the point of the note. Tapping opens it full-screen. */}
+          <button
+            type="button"
+            onClick={() => lightbox.open(0)}
+            aria-label="Expand photo"
+            className="block w-full cursor-zoom-in"
+          >
+            <Image
+              src={image}
+              alt=""
+              width={1400}
+              height={1400}
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="w-full h-auto object-contain"
+            />
+          </button>
           {expiry && (
             <span className="absolute top-3 right-3 rounded-lg bg-[color:var(--color-badge-green)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[color:var(--color-card-ink)]">
               {expiry}
@@ -117,6 +135,7 @@ export function NoteCard({
           </a>
         )}
       </div>
+      {lightbox.element}
     </article>
   );
 }

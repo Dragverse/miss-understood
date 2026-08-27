@@ -31,7 +31,7 @@ import { CreatorBoard } from "@/components/profile/creator-board";
 import { useBoard } from "@/lib/hooks/use-board";
 import { VERTICAL_VIDEO_ENABLED, FARCASTER_UI_ENABLED } from "@/config/features";
 import { ProfileTabs, isProfileTab, type ProfileTab } from "@/components/profile/profile-tabs";
-import { EventRow } from "@/components/blocks/upcoming-block";
+import { EventCard } from "@/components/blocks/event-card";
 import { NoteCard } from "@/components/notes/note-card";
 import type { DragEvent } from "@/lib/events/types";
 
@@ -757,10 +757,13 @@ export default function DynamicProfilePage() {
           {activeTab === "events" && (
             <div className="max-w-3xl mx-auto">
               {events.length > 0 ? (
-                <ul className="space-y-3">
+                <ul className="grid sm:grid-cols-2 gap-4">
                   {events.map((event) => (
-                    <li key={event.id}>
-                      <EventRow event={event} />
+                    <li
+                      key={event.id}
+                      className="overflow-hidden rounded-[28px] bg-[color:var(--color-card-pink)] text-[color:var(--color-card-ink)] shadow-lg"
+                    >
+                      <EventCard event={event} />
                     </li>
                   ))}
                 </ul>

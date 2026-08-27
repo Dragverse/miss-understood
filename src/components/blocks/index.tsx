@@ -16,6 +16,7 @@ import {
   FiChevronRight,
 } from "react-icons/fi";
 import { BlockEmpty } from "./block-shell";
+import { useLightbox } from "@/components/shared/image-lightbox";
 import { NoteCard } from "@/components/notes/note-card";
 import { getSafeThumbnail } from "@/lib/utils/thumbnail-helpers";
 import { useOptionalAudioPlayer, type AudioTrack } from "@/contexts/AudioPlayerContext";
@@ -185,77 +186,108 @@ export function GalleryBlock({ config, content }: BlockViewProps<"gallery">) {
           );
 
   const shown = photos.slice(0, config.limit);
+  const lightbox = useLightbox(shown.map((p) => ({ url: p.url, caption: p.caption })));
 
   if (shown.length === 0) return <BlockEmpty message="No photos yet." />;
 
-  // One photo — whether that's all there is, or the creator chose `single` —
-  // renders full-width at its natural proportions. A lone photo is a
-  // statement, not a cropped tile.
+  // A single photo — or an explicit `single` layout — renders at its own
+  // proportions, full width. Cropping one photo into a tile throws away the
+  // composition, which for a drag portrait is the whole picture.
   if (config.layout === "single" || shown.length === 1) {
     const photo = shown[0];
     return (
       <figure className="m-0">
-        <div className="relative w-full overflow-hidden bg-[#0f071a]">
+        <button
+          type="button"
+          onClick={() => lightbox.open(0)}
+          aria-label="Expand photo"
+          className="block w-full overflow-hidden bg-[#0f071a] cursor-zoom-in"
+        >
           <Image
             src={photo.url}
             alt={photo.caption ?? ""}
-            width={1200}
-            height={1200}
+            width={1600}
+            height={1600}
             sizes="(max-width: 768px) 100vw, 50vw"
             className="w-full h-auto object-contain"
           />
-        </div>
+        </button>
         {config.showCaptions && photo.caption && (
-          <figcaption className="mt-1.5 text-xs text-white/60">{photo.caption}</figcaption>
+          <figcaption className="px-5 pt-2 text-xs opacity-70">{photo.caption}</figcaption>
         )}
+        {lightbox.element}
       </figure>
     );
   }
 
   if (config.layout === "grid") {
     const columnClass =
-      config.columns === 2 ? "grid-cols-2" : config.columns === 4 ? "grid-cols-4" : "grid-cols-3";
+      config.columns === 2 ? "columns-2" : config.columns === 4 ? "columns-4" : "columns-3";
+    // Masonry columns rather than a square grid, so each photo keeps its own
+    // shape instead of being cropped to fit a uniform cell.
     return (
-      <div className={`grid ${columnClass} gap-2.5 p-4`}>
-        {shown.map((photo) => (
-          <div
-            key={photo.key}
-            className="group relative aspect-square rounded-[20px] overflow-hidden border-2 border-[#2f2942]/60 hover:border-[#2f2942] bg-[#0f071a] shadow-lg transition-all"
-          >
-            <Image
-              src={photo.url}
-              alt={photo.caption ?? ""}
-              fill
-              sizes="(max-width: 768px) 33vw, 16vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          </div>
-        ))}
-      </div>
+      <>
+        <div className={`${columnClass} gap-2.5 p-4 [column-fill:_balance]`}>
+          {shown.map((photo, index) => (
+            <button
+              key={photo.key}
+              type="button"
+              onClick={() => lightbox.open(index)}
+              aria-label="Expand photo"
+              className="mb-2.5 block w-full break-inside-avoid overflow-hidden rounded-[18px] bg-[#0f071a] cursor-zoom-in"
+            >
+              <Image
+                src={photo.url}
+                alt={photo.caption ?? ""}
+                width={800}
+                height={800}
+                sizes="(max-width: 768px) 33vw, 16vw"
+                className="w-full h-auto object-contain"
+              />
+            </button>
+          ))}
+        </div>
+        {lightbox.element}
+      </>
     );
   }
 
   return (
-    <MediaSlider perView={config.perView} count={shown.length} label="photos">
-      {shown.map((photo) => (
-        <figure key={photo.key} className="keen-slider__slide m-0 group">
-          <div className="relative aspect-square overflow-hidden bg-[#0f071a]">
-            <Image
-              src={photo.url}
-              alt={photo.caption ?? ""}
-              fill
-              sizes="(max-width: 768px) 50vw, 25vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          </div>
-          {config.showCaptions && photo.caption && (
-            <figcaption className="mt-1 text-[11px] text-white/60 line-clamp-2">
-              {photo.caption}
-            </figcaption>
-          )}
-        </figure>
-      ))}
-    </MediaSlider>
+    <>
+      <MediaSlider perView={config.perView} count={shown.length} label="photos">
+        {shown.map((photo, index) => (
+          <figure key={photo.key} className="keen-slider__slide m-0 group">
+            <button
+              type="button"
+              onClick={() => lightbox.open(index)}
+              aria-label="Expand photo"
+              className="block w-full overflow-hidden bg-[#0f071a] cursor-zoom-in"
+            >
+              {/*
+                Slides share a row, so they do need a common height — but
+                object-contain letterboxes rather than cropping, so the whole
+                photo is still visible. Tapping opens it uncropped.
+              */}
+              <span className="relative block aspect-square">
+                <Image
+                  src={photo.url}
+                  alt={photo.caption ?? ""}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="object-contain"
+                />
+              </span>
+            </button>
+            {config.showCaptions && photo.caption && (
+              <figcaption className="mt-1 px-1 text-[11px] opacity-70 line-clamp-2">
+                {photo.caption}
+              </figcaption>
+            )}
+          </figure>
+        ))}
+      </MediaSlider>
+      {lightbox.element}
+    </>
   );
 }
 

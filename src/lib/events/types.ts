@@ -39,6 +39,8 @@ export interface DragEvent {
   city: string | null;
   region: string | null;
   country: string | null;
+  latitude: number | null;
+  longitude: number | null;
   ticketUrl: string | null;
   priceText: string | null;
   isFree: boolean;
@@ -66,6 +68,8 @@ export interface EventRow {
   city: string | null;
   region: string | null;
   country: string | null;
+  latitude: number | null;
+  longitude: number | null;
   ticket_url: string | null;
   price_text: string | null;
   is_free: boolean;
@@ -94,6 +98,8 @@ export function rowToEvent(row: EventRow): DragEvent {
     city: row.city,
     region: row.region,
     country: row.country,
+    latitude: row.latitude,
+    longitude: row.longitude,
     ticketUrl: row.ticket_url,
     priceText: row.price_text,
     isFree: row.is_free,

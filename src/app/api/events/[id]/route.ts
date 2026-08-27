@@ -3,6 +3,7 @@ import { verifyAuth, isPrivyConfigured } from "@/lib/auth/verify";
 import { getSupabaseServerClient } from "@/lib/supabase/client";
 import { validateBody } from "@/lib/validation/schemas";
 import { eventUpdateSchema, eventInputToRow, rowToEvent, type EventRow } from "@/lib/events/types";
+import { geocodeVenue } from "@/lib/events/geocode";
 
 export const dynamic = "force-dynamic";
 
@@ -47,10 +48,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
+    // Re-geocode on update: the venue may have changed, and stale coordinates
+    // would put the pin somewhere the event isn't.
+    const row = eventInputToRow(parsed.data, guard.creatorDid);
+    const coords = await geocodeVenue(parsed.data);
+    Object.assign(row, coords ?? { latitude: null, longitude: null });
+
     const supabase = getSupabaseServerClient();
     const { data, error } = await supabase
       .from("events")
-      .update(eventInputToRow(parsed.data, guard.creatorDid))
+      .update(row)
       .eq("id", id)
       .select()
       .single();

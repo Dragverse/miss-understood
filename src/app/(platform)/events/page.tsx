@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { FiCalendar, FiMapPin, FiRefreshCw } from "react-icons/fi";
-import { EventRow } from "@/components/blocks/upcoming-block";
+import { EventCard } from "@/components/blocks/event-card";
 import { formatEventDate, type DragEvent } from "@/lib/events/types";
 
 /**
@@ -135,10 +135,13 @@ export default function EventsPage() {
                 <h2 className="font-heading text-lg uppercase tracking-tight text-white/50 mb-3">
                   {day}
                 </h2>
-                <ul className="space-y-3">
+                <ul className="grid sm:grid-cols-2 gap-4">
                   {dayEvents.map((event) => (
-                    <li key={event.id} className="rounded-[24px] bg-[color:var(--color-card-pink)] text-[color:var(--color-card-ink)] p-2 shadow-lg">
-                      <EventRow event={event} />
+                    <li
+                      key={event.id}
+                      className="overflow-hidden rounded-[28px] bg-[color:var(--color-card-pink)] text-[color:var(--color-card-ink)] shadow-lg"
+                    >
+                      <EventCard event={event} />
                     </li>
                   ))}
                 </ul>

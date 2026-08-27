@@ -10,3 +10,4 @@ export { CreatorCard } from "./creator-card";
 export { TipButton } from "./tip-button";
 export { EngagementBar } from "./engagement-bar";
 export { CreatorInfo } from "./creator-info";
+export { ImageLightbox, useLightbox, type LightboxImage } from "./image-lightbox";

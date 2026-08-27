@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/client";
 import { getCreatorByDID, getCreatorByHandleOrDID } from "@/lib/supabase/creators";
 import { validateBody } from "@/lib/validation/schemas";
 import { eventInputSchema, eventInputToRow, rowToEvent, type EventRow } from "@/lib/events/types";
+import { geocodeVenue } from "@/lib/events/geocode";
 
 export const dynamic = "force-dynamic";
 
@@ -101,10 +102,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
     }
 
+    // Resolve the venue to coordinates so the event can show a map. Best
+    // effort: a failed lookup just means no map, never a failed save.
+    const row = eventInputToRow(parsed.data, auth.userId, creator.id);
+    const coords = await geocodeVenue(parsed.data);
+    if (coords) Object.assign(row, coords);
+
     const supabase = getSupabaseServerClient();
     const { data, error } = await supabase
       .from("events")
-      .insert(eventInputToRow(parsed.data, auth.userId, creator.id))
+      .insert(row)
       .select()
       .single();
 
