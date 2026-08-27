@@ -7,7 +7,7 @@ import { SiTwitch, SiBluesky, SiYoutube } from "react-icons/si";
 import { FaInstagram } from "react-icons/fa";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { SOCIAL_LOGIN_TWITCH_INSTAGRAM } from "@/config/features";
+import { TWITCH_LOGIN_ENABLED, INSTAGRAM_LOGIN_ENABLED } from "@/config/features";
 import { useAuthUser } from "@/lib/privy/hooks";
 import { usePrivy, useFundWallet } from "@privy-io/react-auth";
 import { Creator } from "@/types";
@@ -1813,11 +1813,11 @@ function SettingsContent() {
                       ) : (
                         <button
                           onClick={() => linkInstagram()}
-                          disabled={!SOCIAL_LOGIN_TWITCH_INSTAGRAM}
-                          title={SOCIAL_LOGIN_TWITCH_INSTAGRAM ? undefined : "Enable Instagram in the Privy dashboard first"}
+                          disabled={!INSTAGRAM_LOGIN_ENABLED}
+                          title={INSTAGRAM_LOGIN_ENABLED ? undefined : "Instagram sign-in isn\u2019t available yet"}
                           className="text-sm px-4 py-2 bg-gradient-to-r from-[#DD2A7B] to-[#8134AF] hover:opacity-90 text-white rounded-lg transition font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          {SOCIAL_LOGIN_TWITCH_INSTAGRAM ? "Connect" : "Coming soon"}
+                          {INSTAGRAM_LOGIN_ENABLED ? "Connect" : "Coming soon"}
                         </button>
                       )}
                     </div>
@@ -1859,11 +1859,11 @@ function SettingsContent() {
                       ) : (
                         <button
                           onClick={() => linkTwitch()}
-                          disabled={!SOCIAL_LOGIN_TWITCH_INSTAGRAM}
-                          title={SOCIAL_LOGIN_TWITCH_INSTAGRAM ? undefined : "Enable Twitch in the Privy dashboard first"}
+                          disabled={!TWITCH_LOGIN_ENABLED}
+                          title={TWITCH_LOGIN_ENABLED ? undefined : "Twitch sign-in isn\u2019t available yet"}
                           className="text-sm px-4 py-2 bg-[#9146FF] hover:bg-[#7d3ce0] text-white rounded-lg transition font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          {SOCIAL_LOGIN_TWITCH_INSTAGRAM ? "Connect" : "Coming soon"}
+                          {TWITCH_LOGIN_ENABLED ? "Connect" : "Coming soon"}
                         </button>
                       )}
                     </div>

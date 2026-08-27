@@ -32,23 +32,30 @@ export const VERTICAL_VIDEO_ENABLED = false;
 export const FARCASTER_UI_ENABLED = false;
 
 /**
- * Twitch and Instagram as login / account-linking options.
+ * Twitch as a login / account-linking option.
  *
- * MUST stay false until both are toggled ON in the Privy Dashboard under
- * Login Methods. Privy requires config.loginMethods to be a *subset* of what
- * the dashboard enables, and rejects anything else with:
+ * Requires twitch_oauth: true in the Privy Dashboard. Confirmed working.
+ */
+export const TWITCH_LOGIN_ENABLED = true;
+
+/**
+ * Instagram as a login / account-linking option.
+ *
+ * Off: Privy reports instagram_oauth: true, and the login modal renders, but
+ * clicking Instagram fails at Meta with
  *
  *   "Invalid Request: Request parameters are invalid: Invalid platform app"
  *
- * That error blocks the whole login modal, not just the offending provider —
- * which is why this defaults off rather than being left on hopefully.
+ * That string comes from Meta, not Privy — Instagram is rejecting the app.
+ * The usual cause is credentials taken from the Facebook App ID/Secret at the
+ * top of the Meta dashboard instead of the *Instagram* app ID/secret under
+ * Products > Instagram > API setup with Instagram login. They are different
+ * values and only the Instagram pair works here.
  *
- * Dashboard > your app > Login Methods > enable Twitch and Instagram, then
- * flip this to true. No other change needed.
+ * Flip to true once clicking Instagram completes the flow.
  *
- * Verified on before enabling, via Privy's own app config endpoint:
- *   GET https://auth.privy.io/api/v1/apps/{appId}
- * which reported twitch_oauth: true and instagram_oauth: true. Re-check there
- * rather than assuming if this ever throws "Invalid platform app" again.
+ * A provider that isn't enabled in the Privy dashboard breaks the entire login
+ * modal, not just its own button — check
+ * GET https://auth.privy.io/api/v1/apps/{appId} before enabling anything here.
  */
-export const SOCIAL_LOGIN_TWITCH_INSTAGRAM = true;
+export const INSTAGRAM_LOGIN_ENABLED = false;

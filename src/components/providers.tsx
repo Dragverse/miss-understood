@@ -10,7 +10,7 @@ import { config } from "@/lib/privy/config";
 import { base, mainnet, optimism } from "wagmi/chains";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
 import { HuddleProvider } from "@/contexts/HuddleProvider";
-import { SOCIAL_LOGIN_TWITCH_INSTAGRAM } from "@/config/features";
+import { TWITCH_LOGIN_ENABLED, INSTAGRAM_LOGIN_ENABLED } from "@/config/features";
 
 const queryClient = new QueryClient();
 
@@ -43,9 +43,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         // Twitch and Instagram are here because that's who these creators
         // already are — and connecting Twitch also gives us the username the
         // Helix API needs for follower counts.
-        loginMethods: SOCIAL_LOGIN_TWITCH_INSTAGRAM
-          ? ["email", "google", "twitch", "instagram"]
-          : ["email", "google"],
+        loginMethods: [
+          "email",
+          "google",
+          ...(TWITCH_LOGIN_ENABLED ? (["twitch"] as const) : []),
+          ...(INSTAGRAM_LOGIN_ENABLED ? (["instagram"] as const) : []),
+        ],
         // Required, not incidental: createOnLogin defaults to 'off', so with
         // wallet login removed a new user would have no wallet at all and
         // tipping would silently stop working for them — tip-modal.tsx bails
