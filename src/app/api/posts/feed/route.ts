@@ -30,6 +30,9 @@ export async function GET(request: NextRequest) {
       `)
       .eq("visibility", "public")
       .or(`scheduled_at.is.null,scheduled_at.lte.${new Date().toISOString()}`)
+      // Expired notes drop out of public reads but are never deleted, so the
+      // creator keeps the record. Same shape as the scheduled_at filter above.
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order("created_at", { ascending: false })
       .limit(limit);
 

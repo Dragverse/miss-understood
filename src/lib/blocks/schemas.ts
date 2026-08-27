@@ -149,7 +149,12 @@ export const videoShowcaseConfigSchema = z.object({
 export const musicConfigSchema = z.object({
   limit: z.number().int().min(1).max(50).default(10),
   pinnedTrackIds: z.array(z.uuid()).max(50).default([]),
-  autoplay: z.literal(false).default(false), // never autoplay audio
+  /**
+   * Start the first track on load. Defaults off, and browsers block audio
+   * autoplay without a prior user gesture regardless — the player treats a
+   * blocked attempt as "cued and paused" rather than an error.
+   */
+  autoplay: z.boolean().default(false),
 });
 
 export const livestreamConfigSchema = z.object({

@@ -114,7 +114,15 @@ export const BLOCK_EDITOR_FIELDS: Partial<Record<BlockType, EditorField[]>> = {
     { kind: "toggle", key: "showTitles", label: "Show titles" },
   ],
 
-  music: [{ kind: "number", key: "limit", label: "Tracks to show", min: 1, max: 50 }],
+  music: [
+    { kind: "number", key: "limit", label: "Tracks to show", min: 1, max: 50 },
+    {
+      kind: "toggle",
+      key: "autoplay",
+      label: "Start playing automatically",
+      help: "Most browsers block this until the visitor interacts with the page, so the track may just sit cued and ready.",
+    },
+  ],
 
   links: [
     { kind: "links", key: "links", label: "Links" },

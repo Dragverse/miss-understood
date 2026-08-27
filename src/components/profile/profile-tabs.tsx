@@ -4,7 +4,8 @@ export const PROFILE_TABS = ["user", "videos", "audio", "events", "notes"] as co
 export type ProfileTab = (typeof PROFILE_TABS)[number];
 
 const TAB_LABELS: Record<ProfileTab, string> = {
-  user: "User",
+  // `user` is overridden with the creator's own name — see ProfileTabs.
+  user: "Profile",
   videos: "Videos",
   audio: "Audio",
   events: "Events",
@@ -23,10 +24,17 @@ export function isProfileTab(value: string | null): value is ProfileTab {
 export function ProfileTabs({
   active,
   available,
+  displayName,
   onChange,
 }: {
   active: ProfileTab;
   available: ReadonlySet<ProfileTab>;
+  /**
+   * Shown as the first tab's label. Deliberately the creator's name rather
+   * than "Dashboard" — /dashboard is the creator's admin area, and reusing
+   * that word for a public profile section would be confusing.
+   */
+  displayName?: string | null;
   onChange: (tab: ProfileTab) => void;
 }) {
   const tabs = PROFILE_TABS.filter((tab) => tab === "user" || available.has(tab));
@@ -53,7 +61,7 @@ export function ProfileTabs({
                 : "text-white/45 hover:text-white/80"
             }`}
           >
-            {TAB_LABELS[tab]}
+            {tab === "user" ? displayName?.trim() || TAB_LABELS.user : TAB_LABELS[tab]}
           </button>
         );
       })}

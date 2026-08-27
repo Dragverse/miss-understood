@@ -557,6 +557,7 @@ export default function DynamicProfilePage() {
         <ProfileTabs
           active={activeTab}
           available={availableTabs}
+          displayName={creator.displayName}
           onChange={(tab) => {
             setActiveTab(tab);
             // Keep the tab in the URL so sections are linkable and survive a

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useKeenSlider } from "keen-slider/react";
@@ -396,25 +396,67 @@ export function NotesBlock({ config, content }: BlockViewProps<"notes">) {
 export function MusicBlock({ config, content }: BlockViewProps<"music">) {
   const tracks = orderByPinned(content.audio, config.pinnedTrackIds).slice(0, config.limit);
   const player = useOptionalAudioPlayer();
+  const playlist = useMemo(
+    () =>
+      tracks.map<AudioTrack>((track) => ({
+        id: track.id,
+        title: track.title,
+        artist: content.creator.displayName,
+        thumbnail: track.thumbnail || "",
+        audioUrl: track.playbackUrl,
+        duration: track.duration,
+        type: "uploaded",
+        creatorDid: content.creator.did,
+        contentType: track.contentType,
+      })),
+    [tracks, content.creator.displayName, content.creator.did]
+  );
+
+  const playTrack = player?.playTrack;
+  const autoplayed = useRef(false);
+
+  // Cue the first track once so the player always shows something ready to
+  // play, rather than an inert list. Only actually starts it when the creator
+  // asked for autoplay — and browsers will usually refuse that until the
+  // visitor has interacted, which leaves it cued and paused. That's the
+  // intended fallback, not a failure.
+  useEffect(() => {
+    if (!config.autoplay || autoplayed.current) return;
+    if (!playTrack || playlist.length === 0 || !playlist[0].audioUrl) return;
+    autoplayed.current = true;
+    playTrack(playlist[0], playlist);
+  }, [config.autoplay, playTrack, playlist]);
 
   if (tracks.length === 0) return <BlockEmpty message="No tracks yet." />;
 
-  const playlist: AudioTrack[] = tracks.map((track) => ({
-    id: track.id,
-    title: track.title,
-    artist: content.creator.displayName,
-    thumbnail: track.thumbnail || "",
-    audioUrl: track.playbackUrl,
-    duration: track.duration,
-    type: "uploaded",
-    creatorDid: content.creator.did,
-    contentType: track.contentType,
-  }));
 
   const currentId = player?.currentTrack?.id;
+  const cued = tracks.find((t) => t.id === currentId) ?? tracks[0];
+  const cuedIsLoaded = currentId === cued.id;
 
   return (
-    <ol className="space-y-1.5">
+    <div>
+      <NowPlayingBar
+        title={cued.title}
+        artist={content.creator.displayName}
+        thumbnail={cued.thumbnail}
+        isPlaying={cuedIsLoaded && !!player?.isPlaying}
+        currentTime={cuedIsLoaded ? (player?.currentTime ?? 0) : 0}
+        duration={(cuedIsLoaded ? player?.duration : 0) || cued.duration || 0}
+        onToggle={
+          player && cued.playbackUrl
+            ? () => {
+                if (cuedIsLoaded) player.togglePlayPause();
+                else {
+                  const index = tracks.findIndex((t) => t.id === cued.id);
+                  player.playTrack(playlist[index], playlist);
+                }
+              }
+            : undefined
+        }
+      />
+
+      <ol className="space-y-1.5 p-3">
       {tracks.map((track, index) => {
         const isCurrent = currentId === track.id;
         const isPlaying = isCurrent && !!player?.isPlaying;
@@ -483,7 +525,62 @@ export function MusicBlock({ config, content }: BlockViewProps<"music">) {
           </li>
         );
       })}
-    </ol>
+      </ol>
+    </div>
+  );
+}
+
+/**
+ * The pink now-playing header. Always present so the block reads as a player
+ * rather than a list, even before anything has been pressed.
+ */
+function NowPlayingBar({
+  title,
+  artist,
+  thumbnail,
+  isPlaying,
+  currentTime,
+  duration,
+  onToggle,
+}: {
+  title: string;
+  artist: string;
+  thumbnail?: string;
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  onToggle?: () => void;
+}) {
+  const pct = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+
+  return (
+    <div className="flex items-center gap-3 bg-[color:var(--color-card-pink)] text-[color:var(--color-card-ink)] p-3">
+      <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-black/15 flex-shrink-0">
+        {thumbnail && <Image src={thumbnail} alt="" fill sizes="56px" className="object-cover" />}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="font-heading text-sm uppercase leading-tight truncate">{title}</p>
+        <p className="text-[11px] opacity-70 truncate">{artist}</p>
+        <div className="mt-1.5 h-1 rounded-full bg-black/15 overflow-hidden">
+          <div
+            className="h-full bg-[color:var(--color-card-ink)] transition-[width] duration-300"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+
+      {onToggle && (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={isPlaying ? `Pause ${title}` : `Play ${title}`}
+          className="flex-shrink-0 w-11 h-11 rounded-full grid place-items-center bg-[color:var(--color-card-ink)] text-[color:var(--color-card-pink)] hover:opacity-90 transition-opacity"
+        >
+          {isPlaying ? <FiPause size={17} /> : <FiPlay size={17} />}
+        </button>
+      )}
+    </div>
   );
 }
 

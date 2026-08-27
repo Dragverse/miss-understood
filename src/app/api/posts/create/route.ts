@@ -38,7 +38,35 @@ export async function POST(request: NextRequest) {
       scheduledAt,
       premiereMode,
       platforms = { dragverse: true, bluesky: false },
+      // Note fields (supabase-migration-note-fields.sql)
+      title,
+      linkUrl,
+      linkLabel,
+      expiresAt,
+      noteStyle,
     } = body;
+
+    // Only http(s) links. Anything else — javascript:, data: — is rejected
+    // rather than stored and rendered into an anchor later.
+    if (linkUrl) {
+      let ok = false;
+      try {
+        const { protocol } = new URL(linkUrl);
+        ok = protocol === "http:" || protocol === "https:";
+      } catch {
+        ok = false;
+      }
+      if (!ok) {
+        return NextResponse.json(
+          { error: "Link must be an http(s) URL" },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (noteStyle && noteStyle !== "card" && noteStyle !== "quote") {
+      return NextResponse.json({ error: "Unknown note style" }, { status: 400 });
+    }
 
     // Validate: must have either text or media
     if (!textContent?.trim() && mediaUrls.length === 0) {
@@ -105,6 +133,11 @@ export async function POST(request: NextRequest) {
         visibility,
         scheduled_at: scheduledAt || null,
         premiere_mode: premiereMode || null,
+        title: title?.trim() || null,
+        link_url: linkUrl || null,
+        link_label: linkLabel?.trim() || null,
+        expires_at: expiresAt || null,
+        note_style: noteStyle || "card",
       })
       .select()
       .single();
