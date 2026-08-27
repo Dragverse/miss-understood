@@ -30,3 +30,20 @@ export const VERTICAL_VIDEO_ENABLED = false;
  * the UI and removes it from the metric.
  */
 export const FARCASTER_UI_ENABLED = false;
+
+/**
+ * Twitch and Instagram as login / account-linking options.
+ *
+ * MUST stay false until both are toggled ON in the Privy Dashboard under
+ * Login Methods. Privy requires config.loginMethods to be a *subset* of what
+ * the dashboard enables, and rejects anything else with:
+ *
+ *   "Invalid Request: Request parameters are invalid: Invalid platform app"
+ *
+ * That error blocks the whole login modal, not just the offending provider —
+ * which is why this defaults off rather than being left on hopefully.
+ *
+ * Dashboard > your app > Login Methods > enable Twitch and Instagram, then
+ * flip this to true. No other change needed.
+ */
+export const SOCIAL_LOGIN_TWITCH_INSTAGRAM = false;
