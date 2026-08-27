@@ -45,5 +45,10 @@ export const FARCASTER_UI_ENABLED = false;
  *
  * Dashboard > your app > Login Methods > enable Twitch and Instagram, then
  * flip this to true. No other change needed.
+ *
+ * Verified on before enabling, via Privy's own app config endpoint:
+ *   GET https://auth.privy.io/api/v1/apps/{appId}
+ * which reported twitch_oauth: true and instagram_oauth: true. Re-check there
+ * rather than assuming if this ever throws "Invalid platform app" again.
  */
-export const SOCIAL_LOGIN_TWITCH_INSTAGRAM = false;
+export const SOCIAL_LOGIN_TWITCH_INSTAGRAM = true;
