@@ -25,6 +25,7 @@ export interface Creator {
   following_count: number;
   dragverse_follower_count: number;
   bluesky_follower_count: number;
+  farcaster_follower_count?: number;
   verified: boolean;
   total_earnings_usd: number;
   stripe_account_id?: string;

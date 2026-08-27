@@ -14,6 +14,7 @@ export interface Creator {
   followingCount: number;
   dragverseFollowerCount?: number; // Followers on Dragverse (Ceramic)
   blueskyFollowerCount?: number; // Followers on Bluesky
+  farcasterFollowerCount?: number; // Followers on Farcaster
   createdAt: Date;
   updatedAt?: Date;
   verified: boolean;

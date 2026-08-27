@@ -30,6 +30,7 @@ export function transformSupabaseCreator(creator: SupabaseCreator): Creator {
     followingCount: creator.following_count,
     dragverseFollowerCount: creator.dragverse_follower_count,
     blueskyFollowerCount: creator.bluesky_follower_count,
+    farcasterFollowerCount: creator.farcaster_follower_count,
     verified: creator.verified,
     totalEarningsUSD: creator.total_earnings_usd,
     stripeAccountId: creator.stripe_account_id,

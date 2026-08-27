@@ -333,13 +333,13 @@ export default function DashboardPage() {
           />
           <StatsCard
             icon={<FiUsers className="w-6 h-6 text-white" />}
-            label="Loyal Subjects"
+            label="Watchers"
             value={stats.totalFollowers.toLocaleString()}
             gradient="from-purple-500/10 via-indigo-500/10 to-blue-500/10"
           />
           <StatsCard
             icon={<FiVideo className="w-6 h-6 text-white" />}
-            label="Content Pieces"
+            label="Posts"
             value={videos.length.toLocaleString()}
             gradient="from-green-500/10 via-emerald-500/10 to-teal-500/10"
           />

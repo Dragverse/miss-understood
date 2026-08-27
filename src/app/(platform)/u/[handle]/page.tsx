@@ -344,24 +344,32 @@ export default function DynamicProfilePage() {
     posts: userPosts,
   };
 
-  // "Watchers" is every follower source combined. The stored follower_count
-  // drifts out of date, so prefer the live per-platform numbers and only fall
-  // back to the stored total when we have no breakdown at all (e.g. an
-  // external Bluesky profile).
-  const blueskyWatchers =
-    connectedBlueskyStats?.followersCount ??
-    blueskyProfile?.followersCount ??
-    creator.blueskyFollowerCount ??
-    0;
+  // "Watchers" is every follower source combined.
+  //
+  // creators.follower_count is the maintained aggregate — /api/stats/aggregate
+  // writes it as the sum of Dragverse + Bluesky + Farcaster + YouTube, and the
+  // dashboard reads the same column. Trust it as the total rather than
+  // re-summing here, so the two screens can never disagree.
+  //
+  // An earlier version summed only three platforms and silently dropped
+  // Farcaster, which is why the profile read low against the dashboard.
   const watcherBreakdown = [
     { label: "Dragverse", count: creator.dragverseFollowerCount ?? 0 },
-    { label: "Bluesky", count: blueskyWatchers },
+    {
+      label: "Bluesky",
+      count:
+        connectedBlueskyStats?.followersCount ??
+        blueskyProfile?.followersCount ??
+        creator.blueskyFollowerCount ??
+        0,
+    },
+    { label: "Farcaster", count: creator.farcasterFollowerCount ?? 0 },
     { label: "YouTube", count: creator.youtubeSubscriberCount ?? 0 },
   ].filter((entry) => entry.count > 0);
+
   const watcherCount =
-    watcherBreakdown.reduce((sum, entry) => sum + entry.count, 0) ||
     creator.followerCount ||
-    0;
+    watcherBreakdown.reduce((sum, entry) => sum + entry.count, 0);
 
   // Stats - total content count across all types
   const stats = {
